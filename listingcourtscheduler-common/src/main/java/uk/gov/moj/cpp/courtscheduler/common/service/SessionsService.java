@@ -51,11 +51,11 @@ import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtScheduleMatcherInfo;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleRequestParam;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.BusinessType;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtRoom;
-import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerCreate;
-import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerCreateRepeatPattern;
-import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerCreateSession;
-import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerDelete;
-import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerDeleteResponse;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CreateSessionRequestParam;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.RepeatPattern;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.Session;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.SessionsParam;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtScheduleDeleteResponse;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.OrganisationUnit;
 import uk.gov.moj.cpp.courtscheduler.domain.RepeatFrequency;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.Result;
@@ -125,10 +125,10 @@ public class SessionsService {
     private CourtScheduleService courtScheduleService;
 
     @Transactional
-    public void create(CourtschedulerCreate createSessionRequestParam) {
+    public void create(CreateSessionRequestParam createSessionRequestParam) {
         final List<CourtSchedule> courtScheduleList = new ArrayList<>();
-        final List<CourtschedulerCreateSession> sessionList = createSessionRequestParam.getSessions();
-        final CourtschedulerCreateRepeatPattern repeatPattern = createSessionRequestParam.getRepeatPattern();
+        final List<Session> sessionList = createSessionRequestParam.getSessions();
+        final RepeatPattern repeatPattern = createSessionRequestParam.getRepeatPattern();
         final LocalDate startDate = DateUtils.parseRepeatPatternDate(repeatPattern.getStartDate());
         final String normalisedEndDate = DateUtils.normaliseRepeatPatternEndDate(repeatPattern.getEndDate());
         final LocalDate endDate = normalisedEndDate != null ? DateUtils.parseRepeatPatternDate(normalisedEndDate) : null;
@@ -343,7 +343,7 @@ public class SessionsService {
         return (isSlotBased && updateCourtSchedule.getMaxDuration().equals(0)) || (!isSlotBased && updateCourtSchedule.getMaxSlots().equals(0));
     }
 
-    public CourtschedulerDeleteResponse deleteCourtScheduleSessions(final CourtschedulerDelete sessionsParam) {
+    public CourtScheduleDeleteResponse deleteCourtScheduleSessions(final SessionsParam sessionsParam) {
         final List<String> sessions = isEmpty(sessionsParam.getSessions())  ? new ArrayList<>() : sessionsParam.getSessions();
         final List<CourtSchedule> allocatedCourtSchedules = courtScheduleRepository.deleteCourtSchedule(sessions);
         allocatedCourtSchedules.forEach(courtSchedule -> courtSchedule.setBusinessDescription(enrichBusinessDescription(courtSchedule.getBusinessType())));
@@ -357,9 +357,9 @@ public class SessionsService {
         }
         final List<CourtScheduleDeleteResponseItem> courtScheduleDeleteResponses = CourtScheduleToDeleteResponseConverter.convert(allocatedCourtSchedules, allocatedListingEachBooked);
         if (allocatedCourtSchedules.isEmpty()) {
-            return new CourtschedulerDeleteResponse().sessions(courtScheduleDeleteResponses);
+            return new CourtScheduleDeleteResponse().sessions(courtScheduleDeleteResponses);
         } else {
-            return new CourtschedulerDeleteResponse()
+            return new CourtScheduleDeleteResponse()
                     .error("Some sessions could not be removed. Please check again.")
                     .sessions(courtScheduleDeleteResponses);
         }
@@ -655,14 +655,14 @@ public class SessionsService {
                 });
     }
 
-    private static Set<DayOfWeek> repeatDaysOf(final CourtschedulerCreateSession session) {
+    private static Set<DayOfWeek> repeatDaysOf(final Session session) {
         return session.getRepeatDays() == null
                 ? new HashSet<>()
                 : DayOfWeekConverter.convert(String.join(",", session.getRepeatDays()));
     }
 
-    private void processOnceFrequency(List<CourtschedulerCreateSession> sessionList, LocalDate startDate, List<CourtSchedule> courtScheduleList) {
-        for (CourtschedulerCreateSession session : sessionList) {
+    private void processOnceFrequency(List<Session> sessionList, LocalDate startDate, List<CourtSchedule> courtScheduleList) {
+        for (Session session : sessionList) {
             for (DayOfWeek dayOfWeek : repeatDaysOf(session)) {
                 LocalDate sessionDateCandidate = startDate.with(TemporalAdjusters.nextOrSame(dayOfWeek));
                 CourtSchedule courtSchedule = buildCourtSchedule(session, sessionDateCandidate, session.getSessionStartTime(), session.getSessionEndTime());
@@ -671,10 +671,10 @@ public class SessionsService {
         }
     }
 
-    private void processWeeklyFrequency(List<CourtschedulerCreateSession> sessionList, LocalDate startDate, LocalDate endDate, int repeatFor, List<CourtSchedule> courtScheduleList) {
+    private void processWeeklyFrequency(List<Session> sessionList, LocalDate startDate, LocalDate endDate, int repeatFor, List<CourtSchedule> courtScheduleList) {
         final long weeksBetween = ChronoUnit.WEEKS.between(startDate, endDate);
         for (long weekNumber = 0; weekNumber <= weeksBetween; weekNumber += repeatFor) {
-            for (CourtschedulerCreateSession session : sessionList) {
+            for (Session session : sessionList) {
                 for (DayOfWeek dayOfWeek : repeatDaysOf(session)) {
                     LocalDate sessionDateCandidate = startDate.plusWeeks(weekNumber).with(TemporalAdjusters.nextOrSame(dayOfWeek));
                     if (sessionDateCandidate.isAfter(endDate)) {
@@ -687,18 +687,18 @@ public class SessionsService {
         }
     }
 
-    private void processMonthlyFrequency(List<CourtschedulerCreateSession> sessionList, LocalDate startDate, LocalDate endDate, int repeatFor, List<CourtSchedule> courtScheduleList) {
+    private void processMonthlyFrequency(List<Session> sessionList, LocalDate startDate, LocalDate endDate, int repeatFor, List<CourtSchedule> courtScheduleList) {
         LocalDate currentDate = startDate;
 
         while (!currentDate.isAfter(endDate)) {
-            for (CourtschedulerCreateSession session : sessionList) {
+            for (Session session : sessionList) {
                 populateCourtScheduleListForMonth(session, currentDate, endDate, courtScheduleList);
             }
             currentDate = currentDate.plusMonths(repeatFor).withDayOfMonth(1);
         }
     }
 
-    private void populateCourtScheduleListForMonth(CourtschedulerCreateSession session, LocalDate monthStart, LocalDate endDate, List<CourtSchedule> courtScheduleList) {
+    private void populateCourtScheduleListForMonth(Session session, LocalDate monthStart, LocalDate endDate, List<CourtSchedule> courtScheduleList) {
         LocalDate monthEnd = monthStart.withDayOfMonth(monthStart.lengthOfMonth());
         if (monthEnd.isAfter(endDate)) {
             monthEnd = endDate;
@@ -746,7 +746,7 @@ public class SessionsService {
         return (date.getDayOfMonth() - firstOccurrence.getDayOfMonth()) / 7 + 1;
     }
 
-    private CourtSchedule buildCourtSchedule(CourtschedulerCreateSession session, LocalDate sessionDateCandidate, String sessionStartTime, String sessionEndTime) {
+    private CourtSchedule buildCourtSchedule(Session session, LocalDate sessionDateCandidate, String sessionStartTime, String sessionEndTime) {
         final CourtSchedule courtSchedule = new CourtSchedule();
 
         courtSchedule.courtScheduleId(UUID.randomUUID().toString())
@@ -783,7 +783,7 @@ public class SessionsService {
      * </ul>
      */
     private void applyResolvedSessionTimes(final CourtSchedule courtSchedule,
-                                           final CourtschedulerCreateSession session,
+                                           final Session session,
                                            final LocalDate sessionDate,
                                            final String customStartTime,
                                            final String customEndTime) {
@@ -808,7 +808,7 @@ public class SessionsService {
      * {@link DateUtils#normaliseToHourMinute} before use. An unparseable value falls back to the
      * hardcoded default (logged at WARN) rather than failing {@code combineDateAndTime} downstream.
      */
-    private String resolveRefDataStartTime(final CourtschedulerCreateSession session) {
+    private String resolveRefDataStartTime(final Session session) {
         if (PM_SESSION.equals(session.getSessionType())) {
             return null;
         }
@@ -884,11 +884,11 @@ public class SessionsService {
                 .orElseThrow(() -> new RuntimeException(COURTROOM_NOT_FOUND + courtRoomId + " in court centre " + courtCentreId));
     }
 
-    public JsonObject validateSessionIntegrity(final CourtschedulerCreateSession session, final LocalDate startDate, final LocalDate endDate, final Integer repeatFor) {
+    public JsonObject validateSessionIntegrity(final Session session, final LocalDate startDate, final LocalDate endDate, final Integer repeatFor) {
         return validateSessionIntegrity(session, startDate, endDate, repeatFor, null);
     }
 
-    public JsonObject validateSessionIntegrity(final CourtschedulerCreateSession session, final LocalDate startDate, final LocalDate endDate, final Integer repeatFor, final RepeatFrequency frequency) {
+    public JsonObject validateSessionIntegrity(final Session session, final LocalDate startDate, final LocalDate endDate, final Integer repeatFor, final RepeatFrequency frequency) {
         final long totalStartTime = System.currentTimeMillis();
         logger.info("validateSessionIntegrity to check session integrity");
         
@@ -921,7 +921,7 @@ public class SessionsService {
         return JsonValue.EMPTY_JSON_OBJECT;
     }
 
-    private boolean validatedWeeklyFrequency(final CourtschedulerCreateSession session, final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule sessionToCompare,
+    private boolean validatedWeeklyFrequency(final Session session, final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule sessionToCompare,
                                              LocalDate startDate, LocalDate endDate, Integer repeatFor) {
         //Method validates the hearing slots available for the EVERY_WEEK frequency considering repeatFor and repeatDays parameter
         //These params are needed to skip the weeks based on the frequency
@@ -949,7 +949,7 @@ public class SessionsService {
         return violated;
     }
 
-    private boolean validatedMonthlyFrequency(final CourtschedulerCreateSession session, final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule sessionToCompare,
+    private boolean validatedMonthlyFrequency(final Session session, final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule sessionToCompare,
                                              LocalDate startDate, LocalDate endDate, Integer repeatFor) {
         //Method validates the hearing slots available for the EVERY_MONTH frequency considering repeatFor, repeatDays, and index parameter
         //Calculates the actual dates that would be created (e.g., 4th Friday of each month) and checks for conflicts
@@ -1246,8 +1246,8 @@ public class SessionsService {
                 && hearingStartTime.isBefore(afternoonStartTime);
     }
 
-    public uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerAssignCourtroomResponse assignCourtroom(
-            final uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerAssignCourtroom request) {
+    public uk.gov.moj.cpp.courtscheduler.openapi.model.AssignCourtroomResponse assignCourtroom(
+            final uk.gov.moj.cpp.courtscheduler.openapi.model.AssignCourtroomRequest request) {
 
         // Get all sessions by IDs
         final List<CourtSchedule> sessions = courtScheduleRepository.getCourtSchedulesByIdList(request.getCourtScheduleIds());
@@ -1273,7 +1273,7 @@ public class SessionsService {
                     new uk.gov.moj.cpp.courtscheduler.openapi.model.AssignCourtroomErrorGroup()
                             .sessions(notFoundSessions)
                             .error("Courtroom not found"));
-            return new uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerAssignCourtroomResponse()
+            return new uk.gov.moj.cpp.courtscheduler.openapi.model.AssignCourtroomResponse()
                     .errorGroups(errorGroups);
         }
 
@@ -1409,7 +1409,7 @@ public class SessionsService {
                     .error(entry.getKey()));
         }
 
-        return new uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerAssignCourtroomResponse()
+        return new uk.gov.moj.cpp.courtscheduler.openapi.model.AssignCourtroomResponse()
                 .errorGroups(errorGroups);
     }
 

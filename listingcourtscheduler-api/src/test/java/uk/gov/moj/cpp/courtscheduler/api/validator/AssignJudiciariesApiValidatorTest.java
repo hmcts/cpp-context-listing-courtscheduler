@@ -8,7 +8,7 @@ import static org.mockito.Mockito.when;
 
 import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataMapperService;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.Judiciary;
-import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerAssignJudiciary;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.AssignJudiciariesRequest;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.JudiciaryAssignment;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
@@ -47,7 +47,7 @@ class AssignJudiciariesApiValidatorTest {
                 .sessionIds(List.of(sessionId))
                 .isDeputy(false)
                 .isBenchChairman(true);
-        final CourtschedulerAssignJudiciary request = new CourtschedulerAssignJudiciary()
+        final AssignJudiciariesRequest request = new AssignJudiciariesRequest()
                 .judiciaries(List.of(assignment));
 
         final Judiciary judiciary = new Judiciary().id(judiciaryId);
@@ -71,7 +71,7 @@ class AssignJudiciariesApiValidatorTest {
                 .sessionIds(List.of("not-a-uuid"))
                 .isDeputy(false)
                 .isBenchChairman(true);
-        final CourtschedulerAssignJudiciary request = new CourtschedulerAssignJudiciary()
+        final AssignJudiciariesRequest request = new AssignJudiciariesRequest()
                 .judiciaries(List.of(assignment));
 
         final JsonObject result = validator.validate(request);
@@ -94,7 +94,7 @@ class AssignJudiciariesApiValidatorTest {
         final JudiciaryAssignment assignment = new JudiciaryAssignment()
                 .judiciaryId("")
                 .sessionIds(List.of("not-a-uuid"));
-        final CourtschedulerAssignJudiciary request = new CourtschedulerAssignJudiciary()
+        final AssignJudiciariesRequest request = new AssignJudiciariesRequest()
                 .judiciaries(List.of(assignment))
                 .skipValidations(true);
 
@@ -111,7 +111,7 @@ class AssignJudiciariesApiValidatorTest {
                 .sessionIds(List.of("not-a-uuid"))
                 .isDeputy(false)
                 .isBenchChairman(true);
-        final CourtschedulerAssignJudiciary request = new CourtschedulerAssignJudiciary()
+        final AssignJudiciariesRequest request = new AssignJudiciariesRequest()
                 .judiciaries(List.of(assignment))
                 .skipValidations(false);
 
@@ -130,7 +130,7 @@ class AssignJudiciariesApiValidatorTest {
                 .sessionIds(List.of("not-a-uuid"))
                 .isDeputy(false)
                 .isBenchChairman(true);
-        final CourtschedulerAssignJudiciary request = new CourtschedulerAssignJudiciary()
+        final AssignJudiciariesRequest request = new AssignJudiciariesRequest()
                 .judiciaries(List.of(assignment));
 
         final JsonObject result = validator.validate(request);
@@ -148,7 +148,7 @@ class AssignJudiciariesApiValidatorTest {
                 .judiciaryId(judiciaryId)
                 .sessionIds(List.of(sessionId))
                 .isBenchChairman(true);
-        final CourtschedulerAssignJudiciary request = new CourtschedulerAssignJudiciary()
+        final AssignJudiciariesRequest request = new AssignJudiciariesRequest()
                 .judiciaries(List.of(assignment));
 
         final Judiciary judiciary = new Judiciary().id(judiciaryId);
@@ -173,7 +173,7 @@ class AssignJudiciariesApiValidatorTest {
                 .judiciaryId(judiciaryId)
                 .sessionIds(List.of(sessionId))
                 .isDeputy(false);
-        final CourtschedulerAssignJudiciary request = new CourtschedulerAssignJudiciary()
+        final AssignJudiciariesRequest request = new AssignJudiciariesRequest()
                 .judiciaries(List.of(assignment));
 
         final Judiciary judiciary = new Judiciary().id(judiciaryId);
@@ -197,7 +197,7 @@ class AssignJudiciariesApiValidatorTest {
         final JudiciaryAssignment assignment = new JudiciaryAssignment()
                 .judiciaryId(judiciaryId)
                 .sessionIds(List.of(sessionId));
-        final CourtschedulerAssignJudiciary request = new CourtschedulerAssignJudiciary()
+        final AssignJudiciariesRequest request = new AssignJudiciariesRequest()
                 .judiciaries(List.of(assignment));
 
         final Judiciary judiciary = new Judiciary().id(judiciaryId);
@@ -221,7 +221,7 @@ class AssignJudiciariesApiValidatorTest {
         final JudiciaryAssignment assignment = new JudiciaryAssignment()
                 .judiciaryId(judiciaryId)
                 .sessionIds(List.of(sessionId));
-        final CourtschedulerAssignJudiciary request = new CourtschedulerAssignJudiciary()
+        final AssignJudiciariesRequest request = new AssignJudiciariesRequest()
                 .judiciaries(List.of(assignment));
 
         final CourtSchedule session = new CourtSchedule();
@@ -246,7 +246,7 @@ class AssignJudiciariesApiValidatorTest {
         final JudiciaryAssignment assignment = new JudiciaryAssignment()
                 .judiciaryId(judiciaryId)
                 .sessionIds(List.of(sessionId));
-        final CourtschedulerAssignJudiciary request = new CourtschedulerAssignJudiciary()
+        final AssignJudiciariesRequest request = new AssignJudiciariesRequest()
                 .judiciaries(List.of(assignment));
 
         final Judiciary judiciary = new Judiciary().id(judiciaryId);
@@ -270,7 +270,7 @@ class AssignJudiciariesApiValidatorTest {
         final JudiciaryAssignment assignment = new JudiciaryAssignment()
                 .judiciaryId(judiciaryId)
                 .sessionIds(List.of(sessionId));
-        final CourtschedulerAssignJudiciary request = new CourtschedulerAssignJudiciary()
+        final AssignJudiciariesRequest request = new AssignJudiciariesRequest()
                 .judiciaries(List.of(assignment));
 
         when(referenceDataMapperService.findById(eq(judiciaryId)))

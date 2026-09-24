@@ -18,8 +18,8 @@ import static org.mockito.Mockito.when;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.AssignJudiciariesResponse;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.AssignmentFailure;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.Judiciary;
-import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerAssignJudiciary;
-import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerAssignJudiciaryToSessions;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.AssignJudiciariesRequest;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.AssignJudiciaryToSessionsRequest;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.JudicialRoleType;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.JudiciaryAssignment;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.SessionJudiciary;
@@ -151,20 +151,20 @@ class JudiciaryAssignmentServiceTest {
         verify(entityManager).merge(any());
     }
 
-    private CourtschedulerAssignJudiciary buildRequest(final String judiciaryId, final String sessionId) {
+    private AssignJudiciariesRequest buildRequest(final String judiciaryId, final String sessionId) {
         final JudiciaryAssignment assignment = new JudiciaryAssignment()
                 .judiciaryId(judiciaryId)
                 .addSessionIdsItem(sessionId);
-        return new CourtschedulerAssignJudiciary()
+        return new AssignJudiciariesRequest()
                 .addJudiciariesItem(assignment);
     }
 
-    private CourtschedulerAssignJudiciary buildRequestWithRotaJudiciaryId(final String judiciaryId, final String sessionId, final String rotaJudiciaryId) {
+    private AssignJudiciariesRequest buildRequestWithRotaJudiciaryId(final String judiciaryId, final String sessionId, final String rotaJudiciaryId) {
         final JudiciaryAssignment assignment = new JudiciaryAssignment()
                 .judiciaryId(judiciaryId)
                 .rotaJudiciaryId(rotaJudiciaryId)
                 .addSessionIdsItem(sessionId);
-        return new CourtschedulerAssignJudiciary()
+        return new AssignJudiciariesRequest()
                 .addJudiciariesItem(assignment);
     }
 
@@ -212,7 +212,7 @@ class JudiciaryAssignmentServiceTest {
         when(referenceDataMapperService.findById(jid)).thenReturn(Optional.of(buildJudiciary(jid)));
         when(courtScheduleJudiciaryRepository.deleteAllAssignmentsForCourtScheduleIds(anyList())).thenReturn(2);
 
-        final CourtschedulerAssignJudiciaryToSessions req = new CourtschedulerAssignJudiciaryToSessions()
+        final AssignJudiciaryToSessionsRequest req = new AssignJudiciaryToSessionsRequest()
                 .courtScheduleIds(List.of(s1, s2))
                 .addJudiciaryItem(sessionJudiciary(jid, "MAGISTRATE")
                         .isBenchChairman(false)
@@ -235,7 +235,7 @@ class JudiciaryAssignmentServiceTest {
                 buildCourtScheduleWithHouse(s1, "H1"),
                 buildCourtScheduleWithHouse(s2, "H2")));
 
-        final CourtschedulerAssignJudiciaryToSessions req = new CourtschedulerAssignJudiciaryToSessions()
+        final AssignJudiciaryToSessionsRequest req = new AssignJudiciaryToSessionsRequest()
                 .courtScheduleIds(List.of(s1, s2))
                 .addJudiciaryItem(sessionJudiciary(jid, "MAGISTRATE"));
 
@@ -247,7 +247,7 @@ class JudiciaryAssignmentServiceTest {
     @Test
     void assignJudiciaryToSessionsShouldRejectTooManyMagistrates() {
         final String s1 = "8a9f3e44-2d6a-4f4b-b7d1-9e6b9fbf1111";
-        final CourtschedulerAssignJudiciaryToSessions req = new CourtschedulerAssignJudiciaryToSessions()
+        final AssignJudiciaryToSessionsRequest req = new AssignJudiciaryToSessionsRequest()
                 .courtScheduleIds(List.of(s1))
                 .addJudiciaryItem(sessionJudiciary("11111111-1111-1111-1111-111111111111", "MAGISTRATE"))
                 .addJudiciaryItem(sessionJudiciary("22222222-2222-2222-2222-222222222222", "MAGISTRATE"))
@@ -264,7 +264,7 @@ class JudiciaryAssignmentServiceTest {
         when(courtScheduleRepository.findByCourtScheduleIds(anyList())).thenReturn(List.of(buildCourtScheduleWithHouse(s1, "H1")));
         when(courtScheduleJudiciaryRepository.deleteAllAssignmentsForCourtScheduleIds(anyList())).thenReturn(1);
 
-        final CourtschedulerAssignJudiciaryToSessions req = new CourtschedulerAssignJudiciaryToSessions()
+        final AssignJudiciaryToSessionsRequest req = new AssignJudiciaryToSessionsRequest()
                 .courtScheduleIds(List.of(s1))
                 .judiciary(List.of());
 
@@ -283,7 +283,7 @@ class JudiciaryAssignmentServiceTest {
 
         when(courtScheduleRepository.findByCourtScheduleIds(anyList())).thenReturn(List.of(buildCourtScheduleWithHouse(s1, "H1")));
 
-        final CourtschedulerAssignJudiciaryToSessions req = new CourtschedulerAssignJudiciaryToSessions()
+        final AssignJudiciaryToSessionsRequest req = new AssignJudiciaryToSessionsRequest()
                 .courtScheduleIds(List.of(s1, s2))
                 .addJudiciaryItem(sessionJudiciary(jid, "MAGISTRATE"));
 
@@ -295,7 +295,7 @@ class JudiciaryAssignmentServiceTest {
     @Test
     void assignJudiciaryToSessionsShouldRejectMoreThanOneJudgeOrRecorder() {
         final String s1 = "8a9f3e44-2d6a-4f4b-b7d1-9e6b9fbf1111";
-        final CourtschedulerAssignJudiciaryToSessions req = new CourtschedulerAssignJudiciaryToSessions()
+        final AssignJudiciaryToSessionsRequest req = new AssignJudiciaryToSessionsRequest()
                 .courtScheduleIds(List.of(s1))
                 .addJudiciaryItem(sessionJudiciary("11111111-1111-1111-1111-111111111111", "CIRCUIT_JUDGE"))
                 .addJudiciaryItem(sessionJudiciary("22222222-2222-2222-2222-222222222222", "RECORDER"));
@@ -309,7 +309,7 @@ class JudiciaryAssignmentServiceTest {
     void assignJudiciaryToSessionsShouldRejectDuplicateJudicialId() {
         final String s1 = "8a9f3e44-2d6a-4f4b-b7d1-9e6b9fbf1111";
         final String jid = "3fa85f64-5717-4562-b3fc-2c963f66afa6";
-        final CourtschedulerAssignJudiciaryToSessions req = new CourtschedulerAssignJudiciaryToSessions()
+        final AssignJudiciaryToSessionsRequest req = new AssignJudiciaryToSessionsRequest()
                 .courtScheduleIds(List.of(s1))
                 .addJudiciaryItem(sessionJudiciary(jid, "MAGISTRATE"))
                 .addJudiciaryItem(sessionJudiciary(jid, "MAGISTRATE"));
@@ -327,7 +327,7 @@ class JudiciaryAssignmentServiceTest {
         when(referenceDataMapperService.findById(jid)).thenReturn(Optional.empty());
         when(courtScheduleJudiciaryRepository.deleteAllAssignmentsForCourtScheduleIds(anyList())).thenReturn(0);
 
-        final CourtschedulerAssignJudiciaryToSessions req = new CourtschedulerAssignJudiciaryToSessions()
+        final AssignJudiciaryToSessionsRequest req = new AssignJudiciaryToSessionsRequest()
                 .courtScheduleIds(List.of(s1))
                 .addJudiciaryItem(sessionJudiciary(jid, "MAGISTRATE"));
 
@@ -339,7 +339,7 @@ class JudiciaryAssignmentServiceTest {
     @Test
     void assignJudiciaryToSessionsShouldRejectBlankJudiciaryType() {
         final String s1 = "8a9f3e44-2d6a-4f4b-b7d1-9e6b9fbf1111";
-        final CourtschedulerAssignJudiciaryToSessions req = new CourtschedulerAssignJudiciaryToSessions()
+        final AssignJudiciaryToSessionsRequest req = new AssignJudiciaryToSessionsRequest()
                 .courtScheduleIds(List.of(s1))
                 .addJudiciaryItem(sessionJudiciary("3fa85f64-5717-4562-b3fc-2c963f66afa6", "   "));
 
@@ -351,7 +351,7 @@ class JudiciaryAssignmentServiceTest {
     @Test
     void assignJudiciaryToSessionsShouldRejectMoreThanFourJudiciaryLines() {
         final String s1 = "8a9f3e44-2d6a-4f4b-b7d1-9e6b9fbf1111";
-        final CourtschedulerAssignJudiciaryToSessions req = new CourtschedulerAssignJudiciaryToSessions()
+        final AssignJudiciaryToSessionsRequest req = new AssignJudiciaryToSessionsRequest()
                 .courtScheduleIds(List.of(s1));
         final List<String> fiveIds = List.of(
                 "10000000-0000-4000-8000-000000000001",
@@ -376,7 +376,7 @@ class JudiciaryAssignmentServiceTest {
         when(referenceDataMapperService.findById(jid)).thenReturn(Optional.of(buildJudiciary(jid)));
         when(courtScheduleJudiciaryRepository.deleteAllAssignmentsForCourtScheduleIds(anyList())).thenReturn(0);
 
-        final CourtschedulerAssignJudiciaryToSessions req = new CourtschedulerAssignJudiciaryToSessions()
+        final AssignJudiciaryToSessionsRequest req = new AssignJudiciaryToSessionsRequest()
                 .courtScheduleIds(List.of(s1))
                 .addJudiciaryItem(sessionJudiciary(jid, "MAGISTRATE")
                         .isBenchChairman(true)
@@ -400,7 +400,7 @@ class JudiciaryAssignmentServiceTest {
         final String sessionId = "missing-session";
 
         // Even though judiciary and session don't exist, with skipValidations=true, should not fail but should log
-        final CourtschedulerAssignJudiciary request = new CourtschedulerAssignJudiciary()
+        final AssignJudiciariesRequest request = new AssignJudiciariesRequest()
                 .addJudiciariesItem(new JudiciaryAssignment()
                         .judiciaryId(judiciaryId)
                         .addSessionIdsItem(sessionId))
@@ -425,7 +425,7 @@ class JudiciaryAssignmentServiceTest {
         final String judiciaryId = "judiciary-1";
         final String sessionId = "session-1";
 
-        final CourtschedulerAssignJudiciary request = new CourtschedulerAssignJudiciary()
+        final AssignJudiciariesRequest request = new AssignJudiciariesRequest()
                 .addJudiciariesItem(new JudiciaryAssignment()
                         .judiciaryId(judiciaryId)
                         .addSessionIdsItem(sessionId))
@@ -526,7 +526,7 @@ class JudiciaryAssignmentServiceTest {
         when(courtScheduleRepository.findByCourtScheduleIds(anyList())).thenReturn(
                 of(buildCourtSchedule(sessionId1), buildCourtSchedule(sessionId2)));
 
-        final CourtschedulerAssignJudiciary request = new CourtschedulerAssignJudiciary()
+        final AssignJudiciariesRequest request = new AssignJudiciariesRequest()
                 .addJudiciariesItem(new JudiciaryAssignment()
                         .judiciaryId(judiciaryId1)
                         .addSessionIdsItem(sessionId1))

@@ -12,8 +12,8 @@ import uk.gov.moj.cpp.courtscheduler.openapi.model.AssignJudiciariesResponse;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.AssignmentFailure;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.Judiciary;
-import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerAssignJudiciary;
-import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerAssignJudiciaryToSessions;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.AssignJudiciariesRequest;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.AssignJudiciaryToSessionsRequest;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.JudiciaryAssignment;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.SessionJudiciary;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
@@ -69,7 +69,7 @@ public class JudiciaryAssignmentService {
     private EntityManager entityManager;
 
     @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
-    public AssignJudiciariesResponse assignJudiciaries(final CourtschedulerAssignJudiciary request,
+    public AssignJudiciariesResponse assignJudiciaries(final AssignJudiciariesRequest request,
                                                        final String executionId) {
         return assignJudiciaries(request, executionId, false);
     }
@@ -80,7 +80,7 @@ public class JudiciaryAssignmentService {
      * and bench composition (max 4, max 2 magistrates, max 1 judge/recorder).
      */
     @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
-    public void assignJudiciaryToSessions(final CourtschedulerAssignJudiciaryToSessions request,
+    public void assignJudiciaryToSessions(final AssignJudiciaryToSessionsRequest request,
                                           final String executionId) {
         if (request == null || request.getCourtScheduleIds() == null || request.getCourtScheduleIds().isEmpty()) {
             throw new IllegalArgumentException("courtScheduleIds must contain at least one court schedule id.");
@@ -228,12 +228,12 @@ public class JudiciaryAssignmentService {
     }
 
     @Transactional
-    public AssignJudiciariesResponse assignJudiciaries(final CourtschedulerAssignJudiciary request,
+    public AssignJudiciariesResponse assignJudiciaries(final AssignJudiciariesRequest request,
                                                        final String executionId,
                                                        final boolean useRepository) {
         final boolean skipValidations = request != null && Boolean.TRUE.equals(request.getSkipValidations());
         final List<JudiciaryAssignment> assignments = Optional.ofNullable(request)
-                .map(CourtschedulerAssignJudiciary::getJudiciaries)
+                .map(AssignJudiciariesRequest::getJudiciaries)
                 .orElse(emptyList());
 
         if (isEmpty(assignments)) {

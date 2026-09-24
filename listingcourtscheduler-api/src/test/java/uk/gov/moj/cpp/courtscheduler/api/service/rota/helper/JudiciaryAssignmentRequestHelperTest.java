@@ -5,7 +5,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
 
-import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerAssignJudiciary;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.AssignJudiciariesRequest;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.JudiciaryAssignment;
 
 import java.util.List;
@@ -51,7 +51,7 @@ class JudiciaryAssignmentRequestHelperTest {
         );
 
         // when
-        final CourtschedulerAssignJudiciary result = judiciaryAssignmentRequestHelper.buildAssignJudiciariesRequest(assignmentList);
+        final AssignJudiciariesRequest result = judiciaryAssignmentRequestHelper.buildAssignJudiciariesRequest(assignmentList);
 
         // then
         assertThat(result, is(notNullValue()));
@@ -74,7 +74,7 @@ class JudiciaryAssignmentRequestHelperTest {
         );
 
         // when
-        final CourtschedulerAssignJudiciary result = judiciaryAssignmentRequestHelper.buildAssignJudiciariesRequest(assignmentList);
+        final AssignJudiciariesRequest result = judiciaryAssignmentRequestHelper.buildAssignJudiciariesRequest(assignmentList);
 
         // then
         assertThat(result, is(notNullValue()));
@@ -100,7 +100,7 @@ class JudiciaryAssignmentRequestHelperTest {
         );
 
         // when
-        final CourtschedulerAssignJudiciary result = judiciaryAssignmentRequestHelper.buildAssignJudiciariesRequest(assignmentList);
+        final AssignJudiciariesRequest result = judiciaryAssignmentRequestHelper.buildAssignJudiciariesRequest(assignmentList);
 
         // then
         assertThat(result, is(notNullValue()));
@@ -142,7 +142,7 @@ class JudiciaryAssignmentRequestHelperTest {
         );
 
         // when
-        final CourtschedulerAssignJudiciary result = judiciaryAssignmentRequestHelper.buildAssignJudiciariesRequest(assignmentList);
+        final AssignJudiciariesRequest result = judiciaryAssignmentRequestHelper.buildAssignJudiciariesRequest(assignmentList);
 
         // then
         assertThat(result, is(notNullValue()));
@@ -183,7 +183,7 @@ class JudiciaryAssignmentRequestHelperTest {
         );
 
         // when
-        final CourtschedulerAssignJudiciary result = judiciaryAssignmentRequestHelper.buildAssignJudiciariesRequest(assignmentList);
+        final AssignJudiciariesRequest result = judiciaryAssignmentRequestHelper.buildAssignJudiciariesRequest(assignmentList);
 
         // then
         assertThat(result, is(notNullValue()));
@@ -201,7 +201,7 @@ class JudiciaryAssignmentRequestHelperTest {
         final List<JudiciaryScheduleAssignment> assignmentList = emptyList();
 
         // when
-        final CourtschedulerAssignJudiciary result = judiciaryAssignmentRequestHelper.buildAssignJudiciariesRequest(assignmentList);
+        final AssignJudiciariesRequest result = judiciaryAssignmentRequestHelper.buildAssignJudiciariesRequest(assignmentList);
 
         // then
         assertThat(result, is(notNullValue()));
@@ -214,7 +214,7 @@ class JudiciaryAssignmentRequestHelperTest {
         final List<JudiciaryScheduleAssignment> assignmentList = null;
 
         // when
-        final CourtschedulerAssignJudiciary result = judiciaryAssignmentRequestHelper.buildAssignJudiciariesRequest(assignmentList);
+        final AssignJudiciariesRequest result = judiciaryAssignmentRequestHelper.buildAssignJudiciariesRequest(assignmentList);
 
         // then
         assertThat(result, is(notNullValue()));
@@ -232,7 +232,7 @@ class JudiciaryAssignmentRequestHelperTest {
         );
 
         // when
-        final CourtschedulerAssignJudiciary result = judiciaryAssignmentRequestHelper.buildAssignJudiciariesRequest(assignmentList);
+        final AssignJudiciariesRequest result = judiciaryAssignmentRequestHelper.buildAssignJudiciariesRequest(assignmentList);
 
         // then
         assertThat(result.getJudiciaries().get(0).getSessionIds().get(0), is("550e8400-e29b-41d4-a716-446655440000"));
@@ -248,7 +248,7 @@ class JudiciaryAssignmentRequestHelperTest {
         );
 
         // when
-        final CourtschedulerAssignJudiciary result = judiciaryAssignmentRequestHelper.buildAssignJudiciariesRequest(assignmentList);
+        final AssignJudiciariesRequest result = judiciaryAssignmentRequestHelper.buildAssignJudiciariesRequest(assignmentList);
 
         // then
         assertThat(result, is(notNullValue()));
@@ -266,7 +266,7 @@ class JudiciaryAssignmentRequestHelperTest {
         );
 
         // when
-        final CourtschedulerAssignJudiciary result = judiciaryAssignmentRequestHelper.buildAssignJudiciariesRequest(assignmentList);
+        final AssignJudiciariesRequest result = judiciaryAssignmentRequestHelper.buildAssignJudiciariesRequest(assignmentList);
 
         // then
         assertThat(result, is(notNullValue()));
@@ -288,7 +288,7 @@ class JudiciaryAssignmentRequestHelperTest {
         );
 
         // when
-        final CourtschedulerAssignJudiciary result = judiciaryAssignmentRequestHelper.buildAssignJudiciariesRequest(assignmentList);
+        final AssignJudiciariesRequest result = judiciaryAssignmentRequestHelper.buildAssignJudiciariesRequest(assignmentList);
 
         // then
         assertThat(result, is(notNullValue()));
@@ -309,7 +309,7 @@ class JudiciaryAssignmentRequestHelperTest {
         );
 
         // when
-        final CourtschedulerAssignJudiciary result = judiciaryAssignmentRequestHelper.buildAssignJudiciariesRequest(assignmentList);
+        final AssignJudiciariesRequest result = judiciaryAssignmentRequestHelper.buildAssignJudiciariesRequest(assignmentList);
 
         // then
         assertThat(result, is(notNullValue()));

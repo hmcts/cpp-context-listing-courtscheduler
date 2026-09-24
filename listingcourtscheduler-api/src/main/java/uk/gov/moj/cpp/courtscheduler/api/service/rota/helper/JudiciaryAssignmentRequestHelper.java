@@ -1,6 +1,6 @@
 package uk.gov.moj.cpp.courtscheduler.api.service.rota.helper;
 
-import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerAssignJudiciary;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.AssignJudiciariesRequest;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.JudiciaryAssignment;
 
 import java.util.List;
@@ -25,11 +25,11 @@ public class JudiciaryAssignmentRequestHelper {
      * @param assignmentList list of JudiciaryScheduleAssignment containing judiciary IDs and schedule data
      * @return AssignJudiciariesRequest containing the judiciary assignments
      */
-    public CourtschedulerAssignJudiciary buildAssignJudiciariesRequest(
+    public AssignJudiciariesRequest buildAssignJudiciariesRequest(
             final List<JudiciaryScheduleAssignment> assignmentList) {
         if (assignmentList == null || assignmentList.isEmpty()) {
             logger.debug("Building AssignJudiciariesRequest from empty list");
-            return new CourtschedulerAssignJudiciary()
+            return new AssignJudiciariesRequest()
                     .judiciaries(List.of())
                     .skipValidations(true);
         }
@@ -47,7 +47,7 @@ public class JudiciaryAssignmentRequestHelper {
         logger.info("Built AssignJudiciariesRequest with {} judiciary assignments and {} total session IDs",
                 assignments.size(), totalSessionIds);
 
-        return new CourtschedulerAssignJudiciary()
+        return new AssignJudiciariesRequest()
                 .judiciaries(assignments)
                 .skipValidations(true);
     }

@@ -21,8 +21,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerAddJudiciaryAvailabilityRule;
-import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerDeleteJudiciaryAvailabilityRule;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.AddJudiciaryAvailabilityRuleRequest;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.DeleteJudiciaryAvailabilityRuleRequest;
 
 @ExtendWith(MockitoExtension.class)
 class JudiciaryAvailabilityRuleApiValidatorTest {
@@ -30,11 +30,11 @@ class JudiciaryAvailabilityRuleApiValidatorTest {
     @InjectMocks
     private JudiciaryAvailabilityRuleApiValidator validator;
 
-    private CourtschedulerAddJudiciaryAvailabilityRule request;
+    private AddJudiciaryAvailabilityRuleRequest request;
 
     @BeforeEach
     void setUp() {
-        this.request = new CourtschedulerAddJudiciaryAvailabilityRule();
+        this.request = new AddJudiciaryAvailabilityRuleRequest();
         this.request.setJudiciaryId(UUID.randomUUID().toString());
         this.request.setCourtHouseId(UUID.randomUUID().toString());
         this.request.setStartDate(LocalDate.of(2026, 1, 1));
@@ -162,7 +162,7 @@ class JudiciaryAvailabilityRuleApiValidatorTest {
 
     @Test
     void shouldReturnEmptyJsonObjectForValidDeleteRequest() {
-        CourtschedulerDeleteJudiciaryAvailabilityRule deleteRequest = new CourtschedulerDeleteJudiciaryAvailabilityRule();
+        DeleteJudiciaryAvailabilityRuleRequest deleteRequest = new DeleteJudiciaryAvailabilityRuleRequest();
         deleteRequest.setRuleId(UUID.randomUUID().toString());
 
         JsonObject result = this.validator.validateDeleteJudiciaryAvailabilityRule(deleteRequest);
@@ -180,7 +180,7 @@ class JudiciaryAvailabilityRuleApiValidatorTest {
 
     @Test
     void shouldReturnErrorWhenRuleIdIsBlank() {
-        CourtschedulerDeleteJudiciaryAvailabilityRule deleteRequest = new CourtschedulerDeleteJudiciaryAvailabilityRule();
+        DeleteJudiciaryAvailabilityRuleRequest deleteRequest = new DeleteJudiciaryAvailabilityRuleRequest();
         deleteRequest.setRuleId("");
 
         JsonObject result = this.validator.validateDeleteJudiciaryAvailabilityRule(deleteRequest);
@@ -191,7 +191,7 @@ class JudiciaryAvailabilityRuleApiValidatorTest {
 
     @Test
     void shouldReturnErrorWhenRuleIdIsNull() {
-        CourtschedulerDeleteJudiciaryAvailabilityRule deleteRequest = new CourtschedulerDeleteJudiciaryAvailabilityRule();
+        DeleteJudiciaryAvailabilityRuleRequest deleteRequest = new DeleteJudiciaryAvailabilityRuleRequest();
         deleteRequest.setRuleId(null);
 
         JsonObject result = this.validator.validateDeleteJudiciaryAvailabilityRule(deleteRequest);
@@ -200,7 +200,7 @@ class JudiciaryAvailabilityRuleApiValidatorTest {
         Assertions.assertTrue(result.getString("errorMessage").contains("ruleId"));
     }
 
-    // Note: judiciaryId is not modeled on CourtschedulerDeleteJudiciaryAvailabilityRule (it was
+    // Note: judiciaryId is not modeled on DeleteJudiciaryAvailabilityRuleRequest (it was
     // an unused inherited field on the old hand-written DeleteJudiciaryAvailabilityRuleRequest —
     // the validator never read it), so the judiciaryId-blank/null-for-delete cases are no longer
     // applicable and were removed rather than kept as no-op assertions.

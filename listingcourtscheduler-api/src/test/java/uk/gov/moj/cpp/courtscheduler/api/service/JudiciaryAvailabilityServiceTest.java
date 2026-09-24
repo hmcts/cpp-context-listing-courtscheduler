@@ -10,17 +10,17 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerAddJudiciaryAvailabilityRule;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.AddJudiciaryAvailabilityRuleRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek;
 import uk.gov.moj.cpp.courtscheduler.domain.DateSessionType;
-import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerDeleteJudiciaryAvailabilityRule;
-import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerUpdateJudiciaryAvailabilityRule;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.DeleteJudiciaryAvailabilityRuleRequest;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.UpdateJudiciaryAvailabilityRuleRequest;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.JudiciaryUnavailability;
 import uk.gov.moj.cpp.courtscheduler.domain.UnavailabilityReason;
-import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerFindJudiciaryAvailability;
-import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerFindJudiciaryAvailabilityRule;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.FindJudiciaryAvailabilityResponse;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.FindJudiciaryAvailabilityRuleResponse;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerFindJudiciaryAvailabilityRuleQuery;
-import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerGetJudiciaryAvailabilityRule;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.GetJudiciaryAvailabilityRuleResponse;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.Judiciary;
 import uk.gov.moj.cpp.courtscheduler.domain.SessionType;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.JudiciaryAvailabilityRule;
@@ -70,7 +70,7 @@ class JudiciaryAvailabilityServiceTest {
 
     @Test
     void shouldAddJudiciaryAvailabilityRule() {
-        CourtschedulerAddJudiciaryAvailabilityRule request = createValidRequest();
+        AddJudiciaryAvailabilityRuleRequest request = createValidRequest();
         
         service.addJudiciaryAvailabilityRule(request);
 
@@ -90,7 +90,7 @@ class JudiciaryAvailabilityServiceTest {
 
     @Test
     void shouldAcceptValidRepeatDays() {
-        CourtschedulerAddJudiciaryAvailabilityRule request = createValidRequest();
+        AddJudiciaryAvailabilityRuleRequest request = createValidRequest();
         // repeatDays are now simple strings, no index needed
         
         service.addJudiciaryAvailabilityRule(request);
@@ -119,7 +119,7 @@ class JudiciaryAvailabilityServiceTest {
         when(repository.findRulesByDateRange(startDate, endDate, null, null))
                 .thenReturn(Collections.singletonList(rule));
 
-        CourtschedulerFindJudiciaryAvailability response = service.findJudiciaryAvailability(request.getStartDate(), request.getEndDate(), request.getCourtHouseId(), request.getJudiciaryId());
+        FindJudiciaryAvailabilityResponse response = service.findJudiciaryAvailability(request.getStartDate(), request.getEndDate(), request.getCourtHouseId(), request.getJudiciaryId());
 
         assertNotNull(response);
         assertThat(response.getAvailableJudiciaries().size(), is(1));
@@ -144,7 +144,7 @@ class JudiciaryAvailabilityServiceTest {
         when(repository.findRulesByDateRange(startDate, endDate, null, null))
                 .thenReturn(Arrays.asList(availableRule));
 
-        CourtschedulerFindJudiciaryAvailability response = service.findJudiciaryAvailability(request.getStartDate(), request.getEndDate(), request.getCourtHouseId(), request.getJudiciaryId());
+        FindJudiciaryAvailabilityResponse response = service.findJudiciaryAvailability(request.getStartDate(), request.getEndDate(), request.getCourtHouseId(), request.getJudiciaryId());
 
         // Should still be available because Monday matches
         assertThat(response.getAvailableJudiciaries().size(), is(1));
@@ -164,7 +164,7 @@ class JudiciaryAvailabilityServiceTest {
         when(repository.findRulesByDateRange(startDate, endDate, courtHouseId, null))
                 .thenReturn(Collections.emptyList());
 
-        CourtschedulerFindJudiciaryAvailability response = service.findJudiciaryAvailability(request.getStartDate(), request.getEndDate(), request.getCourtHouseId(), request.getJudiciaryId());
+        FindJudiciaryAvailabilityResponse response = service.findJudiciaryAvailability(request.getStartDate(), request.getEndDate(), request.getCourtHouseId(), request.getJudiciaryId());
 
         assertThat(response.getAvailableJudiciaries().size(), is(0));
     }
@@ -182,7 +182,7 @@ class JudiciaryAvailabilityServiceTest {
         when(repository.findRulesByDateRange(startDate, endDate, null, judiciaryId))
                 .thenReturn(Collections.emptyList());
 
-        CourtschedulerFindJudiciaryAvailability response = service.findJudiciaryAvailability(request.getStartDate(), request.getEndDate(), request.getCourtHouseId(), request.getJudiciaryId());
+        FindJudiciaryAvailabilityResponse response = service.findJudiciaryAvailability(request.getStartDate(), request.getEndDate(), request.getCourtHouseId(), request.getJudiciaryId());
 
         assertThat(response.getAvailableJudiciaries().size(), is(0));
     }
@@ -203,7 +203,7 @@ class JudiciaryAvailabilityServiceTest {
         when(repository.findRulesByDateRange(startDate, endDate, null, null))
                 .thenReturn(Collections.singletonList(rule));
 
-        CourtschedulerFindJudiciaryAvailability response = service.findJudiciaryAvailability(request.getStartDate(), request.getEndDate(), request.getCourtHouseId(), request.getJudiciaryId());
+        FindJudiciaryAvailabilityResponse response = service.findJudiciaryAvailability(request.getStartDate(), request.getEndDate(), request.getCourtHouseId(), request.getJudiciaryId());
 
         // Should find matches for 2nd Tuesday in Jan, Feb, Mar
         assertThat(response.getAvailableJudiciaries().size(), is(1));
@@ -229,7 +229,7 @@ class JudiciaryAvailabilityServiceTest {
         when(repository.findRulesByDateRange(startDate, endDate, null, null))
                 .thenReturn(Collections.singletonList(rule));
 
-        CourtschedulerFindJudiciaryAvailability response = service.findJudiciaryAvailability(request.getStartDate(), request.getEndDate(), request.getCourtHouseId(), request.getJudiciaryId());
+        FindJudiciaryAvailabilityResponse response = service.findJudiciaryAvailability(request.getStartDate(), request.getEndDate(), request.getCourtHouseId(), request.getJudiciaryId());
 
         // Jan 1-7, 2026: Thu, Fri, Sat, Sun, Mon, Tue, Wed - Wednesday is Jan 6, so should match
         // Let me use a better test - rule only for dates outside the query range
@@ -264,7 +264,7 @@ class JudiciaryAvailabilityServiceTest {
         when(repository.findRulesByDateRange(startDate, endDate, null, null))
                 .thenReturn(Arrays.asList(rule1, rule2));
 
-        CourtschedulerFindJudiciaryAvailability response = service.findJudiciaryAvailability(request.getStartDate(), request.getEndDate(), request.getCourtHouseId(), request.getJudiciaryId());
+        FindJudiciaryAvailabilityResponse response = service.findJudiciaryAvailability(request.getStartDate(), request.getEndDate(), request.getCourtHouseId(), request.getJudiciaryId());
 
         assertThat(response.getAvailableJudiciaries().size(), is(2));
         assertTrue(response.getAvailableJudiciaries().contains(judiciaryId));
@@ -290,14 +290,14 @@ class JudiciaryAvailabilityServiceTest {
         when(repository.findRulesByDateRange(startDate, endDate, null, null))
                 .thenReturn(Arrays.asList(availableRule));
 
-        CourtschedulerFindJudiciaryAvailability response = service.findJudiciaryAvailability(request.getStartDate(), request.getEndDate(), request.getCourtHouseId(), request.getJudiciaryId());
+        FindJudiciaryAvailabilityResponse response = service.findJudiciaryAvailability(request.getStartDate(), request.getEndDate(), request.getCourtHouseId(), request.getJudiciaryId());
 
         // Should still be available because Monday matches (Tuesday was removed by Unavailable rule)
         assertThat(response.getAvailableJudiciaries().size(), is(1));
     }
 
-    private CourtschedulerAddJudiciaryAvailabilityRule createValidRequest() {
-        CourtschedulerAddJudiciaryAvailabilityRule request = new CourtschedulerAddJudiciaryAvailabilityRule();
+    private AddJudiciaryAvailabilityRuleRequest createValidRequest() {
+        AddJudiciaryAvailabilityRuleRequest request = new AddJudiciaryAvailabilityRuleRequest();
         request.setJudiciaryId(judiciaryId);
         request.setCourtHouseId(courtHouseId);
         request.setStartDate(LocalDate.of(2026, 1, 1));
@@ -345,7 +345,7 @@ class JudiciaryAvailabilityServiceTest {
     @Test
     void shouldDeleteJudiciaryAvailabilityRule() {
         final String ruleId = randomUUID().toString();
-        CourtschedulerDeleteJudiciaryAvailabilityRule request = new CourtschedulerDeleteJudiciaryAvailabilityRule();
+        DeleteJudiciaryAvailabilityRuleRequest request = new DeleteJudiciaryAvailabilityRuleRequest();
         request.setRuleId(ruleId);
 
         JudiciaryAvailabilityRule existingRule = new JudiciaryAvailabilityRule();
@@ -364,7 +364,7 @@ class JudiciaryAvailabilityServiceTest {
     @Test
     void shouldThrowExceptionWhenRuleNotFound() {
         final String ruleId = randomUUID().toString();
-        CourtschedulerDeleteJudiciaryAvailabilityRule request = new CourtschedulerDeleteJudiciaryAvailabilityRule();
+        DeleteJudiciaryAvailabilityRuleRequest request = new DeleteJudiciaryAvailabilityRuleRequest();
         request.setRuleId(ruleId);
 
         when(repository.findById(ruleId)).thenReturn(java.util.Optional.empty());
@@ -400,7 +400,7 @@ class JudiciaryAvailabilityServiceTest {
         when(repository.findRulesByDateRangeWithPagination(startDate, endDate, null, null, 10, 1))
                 .thenReturn(result);
 
-        CourtschedulerFindJudiciaryAvailabilityRule response = service.findJudiciaryAvailabilityRules(new CourtschedulerFindJudiciaryAvailabilityRuleQuery()
+        FindJudiciaryAvailabilityRuleResponse response = service.findJudiciaryAvailabilityRules(new CourtschedulerFindJudiciaryAvailabilityRuleQuery()
                 .startDate(request.getStartDate()).endDate(request.getEndDate())
                 .courtHouseId(request.getCourtHouseId()).judiciaryId(request.getJudiciaryId())
                 .pageSize(request.getPageSize()).pageNumber(request.getPageNumber())
@@ -436,7 +436,7 @@ class JudiciaryAvailabilityServiceTest {
         when(repository.findRulesByDateRangeWithPagination(startDate, endDate, null, null, 20, 1))
                 .thenReturn(result);
 
-        CourtschedulerFindJudiciaryAvailabilityRule response = service.findJudiciaryAvailabilityRules(new CourtschedulerFindJudiciaryAvailabilityRuleQuery()
+        FindJudiciaryAvailabilityRuleResponse response = service.findJudiciaryAvailabilityRules(new CourtschedulerFindJudiciaryAvailabilityRuleQuery()
                 .startDate(request.getStartDate()).endDate(request.getEndDate())
                 .courtHouseId(request.getCourtHouseId()).judiciaryId(request.getJudiciaryId())
                 .pageSize(request.getPageSize()).pageNumber(request.getPageNumber())
@@ -481,7 +481,7 @@ class JudiciaryAvailabilityServiceTest {
         when(referenceDataService.getJudiciariesWithSpecialismByIds(org.mockito.ArgumentMatchers.anyList()))
                 .thenReturn(Collections.singletonList(judiciary));
 
-        CourtschedulerFindJudiciaryAvailabilityRule response = service.findJudiciaryAvailabilityRules(new CourtschedulerFindJudiciaryAvailabilityRuleQuery()
+        FindJudiciaryAvailabilityRuleResponse response = service.findJudiciaryAvailabilityRules(new CourtschedulerFindJudiciaryAvailabilityRuleQuery()
                 .startDate(request.getStartDate()).endDate(request.getEndDate())
                 .courtHouseId(request.getCourtHouseId()).judiciaryId(request.getJudiciaryId())
                 .pageSize(request.getPageSize()).pageNumber(request.getPageNumber())
@@ -521,7 +521,7 @@ class JudiciaryAvailabilityServiceTest {
         when(repository.findRulesByDateRangeWithPagination(startDate, endDate, null, null, 10, 1))
                 .thenReturn(result);
 
-        CourtschedulerFindJudiciaryAvailabilityRule response = service.findJudiciaryAvailabilityRules(new CourtschedulerFindJudiciaryAvailabilityRuleQuery()
+        FindJudiciaryAvailabilityRuleResponse response = service.findJudiciaryAvailabilityRules(new CourtschedulerFindJudiciaryAvailabilityRuleQuery()
                 .startDate(request.getStartDate()).endDate(request.getEndDate())
                 .courtHouseId(request.getCourtHouseId()).judiciaryId(request.getJudiciaryId())
                 .pageSize(request.getPageSize()).pageNumber(request.getPageNumber())
@@ -553,7 +553,7 @@ class JudiciaryAvailabilityServiceTest {
         when(repository.findRulesByDateRangeWithPagination(startDate, endDate, courtHouseId, null, 10, 1))
                 .thenReturn(result);
 
-        CourtschedulerFindJudiciaryAvailabilityRule response = service.findJudiciaryAvailabilityRules(new CourtschedulerFindJudiciaryAvailabilityRuleQuery()
+        FindJudiciaryAvailabilityRuleResponse response = service.findJudiciaryAvailabilityRules(new CourtschedulerFindJudiciaryAvailabilityRuleQuery()
                 .startDate(request.getStartDate()).endDate(request.getEndDate())
                 .courtHouseId(request.getCourtHouseId()).judiciaryId(request.getJudiciaryId())
                 .pageSize(request.getPageSize()).pageNumber(request.getPageNumber())
@@ -586,7 +586,7 @@ class JudiciaryAvailabilityServiceTest {
         when(repository.findRulesByDateRangeWithPagination(startDate, endDate, null, judiciaryId, 10, 1))
                 .thenReturn(result);
 
-        CourtschedulerFindJudiciaryAvailabilityRule response = service.findJudiciaryAvailabilityRules(new CourtschedulerFindJudiciaryAvailabilityRuleQuery()
+        FindJudiciaryAvailabilityRuleResponse response = service.findJudiciaryAvailabilityRules(new CourtschedulerFindJudiciaryAvailabilityRuleQuery()
                 .startDate(request.getStartDate()).endDate(request.getEndDate())
                 .courtHouseId(request.getCourtHouseId()).judiciaryId(request.getJudiciaryId())
                 .pageSize(request.getPageSize()).pageNumber(request.getPageNumber())
@@ -638,7 +638,7 @@ class JudiciaryAvailabilityServiceTest {
         when(referenceDataService.getJudiciariesWithSpecialismByIds(org.mockito.ArgumentMatchers.anyList()))
                 .thenReturn(Arrays.asList(judiciary1, judiciary2));
 
-        CourtschedulerFindJudiciaryAvailabilityRule response = service.findJudiciaryAvailabilityRules(new CourtschedulerFindJudiciaryAvailabilityRuleQuery()
+        FindJudiciaryAvailabilityRuleResponse response = service.findJudiciaryAvailabilityRules(new CourtschedulerFindJudiciaryAvailabilityRuleQuery()
                 .startDate(request.getStartDate()).endDate(request.getEndDate())
                 .courtHouseId(request.getCourtHouseId()).judiciaryId(request.getJudiciaryId())
                 .pageSize(request.getPageSize()).pageNumber(request.getPageNumber())
@@ -670,7 +670,7 @@ class JudiciaryAvailabilityServiceTest {
         when(repository.findRulesByDateRangeWithPagination(startDate, endDate, null, null, 10, 1))
                 .thenReturn(result);
 
-        CourtschedulerFindJudiciaryAvailabilityRule response = service.findJudiciaryAvailabilityRules(new CourtschedulerFindJudiciaryAvailabilityRuleQuery()
+        FindJudiciaryAvailabilityRuleResponse response = service.findJudiciaryAvailabilityRules(new CourtschedulerFindJudiciaryAvailabilityRuleQuery()
                 .startDate(request.getStartDate()).endDate(request.getEndDate())
                 .courtHouseId(request.getCourtHouseId()).judiciaryId(request.getJudiciaryId())
                 .pageSize(request.getPageSize()).pageNumber(request.getPageNumber())
@@ -700,7 +700,7 @@ class JudiciaryAvailabilityServiceTest {
         when(repository.findRulesByDateRangeWithPagination(startDate, endDate, null, null, 10, 1))
                 .thenReturn(result);
 
-        CourtschedulerFindJudiciaryAvailabilityRule response = service.findJudiciaryAvailabilityRules(new CourtschedulerFindJudiciaryAvailabilityRuleQuery()
+        FindJudiciaryAvailabilityRuleResponse response = service.findJudiciaryAvailabilityRules(new CourtschedulerFindJudiciaryAvailabilityRuleQuery()
                 .startDate(request.getStartDate()).endDate(request.getEndDate())
                 .courtHouseId(request.getCourtHouseId()).judiciaryId(request.getJudiciaryId())
                 .pageSize(request.getPageSize()).pageNumber(request.getPageNumber())
@@ -713,7 +713,7 @@ class JudiciaryAvailabilityServiceTest {
     @Test
     void shouldUpdateJudiciaryAvailabilityRule() {
         final String ruleId = randomUUID().toString();
-        CourtschedulerUpdateJudiciaryAvailabilityRule request = new CourtschedulerUpdateJudiciaryAvailabilityRule();
+        UpdateJudiciaryAvailabilityRuleRequest request = new UpdateJudiciaryAvailabilityRuleRequest();
         request.setRuleId(ruleId);
         request.setJudiciaryId(judiciaryId);
         request.setCourtHouseId(courtHouseId);
@@ -753,7 +753,7 @@ class JudiciaryAvailabilityServiceTest {
     @Test
     void shouldUpdateJudiciaryAvailabilityRuleWithUnAvailabilities() {
         final String ruleId = randomUUID().toString();
-        CourtschedulerUpdateJudiciaryAvailabilityRule request = new CourtschedulerUpdateJudiciaryAvailabilityRule();
+        UpdateJudiciaryAvailabilityRuleRequest request = new UpdateJudiciaryAvailabilityRuleRequest();
         request.setRuleId(ruleId);
         request.setJudiciaryId(judiciaryId);
         request.setCourtHouseId(courtHouseId);
@@ -799,7 +799,7 @@ class JudiciaryAvailabilityServiceTest {
 
     @Test
     void shouldThrowExceptionWhenRuleIdIsNull() {
-        CourtschedulerUpdateJudiciaryAvailabilityRule request = new CourtschedulerUpdateJudiciaryAvailabilityRule();
+        UpdateJudiciaryAvailabilityRuleRequest request = new UpdateJudiciaryAvailabilityRuleRequest();
         request.setRuleId(null);
         request.setJudiciaryId(judiciaryId);
         request.setCourtHouseId(courtHouseId);
@@ -817,7 +817,7 @@ class JudiciaryAvailabilityServiceTest {
 
     @Test
     void shouldThrowExceptionWhenRuleIdIsEmpty() {
-        CourtschedulerUpdateJudiciaryAvailabilityRule request = new CourtschedulerUpdateJudiciaryAvailabilityRule();
+        UpdateJudiciaryAvailabilityRuleRequest request = new UpdateJudiciaryAvailabilityRuleRequest();
         request.setRuleId("");
         request.setJudiciaryId(judiciaryId);
         request.setCourtHouseId(courtHouseId);
@@ -836,7 +836,7 @@ class JudiciaryAvailabilityServiceTest {
     @Test
     void shouldThrowExceptionWhenUpdateRuleNotFound() {
         final String ruleId = randomUUID().toString();
-        CourtschedulerUpdateJudiciaryAvailabilityRule request = new CourtschedulerUpdateJudiciaryAvailabilityRule();
+        UpdateJudiciaryAvailabilityRuleRequest request = new UpdateJudiciaryAvailabilityRuleRequest();
         request.setRuleId(ruleId);
         request.setJudiciaryId(judiciaryId);
         request.setCourtHouseId(courtHouseId);
@@ -857,7 +857,7 @@ class JudiciaryAvailabilityServiceTest {
     @Test
     void shouldUpdateJudiciaryAvailabilityRuleWithNullSessionType() {
         final String ruleId = randomUUID().toString();
-        CourtschedulerUpdateJudiciaryAvailabilityRule request = new CourtschedulerUpdateJudiciaryAvailabilityRule();
+        UpdateJudiciaryAvailabilityRuleRequest request = new UpdateJudiciaryAvailabilityRuleRequest();
         request.setRuleId(ruleId);
         request.setJudiciaryId(judiciaryId);
         request.setCourtHouseId(courtHouseId);
@@ -887,7 +887,7 @@ class JudiciaryAvailabilityServiceTest {
     @Test
     void shouldUpdateJudiciaryAvailabilityRuleWithEmptyUnAvailabilities() {
         final String ruleId = randomUUID().toString();
-        CourtschedulerUpdateJudiciaryAvailabilityRule request = new CourtschedulerUpdateJudiciaryAvailabilityRule();
+        UpdateJudiciaryAvailabilityRuleRequest request = new UpdateJudiciaryAvailabilityRuleRequest();
         request.setRuleId(ruleId);
         request.setJudiciaryId(judiciaryId);
         request.setCourtHouseId(courtHouseId);
@@ -918,7 +918,7 @@ class JudiciaryAvailabilityServiceTest {
     @Test
     void shouldUpdateJudiciaryAvailabilityRuleWithNullUnavailabilities() {
         final String ruleId = randomUUID().toString();
-        CourtschedulerUpdateJudiciaryAvailabilityRule request = new CourtschedulerUpdateJudiciaryAvailabilityRule();
+        UpdateJudiciaryAvailabilityRuleRequest request = new UpdateJudiciaryAvailabilityRuleRequest();
         request.setRuleId(ruleId);
         request.setJudiciaryId(judiciaryId);
         request.setCourtHouseId(courtHouseId);
@@ -948,7 +948,7 @@ class JudiciaryAvailabilityServiceTest {
     @Test
     void shouldUpdateJudiciaryAvailabilityRuleWithNullRepeatDays() {
         final String ruleId = randomUUID().toString();
-        CourtschedulerUpdateJudiciaryAvailabilityRule request = new CourtschedulerUpdateJudiciaryAvailabilityRule();
+        UpdateJudiciaryAvailabilityRuleRequest request = new UpdateJudiciaryAvailabilityRuleRequest();
         request.setRuleId(ruleId);
         request.setJudiciaryId(judiciaryId);
         request.setCourtHouseId(courtHouseId);
@@ -987,7 +987,7 @@ class JudiciaryAvailabilityServiceTest {
 
         when(repository.findById(ruleId)).thenReturn(java.util.Optional.of(rule));
 
-        CourtschedulerGetJudiciaryAvailabilityRule response = service.getJudiciaryAvailabilityRule(request.getRuleId(), request.getWithJudiciary());
+        GetJudiciaryAvailabilityRuleResponse response = service.getJudiciaryAvailabilityRule(request.getRuleId(), request.getWithJudiciary());
 
         assertNotNull(response);
         assertNotNull(response.getRule());
@@ -1017,7 +1017,7 @@ class JudiciaryAvailabilityServiceTest {
         when(referenceDataService.getJudiciariesWithSpecialismByIds(org.mockito.ArgumentMatchers.anyList()))
                 .thenReturn(Arrays.asList(judiciary));
 
-        CourtschedulerGetJudiciaryAvailabilityRule response = service.getJudiciaryAvailabilityRule(request.getRuleId(), request.getWithJudiciary());
+        GetJudiciaryAvailabilityRuleResponse response = service.getJudiciaryAvailabilityRule(request.getRuleId(), request.getWithJudiciary());
 
         assertNotNull(response);
         assertNotNull(response.getRule());
@@ -1087,7 +1087,7 @@ class JudiciaryAvailabilityServiceTest {
 
         when(repository.findById(ruleId)).thenReturn(java.util.Optional.of(rule));
 
-        CourtschedulerGetJudiciaryAvailabilityRule response = service.getJudiciaryAvailabilityRule(request.getRuleId(), request.getWithJudiciary());
+        GetJudiciaryAvailabilityRuleResponse response = service.getJudiciaryAvailabilityRule(request.getRuleId(), request.getWithJudiciary());
 
         assertNotNull(response);
         assertNotNull(response.getRule());
@@ -1111,7 +1111,7 @@ class JudiciaryAvailabilityServiceTest {
 
         when(repository.findById(ruleId)).thenReturn(java.util.Optional.of(rule));
 
-        CourtschedulerGetJudiciaryAvailabilityRule response = service.getJudiciaryAvailabilityRule(request.getRuleId(), request.getWithJudiciary());
+        GetJudiciaryAvailabilityRuleResponse response = service.getJudiciaryAvailabilityRule(request.getRuleId(), request.getWithJudiciary());
 
         assertNotNull(response);
         assertNotNull(response.getRule());
@@ -1124,7 +1124,7 @@ class JudiciaryAvailabilityServiceTest {
     @Test
     void shouldReturnNullWhenValidateDeleteWithNoMatchingSessions() {
         final String ruleId = randomUUID().toString();
-        CourtschedulerDeleteJudiciaryAvailabilityRule request = new CourtschedulerDeleteJudiciaryAvailabilityRule();
+        DeleteJudiciaryAvailabilityRuleRequest request = new DeleteJudiciaryAvailabilityRuleRequest();
         request.setRuleId(ruleId);
 
         JudiciaryAvailabilityRule rule = createRule(judiciaryId,
@@ -1149,7 +1149,7 @@ class JudiciaryAvailabilityServiceTest {
     @Test
     void shouldReturnErrorWhenValidateDeleteRuleNotFound() {
         final String ruleId = randomUUID().toString();
-        CourtschedulerDeleteJudiciaryAvailabilityRule request = new CourtschedulerDeleteJudiciaryAvailabilityRule();
+        DeleteJudiciaryAvailabilityRuleRequest request = new DeleteJudiciaryAvailabilityRuleRequest();
         request.setRuleId(ruleId);
 
         when(repository.findById(ruleId)).thenReturn(java.util.Optional.empty());
@@ -1163,7 +1163,7 @@ class JudiciaryAvailabilityServiceTest {
 
     @Test
     void shouldReturnErrorWhenValidateDeleteRuleIdIsNull() {
-        CourtschedulerDeleteJudiciaryAvailabilityRule request = new CourtschedulerDeleteJudiciaryAvailabilityRule();
+        DeleteJudiciaryAvailabilityRuleRequest request = new DeleteJudiciaryAvailabilityRuleRequest();
         request.setRuleId(null);
 
         String result = service.validateDeleteJudiciaryAvailabilityRule(request);
@@ -1178,7 +1178,7 @@ class JudiciaryAvailabilityServiceTest {
     void shouldReturnErrorWhenValidateDeleteRuleAppliedToADSessionType() {
         final String ruleId = randomUUID().toString();
         final String sessionId = randomUUID().toString();
-        CourtschedulerDeleteJudiciaryAvailabilityRule request = new CourtschedulerDeleteJudiciaryAvailabilityRule();
+        DeleteJudiciaryAvailabilityRuleRequest request = new DeleteJudiciaryAvailabilityRuleRequest();
         request.setRuleId(ruleId);
 
         JudiciaryAvailabilityRule rule = createRule(judiciaryId,

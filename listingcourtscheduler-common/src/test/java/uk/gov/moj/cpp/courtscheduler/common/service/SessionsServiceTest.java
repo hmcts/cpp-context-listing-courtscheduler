@@ -48,15 +48,15 @@ import uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages;
 import uk.gov.moj.cpp.courtscheduler.common.service.mapper.CourtScheduleJudiciaryMapper;
 import uk.gov.moj.cpp.courtscheduler.common.service.mapper.CourtScheduleMapper;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.AllocatedListingEachBooked;
-import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerAssignCourtroom;
-import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerAssignCourtroomResponse;
-import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerDelete;
-import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerDeleteResponse;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.AssignCourtroomRequest;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.AssignCourtroomResponse;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.SessionsParam;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtScheduleDeleteResponse;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.BusinessType;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtRoom;
-import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerCreate;
-import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerCreateRepeatPattern;
-import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerCreateSession;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CreateSessionRequestParam;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.RepeatPattern;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.Session;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtScheduleMatcherInfo;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleRequestParam;
@@ -166,7 +166,7 @@ class SessionsServiceTest {
         // Given
         final LocalDate startDate = LocalDate.of(2024, 6, 20);
         final String courtCentreId = randomUUID().toString();
-        final CourtschedulerCreateSession session = new CourtschedulerCreateSession()
+        final Session session = new Session()
                 .repeatDays(toRepeatDayStrings(Collections.singleton(DayOfWeek.MONDAY)))
                 .duration(2)
                 .businessType("DVLA")
@@ -177,7 +177,7 @@ class SessionsServiceTest {
                 .jurisdiction("CROWN")
                 ;
 
-        final CourtschedulerCreate createSessionRequest = createSessionRequest(singletonList(session), createRepeatPattern(startDate, LocalDate.now().plusMonths(1), RepeatFrequency.ONCE, 1));
+        final CreateSessionRequestParam createSessionRequest = createSessionRequest(singletonList(session), createRepeatPattern(startDate, LocalDate.now().plusMonths(1), RepeatFrequency.ONCE, 1));
 
         when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"))).thenReturn(returnBusinessTypeObject("DVLA", true));
 
@@ -200,7 +200,7 @@ class SessionsServiceTest {
         // membership for the session's centre (stale reference data), creation must fail fast
         final LocalDate startDate = LocalDate.of(2024, 6, 20);
         final String courtCentreId = randomUUID().toString();
-        final CourtschedulerCreateSession session = new CourtschedulerCreateSession()
+        final Session session = new Session()
                 .repeatDays(toRepeatDayStrings(Collections.singleton(DayOfWeek.MONDAY)))
                 .duration(2)
                 .businessType("DVLA")
@@ -211,7 +211,7 @@ class SessionsServiceTest {
                 .jurisdiction("CROWN")
                 ;
 
-        final CourtschedulerCreate createSessionRequest = createSessionRequest(singletonList(session), createRepeatPattern(startDate, LocalDate.now().plusMonths(1), RepeatFrequency.ONCE, 1));
+        final CreateSessionRequestParam createSessionRequest = createSessionRequest(singletonList(session), createRepeatPattern(startDate, LocalDate.now().plusMonths(1), RepeatFrequency.ONCE, 1));
 
         when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"))).thenReturn(returnBusinessTypeObject("DVLA", true));
         when(referenceDataCache.getCpCourtRoomByCourtRoomIdAndCourtCentreId(eq("court-room-id"), eq(courtCentreId)))
@@ -230,7 +230,7 @@ class SessionsServiceTest {
         // session's court centre must be used for enrichment, without the fallback lookup
         final LocalDate startDate = LocalDate.of(2024, 6, 20);
         final String courtCentreId = randomUUID().toString();
-        final CourtschedulerCreateSession session = new CourtschedulerCreateSession()
+        final Session session = new Session()
                 .repeatDays(toRepeatDayStrings(Collections.singleton(DayOfWeek.MONDAY)))
                 .duration(2)
                 .businessType("DVLA")
@@ -241,7 +241,7 @@ class SessionsServiceTest {
                 .jurisdiction("CROWN")
                 ;
 
-        final CourtschedulerCreate createSessionRequest = createSessionRequest(singletonList(session), createRepeatPattern(startDate, LocalDate.now().plusMonths(1), RepeatFrequency.ONCE, 1));
+        final CreateSessionRequestParam createSessionRequest = createSessionRequest(singletonList(session), createRepeatPattern(startDate, LocalDate.now().plusMonths(1), RepeatFrequency.ONCE, 1));
 
         when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"))).thenReturn(returnBusinessTypeObject("DVLA", true));
         when(referenceDataCache.getCpCourtRoomByCourtRoomIdAndCourtCentreId(eq("court-room-id"), eq(courtCentreId)))
@@ -266,7 +266,7 @@ class SessionsServiceTest {
 
     @Test
     void shouldStayInDateBoundsWhenRepeatPatternIsEveryWeekStartingToday() {
-        final List<CourtschedulerCreateSession> sessions = Arrays.asList(
+        final List<Session> sessions = Arrays.asList(
                 singleSession(WEEK_DAYS_FIRST_HALF, true),
                 singleSession(WEEK_DAYS_SECOND_HALF, false)
         );
@@ -283,7 +283,7 @@ class SessionsServiceTest {
         when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"))).thenReturn(returnBusinessTypeObject("DVLA", true));
         when(referenceDataCache.getRotaBusinessTypeByCode(eq("TRL"))).thenReturn(returnBusinessTypeObject("TRL", false));
         when(referenceDataCache.getRotaCourtRoomByCourtRoomId(any())).thenReturn(Optional.of(new CourtRoom()));
-        final CourtschedulerCreate createSessionRequest = createSessionRequest(sessions, createRepeatPattern(startDate, endDate, RepeatFrequency.EVERY_WEEK, 1));
+        final CreateSessionRequestParam createSessionRequest = createSessionRequest(sessions, createRepeatPattern(startDate, endDate, RepeatFrequency.EVERY_WEEK, 1));
         sessionsService.create(createSessionRequest);
         verify(courtScheduleRepository, times(1)).saveCourtSchedules(courtScheduleArgumentCaptor.capture());
         List<CourtSchedule> capturedCourtSchedules = courtScheduleArgumentCaptor.getValue();
@@ -310,7 +310,7 @@ class SessionsServiceTest {
         when(referenceDataCache.getRotaCourtRoomByCourtRoomId(any()))
                 .thenReturn(Optional.of(new CourtRoom()));
 
-        final CourtschedulerCreate createSessionRequest = createSessionRequest(
+        final CreateSessionRequestParam createSessionRequest = createSessionRequest(
                 createMultipleSessions_WithSameUniqueConstraint(businessType, courtHouseId, courtRoomId, courtSession, panel, 2),
                 createRepeatPattern(LocalDate.now(), LocalDate.now().plusMonths(1), RepeatFrequency.ONCE, 1)
         );
@@ -318,7 +318,7 @@ class SessionsServiceTest {
         sessionsService.create(createSessionRequest);
         verify(courtScheduleRepository, times(1)).saveCourtSchedules(anyList());
 
-        final CourtschedulerCreate createSessionRequest1 = createSessionRequest(
+        final CreateSessionRequestParam createSessionRequest1 = createSessionRequest(
                 createMultipleSessions_WithSameUniqueConstraint(businessType, courtHouseId, courtRoomId, courtSession, panel, 4),
                 createRepeatPattern(LocalDate.now(), LocalDate.now().plusMonths(1), RepeatFrequency.ONCE, 1)
         );
@@ -351,7 +351,7 @@ class SessionsServiceTest {
 
     @Test
     void shouldStayInDateBoundsWhenRepeatPatternIsEveryWeekStartingWithLaterDate() {
-        final List<CourtschedulerCreateSession> sessions = Arrays.asList(
+        final List<Session> sessions = Arrays.asList(
                 singleSession(WEEK_DAYS_FIRST_HALF, true)
         );
         final LocalDate startDate = LocalDate.of(2024, 6, 20).plusWeeks(2);
@@ -367,7 +367,7 @@ class SessionsServiceTest {
         when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"))).thenReturn(returnBusinessTypeObject("DVLA", true));
         when(referenceDataCache.getRotaCourtRoomByCourtRoomId(any())).thenReturn(Optional.of(new CourtRoom()));
 
-        final CourtschedulerCreate createSessionRequest = createSessionRequest(sessions, createRepeatPattern(startDate, endDate, RepeatFrequency.EVERY_WEEK, 1));
+        final CreateSessionRequestParam createSessionRequest = createSessionRequest(sessions, createRepeatPattern(startDate, endDate, RepeatFrequency.EVERY_WEEK, 1));
         sessionsService.create(createSessionRequest);
 
         verify(courtScheduleRepository, times(1)).saveCourtSchedules(courtScheduleArgumentCaptor.capture());
@@ -385,7 +385,7 @@ class SessionsServiceTest {
 
     @Test
     void shouldStayInDateBoundsWhenRepeatPatternIsEvery2WeekStartingWithLaterDate() {
-        final List<CourtschedulerCreateSession> sessions = Arrays.asList(
+        final List<Session> sessions = Arrays.asList(
                 singleSession(WEEK_DAYS_FIRST_HALF, true)
         );
         final LocalDate startDate = LocalDate.of(2024, 06, 20).plusWeeks(2);
@@ -401,7 +401,7 @@ class SessionsServiceTest {
         when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"))).thenReturn(returnBusinessTypeObject("DVLA", true));
         when(referenceDataCache.getRotaCourtRoomByCourtRoomId(any())).thenReturn(Optional.of(new CourtRoom()));
 
-        final CourtschedulerCreate createSessionRequest = createSessionRequest(sessions, createRepeatPattern(startDate, endDate, RepeatFrequency.EVERY_WEEK, 2));
+        final CreateSessionRequestParam createSessionRequest = createSessionRequest(sessions, createRepeatPattern(startDate, endDate, RepeatFrequency.EVERY_WEEK, 2));
         sessionsService.create(createSessionRequest);
         verify(courtScheduleRepository, times(1)).saveCourtSchedules(courtScheduleArgumentCaptor.capture());
         List<CourtSchedule> capturedCourtSchedules = courtScheduleArgumentCaptor.getValue();
@@ -417,7 +417,7 @@ class SessionsServiceTest {
 
     @Test
     void shouldStayInDateBoundsWhenRepeatPatternIsEvery3WeekStartingWithLaterDate() {
-        final List<CourtschedulerCreateSession> sessions = Arrays.asList(
+        final List<Session> sessions = Arrays.asList(
                 singleSession(WEEK_DAYS_FIRST_HALF, true)
         );
         final LocalDate startDate = LocalDate.of(2024, 06, 20).plusWeeks(2);
@@ -433,7 +433,7 @@ class SessionsServiceTest {
         when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"))).thenReturn(returnBusinessTypeObject("DVLA", true));
         when(referenceDataCache.getRotaCourtRoomByCourtRoomId(any())).thenReturn(Optional.of(new CourtRoom()));
 
-        final CourtschedulerCreate createSessionRequest = createSessionRequest(sessions, createRepeatPattern(startDate, endDate, RepeatFrequency.EVERY_WEEK, repeatWeeks));
+        final CreateSessionRequestParam createSessionRequest = createSessionRequest(sessions, createRepeatPattern(startDate, endDate, RepeatFrequency.EVERY_WEEK, repeatWeeks));
         sessionsService.create(createSessionRequest);
         verify(courtScheduleRepository, times(1)).saveCourtSchedules(courtScheduleArgumentCaptor.capture());
         List<CourtSchedule> capturedCourtSchedules = courtScheduleArgumentCaptor.getValue();
@@ -450,7 +450,7 @@ class SessionsServiceTest {
     void shouldCreateMultipleCourtSchedulesForEveryWeekFrequency() {
         final LocalDate startDate = LocalDate.of(2024, 06, 20);
         final LocalDate endDate = startDate.plusMonths(1);
-        final CourtschedulerCreate createSessionRequest = createSessionRequest(createMultipleSessions(), createRepeatPattern(startDate, endDate, RepeatFrequency.EVERY_WEEK, 1));
+        final CreateSessionRequestParam createSessionRequest = createSessionRequest(createMultipleSessions(), createRepeatPattern(startDate, endDate, RepeatFrequency.EVERY_WEEK, 1));
 
         when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"))).thenReturn(returnBusinessTypeObject("DVLA", true));
         when(referenceDataCache.getRotaCourtRoomByCourtRoomId(any())).thenReturn(Optional.of(new CourtRoom()));
@@ -477,7 +477,7 @@ class SessionsServiceTest {
 
     @Test
     void shouldCreateSingleCourtSchedulesForOnceFrequency() {
-        final CourtschedulerCreate createSessionRequest = createSessionRequest(sessionListWithSingleSession(), createRepeatPattern(LocalDate.now(), LocalDate.now().plusMonths(1), RepeatFrequency.ONCE, 1));
+        final CreateSessionRequestParam createSessionRequest = createSessionRequest(sessionListWithSingleSession(), createRepeatPattern(LocalDate.now(), LocalDate.now().plusMonths(1), RepeatFrequency.ONCE, 1));
         when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"))).thenReturn(returnBusinessTypeObject("DVLA", true));
         when(referenceDataCache.getRotaCourtRoomByCourtRoomId(any())).thenReturn(Optional.of(new CourtRoom()));
         sessionsService.create(createSessionRequest);
@@ -486,7 +486,7 @@ class SessionsServiceTest {
 
     @Test
     void shouldCreateSingleCourtSchedulesForOnceFrequencyWithDefaultSessionTimes() {
-        final CourtschedulerCreate createSessionRequest = createSessionRequestWithoutTimes(sessionListWithSingleSession(), createRepeatPattern(LocalDate.now(), LocalDate.now().plusMonths(1), RepeatFrequency.ONCE, 1));
+        final CreateSessionRequestParam createSessionRequest = createSessionRequestWithoutTimes(sessionListWithSingleSession(), createRepeatPattern(LocalDate.now(), LocalDate.now().plusMonths(1), RepeatFrequency.ONCE, 1));
         when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"))).thenReturn(returnBusinessTypeObject("DVLA", true));
         when(referenceDataCache.getRotaCourtRoomByCourtRoomId(any())).thenReturn(Optional.of(new CourtRoom()));
         sessionsService.create(createSessionRequest);
@@ -500,8 +500,8 @@ class SessionsServiceTest {
     @Test
     void shouldCreateMultipleCourtSchedulesForOnceFrequency() {
         final LocalDate startDate = LocalDate.of(2024, 06, 20);
-        final CourtschedulerCreateSession session = singleSession(WEEK_DAYS_FIRST_HALF, true);
-        final CourtschedulerCreate createSessionRequest = createSessionRequest(singletonList(session), createRepeatPattern(startDate, LocalDate.now().plusMonths(3), RepeatFrequency.ONCE, 1));
+        final Session session = singleSession(WEEK_DAYS_FIRST_HALF, true);
+        final CreateSessionRequestParam createSessionRequest = createSessionRequest(singletonList(session), createRepeatPattern(startDate, LocalDate.now().plusMonths(3), RepeatFrequency.ONCE, 1));
         when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"))).thenReturn(returnBusinessTypeObject("DVLA", true));
         when(referenceDataCache.getRotaCourtRoomByCourtRoomId(any())).thenReturn(Optional.of(new CourtRoom()));
         sessionsService.create(createSessionRequest);
@@ -1101,12 +1101,12 @@ class SessionsServiceTest {
 
     @Test
     void shouldProcessProvisionalBookingRequestSuccessfully() {
-        CourtschedulerDelete sessionsParam = new CourtschedulerDelete().sessions(List.of("1", "2"));
+        SessionsParam sessionsParam = new SessionsParam().sessions(List.of("1", "2"));
         List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> courtSchedules = new ArrayList<>();
 
         when(courtScheduleRepository.deleteCourtSchedule(anyList())).thenReturn(courtSchedules);
 
-        CourtschedulerDeleteResponse response = sessionsService.deleteCourtScheduleSessions(sessionsParam);
+        CourtScheduleDeleteResponse response = sessionsService.deleteCourtScheduleSessions(sessionsParam);
 
         assertTrue(response.getSessions().isEmpty());
     }
@@ -1186,14 +1186,14 @@ class SessionsServiceTest {
         deleted.setSessionStartTime(OffsetDateTime.now());
         deleted.setSessionEndTime(OffsetDateTime.now());
 
-        final CourtschedulerDelete sessionsParam = new CourtschedulerDelete();
+        final SessionsParam sessionsParam = new SessionsParam();
         sessionsParam.setSessions(List.of(deleted.getCourtScheduleId()));
 
         when(courtScheduleRepository.deleteCourtSchedule(anyList())).thenReturn(List.of(deleted));
         when(referenceDataCache.getRotaBusinessTypeByCode(eq("RETIRED_BT"))).thenReturn(Optional.empty());
         when(allocatedListingRepository.getAllocatedListingsEachBookedByCourtScheduleId(anyList())).thenReturn(emptyList());
 
-        final CourtschedulerDeleteResponse response = sessionsService.deleteCourtScheduleSessions(sessionsParam);
+        final CourtScheduleDeleteResponse response = sessionsService.deleteCourtScheduleSessions(sessionsParam);
 
         assertNotNull(response);
         assertThat(deleted.getBusinessDescription(), is("RETIRED_BT"));
@@ -1898,8 +1898,8 @@ class SessionsServiceTest {
         return firstDate;
     }
 
-    private List<CourtschedulerCreateSession> sessionListWithSingleSession() {
-        CourtschedulerCreateSession session = new CourtschedulerCreateSession()
+    private List<Session> sessionListWithSingleSession() {
+        Session session = new Session()
                 .repeatDays(toRepeatDayStrings(Collections.singleton(DayOfWeek.MONDAY)))
                 .duration(2)
                 .businessType("DVLA")
@@ -1912,8 +1912,8 @@ class SessionsServiceTest {
         return singletonList(session);
     }
 
-    private CourtschedulerCreateSession singleSession(Set<DayOfWeek> daysOfWeek, boolean slotBased) {
-        return new CourtschedulerCreateSession()
+    private Session singleSession(Set<DayOfWeek> daysOfWeek, boolean slotBased) {
+        return new Session()
                 .repeatDays(toRepeatDayStrings(daysOfWeek))
                 .duration(20)
                 .businessType(slotBased ? "DVLA" : "TRL")
@@ -1924,8 +1924,8 @@ class SessionsServiceTest {
                 ;
     }
 
-    private List<CourtschedulerCreateSession> createMultipleSessions() {
-        CourtschedulerCreateSession session1 = new CourtschedulerCreateSession()
+    private List<Session> createMultipleSessions() {
+        Session session1 = new Session()
                 .repeatDays(toRepeatDayStrings(Collections.singleton(DayOfWeek.MONDAY)))
                 .duration(2)
                 .businessType("DVLA")
@@ -1935,7 +1935,7 @@ class SessionsServiceTest {
                 .panel("Adult")
                 ;
 
-        CourtschedulerCreateSession session2 = new CourtschedulerCreateSession()
+        Session session2 = new Session()
                 .repeatDays(toRepeatDayStrings(Collections.singleton(DayOfWeek.TUESDAY)))
                 .duration(2)
                 .businessType("DVLA")
@@ -1948,9 +1948,9 @@ class SessionsServiceTest {
         return Arrays.asList(session1, session2);
     }
 
-    private List<CourtschedulerCreateSession> createMultipleSessions_WithSameUniqueConstraint(String businessType, String courtHouseId,
+    private List<Session> createMultipleSessions_WithSameUniqueConstraint(String businessType, String courtHouseId,
                                                                           String courtRoomId, String courtSession, String panel, int slotDuration) {
-        CourtschedulerCreateSession session = new CourtschedulerCreateSession()
+        Session session = new Session()
                 .repeatDays(toRepeatDayStrings(Collections.singleton(DayOfWeek.MONDAY)))
                 .duration(slotDuration)
                 .businessType(businessType)
@@ -1969,26 +1969,26 @@ class SessionsServiceTest {
         return days.stream().map(DayOfWeek::name).collect(java.util.stream.Collectors.toList());
     }
 
-    private static Set<DayOfWeek> toDayOfWeekSet(final CourtschedulerCreateSession session) {
+    private static Set<DayOfWeek> toDayOfWeekSet(final Session session) {
         return session.getRepeatDays().stream().map(DayOfWeek::valueOf).collect(java.util.stream.Collectors.toSet());
     }
 
-    private CourtschedulerCreateRepeatPattern createRepeatPattern(LocalDate startDate, LocalDate endDate, RepeatFrequency frequency, int repeatFor) {
-        return new CourtschedulerCreateRepeatPattern()
+    private RepeatPattern createRepeatPattern(LocalDate startDate, LocalDate endDate, RepeatFrequency frequency, int repeatFor) {
+        return new RepeatPattern()
                 .frequency(frequency.name())
                 .startDate(startDate == null ? null : startDate.toString())
                 .endDate(endDate == null ? null : endDate.toString())
                 .repeatFor(repeatFor);
     }
 
-    private CourtschedulerCreate createSessionRequest(List<CourtschedulerCreateSession> sessionList, CourtschedulerCreateRepeatPattern repeatPattern) {
-        return new CourtschedulerCreate()
+    private CreateSessionRequestParam createSessionRequest(List<Session> sessionList, RepeatPattern repeatPattern) {
+        return new CreateSessionRequestParam()
                 .sessions(sessionList)
                 .repeatPattern(repeatPattern);
     }
 
-    private CourtschedulerCreate createSessionRequestWithoutTimes(List<CourtschedulerCreateSession> sessionList, CourtschedulerCreateRepeatPattern repeatPattern) {
-        return new CourtschedulerCreate()
+    private CreateSessionRequestParam createSessionRequestWithoutTimes(List<Session> sessionList, RepeatPattern repeatPattern) {
+        return new CreateSessionRequestParam()
                 .sessions(sessionList)
                 .repeatPattern(repeatPattern);
     }
@@ -2166,8 +2166,8 @@ class SessionsServiceTest {
         final int repeatFor = 1; // Every month
 
         final Set<DayOfWeek> mondayAndWednesday = new HashSet<>(Arrays.asList(DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY));
-        final List<CourtschedulerCreateSession> sessions = Arrays.asList(
-                new CourtschedulerCreateSession()
+        final List<Session> sessions = Arrays.asList(
+                new Session()
                         .repeatDays(toRepeatDayStrings(mondayAndWednesday))
                         .duration(20)
                         .businessType("TRL")
@@ -2204,8 +2204,8 @@ class SessionsServiceTest {
         final Set<DayOfWeek> tuesdayAndThursday = new HashSet<>(Arrays.asList(DayOfWeek.TUESDAY, DayOfWeek.THURSDAY));
         final Set<DayOfWeek> mondayAndFriday = new HashSet<>(Arrays.asList(DayOfWeek.MONDAY, DayOfWeek.FRIDAY));
 
-        final List<CourtschedulerCreateSession> sessions = Arrays.asList(
-                new CourtschedulerCreateSession()
+        final List<Session> sessions = Arrays.asList(
+                new Session()
                         .repeatDays(toRepeatDayStrings(tuesdayAndThursday))
                         .duration(25)
                         .businessType("TRL")
@@ -2215,7 +2215,7 @@ class SessionsServiceTest {
                         .panel("Adult")
                         .index(1)
                         ,
-                new CourtschedulerCreateSession()
+                new Session()
                         .repeatDays(toRepeatDayStrings(mondayAndFriday))
                         .duration(15)
                         .businessType("DVLA")
@@ -2257,8 +2257,8 @@ class SessionsServiceTest {
         final int repeatFor = 2; // Every 2 months
 
         final Set<DayOfWeek> fridayOnly = new HashSet<>(Arrays.asList(DayOfWeek.FRIDAY));
-        final List<CourtschedulerCreateSession> sessions = Arrays.asList(
-                new CourtschedulerCreateSession()
+        final List<Session> sessions = Arrays.asList(
+                new Session()
                         .repeatDays(toRepeatDayStrings(fridayOnly))
                         .duration(30)
                         .businessType("DVLA")
@@ -2293,8 +2293,8 @@ class SessionsServiceTest {
         final int repeatFor = 1; // Every month
 
         final Set<DayOfWeek> saturdayOnly = new HashSet<>(Arrays.asList(DayOfWeek.SATURDAY));
-        final List<CourtschedulerCreateSession> sessions = Arrays.asList(
-                new CourtschedulerCreateSession()
+        final List<Session> sessions = Arrays.asList(
+                new Session()
                         .repeatDays(toRepeatDayStrings(saturdayOnly))
                         .duration(10)
                         .businessType("TRL")
@@ -2329,8 +2329,8 @@ class SessionsServiceTest {
         final int repeatFor = 1; // Every month
 
         final Set<DayOfWeek> sundayOnly = new HashSet<>(Arrays.asList(DayOfWeek.SUNDAY));
-        final List<CourtschedulerCreateSession> sessions = Arrays.asList(
-                new CourtschedulerCreateSession()
+        final List<Session> sessions = Arrays.asList(
+                new Session()
                         .repeatDays(toRepeatDayStrings(sundayOnly))
                         .duration(20)
                         .businessType("TRL")
@@ -2357,8 +2357,8 @@ class SessionsServiceTest {
         final int repeatFor = 1; // Every month
 
         final Set<DayOfWeek> fridayOnly = new HashSet<>(Arrays.asList(DayOfWeek.FRIDAY));
-        final List<CourtschedulerCreateSession> sessions = Arrays.asList(
-                new CourtschedulerCreateSession()
+        final List<Session> sessions = Arrays.asList(
+                new Session()
                         .repeatDays(toRepeatDayStrings(fridayOnly))
                         .duration(20)
                         .businessType("TRL")
@@ -2391,8 +2391,8 @@ class SessionsServiceTest {
         final int repeatFor = 1; // Every month
 
         final Set<DayOfWeek> fridayOnly = new HashSet<>(Arrays.asList(DayOfWeek.FRIDAY));
-        final List<CourtschedulerCreateSession> sessions = Arrays.asList(
-                new CourtschedulerCreateSession()
+        final List<Session> sessions = Arrays.asList(
+                new Session()
                         .repeatDays(toRepeatDayStrings(fridayOnly))
                         .duration(20)
                         .businessType("TRL")
@@ -2434,8 +2434,8 @@ class SessionsServiceTest {
         final int repeatFor = 1; // Every month
 
         final Set<DayOfWeek> tuesdayOnly = new HashSet<>(Arrays.asList(DayOfWeek.TUESDAY));
-        final List<CourtschedulerCreateSession> sessions = Arrays.asList(
-                new CourtschedulerCreateSession()
+        final List<Session> sessions = Arrays.asList(
+                new Session()
                         .repeatDays(toRepeatDayStrings(tuesdayOnly))
                         .duration(25)
                         .businessType("TRL")
@@ -2470,8 +2470,8 @@ class SessionsServiceTest {
         final int repeatFor = 1; // Every month
 
         final Set<DayOfWeek> thursdayOnly = new HashSet<>(Arrays.asList(DayOfWeek.THURSDAY));
-        final List<CourtschedulerCreateSession> sessions = Arrays.asList(
-                new CourtschedulerCreateSession()
+        final List<Session> sessions = Arrays.asList(
+                new Session()
                         .repeatDays(toRepeatDayStrings(thursdayOnly))
                         .duration(30)
                         .businessType("DVLA")
@@ -2506,8 +2506,8 @@ class SessionsServiceTest {
         final int repeatFor = 1; // Every month
 
         final Set<DayOfWeek> saturdayOnly = new HashSet<>(Arrays.asList(DayOfWeek.SATURDAY));
-        final List<CourtschedulerCreateSession> sessions = Arrays.asList(
-                new CourtschedulerCreateSession()
+        final List<Session> sessions = Arrays.asList(
+                new Session()
                         .repeatDays(toRepeatDayStrings(saturdayOnly))
                         .duration(20)
                         .businessType("TRL")
@@ -2542,8 +2542,8 @@ class SessionsServiceTest {
         final int repeatFor = 1; // Every month
 
         final Set<DayOfWeek> mondayAndFriday = new HashSet<>(Arrays.asList(DayOfWeek.MONDAY, DayOfWeek.FRIDAY));
-        final List<CourtschedulerCreateSession> sessions = Arrays.asList(
-                new CourtschedulerCreateSession()
+        final List<Session> sessions = Arrays.asList(
+                new Session()
                         .repeatDays(toRepeatDayStrings(mondayAndFriday))
                         .duration(35)
                         .businessType("TRL")
@@ -2578,8 +2578,8 @@ class SessionsServiceTest {
         final int repeatFor = 3; // Every 3 months
 
         final Set<DayOfWeek> wednesdayAndSunday = new HashSet<>(Arrays.asList(DayOfWeek.WEDNESDAY, DayOfWeek.SUNDAY));
-        final List<CourtschedulerCreateSession> sessions = Arrays.asList(
-                new CourtschedulerCreateSession()
+        final List<Session> sessions = Arrays.asList(
+                new Session()
                         .repeatDays(toRepeatDayStrings(wednesdayAndSunday))
                         .duration(40)
                         .businessType("DVLA")
@@ -2614,8 +2614,8 @@ class SessionsServiceTest {
         final int repeatFor = 1; // Every month
 
         final Set<DayOfWeek> fridayOnly = new HashSet<>(Arrays.asList(DayOfWeek.FRIDAY));
-        final List<CourtschedulerCreateSession> sessions = Arrays.asList(
-                new CourtschedulerCreateSession()
+        final List<Session> sessions = Arrays.asList(
+                new Session()
                         .repeatDays(toRepeatDayStrings(fridayOnly))
                         .duration(15)
                         .businessType("TRL")
@@ -2652,8 +2652,8 @@ class SessionsServiceTest {
         final Set<DayOfWeek> mondayWednesdayFriday = new HashSet<>(Arrays.asList(DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY, DayOfWeek.FRIDAY));
         final Set<DayOfWeek> tuesdayThursday = new HashSet<>(Arrays.asList(DayOfWeek.TUESDAY, DayOfWeek.THURSDAY));
 
-        final List<CourtschedulerCreateSession> sessions = Arrays.asList(
-                new CourtschedulerCreateSession()
+        final List<Session> sessions = Arrays.asList(
+                new Session()
                         .repeatDays(toRepeatDayStrings(mondayWednesdayFriday))
                         .duration(25)
                         .businessType("TRL")
@@ -2663,7 +2663,7 @@ class SessionsServiceTest {
                         .panel("Adult")
                         .index(1)
                         ,
-                new CourtschedulerCreateSession()
+                new Session()
                         .repeatDays(toRepeatDayStrings(tuesdayThursday))
                         .duration(20)
                         .businessType("DVLA")
@@ -2704,7 +2704,7 @@ class SessionsServiceTest {
         final LocalDate endDate = LocalDate.of(2026, 6, 30);
         final int repeatFor = 1;
 
-        final CourtschedulerCreateSession newSession = new CourtschedulerCreateSession()
+        final Session newSession = new Session()
                 .courtCentreId("court-centre-1")
                 .courtRoomId("court-room-1")
                 .businessType("LGT")
@@ -2744,7 +2744,7 @@ class SessionsServiceTest {
         final LocalDate endDate = LocalDate.of(2026, 6, 30);
         final int repeatFor = 1;
 
-        final CourtschedulerCreateSession newSession = new CourtschedulerCreateSession()
+        final Session newSession = new Session()
                 .courtCentreId("court-centre-1")
                 .courtRoomId("court-room-1")
                 .businessType("LGT")
@@ -2783,7 +2783,7 @@ class SessionsServiceTest {
         final LocalDate endDate = LocalDate.of(2026, 6, 30);
         final int repeatFor = 1;
 
-        final CourtschedulerCreateSession newSession = new CourtschedulerCreateSession()
+        final Session newSession = new Session()
                 .courtCentreId("court-centre-1")
                 .courtRoomId("court-room-1")
                 .businessType("LGT")
@@ -2823,7 +2823,7 @@ class SessionsServiceTest {
         final LocalDate endDate = LocalDate.of(2026, 2, 28);
         final int repeatFor = 1;
 
-        final CourtschedulerCreateSession newSession = new CourtschedulerCreateSession()
+        final Session newSession = new Session()
                 .courtCentreId("court-centre-1")
                 .courtRoomId("court-room-1")
                 .businessType("LGT")
@@ -2861,7 +2861,7 @@ class SessionsServiceTest {
         final LocalDate endDate = LocalDate.of(2026, 1, 31);
         final int repeatFor = 1;
 
-        final CourtschedulerCreateSession newSession = new CourtschedulerCreateSession()
+        final Session newSession = new Session()
                 .courtCentreId("court-centre-1")
                 .courtRoomId("court-room-1")
                 .businessType("LGT")
@@ -2910,7 +2910,7 @@ class SessionsServiceTest {
         final LocalDate endDate = LocalDate.of(2026, 1, 31);
         final int repeatFor = 1;
 
-        final CourtschedulerCreateSession newSession = new CourtschedulerCreateSession()
+        final Session newSession = new Session()
                 .courtCentreId("court-centre-1")
                 .courtRoomId("court-room-1")
                 .businessType("LGT")
@@ -2960,7 +2960,7 @@ class SessionsServiceTest {
 
     @Test
     void shouldPreventSessionTypeChangeWhenHearingsExist() {
-        // Scenario 2 & 4: CourtschedulerCreateSession type (AM/PM/AD) is locked when hearings exist
+        // Scenario 2 & 4: Session type (AM/PM/AD) is locked when hearings exist
         final String courtScheduleId = randomUUID().toString();
         final CourtSchedule persistedCourtSchedule = getPersistedCourtSchedule(courtScheduleId, "DVLA");
         persistedCourtSchedule.setHasHearingsBooked(true);
@@ -3179,7 +3179,7 @@ class SessionsServiceTest {
         updateCourtSchedule.setCourtScheduleId(courtScheduleId);
         updateCourtSchedule.setCourtRoomId(persistedCourtSchedule.getCourtRoomId());
         updateCourtSchedule.setBusinessType("DVLA");
-        updateCourtSchedule.setCourtSession(AM_SESSION); // CourtschedulerCreateSession type unchanged (locked)
+        updateCourtSchedule.setCourtSession(AM_SESSION); // Session type unchanged (locked)
         updateCourtSchedule.setPanel(persistedCourtSchedule.getPanel());
         updateCourtSchedule.setSessionStartTime("11:00"); // New start time after hearing
         updateCourtSchedule.setSessionEndTime("13:00");
@@ -3243,7 +3243,7 @@ class SessionsServiceTest {
         updateCourtSchedule.setCourtScheduleId(courtScheduleId);
         updateCourtSchedule.setCourtRoomId(persistedCourtSchedule.getCourtRoomId());
         updateCourtSchedule.setBusinessType("DVLA");
-        updateCourtSchedule.setCourtSession(AM_SESSION); // CourtschedulerCreateSession type unchanged
+        updateCourtSchedule.setCourtSession(AM_SESSION); // Session type unchanged
         updateCourtSchedule.setPanel(persistedCourtSchedule.getPanel());
         updateCourtSchedule.setSessionStartTime("09:00"); // New start before hearing
         updateCourtSchedule.setSessionEndTime("12:00"); // New end after hearing
@@ -3426,7 +3426,7 @@ class SessionsServiceTest {
         final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule persistedSession2 = 
                 createPersistedCourtSchedule(courtScheduleId2);
 
-        final CourtschedulerAssignCourtroom request = new CourtschedulerAssignCourtroom()
+        final AssignCourtroomRequest request = new AssignCourtroomRequest()
                 .courtScheduleIds(List.of(courtScheduleId1, courtScheduleId2))
                 .courtRoomId(courtRoomId);
 
@@ -3443,7 +3443,7 @@ class SessionsServiceTest {
         doAnswer(invocation -> null).when(courtScheduleRepository).save(any());
 
         // When
-        final CourtschedulerAssignCourtroomResponse response = sessionsService.assignCourtroom(request);
+        final AssignCourtroomResponse response = sessionsService.assignCourtroom(request);
 
         // Then
         assertNotNull(response);
@@ -3486,7 +3486,7 @@ class SessionsServiceTest {
         final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule persistedSession =
                 createPersistedCourtSchedule(courtScheduleId);
 
-        final CourtschedulerAssignCourtroom request = new CourtschedulerAssignCourtroom()
+        final AssignCourtroomRequest request = new AssignCourtroomRequest()
                 .courtScheduleIds(List.of(courtScheduleId))
                 .courtRoomId(courtRoomId);
 
@@ -3501,7 +3501,7 @@ class SessionsServiceTest {
         doAnswer(invocation -> null).when(courtScheduleRepository).save(any());
 
         // When
-        final CourtschedulerAssignCourtroomResponse response = sessionsService.assignCourtroom(request);
+        final AssignCourtroomResponse response = sessionsService.assignCourtroom(request);
 
         // Then: assignment succeeds and enriches from the session's own centre membership
         assertNotNull(response);
@@ -3519,7 +3519,7 @@ class SessionsServiceTest {
         final String courtScheduleId = randomUUID().toString();
         final String courtRoomId = randomUUID().toString();
 
-        final CourtschedulerAssignCourtroom request = new CourtschedulerAssignCourtroom()
+        final AssignCourtroomRequest request = new AssignCourtroomRequest()
                 .courtScheduleIds(List.of(courtScheduleId))
                 .courtRoomId(courtRoomId);
 
@@ -3529,7 +3529,7 @@ class SessionsServiceTest {
                 .thenReturn(emptyList());
 
         // When
-        final CourtschedulerAssignCourtroomResponse response = sessionsService.assignCourtroom(request);
+        final AssignCourtroomResponse response = sessionsService.assignCourtroom(request);
 
         // Then
         assertNotNull(response);
@@ -3552,7 +3552,7 @@ class SessionsServiceTest {
                 .oucodeUUID(courtCentreId)
                 ;
 
-        final CourtschedulerAssignCourtroom request = new CourtschedulerAssignCourtroom()
+        final AssignCourtroomRequest request = new AssignCourtroomRequest()
                 .courtScheduleIds(List.of(courtScheduleId))
                 .courtRoomId(courtRoomId);
 
@@ -3562,7 +3562,7 @@ class SessionsServiceTest {
                 .thenReturn(List.of(courtRoom));
 
         // When
-        final CourtschedulerAssignCourtroomResponse response = sessionsService.assignCourtroom(request);
+        final AssignCourtroomResponse response = sessionsService.assignCourtroom(request);
 
         // Then
         assertNotNull(response);
@@ -3588,7 +3588,7 @@ class SessionsServiceTest {
                 .oucodeUUID(courtCentreId)
                 ;
 
-        final CourtschedulerAssignCourtroom request = new CourtschedulerAssignCourtroom()
+        final AssignCourtroomRequest request = new AssignCourtroomRequest()
                 .courtScheduleIds(List.of(courtScheduleId))
                 .courtRoomId(courtRoomId);
 
@@ -3600,7 +3600,7 @@ class SessionsServiceTest {
                 .thenReturn(returnBusinessTypeObject("DVLA", true));
 
         // When
-        final CourtschedulerAssignCourtroomResponse response = sessionsService.assignCourtroom(request);
+        final AssignCourtroomResponse response = sessionsService.assignCourtroom(request);
 
         // Then
         assertNotNull(response);
@@ -3627,7 +3627,7 @@ class SessionsServiceTest {
                 .oucodeUUID(differentCourtCentreId)
                 ;
 
-        final CourtschedulerAssignCourtroom request = new CourtschedulerAssignCourtroom()
+        final AssignCourtroomRequest request = new AssignCourtroomRequest()
                 .courtScheduleIds(List.of(courtScheduleId))
                 .courtRoomId(courtRoomId);
 
@@ -3639,7 +3639,7 @@ class SessionsServiceTest {
                 .thenReturn(returnBusinessTypeObject("DVLA", true));
 
         // When
-        final CourtschedulerAssignCourtroomResponse response = sessionsService.assignCourtroom(request);
+        final AssignCourtroomResponse response = sessionsService.assignCourtroom(request);
 
         // Then
         assertNotNull(response);
@@ -3665,7 +3665,7 @@ class SessionsServiceTest {
                 .oucodeUUID(courtCentreId)
                 ;
 
-        final CourtschedulerAssignCourtroom request = new CourtschedulerAssignCourtroom()
+        final AssignCourtroomRequest request = new AssignCourtroomRequest()
                 .courtScheduleIds(List.of(courtScheduleId))
                 .courtRoomId(courtRoomId);
 
@@ -3677,7 +3677,7 @@ class SessionsServiceTest {
                 .thenReturn(returnBusinessTypeObject("DVLA", true));
 
         // When
-        final CourtschedulerAssignCourtroomResponse response = sessionsService.assignCourtroom(request);
+        final AssignCourtroomResponse response = sessionsService.assignCourtroom(request);
 
         // Then
         assertNotNull(response);
@@ -3710,7 +3710,7 @@ class SessionsServiceTest {
         final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule duplicateSession = 
                 new uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule();
 
-        final CourtschedulerAssignCourtroom request = new CourtschedulerAssignCourtroom()
+        final AssignCourtroomRequest request = new AssignCourtroomRequest()
                 .courtScheduleIds(List.of(courtScheduleId))
                 .courtRoomId(courtRoomId);
 
@@ -3725,7 +3725,7 @@ class SessionsServiceTest {
                 .thenReturn(returnBusinessTypeObject("DVLA", true));
 
         // When
-        final CourtschedulerAssignCourtroomResponse response = sessionsService.assignCourtroom(request);
+        final AssignCourtroomResponse response = sessionsService.assignCourtroom(request);
 
         // Then
         assertNotNull(response);
@@ -3761,7 +3761,7 @@ class SessionsServiceTest {
         final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule persistedEligibleSession = 
                 createPersistedCourtSchedule(eligibleSessionId);
 
-        final CourtschedulerAssignCourtroom request = new CourtschedulerAssignCourtroom()
+        final AssignCourtroomRequest request = new AssignCourtroomRequest()
                 .courtScheduleIds(List.of(eligibleSessionId, ineligibleSessionId))
                 .courtRoomId(courtRoomId);
 
@@ -3778,7 +3778,7 @@ class SessionsServiceTest {
         doAnswer(invocation -> null).when(courtScheduleRepository).save(any());
 
         // When
-        final CourtschedulerAssignCourtroomResponse response = sessionsService.assignCourtroom(request);
+        final AssignCourtroomResponse response = sessionsService.assignCourtroom(request);
 
         // Then
         assertNotNull(response);
@@ -3811,7 +3811,7 @@ class SessionsServiceTest {
                 .oucodeL2Code("OU001")
                 ;
 
-        final CourtschedulerAssignCourtroom request = new CourtschedulerAssignCourtroom()
+        final AssignCourtroomRequest request = new AssignCourtroomRequest()
                 .courtScheduleIds(List.of(courtScheduleId))
                 .courtRoomId(courtRoomId);
 
@@ -3827,7 +3827,7 @@ class SessionsServiceTest {
                 .thenReturn(returnBusinessTypeObject("DVLA", true));
 
         // When
-        final CourtschedulerAssignCourtroomResponse response = sessionsService.assignCourtroom(request);
+        final AssignCourtroomResponse response = sessionsService.assignCourtroom(request);
 
         // Then
         assertNotNull(response);
@@ -3875,7 +3875,7 @@ class SessionsServiceTest {
     void shouldApplyCustomSessionTimesWhenSuppliedOnApiRequestOverridingRefdataAndDefaults() {
         final LocalDate startDate = LocalDate.of(2026, 4, 27); // Monday
         final String courtCentreId = randomUUID().toString();
-        final CourtschedulerCreateSession session = new CourtschedulerCreateSession()
+        final Session session = new Session()
                 .repeatDays(toRepeatDayStrings(Collections.singleton(DayOfWeek.MONDAY)))
                 .duration(2)
                 .businessType("DVLA")
@@ -3886,7 +3886,7 @@ class SessionsServiceTest {
                 .sessionStartTime("09:15")
                 .sessionEndTime("12:30")
                 ;
-        final CourtschedulerCreate createSessionRequest = createSessionRequest(singletonList(session), createRepeatPattern(startDate, startDate.plusDays(1), RepeatFrequency.ONCE, 1));
+        final CreateSessionRequestParam createSessionRequest = createSessionRequest(singletonList(session), createRepeatPattern(startDate, startDate.plusDays(1), RepeatFrequency.ONCE, 1));
 
         when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"))).thenReturn(returnBusinessTypeObject("DVLA", true));
         when(referenceDataCache.getRotaCourtRoomByCourtRoomId(eq("court-room-id")))
@@ -3907,7 +3907,7 @@ class SessionsServiceTest {
     void shouldUseCourtCentreDefaultStartButFixedEndForAmSessionWhenNoCustomTimesOnApiRequest() {
         final LocalDate startDate = LocalDate.of(2026, 4, 27); // Monday
         final String courtCentreId = randomUUID().toString();
-        final CourtschedulerCreateSession session = new CourtschedulerCreateSession()
+        final Session session = new Session()
                 .repeatDays(toRepeatDayStrings(Collections.singleton(DayOfWeek.MONDAY)))
                 .duration(2)
                 .businessType("DVLA")
@@ -3916,7 +3916,7 @@ class SessionsServiceTest {
                 .sessionType(AM_SESSION)
                 .panel("Adult")
                 ; // no sessionStartTime/sessionEndTime
-        final CourtschedulerCreate createSessionRequest = createSessionRequest(singletonList(session), createRepeatPattern(startDate, startDate.plusDays(1), RepeatFrequency.ONCE, 1));
+        final CreateSessionRequestParam createSessionRequest = createSessionRequest(singletonList(session), createRepeatPattern(startDate, startDate.plusDays(1), RepeatFrequency.ONCE, 1));
 
         when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"))).thenReturn(returnBusinessTypeObject("DVLA", true));
         when(referenceDataCache.getRotaCourtRoomByCourtRoomId(eq("court-room-id")))
@@ -3941,7 +3941,7 @@ class SessionsServiceTest {
         // DateTimeParseException and the whole courtschedule.create request 500'd.
         final LocalDate startDate = LocalDate.of(2026, 4, 27); // Monday
         final String courtCentreId = randomUUID().toString();
-        final CourtschedulerCreateSession session = new CourtschedulerCreateSession()
+        final Session session = new Session()
                 .repeatDays(toRepeatDayStrings(Collections.singleton(DayOfWeek.MONDAY)))
                 .duration(2)
                 .businessType("DVLA")
@@ -3950,7 +3950,7 @@ class SessionsServiceTest {
                 .sessionType(AM_SESSION)
                 .panel("Adult")
                 ;
-        final CourtschedulerCreate createSessionRequest = createSessionRequest(singletonList(session), createRepeatPattern(startDate, startDate.plusDays(1), RepeatFrequency.ONCE, 1));
+        final CreateSessionRequestParam createSessionRequest = createSessionRequest(singletonList(session), createRepeatPattern(startDate, startDate.plusDays(1), RepeatFrequency.ONCE, 1));
 
         when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"))).thenReturn(returnBusinessTypeObject("DVLA", true));
         when(referenceDataCache.getRotaCourtRoomByCourtRoomId(eq("court-room-id")))
@@ -3970,7 +3970,7 @@ class SessionsServiceTest {
     void shouldFallBackToDefaultStartTimeWhenOrganisationUnitDefaultStartTimeIsUnparseable() {
         final LocalDate startDate = LocalDate.of(2026, 4, 27); // Monday
         final String courtCentreId = randomUUID().toString();
-        final CourtschedulerCreateSession session = new CourtschedulerCreateSession()
+        final Session session = new Session()
                 .repeatDays(toRepeatDayStrings(Collections.singleton(DayOfWeek.MONDAY)))
                 .duration(2)
                 .businessType("DVLA")
@@ -3979,7 +3979,7 @@ class SessionsServiceTest {
                 .sessionType(AM_SESSION)
                 .panel("Adult")
                 ;
-        final CourtschedulerCreate createSessionRequest = createSessionRequest(singletonList(session), createRepeatPattern(startDate, startDate.plusDays(1), RepeatFrequency.ONCE, 1));
+        final CreateSessionRequestParam createSessionRequest = createSessionRequest(singletonList(session), createRepeatPattern(startDate, startDate.plusDays(1), RepeatFrequency.ONCE, 1));
 
         when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"))).thenReturn(returnBusinessTypeObject("DVLA", true));
         when(referenceDataCache.getRotaCourtRoomByCourtRoomId(eq("court-room-id")))
@@ -3999,7 +3999,7 @@ class SessionsServiceTest {
     void shouldFallBackToDefaultTimesWhenNeitherCustomNorRefdataTimesPresent() {
         final LocalDate startDate = LocalDate.of(2026, 4, 27); // Monday
         final String courtCentreId = randomUUID().toString();
-        final CourtschedulerCreateSession session = new CourtschedulerCreateSession()
+        final Session session = new Session()
                 .repeatDays(toRepeatDayStrings(Collections.singleton(DayOfWeek.MONDAY)))
                 .duration(2)
                 .businessType("DVLA")
@@ -4008,7 +4008,7 @@ class SessionsServiceTest {
                 .sessionType(AM_SESSION)
                 .panel("Adult")
                 ;
-        final CourtschedulerCreate createSessionRequest = createSessionRequest(singletonList(session), createRepeatPattern(startDate, startDate.plusDays(1), RepeatFrequency.ONCE, 1));
+        final CreateSessionRequestParam createSessionRequest = createSessionRequest(singletonList(session), createRepeatPattern(startDate, startDate.plusDays(1), RepeatFrequency.ONCE, 1));
 
         when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"))).thenReturn(returnBusinessTypeObject("DVLA", true));
         when(referenceDataCache.getRotaCourtRoomByCourtRoomId(eq("court-room-id")))
@@ -4028,7 +4028,7 @@ class SessionsServiceTest {
     void shouldUseCourtCentreDefaultStartButFixedEndForAllDaySession() {
         final LocalDate startDate = LocalDate.of(2026, 4, 27); // Monday
         final String courtCentreId = randomUUID().toString();
-        final CourtschedulerCreateSession session = new CourtschedulerCreateSession()
+        final Session session = new Session()
                 .repeatDays(toRepeatDayStrings(Collections.singleton(DayOfWeek.MONDAY)))
                 .duration(2)
                 .businessType("DVLA")
@@ -4037,7 +4037,7 @@ class SessionsServiceTest {
                 .sessionType(ALL_DAY)
                 .panel("Adult")
                 ;
-        final CourtschedulerCreate createSessionRequest = createSessionRequest(singletonList(session), createRepeatPattern(startDate, startDate.plusDays(1), RepeatFrequency.ONCE, 1));
+        final CreateSessionRequestParam createSessionRequest = createSessionRequest(singletonList(session), createRepeatPattern(startDate, startDate.plusDays(1), RepeatFrequency.ONCE, 1));
 
         when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"))).thenReturn(returnBusinessTypeObject("DVLA", true));
         when(referenceDataCache.getRotaCourtRoomByCourtRoomId(eq("court-room-id")))
@@ -4058,7 +4058,7 @@ class SessionsServiceTest {
     void shouldUseFixedStartAndEndTimeForPmSessionWithoutConsultingRefdata() {
         final LocalDate startDate = LocalDate.of(2026, 4, 27); // Monday
         final String courtCentreId = randomUUID().toString();
-        final CourtschedulerCreateSession session = new CourtschedulerCreateSession()
+        final Session session = new Session()
                 .repeatDays(toRepeatDayStrings(Collections.singleton(DayOfWeek.MONDAY)))
                 .duration(2)
                 .businessType("DVLA")
@@ -4067,7 +4067,7 @@ class SessionsServiceTest {
                 .sessionType(PM_SESSION)
                 .panel("Adult")
                 ; // no sessionStartTime/sessionEndTime
-        final CourtschedulerCreate createSessionRequest = createSessionRequest(singletonList(session), createRepeatPattern(startDate, startDate.plusDays(1), RepeatFrequency.ONCE, 1));
+        final CreateSessionRequestParam createSessionRequest = createSessionRequest(singletonList(session), createRepeatPattern(startDate, startDate.plusDays(1), RepeatFrequency.ONCE, 1));
 
         when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"))).thenReturn(returnBusinessTypeObject("DVLA", true));
         when(referenceDataCache.getRotaCourtRoomByCourtRoomId(eq("court-room-id")))

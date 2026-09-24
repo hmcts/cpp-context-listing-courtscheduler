@@ -9,9 +9,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.when;
 
 import uk.gov.moj.cpp.courtscheduler.api.service.JudiciaryAvailabilityService;
-import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerAddJudiciaryAvailabilityRule;
-import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerDeleteJudiciaryAvailabilityRule;
-import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerUpdateJudiciaryAvailabilityRule;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.AddJudiciaryAvailabilityRuleRequest;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.DeleteJudiciaryAvailabilityRuleRequest;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.UpdateJudiciaryAvailabilityRuleRequest;
 
 import java.time.LocalDate;
 import java.util.Arrays;
@@ -34,20 +34,20 @@ class JudiciaryAvailabilityRuleApiValidatorValidationEndpointTest {
     @InjectMocks
     private JudiciaryAvailabilityRuleApiValidator validator;
 
-    private CourtschedulerAddJudiciaryAvailabilityRule addRequest;
-    private CourtschedulerUpdateJudiciaryAvailabilityRule updateRequest;
-    private CourtschedulerDeleteJudiciaryAvailabilityRule deleteRequest;
+    private AddJudiciaryAvailabilityRuleRequest addRequest;
+    private UpdateJudiciaryAvailabilityRuleRequest updateRequest;
+    private DeleteJudiciaryAvailabilityRuleRequest deleteRequest;
 
     @BeforeEach
     void setUp() {
-        addRequest = new CourtschedulerAddJudiciaryAvailabilityRule();
+        addRequest = new AddJudiciaryAvailabilityRuleRequest();
         addRequest.setJudiciaryId(randomUUID().toString());
         addRequest.setCourtHouseId(randomUUID().toString());
         addRequest.setStartDate(LocalDate.now().plusDays(1));
         addRequest.setEndDate(LocalDate.now().plusDays(31));
         addRequest.setRepeatDays(Arrays.asList("Monday"));
 
-        updateRequest = new CourtschedulerUpdateJudiciaryAvailabilityRule();
+        updateRequest = new UpdateJudiciaryAvailabilityRuleRequest();
         updateRequest.setRuleId(randomUUID().toString());
         updateRequest.setJudiciaryId(randomUUID().toString());
         updateRequest.setCourtHouseId(randomUUID().toString());
@@ -55,7 +55,7 @@ class JudiciaryAvailabilityRuleApiValidatorValidationEndpointTest {
         updateRequest.setEndDate(LocalDate.now().plusDays(31));
         updateRequest.setRepeatDays(Arrays.asList("Monday"));
 
-        deleteRequest = new CourtschedulerDeleteJudiciaryAvailabilityRule();
+        deleteRequest = new DeleteJudiciaryAvailabilityRuleRequest();
         deleteRequest.setRuleId(randomUUID().toString());
     }
 
@@ -178,7 +178,7 @@ class JudiciaryAvailabilityRuleApiValidatorValidationEndpointTest {
         assertTrue(result.getString("errorMessage").contains("ruleId"));
     }
 
-    // Note: judiciaryId is not modeled on CourtschedulerDeleteJudiciaryAvailabilityRule (it was
+    // Note: judiciaryId is not modeled on DeleteJudiciaryAvailabilityRuleRequest (it was
     // an unused inherited field on the old hand-written request — never read by the validator),
     // so shouldNotReturnErrorWhenDeleteRequestJudiciaryIdIsBlank is no longer applicable.
 

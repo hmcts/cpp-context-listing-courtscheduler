@@ -16,9 +16,9 @@ import static uk.gov.moj.cpp.courtscheduler.api.JudiciaryAvailabilityValidationM
 import static uk.gov.moj.cpp.courtscheduler.api.JudiciaryAvailabilityValidationMessages.SELECT_REPEAT_DAYS;
 import static uk.gov.moj.cpp.courtscheduler.api.JudiciaryAvailabilityValidationMessages.START_DATE_MUST_BE_BEFORE_OR_EQUAL_TO_END_DATE;
 
-import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerAddJudiciaryAvailabilityRule;
-import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerDeleteJudiciaryAvailabilityRule;
-import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerUpdateJudiciaryAvailabilityRule;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.AddJudiciaryAvailabilityRuleRequest;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.DeleteJudiciaryAvailabilityRuleRequest;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.UpdateJudiciaryAvailabilityRuleRequest;
 import uk.gov.moj.cpp.courtscheduler.api.service.JudiciaryAvailabilityService;
 
 import java.time.LocalDate;
@@ -35,7 +35,7 @@ public class JudiciaryAvailabilityRuleApiValidator {
     private static final String REQUEST_FIELD = "Request";
     private static final String RULE_ID_FIELD = "ruleId";
 
-    public JsonObject validateAddJudiciaryAvailabilityRule(final CourtschedulerAddJudiciaryAvailabilityRule request) {
+    public JsonObject validateAddJudiciaryAvailabilityRule(final AddJudiciaryAvailabilityRuleRequest request) {
         LOGGER.info("Validating AddJudiciaryAvailabilityRule input : {}", request);
         if (request == null) {
             return getMessage(REQUEST_FIELD);
@@ -50,7 +50,7 @@ public class JudiciaryAvailabilityRuleApiValidator {
         return validateRepeatDays(request.getRepeatDays());
     }
 
-    public JsonObject validateUpdateJudiciaryAvailabilityRule(final CourtschedulerUpdateJudiciaryAvailabilityRule request) {
+    public JsonObject validateUpdateJudiciaryAvailabilityRule(final UpdateJudiciaryAvailabilityRuleRequest request) {
         LOGGER.info("Validating UpdateJudiciaryAvailabilityRule input : {}", request);
         if (request == null) {
             return getMessage(REQUEST_FIELD);
@@ -68,7 +68,7 @@ public class JudiciaryAvailabilityRuleApiValidator {
         return validateRepeatDays(request.getRepeatDays());
     }
 
-    public JsonObject validateDeleteJudiciaryAvailabilityRule(final CourtschedulerDeleteJudiciaryAvailabilityRule request) {
+    public JsonObject validateDeleteJudiciaryAvailabilityRule(final DeleteJudiciaryAvailabilityRuleRequest request) {
         LOGGER.info("Validating DeleteJudiciaryAvailabilityRule input : {}", request);
         if (request == null) {
             return getMessage(REQUEST_FIELD);
@@ -134,7 +134,7 @@ public class JudiciaryAvailabilityRuleApiValidator {
         return EMPTY_JSON_OBJECT;
     }
 
-    public JsonObject validateAddJudiciaryAvailabilityRuleForValidationEndpoint(final CourtschedulerAddJudiciaryAvailabilityRule request,
+    public JsonObject validateAddJudiciaryAvailabilityRuleForValidationEndpoint(final AddJudiciaryAvailabilityRuleRequest request,
                                                                                 final JudiciaryAvailabilityService service) {
         LOGGER.info("Validating AddJudiciaryAvailabilityRule for validation endpoint: {}", request);
 
@@ -162,7 +162,7 @@ public class JudiciaryAvailabilityRuleApiValidator {
         return EMPTY_JSON_OBJECT;
     }
 
-    public JsonObject validateUpdateJudiciaryAvailabilityRuleForValidationEndpoint(final CourtschedulerUpdateJudiciaryAvailabilityRule request,
+    public JsonObject validateUpdateJudiciaryAvailabilityRuleForValidationEndpoint(final UpdateJudiciaryAvailabilityRuleRequest request,
                                                                                     final JudiciaryAvailabilityService service) {
         LOGGER.info("Validating UpdateJudiciaryAvailabilityRule for validation endpoint: {}", request);
 
@@ -194,7 +194,7 @@ public class JudiciaryAvailabilityRuleApiValidator {
         return EMPTY_JSON_OBJECT;
     }
 
-    public JsonObject validateDeleteJudiciaryAvailabilityRuleForValidationEndpoint(final CourtschedulerDeleteJudiciaryAvailabilityRule request,
+    public JsonObject validateDeleteJudiciaryAvailabilityRuleForValidationEndpoint(final DeleteJudiciaryAvailabilityRuleRequest request,
                                                                                     final JudiciaryAvailabilityService service) {
         LOGGER.info("Validating DeleteJudiciaryAvailabilityRule for validation endpoint: {}", request);
 

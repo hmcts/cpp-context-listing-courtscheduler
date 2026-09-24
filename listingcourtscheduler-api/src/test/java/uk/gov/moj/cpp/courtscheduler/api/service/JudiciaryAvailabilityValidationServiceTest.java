@@ -7,12 +7,12 @@ import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.Mockito.when;
 
-import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerAddJudiciaryAvailabilityRule;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.AddJudiciaryAvailabilityRuleRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.JudiciaryUnavailability;
 import uk.gov.moj.cpp.courtscheduler.domain.SessionType;
 import uk.gov.moj.cpp.courtscheduler.domain.UnavailabilityReason;
-import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerUpdateJudiciaryAvailabilityRule;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.UpdateJudiciaryAvailabilityRuleRequest;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.JudiciaryAvailabilityRule;
 import uk.gov.moj.cpp.courtscheduler.repository.JudiciaryAvailabilityRuleRepository;
 
@@ -56,7 +56,7 @@ class JudiciaryAvailabilityValidationServiceTest {
 
     @Test
     void shouldReturnNoErrorsForValidAddRequest() {
-        CourtschedulerAddJudiciaryAvailabilityRule request = createValidAddRequest(today.plusDays(1), today.plusDays(31));
+        AddJudiciaryAvailabilityRuleRequest request = createValidAddRequest(today.plusDays(1), today.plusDays(31));
 
         String error = service.validateAddJudiciaryAvailabilityRule(request);
 
@@ -65,7 +65,7 @@ class JudiciaryAvailabilityValidationServiceTest {
 
     @Test
     void shouldReturnErrorWhenDateRangeExceeds3Years() {
-        CourtschedulerAddJudiciaryAvailabilityRule request = createValidAddRequest(today.plusDays(1), today.plusDays(1).plusYears(4));
+        AddJudiciaryAvailabilityRuleRequest request = createValidAddRequest(today.plusDays(1), today.plusDays(1).plusYears(4));
 
         String error = service.validateAddJudiciaryAvailabilityRule(request);
 
@@ -75,7 +75,7 @@ class JudiciaryAvailabilityValidationServiceTest {
 
     @Test
     void shouldReturnErrorWhenStartDateIsInPastForAdd() {
-        CourtschedulerAddJudiciaryAvailabilityRule request = createValidAddRequest(today.minusDays(1), today.plusDays(31));
+        AddJudiciaryAvailabilityRuleRequest request = createValidAddRequest(today.minusDays(1), today.plusDays(31));
 
         String error = service.validateAddJudiciaryAvailabilityRule(request);
 
@@ -85,7 +85,7 @@ class JudiciaryAvailabilityValidationServiceTest {
 
     @Test
     void shouldReturnErrorWhenEndDateIsInPastForAdd() {
-        CourtschedulerAddJudiciaryAvailabilityRule request = createValidAddRequest(today.plusDays(1), today.minusDays(1));
+        AddJudiciaryAvailabilityRuleRequest request = createValidAddRequest(today.plusDays(1), today.minusDays(1));
 
         String error = service.validateAddJudiciaryAvailabilityRule(request);
 
@@ -95,7 +95,7 @@ class JudiciaryAvailabilityValidationServiceTest {
 
     @Test
     void shouldReturnErrorWhenUnavailabilityStartDateIsBeforeAvailabilityStartDate() {
-        CourtschedulerAddJudiciaryAvailabilityRule request = createValidAddRequest(today.plusDays(10), today.plusDays(40));
+        AddJudiciaryAvailabilityRuleRequest request = createValidAddRequest(today.plusDays(10), today.plusDays(40));
         List<JudiciaryUnavailability> unavailabilities = new ArrayList<>();
         JudiciaryUnavailability unavailability = new JudiciaryUnavailability();
         unavailability.setStartDate(today.plusDays(5)); // Before availability start
@@ -112,7 +112,7 @@ class JudiciaryAvailabilityValidationServiceTest {
 
     @Test
     void shouldReturnErrorWhenUnavailabilityEndDateIsAfterAvailabilityEndDate() {
-        CourtschedulerAddJudiciaryAvailabilityRule request = createValidAddRequest(today.plusDays(10), today.plusDays(40));
+        AddJudiciaryAvailabilityRuleRequest request = createValidAddRequest(today.plusDays(10), today.plusDays(40));
         List<JudiciaryUnavailability> unavailabilities = new ArrayList<>();
         JudiciaryUnavailability unavailability = new JudiciaryUnavailability();
         unavailability.setStartDate(today.plusDays(15));
@@ -129,7 +129,7 @@ class JudiciaryAvailabilityValidationServiceTest {
 
     @Test
     void shouldReturnErrorWhenUnavailabilitiesOverlap() {
-        CourtschedulerAddJudiciaryAvailabilityRule request = createValidAddRequest(today.plusDays(10), today.plusDays(40));
+        AddJudiciaryAvailabilityRuleRequest request = createValidAddRequest(today.plusDays(10), today.plusDays(40));
         List<JudiciaryUnavailability> unavailabilities = new ArrayList<>();
         
         JudiciaryUnavailability u1 = new JudiciaryUnavailability();
@@ -154,7 +154,7 @@ class JudiciaryAvailabilityValidationServiceTest {
 
     @Test
     void shouldReturnErrorWhenOverlappingRuleExistsForSameJudiciary() {
-        CourtschedulerAddJudiciaryAvailabilityRule request = createValidAddRequest(today.plusDays(10), today.plusDays(40));
+        AddJudiciaryAvailabilityRuleRequest request = createValidAddRequest(today.plusDays(10), today.plusDays(40));
         request.setRepeatDays(Arrays.asList("Monday"));
 
         // Create an existing overlapping rule
@@ -174,7 +174,7 @@ class JudiciaryAvailabilityValidationServiceTest {
 
     @Test
     void shouldReturnErrorWhenOverlappingRuleHasDifferentRepeatDays() {
-        CourtschedulerAddJudiciaryAvailabilityRule request = createValidAddRequest(today.plusDays(10), today.plusDays(40));
+        AddJudiciaryAvailabilityRuleRequest request = createValidAddRequest(today.plusDays(10), today.plusDays(40));
         request.setRepeatDays(Arrays.asList("Monday"));
 
         // Create an existing overlapping rule with different days
@@ -195,7 +195,7 @@ class JudiciaryAvailabilityValidationServiceTest {
     @Test
     void shouldReturnNoErrorsForValidUpdateRequest() {
         String ruleId = randomUUID().toString();
-        CourtschedulerUpdateJudiciaryAvailabilityRule request = createValidUpdateRequest(ruleId, today.plusDays(1), today.plusDays(31));
+        UpdateJudiciaryAvailabilityRuleRequest request = createValidUpdateRequest(ruleId, today.plusDays(1), today.plusDays(31));
 
         JudiciaryAvailabilityRule existingRule = createExistingRule(today.plusDays(1), today.plusDays(31));
         existingRule.setId(ruleId);
@@ -211,7 +211,7 @@ class JudiciaryAvailabilityValidationServiceTest {
     @Test
     void shouldReturnErrorWhenChangedStartDateIsInPastForUpdate() {
         String ruleId = randomUUID().toString();
-        CourtschedulerUpdateJudiciaryAvailabilityRule request = createValidUpdateRequest(ruleId, today.minusDays(5), today.plusDays(31));
+        UpdateJudiciaryAvailabilityRuleRequest request = createValidUpdateRequest(ruleId, today.minusDays(5), today.plusDays(31));
 
         JudiciaryAvailabilityRule existingRule = createExistingRule(today.plusDays(1), today.plusDays(31));
         existingRule.setId(ruleId);
@@ -227,7 +227,7 @@ class JudiciaryAvailabilityValidationServiceTest {
     void shouldNotReturnErrorWhenUnchangedStartDateIsInPastForUpdate() {
         String ruleId = randomUUID().toString();
         LocalDate pastDate = today.minusDays(10);
-        CourtschedulerUpdateJudiciaryAvailabilityRule request = createValidUpdateRequest(ruleId, pastDate, today.plusDays(31));
+        UpdateJudiciaryAvailabilityRuleRequest request = createValidUpdateRequest(ruleId, pastDate, today.plusDays(31));
 
         JudiciaryAvailabilityRule existingRule = createExistingRule(pastDate, today.plusDays(31));
         existingRule.setId(ruleId);
@@ -244,7 +244,7 @@ class JudiciaryAvailabilityValidationServiceTest {
     @Test
     void shouldReturnErrorWhenChangedEndDateIsInPastForUpdate() {
         String ruleId = randomUUID().toString();
-        CourtschedulerUpdateJudiciaryAvailabilityRule request = createValidUpdateRequest(ruleId, today.plusDays(1), today.minusDays(5));
+        UpdateJudiciaryAvailabilityRuleRequest request = createValidUpdateRequest(ruleId, today.plusDays(1), today.minusDays(5));
 
         JudiciaryAvailabilityRule existingRule = createExistingRule(today.plusDays(1), today.plusDays(31));
         existingRule.setId(ruleId);
@@ -258,7 +258,7 @@ class JudiciaryAvailabilityValidationServiceTest {
 
     @Test
     void shouldReturnErrorWhenUpdateRuleIdIsNull() {
-        CourtschedulerUpdateJudiciaryAvailabilityRule request = createValidUpdateRequest(null, today.plusDays(1), today.plusDays(31));
+        UpdateJudiciaryAvailabilityRuleRequest request = createValidUpdateRequest(null, today.plusDays(1), today.plusDays(31));
 
         String error = service.validateUpdateJudiciaryAvailabilityRule(request);
 
@@ -269,7 +269,7 @@ class JudiciaryAvailabilityValidationServiceTest {
     @Test
     void shouldReturnErrorWhenUpdateRuleNotFound() {
         String ruleId = randomUUID().toString();
-        CourtschedulerUpdateJudiciaryAvailabilityRule request = createValidUpdateRequest(ruleId, today.plusDays(1), today.plusDays(31));
+        UpdateJudiciaryAvailabilityRuleRequest request = createValidUpdateRequest(ruleId, today.plusDays(1), today.plusDays(31));
 
         when(repository.findById(ruleId)).thenReturn(java.util.Optional.empty());
 
@@ -282,7 +282,7 @@ class JudiciaryAvailabilityValidationServiceTest {
     @Test
     void shouldReturnErrorWhenOverlappingRuleExistsForUpdateExcludingCurrentRule() {
         String ruleId = randomUUID().toString();
-        CourtschedulerUpdateJudiciaryAvailabilityRule request = createValidUpdateRequest(ruleId, today.plusDays(10), today.plusDays(40));
+        UpdateJudiciaryAvailabilityRuleRequest request = createValidUpdateRequest(ruleId, today.plusDays(10), today.plusDays(40));
         request.setRepeatDays(Arrays.asList("Monday"));
 
         JudiciaryAvailabilityRule existingRule = createExistingRule(today.plusDays(10), today.plusDays(40));
@@ -308,7 +308,7 @@ class JudiciaryAvailabilityValidationServiceTest {
     @Test
     void shouldNotReturnErrorWhenOnlyCurrentRuleOverlapsForUpdate() {
         String ruleId = randomUUID().toString();
-        CourtschedulerUpdateJudiciaryAvailabilityRule request = createValidUpdateRequest(ruleId, today.plusDays(10), today.plusDays(40));
+        UpdateJudiciaryAvailabilityRuleRequest request = createValidUpdateRequest(ruleId, today.plusDays(10), today.plusDays(40));
         request.setRepeatDays(Arrays.asList("Monday"));
 
         JudiciaryAvailabilityRule existingRule = createExistingRule(today.plusDays(10), today.plusDays(40));
@@ -329,7 +329,7 @@ class JudiciaryAvailabilityValidationServiceTest {
 
     @Test
     void shouldReturnErrorWhenUnavailabilityWouldAffectAssignedSessionsForAdd() {
-        CourtschedulerAddJudiciaryAvailabilityRule request = createValidAddRequest(today.plusDays(10), today.plusDays(40));
+        AddJudiciaryAvailabilityRuleRequest request = createValidAddRequest(today.plusDays(10), today.plusDays(40));
         List<JudiciaryUnavailability> unavailabilities = new ArrayList<>();
         JudiciaryUnavailability unavailability = new JudiciaryUnavailability();
         unavailability.setStartDate(today.plusDays(15));
@@ -352,7 +352,7 @@ class JudiciaryAvailabilityValidationServiceTest {
 
     @Test
     void shouldNotReturnErrorWhenUnavailabilityDoesNotAffectAssignedSessionsForAdd() {
-        CourtschedulerAddJudiciaryAvailabilityRule request = createValidAddRequest(today.plusDays(10), today.plusDays(40));
+        AddJudiciaryAvailabilityRuleRequest request = createValidAddRequest(today.plusDays(10), today.plusDays(40));
         List<JudiciaryUnavailability> unavailabilities = new ArrayList<>();
         JudiciaryUnavailability unavailability = new JudiciaryUnavailability();
         unavailability.setStartDate(today.plusDays(15));
@@ -379,7 +379,7 @@ class JudiciaryAvailabilityValidationServiceTest {
         String ruleId = randomUUID().toString();
         LocalDate oldStart = today.plusDays(10);
         LocalDate newStart = today.plusDays(15); // Moving start date forward
-        CourtschedulerUpdateJudiciaryAvailabilityRule request = createValidUpdateRequest(ruleId, newStart, today.plusDays(40));
+        UpdateJudiciaryAvailabilityRuleRequest request = createValidUpdateRequest(ruleId, newStart, today.plusDays(40));
 
         JudiciaryAvailabilityRule existingRule = createExistingRule(oldStart, today.plusDays(40));
         existingRule.setId(ruleId);
@@ -403,7 +403,7 @@ class JudiciaryAvailabilityValidationServiceTest {
         String ruleId = randomUUID().toString();
         LocalDate oldEnd = today.plusDays(40);
         LocalDate newEnd = today.plusDays(35); // Moving end date backward
-        CourtschedulerUpdateJudiciaryAvailabilityRule request = createValidUpdateRequest(ruleId, today.plusDays(10), newEnd);
+        UpdateJudiciaryAvailabilityRuleRequest request = createValidUpdateRequest(ruleId, today.plusDays(10), newEnd);
 
         JudiciaryAvailabilityRule existingRule = createExistingRule(today.plusDays(10), oldEnd);
         existingRule.setId(ruleId);
@@ -427,7 +427,7 @@ class JudiciaryAvailabilityValidationServiceTest {
         String ruleId = randomUUID().toString();
         LocalDate oldStart = today.plusDays(10);
         LocalDate newStart = today.plusDays(15); // Moving start date forward
-        CourtschedulerUpdateJudiciaryAvailabilityRule request = createValidUpdateRequest(ruleId, newStart, today.plusDays(40));
+        UpdateJudiciaryAvailabilityRuleRequest request = createValidUpdateRequest(ruleId, newStart, today.plusDays(40));
 
         JudiciaryAvailabilityRule existingRule = createExistingRule(oldStart, today.plusDays(40));
         existingRule.setId(ruleId);
@@ -453,7 +453,7 @@ class JudiciaryAvailabilityValidationServiceTest {
         String ruleId = randomUUID().toString();
         LocalDate oldEnd = today.plusDays(40);
         LocalDate newEnd = today.plusDays(35); // Moving end date backward
-        CourtschedulerUpdateJudiciaryAvailabilityRule request = createValidUpdateRequest(ruleId, today.plusDays(10), newEnd);
+        UpdateJudiciaryAvailabilityRuleRequest request = createValidUpdateRequest(ruleId, today.plusDays(10), newEnd);
 
         JudiciaryAvailabilityRule existingRule = createExistingRule(today.plusDays(10), oldEnd);
         existingRule.setId(ruleId);
@@ -477,7 +477,7 @@ class JudiciaryAvailabilityValidationServiceTest {
     @Test
     void shouldReturnErrorWhenUnavailabilityWouldAffectAssignedSessionsForUpdate() {
         String ruleId = randomUUID().toString();
-        CourtschedulerUpdateJudiciaryAvailabilityRule request = createValidUpdateRequest(ruleId, today.plusDays(10), today.plusDays(40));
+        UpdateJudiciaryAvailabilityRuleRequest request = createValidUpdateRequest(ruleId, today.plusDays(10), today.plusDays(40));
         List<JudiciaryUnavailability> unavailabilities = new ArrayList<>();
         JudiciaryUnavailability unavailability = new JudiciaryUnavailability();
         unavailability.setStartDate(today.plusDays(15));
@@ -509,7 +509,7 @@ class JudiciaryAvailabilityValidationServiceTest {
     @Test
     void shouldNotReturnErrorWhenUnavailabilityDoesNotAffectAssignedSessionsForUpdate() {
         String ruleId = randomUUID().toString();
-        CourtschedulerUpdateJudiciaryAvailabilityRule request = createValidUpdateRequest(ruleId, today.plusDays(10), today.plusDays(40));
+        UpdateJudiciaryAvailabilityRuleRequest request = createValidUpdateRequest(ruleId, today.plusDays(10), today.plusDays(40));
         List<JudiciaryUnavailability> unavailabilities = new ArrayList<>();
         JudiciaryUnavailability unavailability = new JudiciaryUnavailability();
         unavailability.setStartDate(today.plusDays(15));
@@ -542,7 +542,7 @@ class JudiciaryAvailabilityValidationServiceTest {
         String ruleId = randomUUID().toString();
         LocalDate oldStart = today.plusDays(15);
         LocalDate newStart = today.plusDays(10); // Moving start date backward (expanding range)
-        CourtschedulerUpdateJudiciaryAvailabilityRule request = createValidUpdateRequest(ruleId, newStart, today.plusDays(40));
+        UpdateJudiciaryAvailabilityRuleRequest request = createValidUpdateRequest(ruleId, newStart, today.plusDays(40));
 
         JudiciaryAvailabilityRule existingRule = createExistingRule(oldStart, today.plusDays(40));
         existingRule.setId(ruleId);
@@ -562,7 +562,7 @@ class JudiciaryAvailabilityValidationServiceTest {
         String ruleId = randomUUID().toString();
         LocalDate oldEnd = today.plusDays(35);
         LocalDate newEnd = today.plusDays(40); // Moving end date forward (expanding range)
-        CourtschedulerUpdateJudiciaryAvailabilityRule request = createValidUpdateRequest(ruleId, today.plusDays(10), newEnd);
+        UpdateJudiciaryAvailabilityRuleRequest request = createValidUpdateRequest(ruleId, today.plusDays(10), newEnd);
 
         JudiciaryAvailabilityRule existingRule = createExistingRule(today.plusDays(10), oldEnd);
         existingRule.setId(ruleId);
@@ -577,8 +577,8 @@ class JudiciaryAvailabilityValidationServiceTest {
         assertThat(error, nullValue());
     }
 
-    private CourtschedulerAddJudiciaryAvailabilityRule createValidAddRequest(LocalDate startDate, LocalDate endDate) {
-        CourtschedulerAddJudiciaryAvailabilityRule request = new CourtschedulerAddJudiciaryAvailabilityRule();
+    private AddJudiciaryAvailabilityRuleRequest createValidAddRequest(LocalDate startDate, LocalDate endDate) {
+        AddJudiciaryAvailabilityRuleRequest request = new AddJudiciaryAvailabilityRuleRequest();
         request.setJudiciaryId(judiciaryId);
         request.setCourtHouseId(courtHouseId);
         request.setStartDate(startDate);
@@ -588,8 +588,8 @@ class JudiciaryAvailabilityValidationServiceTest {
         return request;
     }
 
-    private CourtschedulerUpdateJudiciaryAvailabilityRule createValidUpdateRequest(String ruleId, LocalDate startDate, LocalDate endDate) {
-        CourtschedulerUpdateJudiciaryAvailabilityRule request = new CourtschedulerUpdateJudiciaryAvailabilityRule();
+    private UpdateJudiciaryAvailabilityRuleRequest createValidUpdateRequest(String ruleId, LocalDate startDate, LocalDate endDate) {
+        UpdateJudiciaryAvailabilityRuleRequest request = new UpdateJudiciaryAvailabilityRuleRequest();
         request.setRuleId(ruleId);
         request.setJudiciaryId(judiciaryId);
         request.setCourtHouseId(courtHouseId);

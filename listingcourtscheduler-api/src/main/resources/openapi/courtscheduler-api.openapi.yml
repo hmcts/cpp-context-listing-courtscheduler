@@ -33,7 +33,7 @@ paths:
         content:
           application/vnd.courtscheduler.create+json:
             schema:
-              $ref: '#/components/schemas/CourtschedulerCreate'
+              $ref: '#/components/schemas/CreateSessionRequestParam'
       responses:
         '202':
           description: Accepted
@@ -81,14 +81,14 @@ paths:
         content:
           application/vnd.courtscheduler.assign.courtroom+json:
             schema:
-              $ref: '#/components/schemas/CourtschedulerAssignCourtroom'
+              $ref: '#/components/schemas/AssignCourtroomRequest'
       responses:
         '200':
           description: OK
           content:
             application/vnd.courtscheduler.assign.courtroom.response+json:
               schema:
-                $ref: '#/components/schemas/CourtschedulerAssignCourtroomResponse'
+                $ref: '#/components/schemas/AssignCourtroomResponse'
 
   /courtschedule/delete:
     post:
@@ -99,14 +99,14 @@ paths:
         content:
           application/vnd.courtscheduler.delete+json:
             schema:
-              $ref: '#/components/schemas/CourtschedulerDelete'
+              $ref: '#/components/schemas/SessionsParam'
       responses:
         '200':
           description: OK
           content:
             application/vnd.courtscheduler.delete.response+json:
               schema:
-                $ref: '#/components/schemas/CourtschedulerDeleteResponse'
+                $ref: '#/components/schemas/CourtScheduleDeleteResponse'
 
   /sessions:
     get:
@@ -135,14 +135,14 @@ paths:
       requestBody:
         required: true
         content:
-          # Both media types intentionally stay PassthroughObject (not CourtschedulerAssignJudiciary/
+          # Both media types intentionally stay PassthroughObject (not AssignJudiciariesRequest/
           # CourtschedulerUnassignJudiciary directly): this operationId is genuinely polymorphic by
           # Content-Type (assign vs unassign are different shapes), and openapi-generator's Spring
           # codegen can only type the ONE generated method parameter from ONE of the media types —
           # making either concrete here would silently break Jackson binding/@Valid for the other
           # shape. The controller reads the raw body and does
-          # objectMapper.convertValue(body, CourtschedulerAssignJudiciary.class) itself for the
-          # assign branch; CourtschedulerAssignJudiciary stays a real (unused-by-codegen-here) schema
+          # objectMapper.convertValue(body, AssignJudiciariesRequest.class) itself for the
+          # assign branch; AssignJudiciariesRequest stays a real (unused-by-codegen-here) schema
           # for that purpose and for documentation.
           application/vnd.courtscheduler.assign-judiciary+json:
             schema:
@@ -170,7 +170,7 @@ paths:
         content:
           application/vnd.courtscheduler.assign-judiciary-to-sessions+json:
             schema:
-              $ref: '#/components/schemas/CourtschedulerAssignJudiciaryToSessions'
+              $ref: '#/components/schemas/AssignJudiciaryToSessionsRequest'
       responses:
         '202':
           description: Accepted
@@ -561,7 +561,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CourtschedulerFindJudiciaryAvailabilityRule'
+                $ref: '#/components/schemas/FindJudiciaryAvailabilityRuleResponse'
 
   /judiciaries/availability-rules/{ruleId}:
     get:
@@ -582,7 +582,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CourtschedulerGetJudiciaryAvailabilityRule'
+                $ref: '#/components/schemas/GetJudiciaryAvailabilityRuleResponse'
 
   /judiciaries/availability-rules/add:
     post:
@@ -593,7 +593,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CourtschedulerAddJudiciaryAvailabilityRule'
+              $ref: '#/components/schemas/AddJudiciaryAvailabilityRuleRequest'
       responses:
         '200':
           description: OK
@@ -613,7 +613,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CourtschedulerUpdateJudiciaryAvailabilityRule'
+              $ref: '#/components/schemas/UpdateJudiciaryAvailabilityRuleRequest'
       responses:
         '200':
           description: OK
@@ -633,7 +633,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CourtschedulerDeleteJudiciaryAvailabilityRule'
+              $ref: '#/components/schemas/DeleteJudiciaryAvailabilityRuleRequest'
       responses:
         '200':
           description: OK
@@ -653,7 +653,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CourtschedulerAddJudiciaryAvailabilityRule'
+              $ref: '#/components/schemas/AddJudiciaryAvailabilityRuleRequest'
       responses:
         '200':
           description: OK
@@ -677,7 +677,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CourtschedulerUpdateJudiciaryAvailabilityRule'
+              $ref: '#/components/schemas/UpdateJudiciaryAvailabilityRuleRequest'
       responses:
         '200':
           description: OK
@@ -701,7 +701,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CourtschedulerDeleteJudiciaryAvailabilityRule'
+              $ref: '#/components/schemas/DeleteJudiciaryAvailabilityRuleRequest'
       responses:
         '200':
           description: OK
@@ -750,7 +750,7 @@ paths:
                 $ref: '#/components/schemas/CourtschedulerSearchAvailableJudiciaries'
             application/json:
               schema:
-                $ref: '#/components/schemas/CourtschedulerFindJudiciaryAvailability'
+                $ref: '#/components/schemas/FindJudiciaryAvailabilityResponse'
 
 components:
   schemas:
@@ -774,17 +774,17 @@ components:
         traceId: { type: string }
         timestamp: { type: string, format: date-time }
 
-    CourtschedulerCreate:
+    CreateSessionRequestParam:
       type: object
       properties:
         sessions:
           type: array
           default: []
-          items: { $ref: '#/components/schemas/CourtschedulerCreateSession' }
-        repeatPattern: { $ref: '#/components/schemas/CourtschedulerCreateRepeatPattern' }
-        sessionToBeAdded: { $ref: '#/components/schemas/CourtschedulerCreateSession' }
+          items: { $ref: '#/components/schemas/Session' }
+        repeatPattern: { $ref: '#/components/schemas/RepeatPattern' }
+        sessionToBeAdded: { $ref: '#/components/schemas/Session' }
 
-    CourtschedulerCreateSession:
+    Session:
       type: object
       properties:
         courtCentreId: { type: string, nullable: true }
@@ -810,7 +810,7 @@ components:
     # startDate/endDate deliberately plain strings (no format:date) — preserves the legacy
     # END_DATE-placeholder-as-null quirk and custom bad-format error messages, which automatic
     # Jackson String->LocalDate binding would break (see DateUtils.normaliseRepeatPatternEndDate).
-    CourtschedulerCreateRepeatPattern:
+    RepeatPattern:
       type: object
       properties:
         frequency: { type: string, nullable: true }
@@ -819,7 +819,7 @@ components:
         endDate: { type: string, nullable: true }
 
     CourtschedulerUpdate:                       { $ref: '#/components/schemas/UpdateCourtSchedule' }
-    CourtschedulerDelete:
+    SessionsParam:
       type: object
       properties:
         sessions:
@@ -852,7 +852,7 @@ components:
 
     # Wraps the per-session delete result; "error" is set only when some sessions could not be
     # removed (see SessionsService#deleteCourtScheduleSessions).
-    CourtschedulerDeleteResponse:
+    CourtScheduleDeleteResponse:
       type: object
       properties:
         sessions:
@@ -928,7 +928,7 @@ components:
         createdOn: { type: string, format: date-time, nullable: true }
         updatedOn: { type: string, format: date-time, nullable: true }
 
-    CourtschedulerAssignCourtroom:
+    AssignCourtroomRequest:
       type: object
       properties:
         courtScheduleIds:
@@ -937,7 +937,7 @@ components:
           items: { type: string }
         courtRoomId: { type: string, nullable: true }
 
-    CourtschedulerAssignCourtroomResponse:
+    AssignCourtroomResponse:
       type: object
       properties:
         errorGroups:
@@ -1139,7 +1139,7 @@ components:
           default: []
           items: { $ref: '#/components/schemas/CourtSchedule' }
 
-    CourtschedulerAssignJudiciary:
+    AssignJudiciariesRequest:
       type: object
       required: [judiciaries]
       properties:
@@ -1298,7 +1298,7 @@ components:
     CourtschedulerChangeCourtRoomForMultidayHearing: { $ref: '#/components/schemas/ChangeCourtRoomForMultidayHearingRequest' }
     CourtschedulerChangeCourtRoomForMultidayHearingResponse: { $ref: '#/components/schemas/PassthroughObject' } # record - out of scope
 
-    CourtschedulerAssignJudiciaryToSessions:
+    AssignJudiciaryToSessionsRequest:
       type: object
       properties:
         courtScheduleIds:
@@ -1454,9 +1454,9 @@ components:
     CourtschedulerRotaslProcessRotaFiles:         { $ref: '#/components/schemas/PassthroughObject' }
     CourtschedulerRotaslCleanRedundantRotaData:   { $ref: '#/components/schemas/PassthroughObject' }
 
-    CourtschedulerValidateCreate:                 { $ref: '#/components/schemas/CourtschedulerCreate' }
+    CourtschedulerValidateCreate:                 { $ref: '#/components/schemas/CreateSessionRequestParam' }
     CourtschedulerValidateUpdate:                 { $ref: '#/components/schemas/UpdateCourtSchedule' }
-    CourtschedulerValidateDelete:                 { $ref: '#/components/schemas/CourtschedulerDelete' }
+    CourtschedulerValidateDelete:                 { $ref: '#/components/schemas/SessionsParam' }
     CourtschedulerValidateSessionAvailability:    { $ref: '#/components/schemas/PassthroughObject' } # domain class is now a Java record - out of scope
     CourtschedulerValidateResponse:               { $ref: '#/components/schemas/PassthroughObject' }
 
@@ -1476,7 +1476,7 @@ components:
 
     # Matches domain.FindJudiciaryAvailabilityRuleResponse exactly: rules + pagination +
     # a SEPARATE top-level judiciaries list (not nested per-rule).
-    CourtschedulerFindJudiciaryAvailabilityRule:
+    FindJudiciaryAvailabilityRuleResponse:
       type: object
       properties:
         rules:
@@ -1493,7 +1493,7 @@ components:
 
     # Matches domain.GetJudiciaryAvailabilityRuleResponse: two SEPARATE top-level fields
     # (rule, judiciary) — not a flattened allOf merge.
-    CourtschedulerGetJudiciaryAvailabilityRule:
+    GetJudiciaryAvailabilityRuleResponse:
       type: object
       properties:
         rule: { $ref: '#/components/schemas/JudiciaryAvailabilityRuleResponse' }
@@ -1528,8 +1528,8 @@ components:
         endDate: { type: string, format: date, nullable: true }
         reason: { type: string, nullable: true }
 
-    # Not a request/response body - CourtschedulerAddJudiciaryAvailabilityRule and
-    # CourtschedulerUpdateJudiciaryAvailabilityRule both carry these same five fields, but
+    # Not a request/response body - AddJudiciaryAvailabilityRuleRequest and
+    # UpdateJudiciaryAvailabilityRuleRequest both carry these same five fields, but
     # openapi-generator's Spring codegen flattens allOf into a standalone class rather than
     # Java inheritance, so the two generated types share no common supertype. This schema exists
     # purely so JudiciaryAvailabilityService#populateEntityFields has a single generated POJO to
@@ -1543,7 +1543,7 @@ components:
         endDate: { type: string, format: date, nullable: true }
         sessionType: { type: string, nullable: true }
 
-    CourtschedulerAddJudiciaryAvailabilityRule:
+    AddJudiciaryAvailabilityRuleRequest:
       type: object
       properties:
         judiciaryId: { type: string, nullable: true }
@@ -1560,21 +1560,21 @@ components:
           default: []
           items: { $ref: '#/components/schemas/JudiciaryUnavailability' }
 
-    CourtschedulerUpdateJudiciaryAvailabilityRule:
+    UpdateJudiciaryAvailabilityRuleRequest:
       type: object
       allOf:
-        - $ref: '#/components/schemas/CourtschedulerAddJudiciaryAvailabilityRule'
+        - $ref: '#/components/schemas/AddJudiciaryAvailabilityRuleRequest'
       properties:
         ruleId: { type: string, nullable: true }
 
-    CourtschedulerDeleteJudiciaryAvailabilityRule:
+    DeleteJudiciaryAvailabilityRuleRequest:
       type: object
       properties:
         ruleId: { type: string, nullable: true }
 
     # Matches domain.FindJudiciaryAvailabilityResponse: a list of available judiciary IDs,
     # not full Judiciary objects.
-    CourtschedulerFindJudiciaryAvailability:
+    FindJudiciaryAvailabilityResponse:
       type: object
       properties:
         availableJudiciaries:

@@ -2,15 +2,15 @@ package uk.gov.moj.cpp.courtscheduler.api.service;
 
 import static java.util.UUID.randomUUID;
 
-import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerAddJudiciaryAvailabilityRule;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.AddJudiciaryAvailabilityRuleRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek;
-import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerDeleteJudiciaryAvailabilityRule;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.DeleteJudiciaryAvailabilityRuleRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.DateSessionType;
-import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerUpdateJudiciaryAvailabilityRule;
-import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerFindJudiciaryAvailability;
-import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerFindJudiciaryAvailabilityRule;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.UpdateJudiciaryAvailabilityRuleRequest;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.FindJudiciaryAvailabilityResponse;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.FindJudiciaryAvailabilityRuleResponse;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerFindJudiciaryAvailabilityRuleQuery;
-import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerGetJudiciaryAvailabilityRule;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.GetJudiciaryAvailabilityRuleResponse;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerJudiciaryAvailabilityRuleDetails;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.Judiciary;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.JudiciaryAvailabilityRuleResponse;
@@ -72,7 +72,7 @@ public class JudiciaryAvailabilityService {
     @Inject
     private uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleJudiciaryRepository courtScheduleJudiciaryRepository;
 
-    public void addJudiciaryAvailabilityRule(final CourtschedulerAddJudiciaryAvailabilityRule request) {
+    public void addJudiciaryAvailabilityRule(final AddJudiciaryAvailabilityRuleRequest request) {
         LOGGER.info("Adding judiciary availability rule: {}", request);
 
         final JudiciaryAvailabilityRule entity = new JudiciaryAvailabilityRule();
@@ -92,7 +92,7 @@ public class JudiciaryAvailabilityService {
                 entity.getId(), entity.getUnavailabilities().size());
     }
 
-    public void updateJudiciaryAvailabilityRule(final CourtschedulerUpdateJudiciaryAvailabilityRule request) {
+    public void updateJudiciaryAvailabilityRule(final UpdateJudiciaryAvailabilityRuleRequest request) {
         LOGGER.info("Updating judiciary availability rule: {}", request);
 
         if (request.getRuleId() == null || request.getRuleId().isEmpty()) {
@@ -129,7 +129,7 @@ public class JudiciaryAvailabilityService {
                 entity.getId(), entity.getUnavailabilities().size());
     }
 
-    public void deleteJudiciaryAvailabilityRule(final CourtschedulerDeleteJudiciaryAvailabilityRule request) {
+    public void deleteJudiciaryAvailabilityRule(final DeleteJudiciaryAvailabilityRuleRequest request) {
         LOGGER.info("Deleting judiciary availability rule: {}", request);
 
         final JudiciaryAvailabilityRule entity = repository.findById(request.getRuleId()).orElse(null);
@@ -142,7 +142,7 @@ public class JudiciaryAvailabilityService {
         LOGGER.info("Deleted judiciary availability rule with id: {}", request.getRuleId());
     }
 
-    public CourtschedulerFindJudiciaryAvailability findJudiciaryAvailability(final LocalDate startDate, final LocalDate endDate,
+    public FindJudiciaryAvailabilityResponse findJudiciaryAvailability(final LocalDate startDate, final LocalDate endDate,
                                                                              final String courtHouseId, final String judiciaryId) {
         LOGGER.info("Finding judiciary availability for: startDate={}, endDate={}, courtHouseId={}, judiciaryId={}",
                 startDate, endDate, courtHouseId, judiciaryId);
@@ -178,7 +178,7 @@ public class JudiciaryAvailabilityService {
         }
 
         LOGGER.info("Found {} available judiciaries", availableJudiciaries.size());
-        return new CourtschedulerFindJudiciaryAvailability().availableJudiciaries(availableJudiciaries);
+        return new FindJudiciaryAvailabilityResponse().availableJudiciaries(availableJudiciaries);
     }
 
     /**
@@ -271,7 +271,7 @@ public class JudiciaryAvailabilityService {
         return hasMatchingDates(d, d, compiled, unavailabilityDates);
     }
 
-    public CourtschedulerFindJudiciaryAvailabilityRule findJudiciaryAvailabilityRules(final CourtschedulerFindJudiciaryAvailabilityRuleQuery query) {
+    public FindJudiciaryAvailabilityRuleResponse findJudiciaryAvailabilityRules(final CourtschedulerFindJudiciaryAvailabilityRuleQuery query) {
         final LocalDate startDate = query.getStartDate();
         final LocalDate endDate = query.getEndDate();
         final String courtHouseId = query.getCourtHouseId();
@@ -305,7 +305,7 @@ public class JudiciaryAvailabilityService {
                 .map(this::convertToResponse)
                 .toList();
 
-        final CourtschedulerFindJudiciaryAvailabilityRule response = new CourtschedulerFindJudiciaryAvailabilityRule()
+        final FindJudiciaryAvailabilityRuleResponse response = new FindJudiciaryAvailabilityRuleResponse()
                 .rules(ruleResponses).totalCount(totalCount).pageNumber(pageNumber).pageSize(pageSize);
 
         // Always initialize judiciaries list (empty if not requested)
@@ -326,7 +326,7 @@ public class JudiciaryAvailabilityService {
         return response;
     }
 
-    public CourtschedulerGetJudiciaryAvailabilityRule getJudiciaryAvailabilityRule(final String ruleId, final Boolean withJudiciaryParam) {
+    public GetJudiciaryAvailabilityRuleResponse getJudiciaryAvailabilityRule(final String ruleId, final Boolean withJudiciaryParam) {
         LOGGER.info("Getting judiciary availability rule for ruleId: {}", ruleId);
 
         if (ruleId == null || ruleId.isEmpty()) {
@@ -353,7 +353,7 @@ public class JudiciaryAvailabilityService {
             }
         }
 
-        return new CourtschedulerGetJudiciaryAvailabilityRule().rule(ruleResponse).judiciary(judiciary);
+        return new GetJudiciaryAvailabilityRuleResponse().rule(ruleResponse).judiciary(judiciary);
     }
 
 
@@ -545,8 +545,8 @@ public class JudiciaryAvailabilityService {
 
     /**
      * Populates entity fields from request (judiciaryId, courtHouseId, startDate, endDate, sessionType).
-     * These fields are required as per contract. {@code CourtschedulerAddJudiciaryAvailabilityRule}
-     * and {@code CourtschedulerUpdateJudiciaryAvailabilityRule} share these five fields but no
+     * These fields are required as per contract. {@code AddJudiciaryAvailabilityRuleRequest}
+     * and {@code UpdateJudiciaryAvailabilityRuleRequest} share these five fields but no
      * common Java supertype (openapi-generator flattens {@code allOf} into a standalone class
      * rather than inheritance), so callers assemble the shared
      * {@code CourtschedulerJudiciaryAvailabilityRuleDetails} from their own request before calling
@@ -617,7 +617,7 @@ public class JudiciaryAvailabilityService {
      * Validates an add judiciary availability rule request.
      * Returns the first validation error message encountered, or null if validation passed.
      */
-    public String validateAddJudiciaryAvailabilityRule(final CourtschedulerAddJudiciaryAvailabilityRule request) {
+    public String validateAddJudiciaryAvailabilityRule(final AddJudiciaryAvailabilityRuleRequest request) {
         String error = validateDateRangeMaxThreeYears(request.getStartDate(), request.getEndDate());
         if (error != null) {
             return error;
@@ -761,7 +761,7 @@ public class JudiciaryAvailabilityService {
      * Validates an update judiciary availability rule request.
      * Returns the first validation error message encountered, or null if validation passed.
      */
-    public String validateUpdateJudiciaryAvailabilityRule(final CourtschedulerUpdateJudiciaryAvailabilityRule request) {
+    public String validateUpdateJudiciaryAvailabilityRule(final UpdateJudiciaryAvailabilityRuleRequest request) {
         String error = validateRuleIdForUpdate(request);
         if (error != null) {
             return error;
@@ -808,7 +808,7 @@ public class JudiciaryAvailabilityService {
         return error;
     }
 
-    private String validateRuleIdForUpdate(final CourtschedulerUpdateJudiciaryAvailabilityRule request) {
+    private String validateRuleIdForUpdate(final UpdateJudiciaryAvailabilityRuleRequest request) {
         if (request.getRuleId() == null || request.getRuleId().isEmpty()) {
             return RULE_ID_REQUIRED_FOR_UPDATE;
         }
@@ -822,7 +822,7 @@ public class JudiciaryAvailabilityService {
         return null;
     }
 
-    private String validateChangedDatesForUpdate(final CourtschedulerUpdateJudiciaryAvailabilityRule request,
+    private String validateChangedDatesForUpdate(final UpdateJudiciaryAvailabilityRuleRequest request,
                                                final JudiciaryAvailabilityRule existingRule) {
         if (existingRule == null) {
             return String.format(RULE_NOT_FOUND);
@@ -840,7 +840,7 @@ public class JudiciaryAvailabilityService {
         return null;
     }
 
-    private String validateDateRangeChangesAffectAssignedSessions(final CourtschedulerUpdateJudiciaryAvailabilityRule request,
+    private String validateDateRangeChangesAffectAssignedSessions(final UpdateJudiciaryAvailabilityRuleRequest request,
                                                                  final JudiciaryAvailabilityRule existingRule) {
         if (request.getJudiciaryId() == null) {
             return null;
@@ -924,7 +924,7 @@ public class JudiciaryAvailabilityService {
      * Checks if the rule is already applied/assigned to a session.
      * Returns an error message if the rule is applied to sessions, null otherwise.
      */
-    public String validateDeleteJudiciaryAvailabilityRule(final CourtschedulerDeleteJudiciaryAvailabilityRule request) {
+    public String validateDeleteJudiciaryAvailabilityRule(final DeleteJudiciaryAvailabilityRuleRequest request) {
         LOGGER.info("Validating delete for judiciary availability rule: {}", request);
 
         if (request == null || request.getRuleId() == null || request.getRuleId().isEmpty()) {

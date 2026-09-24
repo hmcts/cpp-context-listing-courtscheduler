@@ -51,13 +51,13 @@ import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleRequestParam;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtScheduleGroupedSession;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtScheduleRoomGroup;
-import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerAssignCourtroom;
-import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerAssignCourtroomResponse;
-import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerAssignJudiciary;
-import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerAssignJudiciaryToSessions;
-import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerCreate;
-import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerDelete;
-import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerDeleteResponse;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.AssignCourtroomRequest;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.AssignCourtroomResponse;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.AssignJudiciariesRequest;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.AssignJudiciaryToSessionsRequest;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CreateSessionRequestParam;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.SessionsParam;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtScheduleDeleteResponse;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerGetCourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerSearchCourtSchedulesByIdResponse;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.CrownSearchAndBookRequest;
@@ -215,7 +215,7 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
      * ============================================================ */
 
     @Override
-    public ResponseEntity<Void> postCourtschedulerCreateCourtschedule(final CourtschedulerCreate body) {
+    public ResponseEntity<Void> postCourtschedulerCreateCourtschedule(final CreateSessionRequestParam body) {
         LOG.info("courtscheduler.create requested: {}", body);
 
         final JsonObject validate = sessionsApiValidator.getSessionsCreateValidation(body);
@@ -331,7 +331,7 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
     }
 
     @Override
-    public ResponseEntity<CourtschedulerAssignCourtroomResponse> postCourtschedulerAssignCourtroom(final CourtschedulerAssignCourtroom courtschedulerAssignCourtroom) {
+    public ResponseEntity<AssignCourtroomResponse> postCourtschedulerAssignCourtroom(final AssignCourtroomRequest courtschedulerAssignCourtroom) {
         LOG.info("courtscheduler.assign.courtroom requested: {}", courtschedulerAssignCourtroom);
 
         final JsonObject validate = sessionsApiValidator.getAssignCourtroomValidation(courtschedulerAssignCourtroom);
@@ -339,15 +339,15 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
             throw new ValidationException(validate);
         }
 
-        final CourtschedulerAssignCourtroomResponse response = sessionsService.assignCourtroom(courtschedulerAssignCourtroom);
+        final AssignCourtroomResponse response = sessionsService.assignCourtroom(courtschedulerAssignCourtroom);
         return ResponseEntity.ok(response);
     }
 
     @Override
-    public ResponseEntity<CourtschedulerDeleteResponse> postCourtschedulerDeleteCourtschedule(final CourtschedulerDelete courtschedulerDelete) {
+    public ResponseEntity<CourtScheduleDeleteResponse> postCourtschedulerDeleteCourtschedule(final SessionsParam courtschedulerDelete) {
         LOG.info("courtscheduler.delete requested: {}", courtschedulerDelete);
 
-        final CourtschedulerDeleteResponse response = sessionsService.deleteCourtScheduleSessions(courtschedulerDelete);
+        final CourtScheduleDeleteResponse response = sessionsService.deleteCourtScheduleSessions(courtschedulerDelete);
 
         return ResponseEntity.ok(response);
     }
@@ -389,7 +389,7 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
     }
 
     private ResponseEntity<Void> assignJudiciary(final Map<String, Object> body) {
-        final CourtschedulerAssignJudiciary dto = objectMapper.convertValue(body, CourtschedulerAssignJudiciary.class);
+        final AssignJudiciariesRequest dto = objectMapper.convertValue(body, AssignJudiciariesRequest.class);
         final JsonObject validate = assignJudiciariesApiValidator.validate(dto);
         if (!validate.isEmpty()) {
             throw new ValidationException(validate);
@@ -429,7 +429,7 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
 
     /** POST /sessions/bulk-assign-judiciaries — replace-all judiciary assignment. */
     @Override
-    public ResponseEntity<Void> postBulkAssignJudiciaries(final CourtschedulerAssignJudiciaryToSessions dto) {
+    public ResponseEntity<Void> postBulkAssignJudiciaries(final AssignJudiciaryToSessionsRequest dto) {
         LOG.info("courtscheduler.assign-judiciary-to-sessions requested: {}", dto);
         try {
             judiciaryAssignmentService.assignJudiciaryToSessions(dto, UUID.randomUUID().toString());
@@ -733,14 +733,14 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
         final JsonObject validate;
         if (contentType.startsWith(CREATE_MT.substring(0, CREATE_MT.indexOf('+')))) {
             validate = sessionsApiValidator.getSessionsCreateValidation(
-                    objectMapper.convertValue(body, CourtschedulerCreate.class));
+                    objectMapper.convertValue(body, CreateSessionRequestParam.class));
         } else if (contentType.startsWith(UPDATE_MT.substring(0, UPDATE_MT.indexOf('+')))) {
             validate = sessionsApiValidator.getSessionsUpdateValidation(
                     objectMapper.convertValue(body, UpdateCourtSchedule.class));
         } else if (contentType.startsWith(DELETE_MT.substring(0, DELETE_MT.indexOf('+')))) {
-            // Jackson deserialization into CourtschedulerDelete is the "well-formed" check.
+            // Jackson deserialization into SessionsParam is the "well-formed" check.
             // Empty JsonObject indicates pass.
-            objectMapper.convertValue(body, CourtschedulerDelete.class);
+            objectMapper.convertValue(body, SessionsParam.class);
             validate = Json.createObjectBuilder().build();
         } else {
             throw new ResponseStatusException(HttpStatus.UNSUPPORTED_MEDIA_TYPE,
