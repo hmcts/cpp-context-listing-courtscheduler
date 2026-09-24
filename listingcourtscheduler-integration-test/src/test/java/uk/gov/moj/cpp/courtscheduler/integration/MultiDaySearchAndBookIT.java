@@ -15,7 +15,6 @@ import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 
 import java.io.StringReader;
-import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.time.Instant;

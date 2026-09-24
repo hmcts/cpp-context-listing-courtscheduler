@@ -10,7 +10,6 @@ import static org.mockito.Mockito.when;
 
 import uk.gov.moj.cpp.courtscheduler.api.service.JudiciaryAvailabilityService;
 import uk.gov.moj.cpp.courtscheduler.domain.AddJudiciaryAvailabilityRuleRequest;
-import uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek;
 import uk.gov.moj.cpp.courtscheduler.domain.DeleteJudiciaryAvailabilityRuleRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.UpdateJudiciaryAvailabilityRuleRequest;
 

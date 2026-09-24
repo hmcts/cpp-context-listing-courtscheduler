@@ -3,7 +3,6 @@ package uk.gov.moj.cpp.courtscheduler.rotafileprocessor.enricher;
 import static java.util.UUID.randomUUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.atLeastOnce;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.MissingDataError.BUSINESS_TYPES_NOT_FOUND;
 

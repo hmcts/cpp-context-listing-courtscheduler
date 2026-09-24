@@ -15,7 +15,6 @@ import org.springframework.web.server.ResponseStatusException;
 import uk.gov.moj.cpp.courtscheduler.domain.CrownSearchAndBookRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlot;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
-import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotSearchRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.MagsSearchAndBookRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.MoveHearingToPastDateRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.RequestedCourtSchedule;

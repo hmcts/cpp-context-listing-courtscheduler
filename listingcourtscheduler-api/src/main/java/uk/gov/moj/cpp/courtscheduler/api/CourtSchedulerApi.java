@@ -313,30 +313,29 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
      * string so the legacy IT contract is preserved.</p>
      */
     private List<Map<String, Object>> groupByCourtRoom(final List<CourtSchedule> schedules) {
+        // computeIfAbsent rather than Collectors.groupingBy: groupingBy rejects a null courtRoomId.
         final Map<String, List<CourtSchedule>> byCourtRoom = new LinkedHashMap<>();
-        for (final CourtSchedule cs : schedules) {
-            byCourtRoom.computeIfAbsent(cs.getCourtRoomId(), k -> new ArrayList<>()).add(cs);
-        }
-        final List<Map<String, Object>> result = new ArrayList<>();
-        for (final Map.Entry<String, List<CourtSchedule>> entry : byCourtRoom.entrySet()) {
-            final List<CourtSchedule> sessions = entry.getValue();
-            // Legacy ordering: sessions within a room sorted by sessionDate.
-            sessions.sort(Comparator.comparing(CourtSchedule::getSessionDate,
-                    Comparator.nullsLast(Comparator.naturalOrder())));
-            final List<Map<String, Object>> sessionMaps = new ArrayList<>();
-            for (final CourtSchedule cs : sessions) {
-                sessionMaps.add(toSessionMapWithUtcTimes(cs));
-            }
-            final Map<String, Object> group = new LinkedHashMap<>();
-            group.put("courtRoomId", entry.getKey());
-            group.put("courtRoomName", sessions.isEmpty() ? null : sessions.getFirst().getCourtRoomName());
-            group.put("sessions", sessionMaps);
-            result.add(group);
-        }
+        schedules.forEach(cs -> byCourtRoom.computeIfAbsent(cs.getCourtRoomId(), k -> new ArrayList<>()).add(cs));
+        final List<Map<String, Object>> result = new ArrayList<>(byCourtRoom.size());
+        byCourtRoom.forEach((courtRoomId, sessions) -> result.add(toCourtRoomGroup(courtRoomId, sessions)));
         // Legacy ordering: rooms sorted alphabetically by courtRoomName.
         result.sort(Comparator.comparing(group -> (String) group.get("courtRoomName"),
                 Comparator.nullsLast(Comparator.naturalOrder())));
         return result;
+    }
+
+    private Map<String, Object> toCourtRoomGroup(final String courtRoomId, final List<CourtSchedule> sessions) {
+        // Legacy ordering: sessions within a room sorted by sessionDate.
+        sessions.sort(Comparator.comparing(CourtSchedule::getSessionDate,
+                Comparator.nullsLast(Comparator.naturalOrder())));
+        final List<Map<String, Object>> sessionMaps = sessions.stream()
+                .map(this::toSessionMapWithUtcTimes)
+                .toList();
+        final Map<String, Object> group = new LinkedHashMap<>();
+        group.put("courtRoomId", courtRoomId);
+        group.put("courtRoomName", sessions.isEmpty() ? null : sessions.getFirst().getCourtRoomName());
+        group.put("sessions", sessionMaps);
+        return group;
     }
 
     private Map<String, Object> toSessionMapWithUtcTimes(final CourtSchedule cs) {

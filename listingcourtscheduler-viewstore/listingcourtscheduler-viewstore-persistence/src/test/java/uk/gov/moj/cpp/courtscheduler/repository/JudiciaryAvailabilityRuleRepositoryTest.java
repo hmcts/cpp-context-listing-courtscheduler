@@ -20,7 +20,6 @@ import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import jakarta.persistence.EntityManager;
 
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

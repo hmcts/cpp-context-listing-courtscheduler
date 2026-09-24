@@ -11,7 +11,6 @@ import static org.hamcrest.Matchers.not;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 
-import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.Instant;
 import java.util.UUID;

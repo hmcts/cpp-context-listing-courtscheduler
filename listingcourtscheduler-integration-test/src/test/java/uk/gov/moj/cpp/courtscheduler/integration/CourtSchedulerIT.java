@@ -11,7 +11,6 @@ import static jakarta.json.Json.createObjectBuilder;
 import static jakarta.ws.rs.core.Response.Status.ACCEPTED;
 import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
 import static jakarta.ws.rs.core.Response.Status.OK;
-import static java.util.UUID.randomUUID;
 import static org.hamcrest.CoreMatchers.anyOf;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.notNullValue;

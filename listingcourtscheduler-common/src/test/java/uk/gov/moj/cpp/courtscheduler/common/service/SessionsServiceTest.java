@@ -58,7 +58,6 @@ import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleMatcherInfo;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.CreateSessionRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.OrganisationUnit;
-import uk.gov.moj.cpp.courtscheduler.domain.OuCodeMigrateRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.RepeatFrequency;
 import uk.gov.moj.cpp.courtscheduler.domain.RepeatPattern;
 import uk.gov.moj.cpp.courtscheduler.domain.Result;
@@ -100,12 +99,12 @@ import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 
 import jakarta.json.JsonObject;
-import jakarta.json.JsonArray;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.apache.commons.lang3.tuple.Pair;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -1131,6 +1130,46 @@ class SessionsServiceTest {
         when(courtScheduleRepository.update(any(), any(), any())).thenReturn(Result.success());
         Result result = sessionsService.update(updateCourtSchedule);
         assertThat(result.isSuccess(), is(true));
+    }
+
+    @Test
+    void shouldReturnDuplicateSessionsWhenRepositoryUpdateHitsDataIntegrityViolation() {
+        final UpdateCourtSchedule updateCourtSchedule = givenValidMagistratesUpdate();
+        when(courtScheduleRepository.update(any(), any(), any()))
+                .thenThrow(new DataIntegrityViolationException("duplicate key value violates unique constraint"));
+
+        final Result result = sessionsService.update(updateCourtSchedule);
+
+        assertThat(result.isSuccess(), is(false));
+        assertEquals(ErrorMessages.DUPLICATE_SESSIONS, result.getMsg());
+    }
+
+    @Test
+    void shouldPropagateNonPersistenceFailureFromRepositoryUpdate() {
+        final UpdateCourtSchedule updateCourtSchedule = givenValidMagistratesUpdate();
+        when(courtScheduleRepository.update(any(), any(), any())).thenThrow(new IllegalStateException("boom"));
+
+        assertThrows(IllegalStateException.class, () -> sessionsService.update(updateCourtSchedule));
+    }
+
+    private UpdateCourtSchedule givenValidMagistratesUpdate() {
+        final String courtScheduleId = randomUUID().toString();
+        final CourtSchedule persistedCourtSchedule = getPersistedCourtSchedule(courtScheduleId, "DVLA");
+        final UpdateCourtSchedule updateCourtSchedule = random(UpdateCourtSchedule.class);
+        updateCourtSchedule.setCourtScheduleId(courtScheduleId);
+        updateCourtSchedule.setCourtRoomId(persistedCourtSchedule.getCourtRoomId());
+        updateCourtSchedule.setBusinessType("DVLA");
+        updateCourtSchedule.setPanel(persistedCourtSchedule.getPanel());
+        updateCourtSchedule.setSessionType(AM_SESSION);
+        updateCourtSchedule.setSessionStartTime("11:00");
+        updateCourtSchedule.setSessionEndTime("13:00");
+        updateCourtSchedule.setAllDaySplit(false);
+        updateCourtSchedule.setJurisdiction(null);
+
+        when(courtScheduleRepository.retrieveCourtScheduleWithListingById(anyString())).thenReturn(persistedCourtSchedule);
+        when(referenceDataCache.getRotaBusinessTypeByCode(eq("DVLA"))).thenReturn(returnBusinessTypeObject("DVLA", true, "MAGISTRATES"));
+        when(allocatedListingRepository.findTotalAllocatedDurationByCourtScheduleId(anyString())).thenReturn(0);
+        return updateCourtSchedule;
     }
 
     /**

@@ -35,7 +35,6 @@ import uk.gov.moj.cpp.courtscheduler.persist.entity.ProvisionalBookingKey;
 import java.io.StringReader;
 import java.sql.SQLException;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
