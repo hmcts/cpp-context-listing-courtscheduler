@@ -1,7 +1,9 @@
 package uk.gov.moj.cpp.courtscheduler.common.service;
 
+import jakarta.annotation.PreDestroy;
 import jakarta.json.Json;
 import jakarta.json.JsonObject;
+import jakarta.json.JsonReader;
 import java.io.StringReader;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -46,6 +48,7 @@ public class CommonPlatformQueryClient {
     private final CourtSchedulerSystemUserConfig systemUserConfig;
     private final String referenceDataBaseUrl;
     private final String usersGroupsBaseUrl;
+    private final HttpClient httpClient;
 
     public CommonPlatformQueryClient(final CourtSchedulerSystemUserConfig systemUserConfig,
                                      @Value("${referencedata.base-url:}") final String referenceDataBaseUrl,
@@ -59,12 +62,24 @@ public class CommonPlatformQueryClient {
         // Without these timeouts a hung refdata peer would wedge captureRotaFilesAndProcessEach
         // indefinitely — the @Async pipeline keeps that thread alive and the next scheduled
         // run picks up no work because the previous one is still "in flight".
-        final HttpClient httpClient = HttpClient.newBuilder()
+        // The HttpClient is kept open for the lifetime of this singleton bean (it backs every
+        // request made through restClient) and is released in close() below.
+        this.httpClient = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(connectTimeoutSeconds))
                 .build();
         final JdkClientHttpRequestFactory factory = new JdkClientHttpRequestFactory(httpClient);
         factory.setReadTimeout(Duration.ofSeconds(readTimeoutSeconds));
         this.restClient = RestClient.builder().requestFactory(factory).build();
+    }
+
+    /**
+     * Releases the underlying {@link HttpClient} when the Spring context shuts this bean down.
+     * The client is intentionally kept open for the bean's lifetime (see constructor), so it
+     * cannot be closed with try-with-resources at creation time.
+     */
+    @PreDestroy
+    public void close() {
+        httpClient.close();
     }
 
     /**
@@ -115,7 +130,7 @@ public class CommonPlatformQueryClient {
         if (body == null || body.isBlank()) {
             return Json.createObjectBuilder().build();
         }
-        try (var reader = Json.createReader(new StringReader(body))) {
+        try (JsonReader reader = Json.createReader(new StringReader(body))) {
             return reader.readObject();
         }
     }

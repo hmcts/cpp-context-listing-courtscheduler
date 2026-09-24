@@ -10,6 +10,7 @@ import jakarta.json.JsonObject;
 import jakarta.json.JsonString;
 import jakarta.json.JsonValue;
 import java.io.IOException;
+import java.util.Map;
 
 /**
  * Serializes {@link JsonValue} (and subtypes) directly as JSON instead of letting Jackson
@@ -21,7 +22,12 @@ import java.io.IOException;
  * controller returning a {@link jakarta.json.JsonObject} (directly or nested in a Map) gets
  * the canonical legacy wire shape.</p>
  */
-public class JakartaJsonModule extends SimpleModule {
+// Never subclassed (repo-wide check confirms no subtypes) - final removes any risk of a future
+// subclass overriding the inherited, non-final SimpleModule#addSerializer and having it run here
+// during construction before the subclass's own fields are initialised (ConstructorCallsOverridableMethod).
+public final class JakartaJsonModule extends SimpleModule {
+
+    private static final long serialVersionUID = 1L;
 
     public JakartaJsonModule() {
         addSerializer(JsonValue.class, new JsonValueSerializer());
@@ -56,7 +62,7 @@ public class JakartaJsonModule extends SimpleModule {
                 case OBJECT -> {
                     gen.writeStartObject();
                     final JsonObject obj = (JsonObject) value;
-                    for (var entry : obj.entrySet()) {
+                    for (final Map.Entry<String, JsonValue> entry : obj.entrySet()) {
                         gen.writeFieldName(entry.getKey());
                         serialize(entry.getValue(), gen, serializers);
                     }

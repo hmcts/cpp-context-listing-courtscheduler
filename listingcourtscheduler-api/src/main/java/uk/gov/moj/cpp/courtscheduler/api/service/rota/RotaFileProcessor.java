@@ -17,7 +17,9 @@ import uk.gov.moj.cpp.courtscheduler.common.service.JudiciaryAssignmentService;
 import uk.gov.moj.cpp.courtscheduler.common.service.RotaFileProcessHistoryService;
 import uk.gov.moj.cpp.courtscheduler.common.service.data.BlobContent;
 import uk.gov.moj.cpp.courtscheduler.domain.AssignJudiciariesResponse;
+import uk.gov.moj.cpp.courtscheduler.domain.AssignJudiciariesRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload;
+import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.provisionaldata.RotaPeriodDateInfoProvider;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.RotaFileProcessHistory;
 import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.RotaFileParser;
 
@@ -27,7 +29,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
-import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.annotation.Propagation;
 import jakarta.inject.Inject;
@@ -36,7 +37,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @Service
-@org.springframework.transaction.annotation.Transactional
+@Transactional
 public class RotaFileProcessor {
 
     private static final Logger logger = LoggerFactory.getLogger(RotaFileProcessor.class);
@@ -74,6 +75,13 @@ public class RotaFileProcessor {
     // PUBLIC API METHODS
     // ============================================================================
 
+    @SuppressWarnings("PMD.AvoidCatchingGenericException")
+    // Deliberate broad safety net: processBlob() fans out into parsing plus several
+    // independent helper services (locations, judiciary, court schedule, assignment),
+    // any of which can fail with a different unchecked exception type for a given
+    // malformed/unexpected rota file. Whatever fails, the blob's lease MUST be released
+    // here so the file isn't left permanently locked for other instances to retry -
+    // narrowing this catch risks missing a failure mode and leaking a stuck lease.
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public void downloadAndProcessForEachFile(final BlobContent blobContent, final String blobName, final String leaseId) {
         logger.info("downloadAndProcessForEachFile called for blob with name: {}", blobName);
@@ -114,13 +122,13 @@ public class RotaFileProcessor {
         logger.info("Processing blob: {} with execution ID: {} - parsed {} record types", blobName, executionId, records.size());
 
         // Extract locations and resolve OU codes
-        final var locations = rotaLocationPeriodHelper.getLocationFromRecords(records);
+        final List<String> locations = rotaLocationPeriodHelper.getLocationFromRecords(records);
         logger.info("Extracted {} location IDs from blob: {}", locations.size(), blobName);
-        final var ouCodes = rotaLocationPeriodHelper.getOuCodesFromCourtRoomMappingsByLocationId(locations);
+        final List<String> ouCodes = rotaLocationPeriodHelper.getOuCodesFromCourtRoomMappingsByLocationId(locations);
         logger.info("Resolved {} OU codes for blob: {}", ouCodes.size(), blobName);
 
         // Get rota period dates and delete unallocated court schedule judiciaries
-        final var rotaPeriodDateInfoProvider = rotaLocationPeriodHelper.getRotaPeriodDates(records);
+        final RotaPeriodDateInfoProvider rotaPeriodDateInfoProvider = rotaLocationPeriodHelper.getRotaPeriodDates(records);
         final int deletedCount = rotaLocationPeriodHelper.deleteUnAllocatedCourtScheduleJudiciariesForRotaPeriod(
                 rotaPeriodDateInfoProvider.getRotaPeriodStartDate(),
                 rotaPeriodDateInfoProvider.getRotaPeriodEndDate(),
@@ -295,7 +303,7 @@ public class RotaFileProcessor {
     private AssignJudiciariesResponse processJudiciaryAssignments(
             final List<JudiciaryScheduleAssignment> assignmentList,
             final String executionId) {
-        final var assignRequest = judiciaryAssignmentRequestHelper.buildAssignJudiciariesRequest(assignmentList);
+        final AssignJudiciariesRequest assignRequest = judiciaryAssignmentRequestHelper.buildAssignJudiciariesRequest(assignmentList);
         // Use repository for Rota processing (useRepository = true)
         return judiciaryAssignmentService.assignJudiciaries(assignRequest, executionId, true);
     }

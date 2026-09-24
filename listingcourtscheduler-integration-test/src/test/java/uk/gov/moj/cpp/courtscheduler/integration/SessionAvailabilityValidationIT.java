@@ -11,9 +11,8 @@ import static org.hamcrest.Matchers.not;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 
-import java.sql.Timestamp;
 import java.time.LocalDate;
-import java.util.Date;
+import java.time.Instant;
 import java.util.UUID;
 
 import jakarta.ws.rs.core.Response;
@@ -151,7 +150,7 @@ class SessionAvailabilityValidationIT extends AbstractIT {
 
     private static CourtSchedule buildCourtSchedule(String id, boolean slotBased, int maxSlots,
                                                      boolean overbookingAllowed, String jurisdiction, String courtHouseId) {
-        Date now = new Date();
+        Instant now = Instant.now();
         CourtSchedule cs = new CourtSchedule();
         cs.setCourtScheduleId(id);
         cs.setListingProfileId(UUID.randomUUID().toString());

@@ -15,7 +15,6 @@ import java.util.concurrent.Future;
 
 
 import org.springframework.scheduling.annotation.Async;
-import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.annotation.Propagation;
 import jakarta.inject.Inject;
@@ -25,7 +24,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @Service
-@org.springframework.transaction.annotation.Transactional
+@Transactional
 public class RotaFileCaptureAndProcessTriggerService {
 
     private static final Logger logger = LoggerFactory.getLogger(RotaFileCaptureAndProcessTriggerService.class);
@@ -47,7 +46,7 @@ public class RotaFileCaptureAndProcessTriggerService {
 
     @Async
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
-    public Future<String> captureRotaFilesAndProcessEach(boolean isForItTest, final String rotaProcess) {
+    public Future<String> captureRotaFilesAndProcessEach(final boolean isForItTest, final String rotaProcess) {
         logger.info("RotaFileCaptureAndProcessTriggerService.captureRotaFilesAndProcessEach called with rotaProcess: {}", rotaProcess);
         final String blobPrefix = isForItTest ? IT_TEST_BLOB_PREFIX : ORIGINAL_BLOB_PREFIX;
 

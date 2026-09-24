@@ -35,7 +35,6 @@ import uk.gov.moj.cpp.courtscheduler.persist.entity.ProvisionalBookingKey;
 import java.io.StringReader;
 import java.sql.SQLException;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -109,8 +108,8 @@ class HearingSlotIT extends AbstractIT {
         courtSchedule.setCourtSession("AD");
         courtSchedule.setMaxDuration(180);
         courtSchedule.setSessionDate(getRandomFutureDateWithinNextYear());
-        courtSchedule.setSessionStartTime(combineDateAndTime(courtSchedule.getSessionDate(), "10:00"));
-        courtSchedule.setSessionEndTime(combineDateAndTime(courtSchedule.getSessionDate(), "17:00"));
+        courtSchedule.setSessionStartTime(combineDateAndTime(courtSchedule.getSessionDate(), "10:00").toInstant());
+        courtSchedule.setSessionEndTime(combineDateAndTime(courtSchedule.getSessionDate(), "17:00").toInstant());
         courtSchedule.setIsOverbookingAllowed(true);
         courtSchedule.setTotalBookedMorning(0);
         databaseSeeder.insertCourtSchedule(courtSchedule);
@@ -130,8 +129,8 @@ class HearingSlotIT extends AbstractIT {
         courtSchedule2.setCourtSession("AD");
         courtSchedule2.setMaxDuration(180);
         courtSchedule2.setSessionDate(courtSchedule.getSessionDate().plusDays(2));
-        courtSchedule2.setSessionStartTime(combineDateAndTime(courtSchedule2.getSessionDate(), "10:00"));
-        courtSchedule2.setSessionEndTime(combineDateAndTime(courtSchedule2.getSessionDate(), "17:00"));
+        courtSchedule2.setSessionStartTime(combineDateAndTime(courtSchedule2.getSessionDate(), "10:00").toInstant());
+        courtSchedule2.setSessionEndTime(combineDateAndTime(courtSchedule2.getSessionDate(), "17:00").toInstant());
         courtSchedule2.setIsOverbookingAllowed(true);
         courtSchedule2.setTotalBookedMorning(0);
         databaseSeeder.insertCourtSchedule(courtSchedule2);
@@ -151,8 +150,8 @@ class HearingSlotIT extends AbstractIT {
         courtSchedule3.setCourtSession("AD");
         courtSchedule3.setMaxDuration(360);
         courtSchedule3.setSessionDate(courtSchedule.getSessionDate().plusDays(31));
-        courtSchedule3.setSessionStartTime(combineDateAndTime(courtSchedule3.getSessionDate(), "10:00"));
-        courtSchedule3.setSessionEndTime(combineDateAndTime(courtSchedule3.getSessionDate(), "17:00"));
+        courtSchedule3.setSessionStartTime(combineDateAndTime(courtSchedule3.getSessionDate(), "10:00").toInstant());
+        courtSchedule3.setSessionEndTime(combineDateAndTime(courtSchedule3.getSessionDate(), "17:00").toInstant());
         courtSchedule3.setIsOverbookingAllowed(true);
         courtSchedule3.setTotalBookedMorning(0);
         databaseSeeder.insertCourtSchedule(courtSchedule3);
@@ -250,8 +249,8 @@ class HearingSlotIT extends AbstractIT {
         courtSchedule.setMaxDuration(360);
         courtSchedule.setAvailableDuration(360);
         courtSchedule.setSessionDate(sessionDate);
-        courtSchedule.setSessionStartTime(combineDateAndTime(sessionDate, "10:00"));
-        courtSchedule.setSessionEndTime(combineDateAndTime(sessionDate, "17:00"));
+        courtSchedule.setSessionStartTime(combineDateAndTime(sessionDate, "10:00").toInstant());
+        courtSchedule.setSessionEndTime(combineDateAndTime(sessionDate, "17:00").toInstant());
         courtSchedule.setIsOverbookingAllowed(false);
         courtSchedule.setTotalBookedMorning(0);
         databaseSeeder.insertCourtSchedule(courtSchedule);
@@ -312,8 +311,8 @@ class HearingSlotIT extends AbstractIT {
         courtSchedule.setSessionDate(sessionDate);
         courtSchedule.setOuCode("B40IM00");
         courtSchedule.setIsDraft(false);
-        courtSchedule.setSessionStartTime(combineDateAndTime(courtSchedule.getSessionDate(), "09:30"));
-        courtSchedule.setSessionEndTime(combineDateAndTime(courtSchedule.getSessionDate(), "12:30"));
+        courtSchedule.setSessionStartTime(combineDateAndTime(courtSchedule.getSessionDate(), "09:30").toInstant());
+        courtSchedule.setSessionEndTime(combineDateAndTime(courtSchedule.getSessionDate(), "12:30").toInstant());
         courtSchedule.setIsOverbookingAllowed(false);
         courtSchedule.setSlotBased(true);
         courtSchedule.setMaxSlots(10);
@@ -359,18 +358,18 @@ class HearingSlotIT extends AbstractIT {
         assertThat(slotStartTimesJsonArray.size(), is(4));
         slotStartTimesJsonArray.forEach(slotStartTime -> {
             final JsonObject slotStartTimeJsonObject = (JsonObject) slotStartTime;
-            if (slotStartTimeJsonObject.getString("sessionStartTime").equals(toResponseDateStringISO(localDateToDateWithTime(courtSchedule.getSessionDate(),9,30)))) {
+            if (slotStartTimeJsonObject.getString("sessionStartTime").equals(toResponseDateStringISO(localDateToDateWithTime(courtSchedule.getSessionDate(),9,30).toInstant()))) {
                 assertThat(slotStartTimeJsonObject.getInt("count"), is(0));
-                assertThat(slotStartTimeJsonObject.getString("sessionEndTime"), is(toResponseDateStringISO(localDateToDateWithTime(courtSchedule.getSessionDate(),10,0))));
-            } else if (slotStartTimeJsonObject.getString("sessionStartTime").equals(toResponseDateStringISO(localDateToDateWithTime(courtSchedule.getSessionDate(),10,0)))) {
+                assertThat(slotStartTimeJsonObject.getString("sessionEndTime"), is(toResponseDateStringISO(localDateToDateWithTime(courtSchedule.getSessionDate(),10,0).toInstant())));
+            } else if (slotStartTimeJsonObject.getString("sessionStartTime").equals(toResponseDateStringISO(localDateToDateWithTime(courtSchedule.getSessionDate(),10,0).toInstant()))) {
                 assertThat(slotStartTimeJsonObject.getInt("count"), is(2));
-                assertThat(slotStartTimeJsonObject.getString("sessionEndTime"), is(toResponseDateStringISO(localDateToDateWithTime(courtSchedule.getSessionDate(),11,0))));
-            } else if (slotStartTimeJsonObject.getString("sessionStartTime").equals(toResponseDateStringISO(localDateToDateWithTime(courtSchedule.getSessionDate(),11,0)))) {
+                assertThat(slotStartTimeJsonObject.getString("sessionEndTime"), is(toResponseDateStringISO(localDateToDateWithTime(courtSchedule.getSessionDate(),11,0).toInstant())));
+            } else if (slotStartTimeJsonObject.getString("sessionStartTime").equals(toResponseDateStringISO(localDateToDateWithTime(courtSchedule.getSessionDate(),11,0).toInstant()))) {
                 assertThat(slotStartTimeJsonObject.getInt("count"), is(1));
-                assertThat(slotStartTimeJsonObject.getString("sessionEndTime"), is(toResponseDateStringISO(localDateToDateWithTime(courtSchedule.getSessionDate(),12,0))));
-            } else if (slotStartTimeJsonObject.getString("sessionStartTime").equals(toResponseDateStringISO(localDateToDateWithTime(courtSchedule.getSessionDate(),12,0)))) {
+                assertThat(slotStartTimeJsonObject.getString("sessionEndTime"), is(toResponseDateStringISO(localDateToDateWithTime(courtSchedule.getSessionDate(),12,0).toInstant())));
+            } else if (slotStartTimeJsonObject.getString("sessionStartTime").equals(toResponseDateStringISO(localDateToDateWithTime(courtSchedule.getSessionDate(),12,0).toInstant()))) {
                 assertThat(slotStartTimeJsonObject.getInt("count"), is(1));
-                assertThat(slotStartTimeJsonObject.getString("sessionEndTime"), is(toResponseDateStringISO(localDateToDateWithTime(courtSchedule.getSessionDate(),12,30))));
+                assertThat(slotStartTimeJsonObject.getString("sessionEndTime"), is(toResponseDateStringISO(localDateToDateWithTime(courtSchedule.getSessionDate(),12,30).toInstant())));
             }
         });
     }
@@ -395,8 +394,8 @@ class HearingSlotIT extends AbstractIT {
         courtSchedule.setPanel(PanelTypes.YOUTH.name());
         courtSchedule.setSessionDate(sessionDate);
         courtSchedule.setOuCode("B40IM00");
-        courtSchedule.setSessionStartTime(combineDateAndTime(courtSchedule.getSessionDate(), "09:30"));
-        courtSchedule.setSessionEndTime(combineDateAndTime(courtSchedule.getSessionDate(), "12:30"));
+        courtSchedule.setSessionStartTime(combineDateAndTime(courtSchedule.getSessionDate(), "09:30").toInstant());
+        courtSchedule.setSessionEndTime(combineDateAndTime(courtSchedule.getSessionDate(), "12:30").toInstant());
         courtSchedule.setIsOverbookingAllowed(true);
         courtSchedule.setSlotBased(true);
         courtSchedule.setMaxSlots(10);
@@ -449,8 +448,8 @@ class HearingSlotIT extends AbstractIT {
         courtSchedule.setPanel(PanelTypes.YOUTH.name());
         courtSchedule.setSessionDate(sessionDate);
         courtSchedule.setOuCode("B40IM00");
-        courtSchedule.setSessionStartTime(combineDateAndTime(courtSchedule.getSessionDate(), "09:30"));
-        courtSchedule.setSessionEndTime(combineDateAndTime(courtSchedule.getSessionDate(), "12:30"));
+        courtSchedule.setSessionStartTime(combineDateAndTime(courtSchedule.getSessionDate(), "09:30").toInstant());
+        courtSchedule.setSessionEndTime(combineDateAndTime(courtSchedule.getSessionDate(), "12:30").toInstant());
         courtSchedule.setIsOverbookingAllowed(false);
         courtSchedule.setSlotBased(false);
         courtSchedule.setCourtSession("AM");
@@ -507,8 +506,8 @@ class HearingSlotIT extends AbstractIT {
         courtSchedule.setSessionDate(sessionDate);
         courtSchedule.setOuCode("B40IM00");
         courtSchedule.setIsDraft(false);
-        courtSchedule.setSessionStartTime(combineDateAndTime(courtSchedule.getSessionDate(), "09:30"));
-        courtSchedule.setSessionEndTime(combineDateAndTime(courtSchedule.getSessionDate(), "12:30"));
+        courtSchedule.setSessionStartTime(combineDateAndTime(courtSchedule.getSessionDate(), "09:30").toInstant());
+        courtSchedule.setSessionEndTime(combineDateAndTime(courtSchedule.getSessionDate(), "12:30").toInstant());
         courtSchedule.setJurisdiction(MAGISTRATES.getJurisdiction());
         databaseSeeder.insertCourtSchedule(courtSchedule);
 
@@ -562,8 +561,8 @@ class HearingSlotIT extends AbstractIT {
         courtSchedule.setPanel(PanelTypes.YOUTH.name());
         courtSchedule.setSessionDate(sessionDate);
         courtSchedule.setOuCode("B40IM00");
-        courtSchedule.setSessionStartTime(combineDateAndTime(courtSchedule.getSessionDate(), "09:30"));
-        courtSchedule.setSessionEndTime(combineDateAndTime(courtSchedule.getSessionDate(), "12:30"));
+        courtSchedule.setSessionStartTime(combineDateAndTime(courtSchedule.getSessionDate(), "09:30").toInstant());
+        courtSchedule.setSessionEndTime(combineDateAndTime(courtSchedule.getSessionDate(), "12:30").toInstant());
         databaseSeeder.insertCourtSchedule(courtSchedule);
 
         final CourtScheduleJudiciary courtScheduleJudiciary = createJudiciaryForSchedule(courtSchedule);
@@ -607,9 +606,9 @@ class HearingSlotIT extends AbstractIT {
         courtSchedule.setPanel(PanelTypes.YOUTH.name());
         courtSchedule.setOuCode("B40IM00");
         courtSchedule.setSessionDate(getRandomFutureDateWithinNextYear());
-        courtSchedule.setSessionStartTime(combineDateAndTime(courtSchedule.getSessionDate(), "10:30"));
-        courtSchedule.setSessionEndTime(combineDateAndTime(courtSchedule.getSessionDate(), "17:30"));
-        courtSchedule.setNationalBreakTime(combineDateAndTime(courtSchedule.getSessionDate(), "13:00"));
+        courtSchedule.setSessionStartTime(combineDateAndTime(courtSchedule.getSessionDate(), "10:30").toInstant());
+        courtSchedule.setSessionEndTime(combineDateAndTime(courtSchedule.getSessionDate(), "17:30").toInstant());
+        courtSchedule.setNationalBreakTime(combineDateAndTime(courtSchedule.getSessionDate(), "13:00").toInstant());
         courtSchedule.setIsOverbookingAllowed(true);
         courtSchedule.setSupportAdSplit(false);
         databaseSeeder.insertCourtSchedule(courtSchedule);
@@ -673,9 +672,9 @@ class HearingSlotIT extends AbstractIT {
         courtScheduleWithSplit.setPanel(PanelTypes.YOUTH.name());
         courtScheduleWithSplit.setOuCode("B40IM00");
         courtScheduleWithSplit.setSessionDate(sessionDate);
-        courtScheduleWithSplit.setSessionStartTime(combineDateAndTime(courtScheduleWithSplit.getSessionDate(), "00:01"));
-        courtScheduleWithSplit.setSessionEndTime(combineDateAndTime(courtScheduleWithSplit.getSessionDate(), "23:59"));
-        courtScheduleWithSplit.setNationalBreakTime(TimezoneUtils.calculateNationalBreakTime(sessionDate));
+        courtScheduleWithSplit.setSessionStartTime(combineDateAndTime(courtScheduleWithSplit.getSessionDate(), "00:01").toInstant());
+        courtScheduleWithSplit.setSessionEndTime(combineDateAndTime(courtScheduleWithSplit.getSessionDate(), "23:59").toInstant());
+        courtScheduleWithSplit.setNationalBreakTime(TimezoneUtils.calculateNationalBreakTime(sessionDate).toInstant());
         databaseSeeder.insertCourtSchedule(courtScheduleWithSplit);
         final CourtScheduleJudiciary courtScheduleJudiciary = createJudiciaryForSchedule(courtScheduleWithSplit);
         databaseSeeder.saveJudiciarySchedule(courtScheduleJudiciary);
@@ -708,9 +707,9 @@ class HearingSlotIT extends AbstractIT {
         courtScheduleWithoutSplit.setPanel(PanelTypes.YOUTH.name());
         courtScheduleWithoutSplit.setOuCode("B40IM00");
         courtScheduleWithoutSplit.setSessionDate(sessionDate);
-        courtScheduleWithoutSplit.setSessionStartTime(combineDateAndTime(courtScheduleWithoutSplit.getSessionDate(), "00:01"));
-        courtScheduleWithoutSplit.setSessionEndTime(combineDateAndTime(courtScheduleWithoutSplit.getSessionDate(), "23:59"));
-        courtScheduleWithoutSplit.setNationalBreakTime(TimezoneUtils.calculateNationalBreakTime(sessionDate));
+        courtScheduleWithoutSplit.setSessionStartTime(combineDateAndTime(courtScheduleWithoutSplit.getSessionDate(), "00:01").toInstant());
+        courtScheduleWithoutSplit.setSessionEndTime(combineDateAndTime(courtScheduleWithoutSplit.getSessionDate(), "23:59").toInstant());
+        courtScheduleWithoutSplit.setNationalBreakTime(TimezoneUtils.calculateNationalBreakTime(sessionDate).toInstant());
         databaseSeeder.insertCourtSchedule(courtScheduleWithoutSplit);
 
         final CourtScheduleJudiciary courtScheduleJudiciaryWithoutSplit = createJudiciaryForSchedule(courtScheduleWithoutSplit);
@@ -771,29 +770,29 @@ class HearingSlotIT extends AbstractIT {
 
         slotStartTimesJsonArrayWithoutSplit.forEach(slotStartTime -> {
             final JsonObject slotStartTimeJsonObject = (JsonObject) slotStartTime;
-            if (slotStartTimeJsonObject.getString("sessionStartTime").equals(toResponseDateStringISO(localDateToDateWithTime(courtScheduleWithSplit.getSessionDate(),0,1)))) {
+            if (slotStartTimeJsonObject.getString("sessionStartTime").equals(toResponseDateStringISO(localDateToDateWithTime(courtScheduleWithSplit.getSessionDate(),0,1).toInstant()))) {
                 assertThat(slotStartTimeJsonObject.getInt("count"), is(20));
-                assertThat(slotStartTimeJsonObject.getString("sessionEndTime"), is(toResponseDateStringISO(localDateToDateWithTime(courtScheduleWithSplit.getSessionDate(),1,0))));
-            } else if (slotStartTimeJsonObject.getString("sessionStartTime").equals(toResponseDateStringISO(localDateToDateWithTime(courtScheduleWithSplit.getSessionDate(),11,0)))) {
+                assertThat(slotStartTimeJsonObject.getString("sessionEndTime"), is(toResponseDateStringISO(localDateToDateWithTime(courtScheduleWithSplit.getSessionDate(),1,0).toInstant())));
+            } else if (slotStartTimeJsonObject.getString("sessionStartTime").equals(toResponseDateStringISO(localDateToDateWithTime(courtScheduleWithSplit.getSessionDate(),11,0).toInstant()))) {
                 assertThat(slotStartTimeJsonObject.getInt("count"), is(30));
-                assertThat(slotStartTimeJsonObject.getString("sessionEndTime"), is(toResponseDateStringISO(localDateToDateWithTime(courtScheduleWithSplit.getSessionDate(),12,0))));
-            } else if (slotStartTimeJsonObject.getString("sessionStartTime").equals(toResponseDateStringISO(localDateToDateWithTime(courtScheduleWithSplit.getSessionDate(),14,0)))) {
+                assertThat(slotStartTimeJsonObject.getString("sessionEndTime"), is(toResponseDateStringISO(localDateToDateWithTime(courtScheduleWithSplit.getSessionDate(),12,0).toInstant())));
+            } else if (slotStartTimeJsonObject.getString("sessionStartTime").equals(toResponseDateStringISO(localDateToDateWithTime(courtScheduleWithSplit.getSessionDate(),14,0).toInstant()))) {
                 assertThat(slotStartTimeJsonObject.getInt("count"), is(20));
-                assertThat(slotStartTimeJsonObject.getString("sessionEndTime"), is(toResponseDateStringISO(localDateToDateWithTime(courtScheduleWithSplit.getSessionDate(),15,0))));
-            } else if (slotStartTimeJsonObject.getString("sessionStartTime").equals(toResponseDateStringISO(localDateToDateWithTime(courtScheduleWithSplit.getSessionDate(),15,0)))) {
+                assertThat(slotStartTimeJsonObject.getString("sessionEndTime"), is(toResponseDateStringISO(localDateToDateWithTime(courtScheduleWithSplit.getSessionDate(),15,0).toInstant())));
+            } else if (slotStartTimeJsonObject.getString("sessionStartTime").equals(toResponseDateStringISO(localDateToDateWithTime(courtScheduleWithSplit.getSessionDate(),15,0).toInstant()))) {
                 assertThat(slotStartTimeJsonObject.getInt("count"), is(10));
-                assertThat(slotStartTimeJsonObject.getString("sessionEndTime"), is(toResponseDateStringISO(localDateToDateWithTime(courtScheduleWithSplit.getSessionDate(),16,0))));
+                assertThat(slotStartTimeJsonObject.getString("sessionEndTime"), is(toResponseDateStringISO(localDateToDateWithTime(courtScheduleWithSplit.getSessionDate(),16,0).toInstant())));
             }
         });
 
         slotStartTimesJsonArrayWithSplit.forEach(slotStartTime -> {
             final JsonObject slotStartTimeJsonObject = (JsonObject) slotStartTime;
-            if (slotStartTimeJsonObject.getString("sessionStartTime").equals(toResponseDateStringISO(localDateToDateWithTime(courtScheduleWithSplit.getSessionDate(),0,1)))) {
+            if (slotStartTimeJsonObject.getString("sessionStartTime").equals(toResponseDateStringISO(localDateToDateWithTime(courtScheduleWithSplit.getSessionDate(),0,1).toInstant()))) {
                 assertThat(slotStartTimeJsonObject.getInt("count"), is(50));
-                assertThat(slotStartTimeJsonObject.getString("sessionEndTime"), is(toResponseDateStringISO(localDateToDateWithTime(courtScheduleWithSplit.getSessionDate(),13,0))));
-            } else if (slotStartTimeJsonObject.getString("sessionStartTime").equals(toResponseDateStringISO(localDateToDateWithTime(courtScheduleWithSplit.getSessionDate(),14,0)))) {
+                assertThat(slotStartTimeJsonObject.getString("sessionEndTime"), is(toResponseDateStringISO(localDateToDateWithTime(courtScheduleWithSplit.getSessionDate(),13,0).toInstant())));
+            } else if (slotStartTimeJsonObject.getString("sessionStartTime").equals(toResponseDateStringISO(localDateToDateWithTime(courtScheduleWithSplit.getSessionDate(),14,0).toInstant()))) {
                 assertThat(slotStartTimeJsonObject.getInt("count"), is(30));
-                assertThat(slotStartTimeJsonObject.getString("sessionEndTime"), is(toResponseDateStringISO(localDateToDateWithTime(courtScheduleWithSplit.getSessionDate(),23,59))));
+                assertThat(slotStartTimeJsonObject.getString("sessionEndTime"), is(toResponseDateStringISO(localDateToDateWithTime(courtScheduleWithSplit.getSessionDate(),23,59).toInstant())));
             }
         });
 
@@ -1068,8 +1067,8 @@ class HearingSlotIT extends AbstractIT {
         courtSchedule.setMaxAdAfternoonDuration(0);
         courtSchedule.setMaxDuration(120);
         courtSchedule.setSessionDate(LocalDate.of(2025, 5, 13));
-        courtSchedule.setSessionStartTime(combineDateAndTime(courtSchedule.getSessionDate(), "10:00"));
-        courtSchedule.setSessionEndTime(combineDateAndTime(courtSchedule.getSessionDate(), "13:00"));
+        courtSchedule.setSessionStartTime(combineDateAndTime(courtSchedule.getSessionDate(), "10:00").toInstant());
+        courtSchedule.setSessionEndTime(combineDateAndTime(courtSchedule.getSessionDate(), "13:00").toInstant());
         databaseSeeder.insertCourtSchedule(courtSchedule);
 
         final String searchAndBookHearingSlotsRequestParams = buildMagsPayload(
@@ -1105,8 +1104,8 @@ class HearingSlotIT extends AbstractIT {
         courtSchedule.setMaxAdAfternoonDuration(0);
         courtSchedule.setMaxDuration(120);
         courtSchedule.setSessionDate(LocalDate.of(2025, 5, 14));
-        courtSchedule.setSessionStartTime(combineDateAndTime(courtSchedule.getSessionDate(), "10:00"));
-        courtSchedule.setSessionEndTime(combineDateAndTime(courtSchedule.getSessionDate(), "13:00"));
+        courtSchedule.setSessionStartTime(combineDateAndTime(courtSchedule.getSessionDate(), "10:00").toInstant());
+        courtSchedule.setSessionEndTime(combineDateAndTime(courtSchedule.getSessionDate(), "13:00").toInstant());
         databaseSeeder.insertCourtSchedule(courtSchedule);
 
         CourtSchedule courtSchedule2 = RANDOM.nextObject(CourtSchedule.class);
@@ -1125,8 +1124,8 @@ class HearingSlotIT extends AbstractIT {
         courtSchedule2.setMaxAdAfternoonDuration(180);
         courtSchedule2.setMaxDuration(0);
         courtSchedule2.setSessionDate(LocalDate.of(2025, 4, 5));
-        courtSchedule2.setSessionStartTime(combineDateAndTime(courtSchedule2.getSessionDate(), "10:00"));
-        courtSchedule2.setSessionEndTime(combineDateAndTime(courtSchedule2.getSessionDate(), "17:00"));
+        courtSchedule2.setSessionStartTime(combineDateAndTime(courtSchedule2.getSessionDate(), "10:00").toInstant());
+        courtSchedule2.setSessionEndTime(combineDateAndTime(courtSchedule2.getSessionDate(), "17:00").toInstant());
         databaseSeeder.insertCourtSchedule(courtSchedule2);
 
         CourtSchedule courtSchedule3 = RANDOM.nextObject(CourtSchedule.class);
@@ -1146,8 +1145,8 @@ class HearingSlotIT extends AbstractIT {
         courtSchedule3.setMaxAdAfternoonDuration(180);
         courtSchedule3.setMaxDuration(360);
         courtSchedule3.setSessionDate(LocalDate.of(2025, 5, 13));
-        courtSchedule3.setSessionStartTime(combineDateAndTime(courtSchedule3.getSessionDate(), "14:00"));
-        courtSchedule3.setSessionEndTime(combineDateAndTime(courtSchedule3.getSessionDate(), "17:00"));
+        courtSchedule3.setSessionStartTime(combineDateAndTime(courtSchedule3.getSessionDate(), "14:00").toInstant());
+        courtSchedule3.setSessionEndTime(combineDateAndTime(courtSchedule3.getSessionDate(), "17:00").toInstant());
         databaseSeeder.insertCourtSchedule(courtSchedule3);
 
         final String searchAndBookHearingSlotsRequestParams = buildMagsPayload(
@@ -1183,8 +1182,8 @@ class HearingSlotIT extends AbstractIT {
         courtSchedule.setMaxAdAfternoonDuration(0);
         courtSchedule.setMaxDuration(120);
         courtSchedule.setSessionDate(LocalDate.of(2025, 5, 14));
-        courtSchedule.setSessionStartTime(combineDateAndTime(courtSchedule.getSessionDate(), "10:00"));
-        courtSchedule.setSessionEndTime(combineDateAndTime(courtSchedule.getSessionDate(), "13:00"));
+        courtSchedule.setSessionStartTime(combineDateAndTime(courtSchedule.getSessionDate(), "10:00").toInstant());
+        courtSchedule.setSessionEndTime(combineDateAndTime(courtSchedule.getSessionDate(), "13:00").toInstant());
         databaseSeeder.insertCourtSchedule(courtSchedule);
 
         final String searchAndBookHearingSlotsRequestParams = buildMagsPayload(
@@ -1272,8 +1271,8 @@ class HearingSlotIT extends AbstractIT {
         courtSchedule.setPanel(PanelTypes.YOUTH.name());
         courtSchedule.setSessionDate(sessionDate);
         courtSchedule.setOuCode("B40IM00");
-        courtSchedule.setSessionStartTime(combineDateAndTime(courtSchedule.getSessionDate(), "09:30"));
-        courtSchedule.setSessionEndTime(combineDateAndTime(courtSchedule.getSessionDate(), "12:30"));
+        courtSchedule.setSessionStartTime(combineDateAndTime(courtSchedule.getSessionDate(), "09:30").toInstant());
+        courtSchedule.setSessionEndTime(combineDateAndTime(courtSchedule.getSessionDate(), "12:30").toInstant());
         courtSchedule.setIsOverbookingAllowed(false);
         courtSchedule.setSlotBased(false);
         courtSchedule.setMaxDuration(180);
@@ -1292,8 +1291,8 @@ class HearingSlotIT extends AbstractIT {
         courtSchedule2.setPanel(PanelTypes.YOUTH.name());
         courtSchedule2.setSessionDate(sessionDate);
         courtSchedule2.setOuCode("B40IM00");
-        courtSchedule2.setSessionStartTime(combineDateAndTime(courtSchedule.getSessionDate(), "14:00"));
-        courtSchedule2.setSessionEndTime(combineDateAndTime(courtSchedule.getSessionDate(), "17:00"));
+        courtSchedule2.setSessionStartTime(combineDateAndTime(courtSchedule.getSessionDate(), "14:00").toInstant());
+        courtSchedule2.setSessionEndTime(combineDateAndTime(courtSchedule.getSessionDate(), "17:00").toInstant());
         courtSchedule2.setIsOverbookingAllowed(false);
         courtSchedule2.setSlotBased(false);
         courtSchedule2.setMaxDuration(180);
@@ -1319,9 +1318,9 @@ class HearingSlotIT extends AbstractIT {
         courtScheduleWithSplit.setPanel(PanelTypes.YOUTH.name());
         courtScheduleWithSplit.setOuCode("B40IM00");
         courtScheduleWithSplit.setSessionDate(sessionDate);
-        courtScheduleWithSplit.setSessionStartTime(combineDateAndTime(courtScheduleWithSplit.getSessionDate(), "10:00"));
-        courtScheduleWithSplit.setSessionEndTime(combineDateAndTime(courtScheduleWithSplit.getSessionDate(), "17:00"));
-        courtScheduleWithSplit.setNationalBreakTime(TimezoneUtils.calculateNationalBreakTime(sessionDate));
+        courtScheduleWithSplit.setSessionStartTime(combineDateAndTime(courtScheduleWithSplit.getSessionDate(), "10:00").toInstant());
+        courtScheduleWithSplit.setSessionEndTime(combineDateAndTime(courtScheduleWithSplit.getSessionDate(), "17:00").toInstant());
+        courtScheduleWithSplit.setNationalBreakTime(TimezoneUtils.calculateNationalBreakTime(sessionDate).toInstant());
 
         databaseSeeder.insertCourtSchedule(courtScheduleWithSplit);
         final CourtScheduleJudiciary courtScheduleJudiciaryAD = createJudiciaryForSchedule(courtScheduleWithSplit);
@@ -1351,12 +1350,12 @@ class HearingSlotIT extends AbstractIT {
         assertThat(slotStartTimesJsonArray.size(), is(2));
         slotStartTimesJsonArray.forEach(slotStartTime -> {
             final JsonObject slotStartTimeJsonObject = (JsonObject) slotStartTime;
-            if (slotStartTimeJsonObject.getString("sessionStartTime").equals(toResponseDateStringISO(localDateToDateWithTime(courtScheduleWithSplit.getSessionDate(),10,0)))) {
+            if (slotStartTimeJsonObject.getString("sessionStartTime").equals(toResponseDateStringISO(localDateToDateWithTime(courtScheduleWithSplit.getSessionDate(),10,0).toInstant()))) {
                 assertThat(slotStartTimeJsonObject.getInt("count"), is(0));
-                assertThat(slotStartTimeJsonObject.getString("sessionEndTime"), is(toResponseDateStringISO(localDateToDateWithTime(courtScheduleWithSplit.getSessionDate(),13,0))));
-            } else if (slotStartTimeJsonObject.getString("sessionStartTime").equals(toResponseDateStringISO(localDateToDateWithTime(courtScheduleWithSplit.getSessionDate(),14,0)))) {
+                assertThat(slotStartTimeJsonObject.getString("sessionEndTime"), is(toResponseDateStringISO(localDateToDateWithTime(courtScheduleWithSplit.getSessionDate(),13,0).toInstant())));
+            } else if (slotStartTimeJsonObject.getString("sessionStartTime").equals(toResponseDateStringISO(localDateToDateWithTime(courtScheduleWithSplit.getSessionDate(),14,0).toInstant()))) {
                 assertThat(slotStartTimeJsonObject.getInt("count"), is(0));
-                assertThat(slotStartTimeJsonObject.getString("sessionEndTime"), is(toResponseDateStringISO(localDateToDateWithTime(courtScheduleWithSplit.getSessionDate(),17,0))));
+                assertThat(slotStartTimeJsonObject.getString("sessionEndTime"), is(toResponseDateStringISO(localDateToDateWithTime(courtScheduleWithSplit.getSessionDate(),17,0).toInstant())));
             }
         });
     }
@@ -1372,8 +1371,8 @@ class HearingSlotIT extends AbstractIT {
         courtSchedule.setPanel(PanelTypes.YOUTH.name());
         courtSchedule.setSessionDate(sessionDate);
         courtSchedule.setOuCode("B40IM00");
-        courtSchedule.setSessionStartTime(combineDateAndTime(courtSchedule.getSessionDate(), "09:30"));
-        courtSchedule.setSessionEndTime(combineDateAndTime(courtSchedule.getSessionDate(), "12:30"));
+        courtSchedule.setSessionStartTime(combineDateAndTime(courtSchedule.getSessionDate(), "09:30").toInstant());
+        courtSchedule.setSessionEndTime(combineDateAndTime(courtSchedule.getSessionDate(), "12:30").toInstant());
         courtSchedule.setIsOverbookingAllowed(false);
         courtSchedule.setSlotBased(false);
         courtSchedule.setMaxDuration(180);
@@ -1392,8 +1391,8 @@ class HearingSlotIT extends AbstractIT {
         courtSchedule2.setPanel(PanelTypes.YOUTH.name());
         courtSchedule2.setSessionDate(sessionDate);
         courtSchedule2.setOuCode("B40IM00");
-        courtSchedule2.setSessionStartTime(combineDateAndTime(courtSchedule.getSessionDate(), "14:00"));
-        courtSchedule2.setSessionEndTime(combineDateAndTime(courtSchedule.getSessionDate(), "17:00"));
+        courtSchedule2.setSessionStartTime(combineDateAndTime(courtSchedule.getSessionDate(), "14:00").toInstant());
+        courtSchedule2.setSessionEndTime(combineDateAndTime(courtSchedule.getSessionDate(), "17:00").toInstant());
         courtSchedule2.setIsOverbookingAllowed(false);
         courtSchedule2.setSlotBased(false);
         courtSchedule2.setMaxDuration(180);
@@ -1424,9 +1423,9 @@ class HearingSlotIT extends AbstractIT {
         courtScheduleWithoutSplit.setPanel(PanelTypes.ADULT.name());
         courtScheduleWithoutSplit.setOuCode("B40IM00");
         courtScheduleWithoutSplit.setSessionDate(sessionDate);
-        courtScheduleWithoutSplit.setSessionStartTime(combineDateAndTime(courtScheduleWithoutSplit.getSessionDate(), "10:00"));
-        courtScheduleWithoutSplit.setSessionEndTime(combineDateAndTime(courtScheduleWithoutSplit.getSessionDate(), "17:00"));
-        courtScheduleWithoutSplit.setNationalBreakTime(TimezoneUtils.calculateNationalBreakTime(sessionDate));
+        courtScheduleWithoutSplit.setSessionStartTime(combineDateAndTime(courtScheduleWithoutSplit.getSessionDate(), "10:00").toInstant());
+        courtScheduleWithoutSplit.setSessionEndTime(combineDateAndTime(courtScheduleWithoutSplit.getSessionDate(), "17:00").toInstant());
+        courtScheduleWithoutSplit.setNationalBreakTime(TimezoneUtils.calculateNationalBreakTime(sessionDate).toInstant());
         courtScheduleWithoutSplit.setHasHearingsBooked(false);
         databaseSeeder.insertCourtSchedule(courtScheduleWithoutSplit);
 
@@ -1452,24 +1451,24 @@ class HearingSlotIT extends AbstractIT {
         assertThat(slotStartTimesJsonArray.size(), is(6));
         slotStartTimesJsonArray.forEach(slotStartTime -> {
             final JsonObject slotStartTimeJsonObject = (JsonObject) slotStartTime;
-            if (slotStartTimeJsonObject.getString("sessionStartTime").equals(toResponseDateStringISO(localDateToDateWithTime(courtSchedule.getSessionDate(),10,0)))) {
+            if (slotStartTimeJsonObject.getString("sessionStartTime").equals(toResponseDateStringISO(localDateToDateWithTime(courtSchedule.getSessionDate(),10,0).toInstant()))) {
                 assertThat(slotStartTimeJsonObject.getInt("count"), is(0));
-                assertThat(slotStartTimeJsonObject.getString("sessionEndTime"), is(toResponseDateStringISO(localDateToDateWithTime(courtSchedule.getSessionDate(),11,0))));
-            } else if (slotStartTimeJsonObject.getString("sessionStartTime").equals(toResponseDateStringISO(localDateToDateWithTime(courtSchedule.getSessionDate(),11,0)))) {
+                assertThat(slotStartTimeJsonObject.getString("sessionEndTime"), is(toResponseDateStringISO(localDateToDateWithTime(courtSchedule.getSessionDate(),11,0).toInstant())));
+            } else if (slotStartTimeJsonObject.getString("sessionStartTime").equals(toResponseDateStringISO(localDateToDateWithTime(courtSchedule.getSessionDate(),11,0).toInstant()))) {
                 assertThat(slotStartTimeJsonObject.getInt("count"), is(0));
-                assertThat(slotStartTimeJsonObject.getString("sessionEndTime"), is(toResponseDateStringISO(localDateToDateWithTime(courtSchedule.getSessionDate(),12,0))));
-            } else if (slotStartTimeJsonObject.getString("sessionStartTime").equals(toResponseDateStringISO(localDateToDateWithTime(courtSchedule.getSessionDate(),12,0)))) {
+                assertThat(slotStartTimeJsonObject.getString("sessionEndTime"), is(toResponseDateStringISO(localDateToDateWithTime(courtSchedule.getSessionDate(),12,0).toInstant())));
+            } else if (slotStartTimeJsonObject.getString("sessionStartTime").equals(toResponseDateStringISO(localDateToDateWithTime(courtSchedule.getSessionDate(),12,0).toInstant()))) {
                 assertThat(slotStartTimeJsonObject.getInt("count"), is(0));
-                assertThat(slotStartTimeJsonObject.getString("sessionEndTime"), is(toResponseDateStringISO(localDateToDateWithTime(courtSchedule.getSessionDate(),13,0))));
-            } else if (slotStartTimeJsonObject.getString("sessionStartTime").equals(toResponseDateStringISO(localDateToDateWithTime(courtSchedule.getSessionDate(),14,0)))) {
+                assertThat(slotStartTimeJsonObject.getString("sessionEndTime"), is(toResponseDateStringISO(localDateToDateWithTime(courtSchedule.getSessionDate(),13,0).toInstant())));
+            } else if (slotStartTimeJsonObject.getString("sessionStartTime").equals(toResponseDateStringISO(localDateToDateWithTime(courtSchedule.getSessionDate(),14,0).toInstant()))) {
                 assertThat(slotStartTimeJsonObject.getInt("count"), is(0));
-                assertThat(slotStartTimeJsonObject.getString("sessionEndTime"), is(toResponseDateStringISO(localDateToDateWithTime(courtSchedule.getSessionDate(),15,0))));
-            } else if (slotStartTimeJsonObject.getString("sessionStartTime").equals(toResponseDateStringISO(localDateToDateWithTime(courtSchedule.getSessionDate(),15,0)))) {
+                assertThat(slotStartTimeJsonObject.getString("sessionEndTime"), is(toResponseDateStringISO(localDateToDateWithTime(courtSchedule.getSessionDate(),15,0).toInstant())));
+            } else if (slotStartTimeJsonObject.getString("sessionStartTime").equals(toResponseDateStringISO(localDateToDateWithTime(courtSchedule.getSessionDate(),15,0).toInstant()))) {
                 assertThat(slotStartTimeJsonObject.getInt("count"), is(0));
-                assertThat(slotStartTimeJsonObject.getString("sessionEndTime"), is(toResponseDateStringISO(localDateToDateWithTime(courtSchedule.getSessionDate(),16,0))));
-            } else if (slotStartTimeJsonObject.getString("sessionStartTime").equals(toResponseDateStringISO(localDateToDateWithTime(courtSchedule.getSessionDate(),16,0)))) {
+                assertThat(slotStartTimeJsonObject.getString("sessionEndTime"), is(toResponseDateStringISO(localDateToDateWithTime(courtSchedule.getSessionDate(),16,0).toInstant())));
+            } else if (slotStartTimeJsonObject.getString("sessionStartTime").equals(toResponseDateStringISO(localDateToDateWithTime(courtSchedule.getSessionDate(),16,0).toInstant()))) {
                 assertThat(slotStartTimeJsonObject.getInt("count"), is(0));
-                assertThat(slotStartTimeJsonObject.getString("sessionEndTime"), is(toResponseDateStringISO(localDateToDateWithTime(courtSchedule.getSessionDate(),17,0))));
+                assertThat(slotStartTimeJsonObject.getString("sessionEndTime"), is(toResponseDateStringISO(localDateToDateWithTime(courtSchedule.getSessionDate(),17,0).toInstant())));
             }
         });
     }
@@ -1494,9 +1493,9 @@ class HearingSlotIT extends AbstractIT {
         courtScheduleWithoutSplit.setPanel(PanelTypes.ADULT.name());
         courtScheduleWithoutSplit.setOuCode("B40IM00");
         courtScheduleWithoutSplit.setSessionDate(sessionDate);
-        courtScheduleWithoutSplit.setSessionStartTime(combineDateAndTime(courtScheduleWithoutSplit.getSessionDate(), "00:01"));
-        courtScheduleWithoutSplit.setSessionEndTime(combineDateAndTime(courtScheduleWithoutSplit.getSessionDate(), "23:59"));
-        courtScheduleWithoutSplit.setNationalBreakTime(TimezoneUtils.calculateNationalBreakTime(sessionDate));
+        courtScheduleWithoutSplit.setSessionStartTime(combineDateAndTime(courtScheduleWithoutSplit.getSessionDate(), "00:01").toInstant());
+        courtScheduleWithoutSplit.setSessionEndTime(combineDateAndTime(courtScheduleWithoutSplit.getSessionDate(), "23:59").toInstant());
+        courtScheduleWithoutSplit.setNationalBreakTime(TimezoneUtils.calculateNationalBreakTime(sessionDate).toInstant());
         courtScheduleWithoutSplit.setHasHearingsBooked(false);
         databaseSeeder.insertCourtSchedule(courtScheduleWithoutSplit);
 
@@ -1527,18 +1526,18 @@ class HearingSlotIT extends AbstractIT {
         assertThat(slotStartTimesJsonArray.size(), is(23));
         slotStartTimesJsonArray.forEach(slotStartTime -> {
             final JsonObject slotStartTimeJsonObject = (JsonObject) slotStartTime;
-            if (slotStartTimeJsonObject.getString("sessionStartTime").equals(toResponseDateStringISO(localDateToDateWithTime(courtScheduleWithoutSplit.getSessionDate(),0,1)))) {
+            if (slotStartTimeJsonObject.getString("sessionStartTime").equals(toResponseDateStringISO(localDateToDateWithTime(courtScheduleWithoutSplit.getSessionDate(),0,1).toInstant()))) {
                 assertThat(slotStartTimeJsonObject.getInt("count"), is(0));
-                assertThat(slotStartTimeJsonObject.getString("sessionEndTime"), is(toResponseDateStringISO(localDateToDateWithTime(courtScheduleWithoutSplit.getSessionDate(),1,0))));
-            } else if (slotStartTimeJsonObject.getString("sessionStartTime").equals(toResponseDateStringISO(localDateToDateWithTime(courtScheduleWithoutSplit.getSessionDate(),11,0)))) {
+                assertThat(slotStartTimeJsonObject.getString("sessionEndTime"), is(toResponseDateStringISO(localDateToDateWithTime(courtScheduleWithoutSplit.getSessionDate(),1,0).toInstant())));
+            } else if (slotStartTimeJsonObject.getString("sessionStartTime").equals(toResponseDateStringISO(localDateToDateWithTime(courtScheduleWithoutSplit.getSessionDate(),11,0).toInstant()))) {
                 assertThat(slotStartTimeJsonObject.getInt("count"), is(0));
-                assertThat(slotStartTimeJsonObject.getString("sessionEndTime"), is(toResponseDateStringISO(localDateToDateWithTime(courtScheduleWithoutSplit.getSessionDate(),12,0))));
-            } else if (slotStartTimeJsonObject.getString("sessionStartTime").equals(toResponseDateStringISO(localDateToDateWithTime(courtScheduleWithoutSplit.getSessionDate(),14,0)))) {
+                assertThat(slotStartTimeJsonObject.getString("sessionEndTime"), is(toResponseDateStringISO(localDateToDateWithTime(courtScheduleWithoutSplit.getSessionDate(),12,0).toInstant())));
+            } else if (slotStartTimeJsonObject.getString("sessionStartTime").equals(toResponseDateStringISO(localDateToDateWithTime(courtScheduleWithoutSplit.getSessionDate(),14,0).toInstant()))) {
                 assertThat(slotStartTimeJsonObject.getInt("count"), is(0));
-                assertThat(slotStartTimeJsonObject.getString("sessionEndTime"), is(toResponseDateStringISO(localDateToDateWithTime(courtScheduleWithoutSplit.getSessionDate(),15,0))));
-            } else if (slotStartTimeJsonObject.getString("sessionStartTime").equals(toResponseDateStringISO(localDateToDateWithTime(courtScheduleWithoutSplit.getSessionDate(),23,0)))) {
+                assertThat(slotStartTimeJsonObject.getString("sessionEndTime"), is(toResponseDateStringISO(localDateToDateWithTime(courtScheduleWithoutSplit.getSessionDate(),15,0).toInstant())));
+            } else if (slotStartTimeJsonObject.getString("sessionStartTime").equals(toResponseDateStringISO(localDateToDateWithTime(courtScheduleWithoutSplit.getSessionDate(),23,0).toInstant()))) {
                 assertThat(slotStartTimeJsonObject.getInt("count"), is(0));
-                assertThat(slotStartTimeJsonObject.getString("sessionEndTime"), is(toResponseDateStringISO(localDateToDateWithTime(courtScheduleWithoutSplit.getSessionDate(),23,59))));
+                assertThat(slotStartTimeJsonObject.getString("sessionEndTime"), is(toResponseDateStringISO(localDateToDateWithTime(courtScheduleWithoutSplit.getSessionDate(),23,59).toInstant())));
             }
         });
     }
@@ -1562,9 +1561,9 @@ class HearingSlotIT extends AbstractIT {
         courtScheduleWithSplit.setPanel(PanelTypes.YOUTH.name());
         courtScheduleWithSplit.setOuCode("B40IM00");
         courtScheduleWithSplit.setSessionDate(sessionDate);
-        courtScheduleWithSplit.setSessionStartTime(combineDateAndTime(courtScheduleWithSplit.getSessionDate(), "00:01"));
-        courtScheduleWithSplit.setSessionEndTime(combineDateAndTime(courtScheduleWithSplit.getSessionDate(), "23:59"));
-        courtScheduleWithSplit.setNationalBreakTime(TimezoneUtils.calculateNationalBreakTime(sessionDate));
+        courtScheduleWithSplit.setSessionStartTime(combineDateAndTime(courtScheduleWithSplit.getSessionDate(), "00:01").toInstant());
+        courtScheduleWithSplit.setSessionEndTime(combineDateAndTime(courtScheduleWithSplit.getSessionDate(), "23:59").toInstant());
+        courtScheduleWithSplit.setNationalBreakTime(TimezoneUtils.calculateNationalBreakTime(sessionDate).toInstant());
 
         databaseSeeder.insertCourtSchedule(courtScheduleWithSplit);
         final CourtScheduleJudiciary courtScheduleJudiciaryAD = createJudiciaryForSchedule(courtScheduleWithSplit);
@@ -1594,12 +1593,12 @@ class HearingSlotIT extends AbstractIT {
         assertThat(slotStartTimesJsonArray.size(), is(2));
         slotStartTimesJsonArray.forEach(slotStartTime -> {
             final JsonObject slotStartTimeJsonObject = (JsonObject) slotStartTime;
-            if (slotStartTimeJsonObject.getString("sessionStartTime").equals(toResponseDateStringISO(localDateToDateWithTime(courtScheduleWithSplit.getSessionDate(),0,1)))) {
+            if (slotStartTimeJsonObject.getString("sessionStartTime").equals(toResponseDateStringISO(localDateToDateWithTime(courtScheduleWithSplit.getSessionDate(),0,1).toInstant()))) {
                 assertThat(slotStartTimeJsonObject.getInt("count"), is(0));
-                assertThat(slotStartTimeJsonObject.getString("sessionEndTime"), is(toResponseDateStringISO(localDateToDateWithTime(courtScheduleWithSplit.getSessionDate(),13,0))));
-            } else if (slotStartTimeJsonObject.getString("sessionStartTime").equals(toResponseDateStringISO(localDateToDateWithTime(courtScheduleWithSplit.getSessionDate(),14,0)))) {
+                assertThat(slotStartTimeJsonObject.getString("sessionEndTime"), is(toResponseDateStringISO(localDateToDateWithTime(courtScheduleWithSplit.getSessionDate(),13,0).toInstant())));
+            } else if (slotStartTimeJsonObject.getString("sessionStartTime").equals(toResponseDateStringISO(localDateToDateWithTime(courtScheduleWithSplit.getSessionDate(),14,0).toInstant()))) {
                 assertThat(slotStartTimeJsonObject.getInt("count"), is(0));
-                assertThat(slotStartTimeJsonObject.getString("sessionEndTime"), is(toResponseDateStringISO(localDateToDateWithTime(courtScheduleWithSplit.getSessionDate(),23,59))));
+                assertThat(slotStartTimeJsonObject.getString("sessionEndTime"), is(toResponseDateStringISO(localDateToDateWithTime(courtScheduleWithSplit.getSessionDate(),23,59).toInstant())));
             }
         });
     }
@@ -1624,9 +1623,9 @@ class HearingSlotIT extends AbstractIT {
         courtSchedule.setPanel(PanelTypes.YOUTH.name());
         courtSchedule.setSessionDate(sessionDate);
         courtSchedule.setOuCode("B40IM00");
-        courtSchedule.setSessionStartTime(combineDateAndTime(courtSchedule.getSessionDate(), "00:01"));
-        courtSchedule.setSessionEndTime(combineDateAndTime(courtSchedule.getSessionDate(), "12:00"));
-        courtSchedule.setNationalBreakTime(TimezoneUtils.calculateNationalBreakTime(sessionDate));
+        courtSchedule.setSessionStartTime(combineDateAndTime(courtSchedule.getSessionDate(), "00:01").toInstant());
+        courtSchedule.setSessionEndTime(combineDateAndTime(courtSchedule.getSessionDate(), "12:00").toInstant());
+        courtSchedule.setNationalBreakTime(TimezoneUtils.calculateNationalBreakTime(sessionDate).toInstant());
 
         courtSchedule.setIsOverbookingAllowed(false);
         courtSchedule.setSlotBased(true);
@@ -1666,15 +1665,15 @@ class HearingSlotIT extends AbstractIT {
         assertThat(slotStartTimesJsonArray.size(), is(12));
         slotStartTimesJsonArray.forEach(slotStartTime -> {
             final JsonObject slotStartTimeJsonObject = (JsonObject) slotStartTime;
-            if (slotStartTimeJsonObject.getString("sessionStartTime").equals(toResponseDateStringISO(localDateToDateWithTime(courtSchedule.getSessionDate(),0,1)))) {
+            if (slotStartTimeJsonObject.getString("sessionStartTime").equals(toResponseDateStringISO(localDateToDateWithTime(courtSchedule.getSessionDate(),0,1).toInstant()))) {
                 assertThat(slotStartTimeJsonObject.getInt("count"), is(0));
-                assertThat(slotStartTimeJsonObject.getString("sessionEndTime"), is(toResponseDateStringISO(localDateToDateWithTime(courtSchedule.getSessionDate(),1,0))));
-            } else if (slotStartTimeJsonObject.getString("sessionStartTime").equals(toResponseDateStringISO(localDateToDateWithTime(courtSchedule.getSessionDate(),10,0)))) {
+                assertThat(slotStartTimeJsonObject.getString("sessionEndTime"), is(toResponseDateStringISO(localDateToDateWithTime(courtSchedule.getSessionDate(),1,0).toInstant())));
+            } else if (slotStartTimeJsonObject.getString("sessionStartTime").equals(toResponseDateStringISO(localDateToDateWithTime(courtSchedule.getSessionDate(),10,0).toInstant()))) {
                 assertThat(slotStartTimeJsonObject.getInt("count"), is(2));
-                assertThat(slotStartTimeJsonObject.getString("sessionEndTime"), is(toResponseDateStringISO(localDateToDateWithTime(courtSchedule.getSessionDate(),11,0))));
-            } else if (slotStartTimeJsonObject.getString("sessionStartTime").equals(toResponseDateStringISO(localDateToDateWithTime(courtSchedule.getSessionDate(),11,0)))) {
+                assertThat(slotStartTimeJsonObject.getString("sessionEndTime"), is(toResponseDateStringISO(localDateToDateWithTime(courtSchedule.getSessionDate(),11,0).toInstant())));
+            } else if (slotStartTimeJsonObject.getString("sessionStartTime").equals(toResponseDateStringISO(localDateToDateWithTime(courtSchedule.getSessionDate(),11,0).toInstant()))) {
                 assertThat(slotStartTimeJsonObject.getInt("count"), is(2));
-                assertThat(slotStartTimeJsonObject.getString("sessionEndTime"), is(toResponseDateStringISO(localDateToDateWithTime(courtSchedule.getSessionDate(),12,0))));
+                assertThat(slotStartTimeJsonObject.getString("sessionEndTime"), is(toResponseDateStringISO(localDateToDateWithTime(courtSchedule.getSessionDate(),12,0).toInstant())));
             }
         });
     }
@@ -1701,8 +1700,8 @@ class HearingSlotIT extends AbstractIT {
         courtSchedule.setPanel(PanelTypes.YOUTH.name());
         courtSchedule.setSessionDate(sessionDate);
         courtSchedule.setOuCode("B40IM00");
-        courtSchedule.setSessionStartTime(combineDateAndTime(courtSchedule.getSessionDate(), "13:00"));
-        courtSchedule.setSessionEndTime(combineDateAndTime(courtSchedule.getSessionDate(), "17:00"));
+        courtSchedule.setSessionStartTime(combineDateAndTime(courtSchedule.getSessionDate(), "13:00").toInstant());
+        courtSchedule.setSessionEndTime(combineDateAndTime(courtSchedule.getSessionDate(), "17:00").toInstant());
         courtSchedule.setIsOverbookingAllowed(false);
         courtSchedule.setSlotBased(true);
         courtSchedule.setMaxSlots(10);
@@ -1742,13 +1741,13 @@ class HearingSlotIT extends AbstractIT {
         assertThat(slotStartTimesJsonArray.size(), is(4));
         slotStartTimesJsonArray.forEach(slotStartTime -> {
             final JsonObject slotStartTimeJsonObject = (JsonObject) slotStartTime;
-            if (slotStartTimeJsonObject.getString("sessionStartTime").equals(toResponseDateStringISO(localDateToDateWithTime(courtSchedule.getSessionDate(),13,0)))) {
+            if (slotStartTimeJsonObject.getString("sessionStartTime").equals(toResponseDateStringISO(localDateToDateWithTime(courtSchedule.getSessionDate(),13,0).toInstant()))) {
                 assertThat(slotStartTimeJsonObject.getInt("count"), is(2));
-            } else if (slotStartTimeJsonObject.getString("sessionStartTime").equals(toResponseDateStringISO(localDateToDateWithTime(courtSchedule.getSessionDate(),14,0)))) {
+            } else if (slotStartTimeJsonObject.getString("sessionStartTime").equals(toResponseDateStringISO(localDateToDateWithTime(courtSchedule.getSessionDate(),14,0).toInstant()))) {
                 assertThat(slotStartTimeJsonObject.getInt("count"), is(0));
-            } else if (slotStartTimeJsonObject.getString("sessionStartTime").equals(toResponseDateStringISO(localDateToDateWithTime(courtSchedule.getSessionDate(),15,0)))) {
+            } else if (slotStartTimeJsonObject.getString("sessionStartTime").equals(toResponseDateStringISO(localDateToDateWithTime(courtSchedule.getSessionDate(),15,0).toInstant()))) {
                 assertThat(slotStartTimeJsonObject.getInt("count"), is(1));
-            } else if (slotStartTimeJsonObject.getString("sessionStartTime").equals(toResponseDateStringISO(localDateToDateWithTime(courtSchedule.getSessionDate(),17,0)))) {
+            } else if (slotStartTimeJsonObject.getString("sessionStartTime").equals(toResponseDateStringISO(localDateToDateWithTime(courtSchedule.getSessionDate(),17,0).toInstant()))) {
                 assertThat(slotStartTimeJsonObject.getInt("count"), is(1));
             }
         });
@@ -1776,8 +1775,8 @@ class HearingSlotIT extends AbstractIT {
         courtSchedule.setPanel(PanelTypes.YOUTH.name());
         courtSchedule.setSessionDate(sessionDate);
         courtSchedule.setOuCode("B40IM00");
-        courtSchedule.setSessionStartTime(combineDateAndTime(courtSchedule.getSessionDate(), "07:00"));
-        courtSchedule.setSessionEndTime(combineDateAndTime(courtSchedule.getSessionDate(), "10:00"));
+        courtSchedule.setSessionStartTime(combineDateAndTime(courtSchedule.getSessionDate(), "07:00").toInstant());
+        courtSchedule.setSessionEndTime(combineDateAndTime(courtSchedule.getSessionDate(), "10:00").toInstant());
         courtSchedule.setIsOverbookingAllowed(false);
         courtSchedule.setSlotBased(true);
         courtSchedule.setMaxSlots(10);
@@ -1817,11 +1816,11 @@ class HearingSlotIT extends AbstractIT {
         assertThat(slotStartTimesJsonArray.size(), is(3));
         slotStartTimesJsonArray.forEach(slotStartTime -> {
             final JsonObject slotStartTimeJsonObject = (JsonObject) slotStartTime;
-            if (slotStartTimeJsonObject.getString("sessionStartTime").equals(toResponseDateStringISO(localDateToDateWithTime(courtSchedule.getSessionDate(),7,0)))) {
+            if (slotStartTimeJsonObject.getString("sessionStartTime").equals(toResponseDateStringISO(localDateToDateWithTime(courtSchedule.getSessionDate(),7,0).toInstant()))) {
                 assertThat(slotStartTimeJsonObject.getInt("count"), is(1));
-            } else if (slotStartTimeJsonObject.getString("sessionStartTime").equals(toResponseDateStringISO(localDateToDateWithTime(courtSchedule.getSessionDate(),8,0)))) {
+            } else if (slotStartTimeJsonObject.getString("sessionStartTime").equals(toResponseDateStringISO(localDateToDateWithTime(courtSchedule.getSessionDate(),8,0).toInstant()))) {
                 assertThat(slotStartTimeJsonObject.getInt("count"), is(0));
-            } else if (slotStartTimeJsonObject.getString("sessionStartTime").equals(toResponseDateStringISO(localDateToDateWithTime(courtSchedule.getSessionDate(),9,0)))) {
+            } else if (slotStartTimeJsonObject.getString("sessionStartTime").equals(toResponseDateStringISO(localDateToDateWithTime(courtSchedule.getSessionDate(),9,0).toInstant()))) {
                 assertThat(slotStartTimeJsonObject.getInt("count"), is(3));
             }
         });
@@ -1839,13 +1838,13 @@ class HearingSlotIT extends AbstractIT {
         assertThat(slotStartTimesJsonArray.size(), is(4));
         slotStartTimesJsonArray.forEach(slotStartTime -> {
             final JsonObject slotStartTimeJsonObject = (JsonObject) slotStartTime;
-            if (slotStartTimeJsonObject.getString("sessionStartTime").equals(toResponseDateStringISO(localDateToDateWithTime(courtSchedule.getSessionDate(),7,0)))) {
+            if (slotStartTimeJsonObject.getString("sessionStartTime").equals(toResponseDateStringISO(localDateToDateWithTime(courtSchedule.getSessionDate(),7,0).toInstant()))) {
                 assertThat(slotStartTimeJsonObject.getInt("count"), is(1));
-            } else if (slotStartTimeJsonObject.getString("sessionStartTime").equals(toResponseDateStringISO(localDateToDateWithTime(courtSchedule.getSessionDate(),8,0)))) {
+            } else if (slotStartTimeJsonObject.getString("sessionStartTime").equals(toResponseDateStringISO(localDateToDateWithTime(courtSchedule.getSessionDate(),8,0).toInstant()))) {
                 assertThat(slotStartTimeJsonObject.getInt("count"), is(0));
-            } else if (slotStartTimeJsonObject.getString("sessionStartTime").equals(toResponseDateStringISO(localDateToDateWithTime(courtSchedule.getSessionDate(),9,0)))) {
+            } else if (slotStartTimeJsonObject.getString("sessionStartTime").equals(toResponseDateStringISO(localDateToDateWithTime(courtSchedule.getSessionDate(),9,0).toInstant()))) {
                 assertThat(slotStartTimeJsonObject.getInt("count"), is(2));
-            }else if (slotStartTimeJsonObject.getString("sessionStartTime").equals(toResponseDateStringISO(localDateToDateWithTime(courtSchedule.getSessionDate(),10,0)))) {
+            }else if (slotStartTimeJsonObject.getString("sessionStartTime").equals(toResponseDateStringISO(localDateToDateWithTime(courtSchedule.getSessionDate(),10,0).toInstant()))) {
                 assertThat(slotStartTimeJsonObject.getInt("count"), is(1));
             }
         });
@@ -1871,9 +1870,9 @@ class HearingSlotIT extends AbstractIT {
         courtSchedule.setPanel(PanelTypes.YOUTH.name());
         courtSchedule.setSessionDate(sessionDate);
         courtSchedule.setOuCode("B40IM00");
-        courtSchedule.setSessionStartTime(combineDateAndTime(courtSchedule.getSessionDate(), "00:01"));
-        courtSchedule.setSessionEndTime(combineDateAndTime(courtSchedule.getSessionDate(), "11:59"));
-        courtSchedule.setNationalBreakTime(TimezoneUtils.calculateNationalBreakTime(sessionDate));
+        courtSchedule.setSessionStartTime(combineDateAndTime(courtSchedule.getSessionDate(), "00:01").toInstant());
+        courtSchedule.setSessionEndTime(combineDateAndTime(courtSchedule.getSessionDate(), "11:59").toInstant());
+        courtSchedule.setNationalBreakTime(TimezoneUtils.calculateNationalBreakTime(sessionDate).toInstant());
         courtSchedule.setIsOverbookingAllowed(false);
         courtSchedule.setSlotBased(true);
         courtSchedule.setMaxSlots(10);
@@ -1912,12 +1911,12 @@ class HearingSlotIT extends AbstractIT {
         assertThat(slotStartTimesJsonArray.size(), is(12));
         slotStartTimesJsonArray.forEach(slotStartTime -> {
             final JsonObject slotStartTimeJsonObject = (JsonObject) slotStartTime;
-            if (slotStartTimeJsonObject.getString("sessionStartTime").equals(toResponseDateStringISO(localDateToDateWithTime(courtSchedule.getSessionDate(),0,1)))) {
+            if (slotStartTimeJsonObject.getString("sessionStartTime").equals(toResponseDateStringISO(localDateToDateWithTime(courtSchedule.getSessionDate(),0,1).toInstant()))) {
                 assertThat(slotStartTimeJsonObject.getInt("count"), is(0));
-                assertThat(slotStartTimeJsonObject.getString("sessionEndTime"), is(toResponseDateStringISO(localDateToDateWithTime(courtSchedule.getSessionDate(),1,0))));
-            } else if (slotStartTimeJsonObject.getString("sessionStartTime").equals(toResponseDateStringISO(localDateToDateWithTime(courtSchedule.getSessionDate(),11,0)))) {
+                assertThat(slotStartTimeJsonObject.getString("sessionEndTime"), is(toResponseDateStringISO(localDateToDateWithTime(courtSchedule.getSessionDate(),1,0).toInstant())));
+            } else if (slotStartTimeJsonObject.getString("sessionStartTime").equals(toResponseDateStringISO(localDateToDateWithTime(courtSchedule.getSessionDate(),11,0).toInstant()))) {
                 assertThat(slotStartTimeJsonObject.getInt("count"), is(1));
-                assertThat(slotStartTimeJsonObject.getString("sessionEndTime"), is(toResponseDateStringISO(localDateToDateWithTime(courtSchedule.getSessionDate(),11,59))));
+                assertThat(slotStartTimeJsonObject.getString("sessionEndTime"), is(toResponseDateStringISO(localDateToDateWithTime(courtSchedule.getSessionDate(),11,59).toInstant())));
             }
         });
     }
@@ -1937,8 +1936,8 @@ class HearingSlotIT extends AbstractIT {
         courtSchedule.setPanel(PanelTypes.YOUTH.name());
         courtSchedule.setSessionDate(sessionDate);
         courtSchedule.setOuCode("B40IM00");
-        courtSchedule.setSessionStartTime(combineDateAndTime(courtSchedule.getSessionDate(), "09:30"));
-        courtSchedule.setSessionEndTime(combineDateAndTime(courtSchedule.getSessionDate(), "12:30"));
+        courtSchedule.setSessionStartTime(combineDateAndTime(courtSchedule.getSessionDate(), "09:30").toInstant());
+        courtSchedule.setSessionEndTime(combineDateAndTime(courtSchedule.getSessionDate(), "12:30").toInstant());
         courtSchedule.setIsOverbookingAllowed(false);
         courtSchedule.setSlotBased(true);
         courtSchedule.setMaxSlots(10);
@@ -2045,7 +2044,7 @@ class HearingSlotIT extends AbstractIT {
         allocatedListing.setHearingId(hearingId);
         allocatedListing.setBookingId(bookingId);
         allocatedListing.setDuration(duration);
-        allocatedListing.setHearingStartTime(combineDateAndTime(sessionDate, time));
+        allocatedListing.setHearingStartTime(combineDateAndTime(sessionDate, time).toInstant());
         databaseSeeder.insertAllocatedListing(allocatedListing);
     }
 
@@ -2444,9 +2443,9 @@ class HearingSlotIT extends AbstractIT {
         schedule.setMaxAdAfternoonDuration(0);
         schedule.setJurisdiction("CROWN");
         schedule.setIsDraft(false);
-        schedule.setSessionStartTime(combineDateAndTime(sessionDate, "09:00"));
-        schedule.setSessionEndTime(combineDateAndTime(sessionDate, "17:00"));
-        schedule.setNationalBreakTime(TimezoneUtils.calculateNationalBreakTime(sessionDate));
+        schedule.setSessionStartTime(combineDateAndTime(sessionDate, "09:00").toInstant());
+        schedule.setSessionEndTime(combineDateAndTime(sessionDate, "17:00").toInstant());
+        schedule.setNationalBreakTime(TimezoneUtils.calculateNationalBreakTime(sessionDate).toInstant());
         return schedule;
     }
 
@@ -2495,8 +2494,8 @@ class HearingSlotIT extends AbstractIT {
         cs.setMaxAdMorningDuration(180);
         cs.setMaxAdAfternoonDuration(180);
         cs.setSessionDate(sessionDate);
-        cs.setSessionStartTime(combineDateAndTime(sessionDate, "10:00"));
-        cs.setSessionEndTime(combineDateAndTime(sessionDate, "17:00"));
+        cs.setSessionStartTime(combineDateAndTime(sessionDate, "10:00").toInstant());
+        cs.setSessionEndTime(combineDateAndTime(sessionDate, "17:00").toInstant());
         cs.setIsDraft(false);
         databaseSeeder.insertCourtSchedule(cs);
         return courtScheduleId;

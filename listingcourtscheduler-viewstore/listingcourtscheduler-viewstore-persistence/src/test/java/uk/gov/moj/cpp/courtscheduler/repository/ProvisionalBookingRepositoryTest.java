@@ -11,8 +11,8 @@ import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.ProvisionalBooking;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.ProvisionalBookingKey;
 
+import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -76,7 +76,7 @@ class ProvisionalBookingRepositoryTest extends uk.gov.moj.cpp.courtscheduler.rep
         provisionalBookingRepository.save(provisionalBooking2);
         provisionalBookingRepository.save(provisionalBooking3);
 
-        Map<String, Date> courtScheduleInfo = provisionalBookingRepository.getCourtScheduleInfo(List.of(bookingId1));
+        Map<String, Instant> courtScheduleInfo = provisionalBookingRepository.getCourtScheduleInfo(List.of(bookingId1));
         assertThat(courtScheduleInfo, notNullValue());
         assertThat(courtScheduleInfo.get(courtSchedule.getCourtScheduleId()), is(provisionalBooking1.getHearingStartTime()));
 

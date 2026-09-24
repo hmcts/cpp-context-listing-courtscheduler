@@ -49,7 +49,7 @@ class GetJudiciaryAvailabilityRuleResponseConverterTest {
         rule.setStartDate(startDate);
         rule.setEndDate(endDate);
         rule.setSessionType(SessionType.AM);
-        rule.setRepeatDays(Arrays.asList(uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek.Monday, uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek.Tuesday));
+        rule.setRepeatDays(Arrays.asList(uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek.MONDAY, uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek.TUESDAY));
         rule.setUnavailabilities(Arrays.asList(
                 new JudiciaryUnavailabilityResponse(
                         LocalDate.of(2026, 1, 10),

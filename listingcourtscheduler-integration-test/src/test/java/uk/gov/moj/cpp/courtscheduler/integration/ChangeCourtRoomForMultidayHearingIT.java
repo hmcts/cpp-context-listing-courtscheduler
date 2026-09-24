@@ -14,7 +14,7 @@ import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 import java.io.StringReader;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
-import java.util.Date;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -228,7 +228,7 @@ class ChangeCourtRoomForMultidayHearingIT extends AbstractIT {
         allocatedListing.setCourtRoomId(1);
         allocatedListing.setRotaBusinessType("CR");
         allocatedListing.setDuration(durationMinutes);
-        allocatedListing.setHearingStartTime(Date.from(sessionDate.atTime(10, 0).toInstant(ZoneOffset.UTC)));
+        allocatedListing.setHearingStartTime(sessionDate.atTime(10, 0).toInstant(ZoneOffset.UTC));
         databaseSeeder.insertAllocatedListing(allocatedListing);
     }
 
@@ -264,7 +264,7 @@ class ChangeCourtRoomForMultidayHearingIT extends AbstractIT {
     /**
      * Insert an {@code court_session=AD}, {@code active=true} court_schedule at the centre and return its id.
      * {@code court_house_id} is set to {@code courtCentreId} - the column the centre search keys on.
-     * Copied from {@link MoveHearingToPastDateIT#seedSession} with an added {@code availableDurationMinutes}
+     * Copied from  with an added {@code availableDurationMinutes}
      * parameter, so tests can seed a session as already fully committed (0) to exercise the
      * availability-restoration assertion.
      */
@@ -276,8 +276,8 @@ class ChangeCourtRoomForMultidayHearingIT extends AbstractIT {
                                final String jurisdiction,
                                final int availableDurationMinutes) throws java.sql.SQLException {
         final String id = UUID.randomUUID().toString();
-        final Date sessionStart = Date.from(sessionDate.atTime(10, 0).toInstant(ZoneOffset.UTC));
-        final Date sessionEnd = Date.from(sessionDate.atTime(17, 0).toInstant(ZoneOffset.UTC));
+        final Instant sessionStart = sessionDate.atTime(10, 0).toInstant(ZoneOffset.UTC);
+        final Instant sessionEnd = sessionDate.atTime(17, 0).toInstant(ZoneOffset.UTC);
 
         final CourtSchedule cs = new CourtSchedule();
         cs.setCourtScheduleId(id);

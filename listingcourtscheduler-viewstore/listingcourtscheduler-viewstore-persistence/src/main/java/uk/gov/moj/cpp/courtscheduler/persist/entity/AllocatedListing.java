@@ -1,14 +1,12 @@
 package uk.gov.moj.cpp.courtscheduler.persist.entity;
 
-import java.util.Date;
+import java.time.Instant;
 import java.util.Objects;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import jakarta.persistence.Temporal;
-import jakarta.persistence.TemporalType;
 
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -42,31 +40,24 @@ public class AllocatedListing {
     private Integer duration;
 
     @Column(name = "hearing_start_time", nullable = false)
-    @Temporal(TemporalType.TIMESTAMP)
-    private java.util.Date hearingStartTime;
+    private Instant hearingStartTime;
 
     @UpdateTimestamp
-    @Temporal(TemporalType.TIMESTAMP)
     @Column(name = "updated_on", nullable = false)
-    private java.util.Date updatedOn;
+    private Instant updatedOn;
 
     @CreationTimestamp
-    @Temporal(TemporalType.TIMESTAMP)
     @Column(name = "created_on", nullable = false)
-    private java.util.Date createdOn;
+    private Instant createdOn;
 
     @Column(name = "source", nullable = false)
     private String source;
-
-    public AllocatedListing() {
-        //For JPA
-    }
 
     public String getId() {
         return id;
     }
 
-    public void setId(String id) {
+    public void setId(final String id) {
         this.id = id;
     }
 
@@ -74,7 +65,7 @@ public class AllocatedListing {
         return courtScheduleId;
     }
 
-    public void setCourtScheduleId(String courtScheduleId) {
+    public void setCourtScheduleId(final String courtScheduleId) {
         this.courtScheduleId = courtScheduleId;
     }
 
@@ -82,7 +73,7 @@ public class AllocatedListing {
         return bookingId;
     }
 
-    public void setBookingId(String bookingId) {
+    public void setBookingId(final String bookingId) {
         this.bookingId = bookingId;
     }
 
@@ -90,7 +81,7 @@ public class AllocatedListing {
         return hearingId;
     }
 
-    public void setHearingId(String hearingId) {
+    public void setHearingId(final String hearingId) {
         this.hearingId = hearingId;
     }
 
@@ -98,7 +89,7 @@ public class AllocatedListing {
         return oucode;
     }
 
-    public void setOucode(String oucode) {
+    public void setOucode(final String oucode) {
         this.oucode = oucode;
     }
 
@@ -106,7 +97,7 @@ public class AllocatedListing {
         return courtRoomId;
     }
 
-    public void setCourtRoomId(Integer courtRoomId) {
+    public void setCourtRoomId(final Integer courtRoomId) {
         this.courtRoomId = courtRoomId;
     }
 
@@ -114,7 +105,7 @@ public class AllocatedListing {
         return rotaBusinessType;
     }
 
-    public void setRotaBusinessType(String rotaBusinessType) {
+    public void setRotaBusinessType(final String rotaBusinessType) {
         this.rotaBusinessType = rotaBusinessType;
     }
 
@@ -122,31 +113,31 @@ public class AllocatedListing {
         return duration;
     }
 
-    public void setDuration(Integer duration) {
+    public void setDuration(final Integer duration) {
         this.duration = duration;
     }
 
-    public Date getCreatedOn() {
+    public Instant getCreatedOn() {
         return createdOn;
     }
 
-    public void setCreatedOn(Date createdOn) {
+    public void setCreatedOn(final Instant createdOn) {
         this.createdOn = createdOn;
     }
 
-    public Date getUpdatedOn() {
+    public Instant getUpdatedOn() {
         return updatedOn;
     }
 
-    public void setUpdatedOn(Date updatedOn) {
+    public void setUpdatedOn(final Instant updatedOn) {
         this.updatedOn = updatedOn;
     }
 
-    public Date getHearingStartTime() {
+    public Instant getHearingStartTime() {
         return hearingStartTime;
     }
 
-    public void setHearingStartTime(Date hearingStartTime) {
+    public void setHearingStartTime(final Instant hearingStartTime) {
         this.hearingStartTime = hearingStartTime;
     }
 
@@ -154,12 +145,12 @@ public class AllocatedListing {
         return source;
     }
 
-    public void setSource(String source) {
+    public void setSource(final String source) {
         this.source = source;
     }
 
     @Override
-    public boolean equals(Object o) {
+    public boolean equals(final Object o) {
         if (this == o) {
             return true;
         }

@@ -8,7 +8,6 @@ import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -88,8 +87,8 @@ class JudiciaryScheduleEnricherTest {
             assertThat(csj.getSurname(), is("SvenTS"));
             assertNotNull(csj.getRotaJudiciaryId());
             assertNotNull(csj.getTitle());
-            assertNotNull(csj.getBenchChairman());
-            assertNotNull(csj.getDeputy());
+            assertNotNull(csj.isBenchChairman());
+            assertNotNull(csj.isDeputy());
             assertNotNull(csj.getCourtListingProfileId());
             assertNotNull(csj.getPosition());
         }

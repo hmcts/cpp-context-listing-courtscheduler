@@ -3,7 +3,6 @@ package uk.gov.moj.cpp.courtscheduler.api.validator;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 import java.util.UUID;
 
 import jakarta.json.JsonObject;
@@ -41,7 +40,7 @@ class JudiciaryAvailabilityRuleApiValidatorTest {
         this.request.setStartDate(LocalDate.of(2026, 1, 1));
         this.request.setEndDate(LocalDate.of(2026, 1, 31));
         
-        this.request.setRepeatDays(Arrays.asList(uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek.Monday, uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek.Tuesday));
+        this.request.setRepeatDays(Arrays.asList(uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek.MONDAY, uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek.TUESDAY));
     }
 
     @Test
@@ -145,7 +144,7 @@ class JudiciaryAvailabilityRuleApiValidatorTest {
 
     @Test
     void shouldAcceptValidDayNames() {
-        this.request.setRepeatDays(Arrays.asList(AvailabilityDayOfWeek.Monday, AvailabilityDayOfWeek.Tuesday, AvailabilityDayOfWeek.Wednesday, AvailabilityDayOfWeek.Thursday, AvailabilityDayOfWeek.Friday));
+        this.request.setRepeatDays(Arrays.asList(AvailabilityDayOfWeek.MONDAY, AvailabilityDayOfWeek.TUESDAY, AvailabilityDayOfWeek.WEDNESDAY, AvailabilityDayOfWeek.THURSDAY, AvailabilityDayOfWeek.FRIDAY));
 
         JsonObject result = this.validator.validateAddJudiciaryAvailabilityRule(this.request);
 
@@ -154,7 +153,7 @@ class JudiciaryAvailabilityRuleApiValidatorTest {
 
     @Test
     void shouldAcceptDayNamesCaseInsensitive() {
-        this.request.setRepeatDays(Arrays.asList(AvailabilityDayOfWeek.Monday, AvailabilityDayOfWeek.Tuesday, AvailabilityDayOfWeek.Wednesday));
+        this.request.setRepeatDays(Arrays.asList(AvailabilityDayOfWeek.MONDAY, AvailabilityDayOfWeek.TUESDAY, AvailabilityDayOfWeek.WEDNESDAY));
 
         JsonObject result = this.validator.validateAddJudiciaryAvailabilityRule(this.request);
 

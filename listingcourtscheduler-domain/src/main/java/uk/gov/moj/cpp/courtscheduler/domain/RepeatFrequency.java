@@ -7,7 +7,7 @@ public enum RepeatFrequency {
 
     private final String frequency;
 
-    private RepeatFrequency(String repeatFrequency) {
+    RepeatFrequency(final String repeatFrequency) {
         this.frequency = repeatFrequency;
     }
 

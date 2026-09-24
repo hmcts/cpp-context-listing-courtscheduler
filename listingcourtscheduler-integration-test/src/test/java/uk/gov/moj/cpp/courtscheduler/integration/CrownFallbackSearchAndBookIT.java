@@ -11,9 +11,9 @@ import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 
 import java.io.StringReader;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
-import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -202,15 +202,15 @@ class CrownFallbackSearchAndBookIT extends AbstractIT {
         assertThat(created.getBusinessType(), is("LNG"));
         assertThat(created.getCourtSession(), is("AD"));
         assertThat(created.getMaxDuration(), is(360));
-        assertThat(created.getIsOverbookingAllowed(), is(false));
-        assertThat(created.getIsDraft(), is(false));
+        assertThat(created.isOverbookingAllowed(), is(false));
+        assertThat(created.isDraft(), is(false));
         assertThat(created.isSlotBased(), is(false));
-        assertThat(created.getSupportAdSplit(), is(false));
+        assertThat(created.isSupportAdSplit(), is(false));
         assertThat(created.getCourtRoomId(), is(roomId));
         assertThat(created.getSessionDate(), is(date));
-        assertThat(new java.sql.Timestamp(created.getSessionStartTime().getTime()).toLocalDateTime(),
+        assertThat(java.sql.Timestamp.from(created.getSessionStartTime()).toLocalDateTime(),
                 is(date.atTime(12, 30)));
-        assertThat(created.getSessionEndTime().toInstant().atZone(LONDON_ZONE).toLocalDateTime(),
+        assertThat(created.getSessionEndTime().atZone(LONDON_ZONE).toLocalDateTime(),
                 is(date.atTime(17, 0)));
     }
 
@@ -236,12 +236,12 @@ class CrownFallbackSearchAndBookIT extends AbstractIT {
         assertThat(created.getBusinessType(), is("GENC"));
         assertThat(created.getCourtSession(), is("AD"));
         assertThat(created.getMaxDuration(), is(360));
-        assertThat(created.getIsOverbookingAllowed(), is(false));
-        assertThat(created.getIsDraft(), is(true));
+        assertThat(created.isOverbookingAllowed(), is(false));
+        assertThat(created.isDraft(), is(true));
         assertThat(created.isSlotBased(), is(false));
-        assertThat(created.getSupportAdSplit(), is(false));
+        assertThat(created.isSupportAdSplit(), is(false));
         // SPRDT-1324: the DRAFT variant ends at the same fixed all-day default
-        assertThat(created.getSessionEndTime().toInstant().atZone(LONDON_ZONE).toLocalDateTime(),
+        assertThat(created.getSessionEndTime().atZone(LONDON_ZONE).toLocalDateTime(),
                 is(date.atTime(17, 0)));
     }
 
@@ -284,15 +284,15 @@ class CrownFallbackSearchAndBookIT extends AbstractIT {
         assertThat(created.getListingProfileId(), is("CROWN-FB-AUTO"));
         assertThat(created.getBusinessType(), is("LNG"));
         assertThat(created.getCourtSession(), is("AD"));
-        assertThat(created.getIsDraft(), is(false));
+        assertThat(created.isDraft(), is(false));
         assertThat(created.getMaxDuration(), is(360));
         assertThat(created.getSessionDate(), is(date));
         // session starts at the requested hearing time — compared as the stored UTC wall-clock
         // (the app runs in UTC; asserting instants would break under a non-UTC test JVM)
-        assertThat(new java.sql.Timestamp(created.getSessionStartTime().getTime()).toLocalDateTime(),
+        assertThat(java.sql.Timestamp.from(created.getSessionStartTime()).toLocalDateTime(),
                 is(date.atTime(11, 30)));
         // SPRDT-1324: an AD session ends at the fixed all-day default, never start + capacity
-        assertThat(created.getSessionEndTime().toInstant().atZone(LONDON_ZONE).toLocalDateTime(),
+        assertThat(created.getSessionEndTime().atZone(LONDON_ZONE).toLocalDateTime(),
                 is(date.atTime(17, 0)));
 
         final List<AllocatedListing> booked = databaseReader.allocatedListings().stream()
@@ -328,7 +328,7 @@ class CrownFallbackSearchAndBookIT extends AbstractIT {
         final CourtSchedule created = databaseReader.courtScheduleById(createdId);
         assertThat(created.getOuCode(), is("C99XX00"));
         assertThat(created.getBusinessType(), is("GENC"));
-        assertThat(created.getIsDraft(), is(true));
+        assertThat(created.isDraft(), is(true));
         // no name supplied -> ouCode stands in for display metadata; room is the virtual room
         assertThat(created.getCourtHouseName(), is("C99XX00"));
         assertThat(created.getCourtRoomId(), is(UUID.nameUUIDFromBytes(
@@ -369,10 +369,10 @@ class CrownFallbackSearchAndBookIT extends AbstractIT {
         // Compare DB wall-clocks: the stored value must equal what the seeder stored for the
         // session's start (both round-trip through the same JDBC rendering, so the comparison is
         // timezone-robust); the out-of-window 23:00 user time must NOT survive.
-        final Date seededSessionStart = Date.from(date.atTime(10, 0).toInstant(ZoneOffset.UTC));
+        final Instant seededSessionStart = date.atTime(10, 0).toInstant(ZoneOffset.UTC);
         assertThat("row carries the SESSION start, not the out-of-window user time",
-                new java.sql.Timestamp(booked.get(0).getHearingStartTime().getTime()).toLocalDateTime(),
-                is(new java.sql.Timestamp(seededSessionStart.getTime()).toLocalDateTime()));
+                java.sql.Timestamp.from(booked.get(0).getHearingStartTime()).toLocalDateTime(),
+                is(java.sql.Timestamp.from(seededSessionStart).toLocalDateTime()));
     }
 
     // NOTE: allocated_listings.source IT coverage intentionally omitted.
@@ -427,8 +427,8 @@ class CrownFallbackSearchAndBookIT extends AbstractIT {
                                final boolean overbookingAllowed,
                                final int maxDuration) throws java.sql.SQLException {
         final String id = UUID.randomUUID().toString();
-        final Date sessionStart = Date.from(sessionDate.atTime(10, 0).toInstant(ZoneOffset.UTC));
-        final Date sessionEnd = Date.from(sessionDate.atTime(17, 0).toInstant(ZoneOffset.UTC));
+        final Instant sessionStart = sessionDate.atTime(10, 0).toInstant(ZoneOffset.UTC);
+        final Instant sessionEnd = sessionDate.atTime(17, 0).toInstant(ZoneOffset.UTC);
 
         final CourtSchedule cs = new CourtSchedule();
         cs.setCourtScheduleId(id);

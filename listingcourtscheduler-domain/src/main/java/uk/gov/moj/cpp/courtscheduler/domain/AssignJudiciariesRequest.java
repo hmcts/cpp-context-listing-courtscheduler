@@ -7,7 +7,7 @@ import java.util.Objects;
 public class AssignJudiciariesRequest {
 
     private List<JudiciaryAssignment> judiciaries = new ArrayList<>();
-    private boolean skipValidations = false;
+    private boolean skipValidations;
 
     public AssignJudiciariesRequest() {
         // default constructor
@@ -39,7 +39,7 @@ public class AssignJudiciariesRequest {
 
     public static final class AssignJudiciariesRequestBuilder {
         private final List<JudiciaryAssignment> judiciaries = new ArrayList<>();
-        private boolean skipValidations = false;
+        private boolean skipValidations;
 
         private AssignJudiciariesRequestBuilder() {
         }

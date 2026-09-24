@@ -39,7 +39,7 @@ public class CourtScheduleBatchInsertService {
     private static final Logger LOGGER = LoggerFactory.getLogger(CourtScheduleBatchInsertService.class);
 
     @Inject
-    EntityManager entityManager;
+    /* package */ EntityManager entityManager;
 
     /**
      * Persist every record in {@code batch} and flush. Throws on the first

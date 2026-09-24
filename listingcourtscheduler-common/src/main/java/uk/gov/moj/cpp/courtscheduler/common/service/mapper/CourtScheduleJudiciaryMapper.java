@@ -12,7 +12,7 @@ public class CourtScheduleJudiciaryMapper {
         throw new UnsupportedOperationException("This is a utility class and cannot be instantiated");
     }
 
-    public static CourtScheduleJudiciary toEntity(uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary domain) {
+    public static CourtScheduleJudiciary toEntity(final uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary domain) {
         if (domain == null) {
             return null;
         }
@@ -20,10 +20,10 @@ public class CourtScheduleJudiciaryMapper {
         final CourtScheduleJudiciary entity = new CourtScheduleJudiciary();
         entity.setId(new CourtScheduleJudiciaryKey(domain.getCourtScheduleId(), domain.getJudiciaryId()));
         entity.setJudiciaryType(domain.getJudiciaryType());
-        entity.setDeputy(domain.getDeputy());
+        entity.setDeputy(domain.isDeputy());
         entity.setEmail(domain.getEmailAddress());
         entity.setCourtListingProfileId(domain.getCourtListingProfileId());
-        entity.setBenchChairman(domain.getBenchChairman());
+        entity.setBenchChairman(domain.isBenchChairman());
         entity.setSurname(domain.getSurname());
         entity.setForenames(domain.getForenames());
         entity.setPosition(domain.getPosition());
@@ -36,7 +36,7 @@ public class CourtScheduleJudiciaryMapper {
         return entity;
     }
 
-    public static uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary toDomain(CourtScheduleJudiciary entity) {
+    public static uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary toDomain(final CourtScheduleJudiciary entity) {
         if (isNull(entity)) {
             return null;
         }
@@ -49,14 +49,14 @@ public class CourtScheduleJudiciaryMapper {
                 .withForenames(entity.getForenames())
                 .withPosition(entity.getPosition())
                 .withCourtListingProfileId(entity.getCourtListingProfileId())
-                .withIsBenchChairman(entity.getBenchChairman())
+                .withIsBenchChairman(entity.isBenchChairman())
                 .withRotaJudiciaryId(entity.getRotaJudiciaryId())
                 .withTitle(entity.getTitle())
-                .withIsDeputy(entity.getDeputy())
+                .withIsDeputy(entity.isDeputy())
                 .withEmailAddress(entity.getEmail())
                 .withCreatedOn(entity.getCreatedOn())
                 .withUpdatedOn(entity.getUpdatedOn())
-                .withActive(entity.getActive())
+                .withActive(entity.isActive())
                 .build();
     }
 }

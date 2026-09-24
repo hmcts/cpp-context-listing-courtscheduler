@@ -1,8 +1,8 @@
 package uk.gov.moj.cpp.courtscheduler.persist.entity;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 
@@ -16,8 +16,6 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
-import jakarta.persistence.Temporal;
-import jakarta.persistence.TemporalType;
 
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -39,7 +37,7 @@ public class JudiciaryAvailabilityRule {
     private String courtHouseId;
 
     @OneToMany(mappedBy = "rule", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
-    private java.util.List<JudiciaryUnavailability> unavailabilities = new java.util.ArrayList<>();
+    private List<JudiciaryUnavailability> unavailabilities = new ArrayList<>();
 
     @Column(name = "from_date", nullable = false)
     private LocalDate fromDate;
@@ -59,24 +57,19 @@ public class JudiciaryAvailabilityRule {
     private SessionType sessionType;
 
     @CreationTimestamp
-    @Temporal(TemporalType.TIMESTAMP)
     @Column(name = "created_on", nullable = false)
-    private Date createdOn;
+    private Instant createdOn;
 
     @UpdateTimestamp
-    @Temporal(TemporalType.TIMESTAMP)
     @Column(name = "updated_on", nullable = false)
-    private Date updatedOn;
+    private Instant updatedOn;
 
-    public JudiciaryAvailabilityRule() {
-        //For JPA
-    }
 
     public String getId() {
         return this.id;
     }
 
-    public void setId(String id) {
+    public void setId(final String id) {
         this.id = id;
     }
 
@@ -84,7 +77,7 @@ public class JudiciaryAvailabilityRule {
         return this.judiciaryId;
     }
 
-    public void setJudiciaryId(String judiciaryId) {
+    public void setJudiciaryId(final String judiciaryId) {
         this.judiciaryId = judiciaryId;
     }
 
@@ -92,15 +85,15 @@ public class JudiciaryAvailabilityRule {
         return this.courtHouseId;
     }
 
-    public void setCourtHouseId(String courtHouseId) {
+    public void setCourtHouseId(final String courtHouseId) {
         this.courtHouseId = courtHouseId;
     }
 
-    public java.util.List<JudiciaryUnavailability> getUnavailabilities() {
+    public List<JudiciaryUnavailability> getUnavailabilities() {
         return this.unavailabilities;
     }
 
-    public void setUnavailabilities(java.util.List<JudiciaryUnavailability> unavailabilities) {
+    public void setUnavailabilities(final List<JudiciaryUnavailability> unavailabilities) {
         this.unavailabilities = unavailabilities;
     }
 
@@ -108,7 +101,7 @@ public class JudiciaryAvailabilityRule {
         return this.fromDate;
     }
 
-    public void setFromDate(LocalDate fromDate) {
+    public void setFromDate(final LocalDate fromDate) {
         this.fromDate = fromDate;
     }
 
@@ -116,7 +109,7 @@ public class JudiciaryAvailabilityRule {
         return this.toDate;
     }
 
-    public void setToDate(LocalDate toDate) {
+    public void setToDate(final LocalDate toDate) {
         this.toDate = toDate;
     }
 
@@ -124,23 +117,23 @@ public class JudiciaryAvailabilityRule {
         return this.repeatDays;
     }
 
-    public void setRepeatDays(List<JudiciaryAvailabilityRuleRepeatDay> repeatDays) {
+    public void setRepeatDays(final List<JudiciaryAvailabilityRuleRepeatDay> repeatDays) {
         this.repeatDays = repeatDays;
     }
 
-    public Date getCreatedOn() {
+    public Instant getCreatedOn() {
         return this.createdOn;
     }
 
-    public void setCreatedOn(Date createdOn) {
+    public void setCreatedOn(final Instant createdOn) {
         this.createdOn = createdOn;
     }
 
-    public Date getUpdatedOn() {
+    public Instant getUpdatedOn() {
         return this.updatedOn;
     }
 
-    public void setUpdatedOn(Date updatedOn) {
+    public void setUpdatedOn(final Instant updatedOn) {
         this.updatedOn = updatedOn;
     }
 
@@ -154,7 +147,9 @@ public class JudiciaryAvailabilityRule {
 
     @Override
     public boolean equals(final Object o) {
-        if (!(o instanceof final JudiciaryAvailabilityRule that)) return false;
+        if (!(o instanceof final JudiciaryAvailabilityRule that)) {
+            return false;
+        }
         return Objects.equals(getId(), that.getId()) && Objects.equals(getJudiciaryId(), that.getJudiciaryId()) && Objects.equals(getCourtHouseId(), that.getCourtHouseId()) && Objects.equals(getFromDate(), that.getFromDate()) && Objects.equals(getToDate(), that.getToDate()) && Objects.equals(getRepeatDays(), that.getRepeatDays()) && getSessionType() == that.getSessionType() && Objects.equals(getCreatedOn(), that.getCreatedOn()) && Objects.equals(getUpdatedOn(), that.getUpdatedOn());
     }
 

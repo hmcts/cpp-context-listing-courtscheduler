@@ -98,6 +98,7 @@ class JudiciaryAvailabilityRuleRepositoryImpl implements JudiciaryAvailabilityRu
 
     private static final String COURT_HOUSE_ID = "courtHouseId";
     private static final String JUDICIARY_ID = "judiciaryId";
+    private static final int QUERY_BUILDER_INITIAL_CAPACITY = 1_000;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -197,15 +198,15 @@ class JudiciaryAvailabilityRuleRepositoryImpl implements JudiciaryAvailabilityRu
     }
 
     private String buildQueryString(final String courtHouseId, final String judiciaryId) {
-        final StringBuilder queryBuilder = new StringBuilder();
-        queryBuilder.append("SELECT r.id, r.judiciary_id, r.court_house_id, r.from_date, r.to_date, ");
-        queryBuilder.append("r.session_type, r.created_on, r.updated_on, r.totalCount, ");
-        queryBuilder.append("rd.rule_id as rd_rule_id, rd.day_of_week as rd_day_of_week, ");
-        queryBuilder.append("u.id as u_id, u.availability_rule_id as u_availability_rule_id, ");
-        queryBuilder.append("u.from_date as u_from_date, u.to_date as u_to_date, u.reason as u_reason, ");
-        queryBuilder.append("u.created_on as u_created_on, u.updated_on as u_updated_on ");
-        queryBuilder.append("FROM (SELECT *, COUNT(*) OVER() as totalCount FROM judiciary_availability_rule ");
-        queryBuilder.append("WHERE from_date <= :queryEndDate AND to_date >= :queryStartDate ");
+        final StringBuilder queryBuilder = new StringBuilder(QUERY_BUILDER_INITIAL_CAPACITY)
+                .append("SELECT r.id, r.judiciary_id, r.court_house_id, r.from_date, r.to_date, "
+                        + "r.session_type, r.created_on, r.updated_on, r.totalCount, "
+                        + "rd.rule_id as rd_rule_id, rd.day_of_week as rd_day_of_week, "
+                        + "u.id as u_id, u.availability_rule_id as u_availability_rule_id, "
+                        + "u.from_date as u_from_date, u.to_date as u_to_date, u.reason as u_reason, "
+                        + "u.created_on as u_created_on, u.updated_on as u_updated_on "
+                        + "FROM (SELECT *, COUNT(*) OVER() as totalCount FROM judiciary_availability_rule "
+                        + "WHERE from_date <= :queryEndDate AND to_date >= :queryStartDate ");
 
         if (isNotEmpty(courtHouseId)) {
             queryBuilder.append("AND court_house_id = :courtHouseId ");
@@ -214,11 +215,11 @@ class JudiciaryAvailabilityRuleRepositoryImpl implements JudiciaryAvailabilityRu
             queryBuilder.append("AND judiciary_id = :judiciaryId ");
         }
 
-        queryBuilder.append("ORDER BY from_date ASC ");
-        queryBuilder.append("LIMIT :pageSize OFFSET :offset) r ");
-        queryBuilder.append("LEFT JOIN judiciary_availability_rule_repeat_day rd ON r.id = rd.rule_id ");
-        queryBuilder.append("LEFT JOIN judiciary_unavailability u ON r.id = u.availability_rule_id ");
-        queryBuilder.append("ORDER BY r.from_date ASC, rd.day_of_week ASC");
+        queryBuilder.append("ORDER BY from_date ASC "
+                + "LIMIT :pageSize OFFSET :offset) r "
+                + "LEFT JOIN judiciary_availability_rule_repeat_day rd ON r.id = rd.rule_id "
+                + "LEFT JOIN judiciary_unavailability u ON r.id = u.availability_rule_id "
+                + "ORDER BY r.from_date ASC, rd.day_of_week ASC");
 
         return queryBuilder.toString();
     }
@@ -259,7 +260,8 @@ class JudiciaryAvailabilityRuleRepositoryImpl implements JudiciaryAvailabilityRu
 
             if (!rulesMap.containsKey(ruleId)) {
                 rulesMap.put(ruleId, createRuleFromRow(row));
-                ruleOrder.put(ruleId, orderIndex++);
+                ruleOrder.put(ruleId, orderIndex);
+                orderIndex++;
             }
 
             final JudiciaryAvailabilityRule rule = rulesMap.get(ruleId);
@@ -270,7 +272,7 @@ class JudiciaryAvailabilityRuleRepositoryImpl implements JudiciaryAvailabilityRu
         return convertToOrderedList(rulesMap, ruleOrder);
     }
 
-    private JudiciaryAvailabilityRule createRuleFromRow(final Object[] row) {
+    private JudiciaryAvailabilityRule createRuleFromRow(final Object... row) {
         final JudiciaryAvailabilityRule rule = new JudiciaryAvailabilityRule();
         rule.setId((String) row[0]);
         rule.setJudiciaryId((String) row[1]);
@@ -282,27 +284,27 @@ class JudiciaryAvailabilityRuleRepositoryImpl implements JudiciaryAvailabilityRu
             rule.setSessionType(uk.gov.moj.cpp.courtscheduler.domain.SessionType.valueOf((String) row[5]));
         }
 
-        rule.setCreatedOn(toUtilDate(row[6]));
-        rule.setUpdatedOn(toUtilDate(row[7]));
+        rule.setCreatedOn(toInstant(row[6]));
+        rule.setUpdatedOn(toInstant(row[7]));
         rule.setRepeatDays(new ArrayList<>());
         rule.setUnavailabilities(new ArrayList<>());
         return rule;
     }
 
-    private void addRepeatDayToRule(final JudiciaryAvailabilityRule rule, final Object[] row) {
+    private void addRepeatDayToRule(final JudiciaryAvailabilityRule rule, final Object... row) {
         // rd columns: rule_id (index 9), day_of_week (index 10)
         if (row[10] == null) {
             return;
         }
         final uk.gov.moj.cpp.courtscheduler.persist.entity.JudiciaryAvailabilityRuleRepeatDay repeatDay =
                 new uk.gov.moj.cpp.courtscheduler.persist.entity.JudiciaryAvailabilityRuleRepeatDay(
-                        uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek.valueOf((String) row[10]));
+                        uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek.fromWireValue((String) row[10]));
         if (!rule.getRepeatDays().contains(repeatDay)) {
             rule.getRepeatDays().add(repeatDay);
         }
     }
 
-    private void addUnavailabilityToRule(final JudiciaryAvailabilityRule rule, final Object[] row) {
+    private void addUnavailabilityToRule(final JudiciaryAvailabilityRule rule, final Object... row) {
         // u columns: id (11), availability_rule_id (12), from_date (13), to_date (14),
         // reason (15), created_on (16), updated_on (17)
         if (row[11] == null) {
@@ -315,7 +317,7 @@ class JudiciaryAvailabilityRuleRepositoryImpl implements JudiciaryAvailabilityRu
     }
 
     private uk.gov.moj.cpp.courtscheduler.persist.entity.JudiciaryUnavailability createUnavailabilityFromRow(
-            final JudiciaryAvailabilityRule rule, final Object[] row) {
+            final JudiciaryAvailabilityRule rule, final Object... row) {
         final uk.gov.moj.cpp.courtscheduler.persist.entity.JudiciaryUnavailability unavailability =
                 new uk.gov.moj.cpp.courtscheduler.persist.entity.JudiciaryUnavailability();
         unavailability.setId((String) row[11]);
@@ -327,8 +329,8 @@ class JudiciaryAvailabilityRuleRepositoryImpl implements JudiciaryAvailabilityRu
             unavailability.setReason(uk.gov.moj.cpp.courtscheduler.domain.UnavailabilityReason.valueOf((String) row[15]));
         }
 
-        unavailability.setCreatedOn(toUtilDate(row[16]));
-        unavailability.setUpdatedOn(toUtilDate(row[17]));
+        unavailability.setCreatedOn(toInstant(row[16]));
+        unavailability.setUpdatedOn(toInstant(row[17]));
         return unavailability;
     }
 
@@ -343,7 +345,7 @@ class JudiciaryAvailabilityRuleRepositoryImpl implements JudiciaryAvailabilityRu
     }
 
     private static boolean isNotEmpty(final String value) {
-        return value != null && !value.trim().isEmpty();
+        return value != null && !value.isBlank();
     }
 
     /**
@@ -352,6 +354,7 @@ class JudiciaryAvailabilityRuleRepositoryImpl implements JudiciaryAvailabilityRu
      * {@link java.sql.Date}. Accept both shapes — including the older
      * {@code java.util.Date} the previous driver returned.
      */
+    @SuppressWarnings("PMD.ReplaceJavaUtilDate") // defensive fallback for a legacy JDBC driver shape; see comment below
     private static LocalDate toLocalDate(final Object item) {
         if (item == null) {
             return null;
@@ -362,28 +365,30 @@ class JudiciaryAvailabilityRuleRepositoryImpl implements JudiciaryAvailabilityRu
         if (item instanceof java.sql.Date sqlDate) {
             return sqlDate.toLocalDate();
         }
-        if (item instanceof java.util.Date utilDate) {
-            return new java.sql.Date(utilDate.getTime()).toLocalDate();
+        // Older JDBC drivers have been observed returning a bare java.util.Date for DATE columns;
+        // convert it the same way we would a java.sql.Date rather than fail the whole projection.
+        if (item instanceof java.util.Date) {
+            return new java.sql.Date(((java.util.Date) item).getTime()).toLocalDate();
         }
         throw new IllegalArgumentException("Unsupported date shape from native query: " + item.getClass());
     }
 
     /** Same idea as {@link #toLocalDate} but for {@code created_on}/{@code updated_on}-style columns. */
-    private static java.util.Date toUtilDate(final Object item) {
+    private static java.time.Instant toInstant(final Object item) {
         if (item == null) {
             return null;
         }
-        if (item instanceof java.util.Date d) {
-            return d;
-        }
         if (item instanceof java.time.Instant instant) {
-            return java.util.Date.from(instant);
+            return instant;
+        }
+        if (item instanceof java.util.Date) {
+            return ((java.util.Date) item).toInstant();
         }
         if (item instanceof java.time.LocalDateTime ldt) {
-            return java.util.Date.from(ldt.atZone(java.time.ZoneId.systemDefault()).toInstant());
+            return ldt.atZone(java.time.ZoneId.systemDefault()).toInstant();
         }
         if (item instanceof java.time.OffsetDateTime odt) {
-            return java.util.Date.from(odt.toInstant());
+            return odt.toInstant();
         }
         throw new IllegalArgumentException("Unsupported timestamp shape from native query: " + item.getClass());
     }

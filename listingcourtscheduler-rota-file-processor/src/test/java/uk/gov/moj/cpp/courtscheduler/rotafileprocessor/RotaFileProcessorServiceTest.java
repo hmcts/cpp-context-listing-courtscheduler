@@ -50,7 +50,7 @@ import uk.gov.moj.cpp.platform.test.data.utils.FileUtil;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.sql.Timestamp;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -378,7 +378,7 @@ class RotaFileProcessorServiceTest {
         when(rotaDataEnricher.enrichCourtListings(eq(records), any(LocalDate.class), anyMap(), anyBoolean(), anyList(), anyString(), anyMap())).thenReturn(slotsMock);
         when(judiciaryScheduleEnricher.enrichJudiciarySchedules(eq(slotsMock), eq(records), eq(false), anyList(), anyString(), anyMap(), anyMap())).thenReturn(schedules);
         when(referenceDataMapperService.getCourtRoomsMap()).thenReturn(getCourtRoomsMap());
-        when(rotaFileProcessHistoryRepository.findByFileNamePrefixAndFileDateGreaterThan(anyString(), any(Timestamp.class))).thenReturn(emptyList());
+        when(rotaFileProcessHistoryRepository.findByFileNamePrefixAndFileDateGreaterThan(anyString(), any(Instant.class))).thenReturn(emptyList());
         doReturn(CompletableFuture.completedFuture(null)).when(rotaFilePartialProcessor).processSnapshotRotaFile(anyMap(), anyMap(), anyCollection(), anyCollection(), anyMap(), anyList(), anyList(), anyMap(), anyMap(), anyString(), any(), anyBoolean());
 
         final Map<String, String> rotaDetails = new HashMap<>();
@@ -398,7 +398,7 @@ class RotaFileProcessorServiceTest {
         verify(rotaDataEnricher, atLeastOnce()).enrichCourtListings(eq(records), any(LocalDate.class), anyMap(), anyBoolean(), anyList(), anyString(), anyMap());
         verify(rotaFileParser, atLeastOnce()).parse(any(), any());
         verify(referenceDataMapperService, atLeastOnce()).getCourtRoomsMap();
-        verify(rotaFileProcessHistoryRepository, atLeastOnce()).findByFileNamePrefixAndFileDateGreaterThan(anyString(), any(Timestamp.class));
+        verify(rotaFileProcessHistoryRepository, atLeastOnce()).findByFileNamePrefixAndFileDateGreaterThan(anyString(), any(Instant.class));
         verify(rotaFileProcessHistoryService, atLeastOnce()).save(anyString(), any(), any(byte[].class), anyString());
 
         final ArgumentCaptor<RotaFileProcessHistory> historyCaptor = ArgumentCaptor.forClass(RotaFileProcessHistory.class);
@@ -425,7 +425,7 @@ class RotaFileProcessorServiceTest {
         doNothing().when(azureBlobClientService).uploadProcessedFile(any(InputStream.class), anyLong(), eq(blobName), eq(empty()));
         doNothing().when(azureBlobClientService).deleteFile(anyString(), eq(empty()));
 
-        when(rotaFileProcessHistoryRepository.findByFileNamePrefixAndFileDateGreaterThan(anyString(), any(Timestamp.class)))
+        when(rotaFileProcessHistoryRepository.findByFileNamePrefixAndFileDateGreaterThan(anyString(), any(Instant.class)))
                 .thenReturn(List.of(new RotaFileProcessHistory()));
 
         final Map<String, String> rotaDetails = new HashMap<>();
@@ -441,7 +441,7 @@ class RotaFileProcessorServiceTest {
         verify(rotaDataEnricher, never()).enrichCourtListings(eq(records), any(LocalDate.class), anyMap(), anyBoolean(), anyList(), anyString(), anyMap());
         verify(rotaFileParser, never()).parse(any(), any());
         verify(referenceDataMapperService, never()).getCourtRoomsMap();
-        verify(rotaFileProcessHistoryRepository, atLeastOnce()).findByFileNamePrefixAndFileDateGreaterThan(anyString(), any(Timestamp.class));
+        verify(rotaFileProcessHistoryRepository, atLeastOnce()).findByFileNamePrefixAndFileDateGreaterThan(anyString(), any(Instant.class));
         verify(rotaFileProcessHistoryService, never()).save(anyString(), any(), any(byte[].class), anyString());
     }
 
@@ -473,7 +473,7 @@ class RotaFileProcessorServiceTest {
         verify(rotaDataEnricher, never()).enrichCourtListings(eq(records), any(LocalDate.class), anyMap(), anyBoolean(), anyList(), anyString(), anyMap());
         verify(rotaFileParser, never()).parse(any(), any());
         verify(referenceDataMapperService, never()).getCourtRoomsMap();
-        verify(rotaFileProcessHistoryRepository, never()).findByFileNamePrefixAndFileDateGreaterThan(anyString(), any(Timestamp.class));
+        verify(rotaFileProcessHistoryRepository, never()).findByFileNamePrefixAndFileDateGreaterThan(anyString(), any(Instant.class));
         verify(rotaFileProcessHistoryService, never()).save(anyString(), any(), any(byte[].class), anyString());
     }
 
@@ -538,7 +538,7 @@ class RotaFileProcessorServiceTest {
         when(judiciaryScheduleEnricher.enrichJudiciarySchedules(eq(slotsMock), eq(records), eq(false), anyList(), anyString(), anyMap(), anyMap())).thenReturn(schedules);
         when(referenceDataMapperService.getCourtRoomsMap()).thenReturn(getCourtRoomsMap());
         when(rotaFileProcessHistoryService.save(anyString(), any(), any(byte[].class), anyString())).thenReturn(new RotaFileProcessHistory());
-        when(rotaFileProcessHistoryRepository.findByFileNamePrefixAndFileDateGreaterThan(anyString(), any(Timestamp.class))).thenReturn(emptyList());
+        when(rotaFileProcessHistoryRepository.findByFileNamePrefixAndFileDateGreaterThan(anyString(), any(Instant.class))).thenReturn(emptyList());
         doReturn(CompletableFuture.completedFuture(null)).when(rotaFilePartialProcessor).processSnapshotRotaFile(anyMap(), anyMap(), anyCollection(), anyCollection(), anyMap(), anyList(), anyList(), anyMap(), anyMap(), anyString(), any(), anyBoolean());
 
         final Map<String, String> rotaDetails = new HashMap<>();
@@ -553,7 +553,7 @@ class RotaFileProcessorServiceTest {
 
         rotaFileProcessorService.downloadAndProcessForEachFile(blobContent, blobName, leaseId);
 
-        verify(rotaFileProcessHistoryRepository).findByFileNamePrefixAndFileDateGreaterThan(anyString(), any(Timestamp.class));
+        verify(rotaFileProcessHistoryRepository).findByFileNamePrefixAndFileDateGreaterThan(anyString(), any(Instant.class));
         verify(rotaFileProcessHistoryService).save(anyString(), any(), any(byte[].class), anyString());
     }
 

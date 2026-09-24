@@ -19,6 +19,7 @@ import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant;
 
 import java.time.format.DateTimeParseException;
+import java.util.Optional;
 
 import jakarta.json.JsonObject;
 
@@ -53,8 +54,8 @@ public class CourtScheduleApiValidator {
 
         // Validate startDate <= endDate
         try {
-            final var start = java.time.LocalDate.parse(courtScheduleRequestParam.sessionStartDate());
-            final var end = java.time.LocalDate.parse(courtScheduleRequestParam.sessionEndDate());
+            final java.time.LocalDate start = java.time.LocalDate.parse(courtScheduleRequestParam.sessionStartDate());
+            final java.time.LocalDate end = java.time.LocalDate.parse(courtScheduleRequestParam.sessionEndDate());
             if (end.isBefore(start)) {
                 return buildErrorResponse(START_DATE_AFTER_END_DATE);
             }
@@ -74,20 +75,23 @@ public class CourtScheduleApiValidator {
     }
 
     private boolean isInvalidDateFormat(final String date) {
+        return parseDate(date).isEmpty();
+    }
+
+    private Optional<java.time.LocalDate> parseDate(final String date) {
         try {
-            java.time.LocalDate.parse(date);
+            return Optional.of(java.time.LocalDate.parse(date));
         } catch (final DateTimeParseException e) {
             getGlobal().log(WARNING, format("Invalid Date supplied: %s and exception", date), e);
-            return true;
+            return Optional.empty();
         }
-        return false;
     }
 
     private JsonObject getMessage(final String value) {
         return buildErrorResponse(MANDATORY_SEARCH_CRITERIA + value + CANNOT_BE_NULL);
     }
 
-    private JsonObject buildErrorResponse(String errorMessage) {
+    private JsonObject buildErrorResponse(final String errorMessage) {
         return createObjectBuilder()
                 .add(ERROR_MESSAGE, errorMessage)
                 .build();

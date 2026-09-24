@@ -148,5 +148,5 @@ public interface CourtScheduleRepositoryCustom {
     void releaseOldAllocatedListings(String hearingId);
 
     /** Date-scoped sibling of {@link #releaseOldAllocatedListings(String)}. */
-    void releaseAllocatedListingsForDates(String hearingId, java.util.List<java.time.LocalDate> dates);
+    void releaseAllocatedListingsForDates(String hearingId, List<LocalDate> dates);
 }

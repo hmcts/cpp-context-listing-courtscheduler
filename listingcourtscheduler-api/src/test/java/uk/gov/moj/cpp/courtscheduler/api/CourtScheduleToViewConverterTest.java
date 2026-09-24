@@ -49,14 +49,14 @@ class CourtScheduleToViewConverterTest {
         List<CourtSessionsView> courtSessionsViews = CourtScheduleToViewConverter.getCourtSessionsViews(List.of(courtSchedule1WithCourtRoom1, courtSchedule1WithCourtRoom2, courtSchedule2WithCourtRoom1));
 
         assertThat(courtSessionsViews.size(), is(2));
-        assertThat(courtSessionsViews.get(0).getSessions().size(), is(2));
-        assertThat(courtSessionsViews.get(0).getSessions().get(0).getSessionDate(), is(sessionDate2));
-        assertThat(courtSessionsViews.get(0).getSessions().get(1).getSessionDate(), is(sessionDate3));
-        assertThat(courtSessionsViews.get(0).getSessions().get(1).getTotalBooked(), is(totalBooked2));
+        assertThat(courtSessionsViews.getFirst().getSessions().size(), is(2));
+        assertThat(courtSessionsViews.getFirst().getSessions().getFirst().getSessionDate(), is(sessionDate2));
+        assertThat(courtSessionsViews.getFirst().getSessions().get(1).getSessionDate(), is(sessionDate3));
+        assertThat(courtSessionsViews.getFirst().getSessions().get(1).getTotalBooked(), is(totalBooked2));
         assertThat(courtSessionsViews.get(1).getSessions().size(), is(1));
-        assertThat(courtSessionsViews.get(1).getSessions().get(0).getCourtRoomId(), is(courtRoomId1));
-        assertThat(courtSessionsViews.get(1).getSessions().get(0).getSessionDate(), is(sessionDate1));
-        assertThat(courtSessionsViews.get(1).getSessions().get(0).getTotalBooked(), is(totalBooked1));
+        assertThat(courtSessionsViews.get(1).getSessions().getFirst().getCourtRoomId(), is(courtRoomId1));
+        assertThat(courtSessionsViews.get(1).getSessions().getFirst().getSessionDate(), is(sessionDate1));
+        assertThat(courtSessionsViews.get(1).getSessions().getFirst().getTotalBooked(), is(totalBooked1));
     }
 
     @Test
@@ -71,9 +71,9 @@ class CourtScheduleToViewConverterTest {
 
         // then
         assertThat(courtSessionsViews.size(), is(1));
-        List<CourtScheduleView> sessions = courtSessionsViews.get(0).getSessions();
+        List<CourtScheduleView> sessions = courtSessionsViews.getFirst().getSessions();
         assertThat(sessions.size(), is(1));
-        assertThat(sessions.get(0).getJurisdiction(), is(jurisdictionType));
+        assertThat(sessions.getFirst().getJurisdiction(), is(jurisdictionType));
     }
 
     @Test
@@ -87,9 +87,9 @@ class CourtScheduleToViewConverterTest {
 
         // then
         assertThat(courtSessionsViews.size(), is(1));
-        List<CourtScheduleView> sessions = courtSessionsViews.get(0).getSessions();
+        List<CourtScheduleView> sessions = courtSessionsViews.getFirst().getSessions();
         assertThat(sessions.size(), is(1));
-        assertThat(sessions.get(0).getJurisdiction(), is((String) null));
+        assertThat(sessions.getFirst().getJurisdiction(), is((String) null));
     }
 
     @Test
@@ -104,9 +104,9 @@ class CourtScheduleToViewConverterTest {
 
         // then
         assertThat(courtSessionsViews.size(), is(1));
-        List<CourtScheduleView> sessions = courtSessionsViews.get(0).getSessions();
+        List<CourtScheduleView> sessions = courtSessionsViews.getFirst().getSessions();
         assertThat(sessions.size(), is(1));
-        assertThat(sessions.get(0).getJurisdiction(), is(jurisdictionType));
+        assertThat(sessions.getFirst().getJurisdiction(), is(jurisdictionType));
     }
 
     @Test
@@ -127,11 +127,11 @@ class CourtScheduleToViewConverterTest {
         final List<CourtSessionsView> courtSessionsViews = CourtScheduleToViewConverter.getCourtSessionsViews(List.of(schedule));
 
         assertThat(courtSessionsViews.size(), is(1));
-        final List<CourtScheduleView> sessions = courtSessionsViews.get(0).getSessions();
+        final List<CourtScheduleView> sessions = courtSessionsViews.getFirst().getSessions();
         assertThat(sessions.size(), is(1));
-        assertThat(sessions.get(0).getJudiciaries().size(), is(1));
-        assertThat(sessions.get(0).getJudiciaries().get(0).getJudiciaryId(), is(judiciaryId));
-        assertThat(sessions.get(0).getJudiciaries().get(0).getBenchChairman(), is(true));
-        assertThat(sessions.get(0).getJudiciaries().get(0).getDeputy(), is(false));
+        assertThat(sessions.getFirst().getJudiciaries().size(), is(1));
+        assertThat(sessions.getFirst().getJudiciaries().getFirst().getJudiciaryId(), is(judiciaryId));
+        assertThat(sessions.getFirst().getJudiciaries().getFirst().isBenchChairman(), is(true));
+        assertThat(sessions.getFirst().getJudiciaries().getFirst().isDeputy(), is(false));
     }
 }

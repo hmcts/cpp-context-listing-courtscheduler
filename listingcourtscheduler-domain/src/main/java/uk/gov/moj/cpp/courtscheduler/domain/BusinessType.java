@@ -104,43 +104,43 @@ public class BusinessType {
             return new BusinessTypeBuilder();
         }
 
-        public BusinessTypeBuilder withId(String id) {
+        public BusinessTypeBuilder withId(final String id) {
             this.id = id;
             return this;
         }
 
-        public BusinessTypeBuilder withSeqNum(Integer seqNum) {
+        public BusinessTypeBuilder withSeqNum(final Integer seqNum) {
             this.seqNum = seqNum;
             return this;
         }
 
-        public BusinessTypeBuilder withTypeCode(String typeCode) {
+        public BusinessTypeBuilder withTypeCode(final String typeCode) {
             this.typeCode = typeCode;
             return this;
         }
 
-        public BusinessTypeBuilder withTypeDescription(String typeDescription) {
+        public BusinessTypeBuilder withTypeDescription(final String typeDescription) {
             this.typeDescription = typeDescription;
             return this;
         }
 
-        public BusinessTypeBuilder withSlot(boolean slot) {
+        public BusinessTypeBuilder withSlot(final boolean slot) {
             this.slot = slot;
             return this;
         }
 
-        public BusinessTypeBuilder withDuration(boolean duration) {
+        public BusinessTypeBuilder withDuration(final boolean duration) {
             this.duration = duration;
             return this;
         }
 
-        public BusinessTypeBuilder withJurisdiction(String jurisdiction) {
+        public BusinessTypeBuilder withJurisdiction(final String jurisdiction) {
             this.jurisdiction = jurisdiction;
             return this;
         }
 
         public BusinessType build() {
-            BusinessType businessType = new BusinessType();
+            final BusinessType businessType = new BusinessType();
             businessType.setId(this.id);
             businessType.setSeqNum(this.seqNum);
             businessType.setTypeCode(this.typeCode);

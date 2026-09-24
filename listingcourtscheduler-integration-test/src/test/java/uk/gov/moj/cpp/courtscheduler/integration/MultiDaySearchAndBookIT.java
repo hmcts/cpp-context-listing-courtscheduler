@@ -15,10 +15,9 @@ import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 
 import java.io.StringReader;
-import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
-import java.util.Date;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -530,8 +529,8 @@ class MultiDaySearchAndBookIT extends AbstractIT {
                                final int maxDuration,
                                final int totalBookedIgnored) throws java.sql.SQLException {
         final String id = UUID.randomUUID().toString();
-        final Date sessionStart = Date.from(sessionDate.atTime(10, 0).toInstant(ZoneOffset.UTC));
-        final Date sessionEnd = Date.from(sessionDate.atTime(17, 0).toInstant(ZoneOffset.UTC));
+        final Instant sessionStart = sessionDate.atTime(10, 0).toInstant(ZoneOffset.UTC);
+        final Instant sessionEnd = sessionDate.atTime(17, 0).toInstant(ZoneOffset.UTC);
 
         final CourtSchedule cs = new CourtSchedule();
         cs.setCourtScheduleId(id);
@@ -582,7 +581,7 @@ class MultiDaySearchAndBookIT extends AbstractIT {
         al.setCourtRoomId(1);
         al.setRotaBusinessType("BTX");
         al.setDuration(duration);
-        al.setHearingStartTime(new Timestamp(System.currentTimeMillis()));
+        al.setHearingStartTime(java.time.Instant.now());
         return al;
     }
 

@@ -4,10 +4,12 @@ import static java.util.Arrays.stream;
 import static uk.gov.moj.cpp.courtscheduler.domain.SearchCourtSchedulesByIdRequestParam.SearchCourtSchedulesByIdRequestParamBuilder.searchCourtSchedulesByIdRequestParamBuilder;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.json.Json;
 import jakarta.json.JsonObject;
 import jakarta.json.JsonObjectBuilder;
+import jakarta.json.JsonReader;
 import jakarta.servlet.http.HttpServletRequest;
 import java.io.StringReader;
 import java.util.ArrayList;
@@ -45,7 +47,6 @@ import uk.gov.moj.cpp.courtscheduler.api.validator.HearingSlotsApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.JudiciariesApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.ProvisionalBookingApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.SessionsApiValidator;
-import uk.gov.moj.cpp.courtscheduler.api.validator.UnprocessableEntityException;
 import uk.gov.moj.cpp.courtscheduler.api.validator.ValidationException;
 import uk.gov.moj.cpp.courtscheduler.common.service.JudiciaryAssignmentService;
 import uk.gov.moj.cpp.courtscheduler.common.service.JudiciaryUnassignmentService;
@@ -114,6 +115,15 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
     private static final String CREATE_MT = "application/vnd.courtscheduler.validate.create+json";
     private static final String UPDATE_MT = "application/vnd.courtscheduler.validate.update+json";
     private static final String DELETE_MT = "application/vnd.courtscheduler.validate.delete+json";
+    private static final String COURT_SCHEDULES = "courtSchedules";
+    private static final String END_DATE = "endDate";
+    private static final String DURATION_IN_MINUTES = "durationInMinutes";
+    private static final java.time.format.DateTimeFormatter UTC_HH_MM_FORMATTER =
+            java.time.format.DateTimeFormatter.ofPattern("HH:mm").withZone(java.time.ZoneOffset.UTC);
+    private static final String CROWN_SAB_MT = "application/vnd.courtscheduler.crown.search.and.book";
+    private static final String MAGS_SAB_MT = "application/vnd.courtscheduler.mags.search.and.book";
+    private static final String MOVE_PAST_MT = "application/vnd.courtscheduler.move-hearing-to-past-date";
+    private static final String CHANGE_ROOM_MULTIDAY_MT = "application/vnd.courtscheduler.change-court-room-for-multiday-hearing";
 
     // --- shared infrastructure
     private final ObjectMapper objectMapper;
@@ -210,7 +220,7 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
 
     /** Map<String,Object> (Jackson) to jakarta.json.JsonObject expected by legacy converters. */
     private JsonObject toJsonObject(final Map<String, Object> body) {
-        try (var reader = Json.createReader(new StringReader(toJson(body)))) {
+        try (JsonReader reader = Json.createReader(new StringReader(toJson(body)))) {
             return reader.readObject();
         }
     }
@@ -266,7 +276,7 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
         final List<CourtSchedule> courtSchedules = sessionsService.getCourtSchedules(param);
 
         final Map<String, Object> body = new LinkedHashMap<>();
-        body.put("courtSchedules", groupByCourtRoom(courtSchedules));
+        body.put(COURT_SCHEDULES, groupByCourtRoom(courtSchedules));
         return ResponseEntity.ok(body);
     }
 
@@ -290,7 +300,7 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
         CourtScheduleRoomSanitiser.stripCourtRoomFromDraftSessions(courtSchedules);
 
         final Map<String, Object> body = new LinkedHashMap<>();
-        body.put("courtSchedules", courtSchedules);
+        body.put(COURT_SCHEDULES, courtSchedules);
         return ResponseEntity.ok(body);
     }
 
@@ -303,43 +313,39 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
      * string so the legacy IT contract is preserved.</p>
      */
     private List<Map<String, Object>> groupByCourtRoom(final List<CourtSchedule> schedules) {
+        // computeIfAbsent rather than Collectors.groupingBy: groupingBy rejects a null courtRoomId.
         final Map<String, List<CourtSchedule>> byCourtRoom = new LinkedHashMap<>();
-        for (final CourtSchedule cs : schedules) {
-            byCourtRoom.computeIfAbsent(cs.getCourtRoomId(), k -> new ArrayList<>()).add(cs);
-        }
-        final List<Map<String, Object>> result = new ArrayList<>();
-        for (final var entry : byCourtRoom.entrySet()) {
-            final List<CourtSchedule> sessions = new ArrayList<>(entry.getValue());
-            // Legacy ordering: sessions within a room sorted by sessionDate.
-            sessions.sort(Comparator.comparing(CourtSchedule::getSessionDate,
-                    Comparator.nullsLast(Comparator.naturalOrder())));
-            final List<Map<String, Object>> sessionMaps = new ArrayList<>();
-            for (final CourtSchedule cs : sessions) {
-                sessionMaps.add(toSessionMapWithUtcTimes(cs));
-            }
-            final Map<String, Object> group = new LinkedHashMap<>();
-            group.put("courtRoomId", entry.getKey());
-            group.put("courtRoomName", sessions.isEmpty() ? null : sessions.get(0).getCourtRoomName());
-            group.put("sessions", sessionMaps);
-            result.add(group);
-        }
+        schedules.forEach(cs -> byCourtRoom.computeIfAbsent(cs.getCourtRoomId(), k -> new ArrayList<>()).add(cs));
+        final List<Map<String, Object>> result = new ArrayList<>(byCourtRoom.size());
+        byCourtRoom.forEach((courtRoomId, sessions) -> result.add(toCourtRoomGroup(courtRoomId, sessions)));
         // Legacy ordering: rooms sorted alphabetically by courtRoomName.
         result.sort(Comparator.comparing(group -> (String) group.get("courtRoomName"),
                 Comparator.nullsLast(Comparator.naturalOrder())));
         return result;
     }
 
-    private static final java.time.format.DateTimeFormatter UTC_HH_MM_FORMATTER =
-            java.time.format.DateTimeFormatter.ofPattern("HH:mm").withZone(java.time.ZoneOffset.UTC);
+    private Map<String, Object> toCourtRoomGroup(final String courtRoomId, final List<CourtSchedule> sessions) {
+        // Legacy ordering: sessions within a room sorted by sessionDate.
+        sessions.sort(Comparator.comparing(CourtSchedule::getSessionDate,
+                Comparator.nullsLast(Comparator.naturalOrder())));
+        final List<Map<String, Object>> sessionMaps = sessions.stream()
+                .map(this::toSessionMapWithUtcTimes)
+                .toList();
+        final Map<String, Object> group = new LinkedHashMap<>();
+        group.put("courtRoomId", courtRoomId);
+        group.put("courtRoomName", sessions.isEmpty() ? null : sessions.getFirst().getCourtRoomName());
+        group.put("sessions", sessionMaps);
+        return group;
+    }
 
     private Map<String, Object> toSessionMapWithUtcTimes(final CourtSchedule cs) {
-        @SuppressWarnings("unchecked")
-        final Map<String, Object> map = objectMapper.convertValue(cs, Map.class);
+        final Map<String, Object> map = objectMapper.convertValue(cs,
+            new TypeReference<>() { });
         if (cs.getSessionStartTime() != null) {
-            map.put("sessionStartTime", UTC_HH_MM_FORMATTER.format(cs.getSessionStartTime().toInstant()));
+            map.put("sessionStartTime", UTC_HH_MM_FORMATTER.format(cs.getSessionStartTime()));
         }
         if (cs.getSessionEndTime() != null) {
-            map.put("sessionEndTime", UTC_HH_MM_FORMATTER.format(cs.getSessionEndTime().toInstant()));
+            map.put("sessionEndTime", UTC_HH_MM_FORMATTER.format(cs.getSessionEndTime()));
         }
         // The legacy get-court-schedule response was assembled from CourtScheduleView, whose wire
         // names for these flags are is-prefixed — unlike the raw CourtSchedule serialization used
@@ -427,7 +433,9 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
         return ResponseEntity.status(HttpStatus.ACCEPTED).build();
     }
 
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({"unchecked", "PMD.AvoidInstantiatingObjectsInLoops"})
+    // A fresh sessionIds list is required per judiciary entry (each is stored under a
+    // distinct map key), so it cannot be hoisted out of the loop.
     private ResponseEntity<Void> unassignJudiciary(final Map<String, Object> body) {
         final JsonObject validate = judiciariesApiValidator.validateUnassignJudiciaryRequest(toJsonObject(body));
         if (!validate.isEmpty()) {
@@ -510,11 +518,6 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
      *  HearingsOpenApi — SPRDT-1089 booking family on /hearings/*
      * ============================================================ */
 
-    private static final String CROWN_SAB_MT = "application/vnd.courtscheduler.crown.search.and.book";
-    private static final String MAGS_SAB_MT = "application/vnd.courtscheduler.mags.search.and.book";
-    private static final String MOVE_PAST_MT = "application/vnd.courtscheduler.move-hearing-to-past-date";
-    private static final String CHANGE_ROOM_MULTIDAY_MT = "application/vnd.courtscheduler.change-court-room-for-multiday-hearing";
-
     /** POST /hearings — list a hearing into already-chosen court sessions (was PUT /list/hearingslots). */
     @Override
     public ResponseEntity<Map<String, Object>> postListHearingsInSessions(final Map<String, Object> body) {
@@ -556,17 +559,17 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
         } catch (CrownFallbackNoSessionException | NoSessionAvailableException e) {
             // Booking-family 422s keep the legacy FLAT body ({"errorCode":...,"message":...}) —
             // UnprocessableEntityException would render the judiciary-validate wrapper instead.
-            return ResponseEntity.unprocessableEntity()
+            return ResponseEntity.status(422)
                     .body(JsonValueConverter.toMap(buildNoSessionErrorBody(e.getMessage())));
         } catch (NoAllocationOnDateException e) {
-            return ResponseEntity.unprocessableEntity()
-                    .body(JsonValueConverter.toMap(buildErrorBody("NO_ALLOCATION_ON_DATE", e.getMessage())));
+            return ResponseEntity.status(422)
+                    .body(JsonValueConverter.toMap(buildErrorBody(e.getMessage())));
         } catch (ExtendMultidayHearingException e) {
             // SPRDT-1273: a same-start resize inside crown.search.and.book is delegated to the
             // extend/shrink service; its rejections (NO_AVAILABILITY with the unavailable dates,
             // INVALID_DATE_RANGE) surface on this endpoint with the same flat 422 body the retired
             // PATCH extend endpoint used, so the listing caller can propagate them to the UI.
-            return ResponseEntity.unprocessableEntity()
+            return ResponseEntity.status(422)
                     .body(JsonValueConverter.toMap(buildExtendErrorBody(e)));
         }
         throw new ResponseStatusException(HttpStatus.UNSUPPORTED_MEDIA_TYPE,
@@ -578,8 +581,8 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
                 .setHearingId(hearingId)
                 .setCourtCentreId(getStringOrNull(payload, "courtCentreId"))
                 .setHearingDate(getDateOrNull(payload, "hearingDate"))
-                .setEndDate(getDateOrNull(payload, "endDate"))
-                .setDurationInMinutes(payload.containsKey("durationInMinutes") ? payload.getInt("durationInMinutes") : 0)
+                .setEndDate(getDateOrNull(payload, END_DATE))
+                .setDurationInMinutes(payload.containsKey(DURATION_IN_MINUTES) ? payload.getInt(DURATION_IN_MINUTES) : 0)
                 .setCourtRoomId(getStringOrNull(payload, "courtRoomId"))
                 .setEarliestHearingTime(getStringOrNull(payload, "earliestHearingTime"))
                 .setCourtScheduleId(getStringOrNull(payload, "courtScheduleId"))
@@ -603,12 +606,12 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
                 .setHearingId(hearingId)
                 .setCourtCentreId(getStringOrNull(payload, "courtCentreId"))
                 .setHearingDate(getDateOrNull(payload, "hearingDate"))
-                .setEndDate(getDateOrNull(payload, "endDate"))
-                .setDurationInMinutes(payload.containsKey("durationInMinutes") ? payload.getInt("durationInMinutes") : 0)
+                .setEndDate(getDateOrNull(payload, END_DATE))
+                .setDurationInMinutes(payload.containsKey(DURATION_IN_MINUTES) ? payload.getInt(DURATION_IN_MINUTES) : 0)
                 .setCourtRoomId(getStringOrNull(payload, "courtRoomId"))
                 .setHearingStartTime(getStringOrNull(payload, "hearingStartTime"))
                 .setHearingSessionDateSearchCutOff(getStringOrNull(payload, "hearingSessionDateSearchCutOff"))
-                .setIsPolice(getBooleanOrFalse(payload, "isPolice"));
+                .setIsPolice(getBooleanOrFalse(payload));
 
         final JsonObject validationError = hearingSlotsApiValidator.magsSearchAndBookValidation(sabRequest);
         if (!validationError.isEmpty()) {
@@ -624,8 +627,8 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
                 .setCourtCentreId(getStringOrNull(payload, "courtCentreId"))
                 .setJurisdiction(getStringOrNull(payload, "jurisdiction"))
                 .setStartDate(getDateOrNull(payload, "startDate"))
-                .setEndDate(getDateOrNull(payload, "endDate"))
-                .setDurationInMinutes(payload.containsKey("durationInMinutes") ? payload.getInt("durationInMinutes") : 0)
+                .setEndDate(getDateOrNull(payload, END_DATE))
+                .setDurationInMinutes(payload.containsKey(DURATION_IN_MINUTES) ? payload.getInt(DURATION_IN_MINUTES) : 0)
                 .setCourtScheduleId(getStringOrNull(payload, "courtScheduleId"));
 
         final JsonObject validationError = hearingSlotsApiValidator.moveHearingToPastDateValidation(moveRequest);
@@ -650,7 +653,7 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
             days.add(new RequestedDay(
                     java.time.LocalDate.parse(dayJson.getString("sessionDate")),
                     dayJson.getString("courtScheduleId"),
-                    dayJson.getInt("durationInMinutes")));
+                    dayJson.getInt(DURATION_IN_MINUTES)));
         }
 
         final ChangeCourtRoomForMultidayHearingRequest changeRequest = new ChangeCourtRoomForMultidayHearingRequest()
@@ -662,9 +665,9 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
         return ResponseEntity.ok(toResponseMap(response));
     }
 
-    private static JsonObject buildErrorBody(final String errorCode, final String message) {
+    private static JsonObject buildErrorBody(final String message) {
         return Json.createObjectBuilder()
-                .add("errorCode", errorCode)
+                .add("errorCode", "NO_ALLOCATION_ON_DATE")
                 .add("message", message == null ? "" : message)
                 .build();
     }
@@ -694,8 +697,8 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
         return json.containsKey(key) && !json.isNull(key) ? json.getString(key) : null;
     }
 
-    private static boolean getBooleanOrFalse(final JsonObject json, final String key) {
-        return json.containsKey(key) && !json.isNull(key) && json.getBoolean(key);
+    private static boolean getBooleanOrFalse(final JsonObject json) {
+        return json.containsKey("isPolice") && !json.isNull("isPolice") && json.getBoolean("isPolice");
     }
 
     private static java.time.LocalDate getDateOrNull(final JsonObject json, final String key) {
@@ -703,9 +706,9 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
         return raw == null ? null : java.time.LocalDate.parse(raw);
     }
 
-    @SuppressWarnings("unchecked")
     private Map<String, Object> toResponseMap(final Object response) {
-        return response == null ? new LinkedHashMap<>() : objectMapper.convertValue(response, Map.class);
+        return response == null ? new LinkedHashMap<>() : objectMapper.convertValue(response,
+            new TypeReference<>() { });
     }
 
     /* ============================================================
@@ -725,7 +728,7 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
         final List<uk.gov.moj.cpp.courtscheduler.domain.mi.CourtSchedule> rows =
                 miService.getCourtSchedules(miCriteria(fromDate, toDate));
         final Map<String, Object> body = new LinkedHashMap<>();
-        body.put("courtSchedules", rows);
+        body.put(COURT_SCHEDULES, rows);
         return ResponseEntity.ok(body);
     }
 

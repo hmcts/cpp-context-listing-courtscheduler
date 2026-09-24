@@ -10,7 +10,7 @@ public class GetJudiciaryAvailabilityRuleResponse {
     public GetJudiciaryAvailabilityRuleResponse() {
     }
 
-    public GetJudiciaryAvailabilityRuleResponse(JudiciaryAvailabilityRuleResponse rule, Judiciary judiciary) {
+    public GetJudiciaryAvailabilityRuleResponse(final JudiciaryAvailabilityRuleResponse rule, final Judiciary judiciary) {
         this.rule = rule;
         this.judiciary = judiciary;
     }
@@ -19,7 +19,7 @@ public class GetJudiciaryAvailabilityRuleResponse {
         return rule;
     }
 
-    public void setRule(JudiciaryAvailabilityRuleResponse rule) {
+    public void setRule(final JudiciaryAvailabilityRuleResponse rule) {
         this.rule = rule;
     }
 
@@ -27,12 +27,12 @@ public class GetJudiciaryAvailabilityRuleResponse {
         return judiciary;
     }
 
-    public void setJudiciary(Judiciary judiciary) {
+    public void setJudiciary(final Judiciary judiciary) {
         this.judiciary = judiciary;
     }
 
     @Override
-    public boolean equals(Object o) {
+    public boolean equals(final Object o) {
         if (this == o) {
             return true;
         }

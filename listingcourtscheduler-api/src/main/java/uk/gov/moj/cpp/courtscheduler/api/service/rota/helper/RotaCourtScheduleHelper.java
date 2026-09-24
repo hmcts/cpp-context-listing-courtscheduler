@@ -87,7 +87,9 @@ public class RotaCourtScheduleHelper {
             try {
                 processCourtListing(listingProfileId, listingProfile, executionId,
                         courtScheduleMap, missingReferenceDataMappingMap, missingSessionsByOuCode);
-            } catch (final Exception ex) {
+            } catch (final Exception ex) { // NOPMD(AvoidCatchingGenericException) - deliberate per-record
+                // fault isolation: one malformed court listing in a whole rota-file batch must not
+                // abort processing of every other listing, so any failure type is logged and skipped.
                 logger.error("Error processing court listing profile {}: {}", listingProfileId, ex.getMessage(), ex);
             }
         });
@@ -143,6 +145,10 @@ public class RotaCourtScheduleHelper {
         }
     }
 
+    @SuppressWarnings("PMD.AvoidCatchingGenericException")
+    // Deliberate broad safety net: this looks up court schedules for one listing out of a
+    // whole rota-file batch. Any failure must be logged and this listing skipped (empty
+    // result) without aborting the rest of the batch.
     private List<CourtSchedule> findCourtSchedule(final CourtRoom courtRoom,
                                                   final LocalDate sessionDate,
                                                   final String session,

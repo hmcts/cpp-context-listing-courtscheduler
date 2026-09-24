@@ -3,10 +3,6 @@ package uk.gov.moj.cpp.courtscheduler.domain.rota;
 @SuppressWarnings("squid:S1213")
 public class RotaFileFieldNames {
 
-    private RotaFileFieldNames(){
-
-    }
-
     public static final String ID = "id";
     public static final String LINKED_SESSION_ID = "linkedSessionId";
     public static final String BUSINESS_TYPE = "business";
@@ -38,4 +34,8 @@ public class RotaFileFieldNames {
     public static final String JUDGE_SURNAME = "judgeSurname";
     public static final String MAGS_EMAIL= "magistrateEmailAddress";
     public static final String JUDGE_EMAIL= "judgeEmailAddress";
+
+    private RotaFileFieldNames(){
+
+    }
 }

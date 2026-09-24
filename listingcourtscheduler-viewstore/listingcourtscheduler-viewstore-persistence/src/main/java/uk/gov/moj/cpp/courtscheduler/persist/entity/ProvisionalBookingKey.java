@@ -10,7 +10,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 
 @Embeddable
-@SuppressWarnings({"squid:S1948"})
+@SuppressWarnings({"squid:S1948", "PMD.NonSerializableClass"}) // courtSchedule is a managed JPA association, not a plain field to serialize
 public class ProvisionalBookingKey implements Serializable {
 
     private static final long serialVersionUID = 1L;
@@ -27,7 +27,7 @@ public class ProvisionalBookingKey implements Serializable {
         //For JPA
     }
 
-    public ProvisionalBookingKey(CourtSchedule courtSchedule, String bookingId) {
+    public ProvisionalBookingKey(final CourtSchedule courtSchedule, final String bookingId) {
         this.courtSchedule = courtSchedule;
         this.bookingId = bookingId;
     }
@@ -36,7 +36,7 @@ public class ProvisionalBookingKey implements Serializable {
         return courtSchedule;
     }
 
-    public void setCourtSchedule(CourtSchedule courtSchedule) {
+    public void setCourtSchedule(final CourtSchedule courtSchedule) {
         this.courtSchedule = courtSchedule;
     }
 
@@ -44,12 +44,12 @@ public class ProvisionalBookingKey implements Serializable {
         return bookingId;
     }
 
-    public void setBookingId(String bookingId) {
+    public void setBookingId(final String bookingId) {
         this.bookingId = bookingId;
     }
 
     @Override
-    public boolean equals(Object o) {
+    public boolean equals(final Object o) {
         if (this == o) {
             return true;
         }

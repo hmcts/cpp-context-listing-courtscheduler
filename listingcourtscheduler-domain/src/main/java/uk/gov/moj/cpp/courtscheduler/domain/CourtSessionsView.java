@@ -20,11 +20,11 @@ public class CourtSessionsView {
         return sessions;
     }
 
-    public void addSession(CourtScheduleView session) {
+    public void addSession(final CourtScheduleView session) {
         this.sessions.add(session);
     }
 
-    public CourtSessionsView(String courtRoomId, String courtRoomName) {
+    public CourtSessionsView(final String courtRoomId, final String courtRoomName) {
         this.courtRoomId = courtRoomId;
         this.courtRoomName = courtRoomName;
     }

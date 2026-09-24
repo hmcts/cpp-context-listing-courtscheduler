@@ -3,7 +3,7 @@ package uk.gov.moj.cpp.courtscheduler.domain;
 import java.time.DayOfWeek;
 import java.util.Set;
 
-@SuppressWarnings({"PMD.BeanMembersShouldSerialize", "squid:S2384"})
+@SuppressWarnings("squid:S2384")
 public class Session {
 
     private String courtCentreId;
@@ -18,8 +18,8 @@ public class Session {
     private Integer maxDurationForAfternoon;
     private String sessionStartTime;
     private String sessionEndTime;
-    private Boolean isOverbookingAllowed;
-    private Boolean isDraft;
+    private Boolean overbookingAllowed;
+    private Boolean draft;
     private String jurisdiction;
     private Integer index;
 
@@ -72,11 +72,11 @@ public class Session {
     }
 
     public Boolean isOverbookingAllowed() {
-        return isOverbookingAllowed;
+        return overbookingAllowed;
     }
 
     public Boolean isDraft() {
-        return isDraft;
+        return draft;
     }
 
     public String getJurisdiction() {
@@ -112,37 +112,37 @@ public class Session {
             return new SessionBuilder();
         }
 
-        public SessionBuilder withCourtCentreId(String courtCentreId) {
+        public SessionBuilder withCourtCentreId(final String courtCentreId) {
             this.courtCentreId = courtCentreId;
             return this;
         }
 
-        public SessionBuilder withCourtRoomId(String courtRoomId) {
+        public SessionBuilder withCourtRoomId(final String courtRoomId) {
             this.courtRoomId = courtRoomId;
             return this;
         }
 
-        public SessionBuilder withSessionType(String sessionType) {
+        public SessionBuilder withSessionType(final String sessionType) {
             this.sessionType = sessionType;
             return this;
         }
 
-        public SessionBuilder withBusinessType(String businessType) {
+        public SessionBuilder withBusinessType(final String businessType) {
             this.businessType = businessType;
             return this;
         }
 
-        public SessionBuilder withSlotsOrDuration(Integer slotsOrDuration) {
+        public SessionBuilder withSlotsOrDuration(final Integer slotsOrDuration) {
             this.slotsOrDuration = slotsOrDuration;
             return this;
         }
 
-        public SessionBuilder withPanelType(String panelType) {
+        public SessionBuilder withPanelType(final String panelType) {
             this.panelType = panelType;
             return this;
         }
 
-        public SessionBuilder withRepeatDays(Set<DayOfWeek> repeatDays) {
+        public SessionBuilder withRepeatDays(final Set<DayOfWeek> repeatDays) {
             this.repeatDays = repeatDays;
             return this;
         }
@@ -193,7 +193,7 @@ public class Session {
         }
 
         public Session build() {
-            Session session = new Session();
+            final Session session = new Session();
             session.slotsOrDuration = this.slotsOrDuration;
             session.sessionType = this.sessionType;
             session.businessType = this.businessType;
@@ -206,8 +206,8 @@ public class Session {
             session.maxDurationForAfternoon = this.maxDurationForAfternoon;
             session.sessionStartTime = this.sessionStartTime;
             session.sessionEndTime = this.sessionEndTime;
-            session.isOverbookingAllowed = this.isOverbookingAllowed;
-            session.isDraft = this.isDraft;
+            session.overbookingAllowed = this.isOverbookingAllowed;
+            session.draft = this.isDraft;
             session.jurisdiction = this.jurisdiction;
             session.index = this.index;
             return session;

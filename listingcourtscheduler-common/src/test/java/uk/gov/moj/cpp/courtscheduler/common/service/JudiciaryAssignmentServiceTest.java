@@ -413,8 +413,8 @@ class JudiciaryAssignmentServiceTest {
         assertNull(captor.getValue().getRotaJudiciaryId());
         assertNull(captor.getValue().getPosition());
         assertEquals("MAGISTRATE", captor.getValue().getJudiciaryType());
-        assertTrue(captor.getValue().getBenchChairman());
-        assertFalse(captor.getValue().getDeputy());
+        assertTrue(captor.getValue().isBenchChairman());
+        assertFalse(captor.getValue().isDeputy());
     }
 
     @Test

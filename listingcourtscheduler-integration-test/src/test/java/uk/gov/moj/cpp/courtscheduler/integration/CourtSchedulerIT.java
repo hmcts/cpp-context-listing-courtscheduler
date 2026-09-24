@@ -3,7 +3,6 @@ package uk.gov.moj.cpp.courtscheduler.integration;
 import static java.time.LocalDate.now;
 import static java.time.ZoneOffset.UTC;
 import static java.time.format.DateTimeFormatter.ofPattern;
-import static java.util.Date.from;
 import static java.util.UUID.randomUUID;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -12,7 +11,6 @@ import static jakarta.json.Json.createObjectBuilder;
 import static jakarta.ws.rs.core.Response.Status.ACCEPTED;
 import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
 import static jakarta.ws.rs.core.Response.Status.OK;
-import static java.util.UUID.randomUUID;
 import static org.hamcrest.CoreMatchers.anyOf;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.notNullValue;
@@ -59,6 +57,7 @@ import java.io.StringReader;
 import java.sql.SQLException;
 import java.text.SimpleDateFormat;
 import java.time.DayOfWeek;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
@@ -158,8 +157,8 @@ class CourtSchedulerIT extends AbstractIT {
     void shouldCreateCourtScheduleWithSessionTimes() {
         //We send localtime
         final LocalDate startDate = LocalDate.now().with(TemporalAdjusters.next(DayOfWeek.MONDAY));
-        final java.util.Date expectedStartTime = TimezoneUtils.combineLocalDateAndTimeToUtc(startDate, LocalTime.of(10, 0));
-        final java.util.Date expectedEndTime = TimezoneUtils.combineLocalDateAndTimeToUtc(startDate, LocalTime.of(12, 0));
+        final Instant expectedStartTime = TimezoneUtils.combineLocalDateAndTimeToUtc(startDate, LocalTime.of(10, 0)).toInstant();
+        final Instant expectedEndTime = TimezoneUtils.combineLocalDateAndTimeToUtc(startDate, LocalTime.of(12, 0)).toInstant();
         final String createCourtSchedulePayload = prepareCreateCourtSchedulePayload("create-court-schedule-duration-based.json");
         final Response response = postCommand(BASE_RESOURCE_URL, COURT_SCHEDULE_CREATE_CONTENT_TYPE, USER_ID, createCourtSchedulePayload);
         assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
@@ -183,10 +182,10 @@ class CourtSchedulerIT extends AbstractIT {
         final LocalDate endDate = startDate.plusDays(56);
         // The JSON contains times in BST (local time), so convert to UTC for comparison
         // 10:00 BST = 09:00 UTC and 12:00 BST = 11:00 UTC during BST period
-        final java.util.Date expectedStartTimeFirstWeek = TimezoneUtils.combineLocalDateAndTimeToUtc(startDate, LocalTime.of(10, 0));
-        final java.util.Date expectedEndTimeFirstWeek = TimezoneUtils.combineLocalDateAndTimeToUtc(startDate, LocalTime.of(12, 0));
-        final java.util.Date expectedStartTimeLastWeek = TimezoneUtils.combineLocalDateAndTimeToUtc(startDate.plusDays(56), LocalTime.of(10, 0));
-        final java.util.Date expectedEndTimeLastWeek = TimezoneUtils.combineLocalDateAndTimeToUtc(startDate.plusDays(56), LocalTime.of(12, 0));
+        final Instant expectedStartTimeFirstWeek = TimezoneUtils.combineLocalDateAndTimeToUtc(startDate, LocalTime.of(10, 0)).toInstant();
+        final Instant expectedEndTimeFirstWeek = TimezoneUtils.combineLocalDateAndTimeToUtc(startDate, LocalTime.of(12, 0)).toInstant();
+        final Instant expectedStartTimeLastWeek = TimezoneUtils.combineLocalDateAndTimeToUtc(startDate.plusDays(56), LocalTime.of(10, 0)).toInstant();
+        final Instant expectedEndTimeLastWeek = TimezoneUtils.combineLocalDateAndTimeToUtc(startDate.plusDays(56), LocalTime.of(12, 0)).toInstant();
         final String createCourtSchedulePayload = prepareCreateCourtSchedulePayload_testBSTToUTC("create-court-schedule-duration-based-bst-timings.json", startDate, endDate);
         final Response response = postCommand(BASE_RESOURCE_URL, COURT_SCHEDULE_CREATE_CONTENT_TYPE, USER_ID, createCourtSchedulePayload);
         assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
@@ -214,8 +213,8 @@ class CourtSchedulerIT extends AbstractIT {
         assertThat(courtSchedule.getCourtScheduleId(), is(notNullValue()));
 
         // Convert the UTC times from the database to local time for comparison
-        java.util.Date localStartTime = TimezoneUtils.utcToLocal(courtSchedule.getSessionStartTime());
-        java.util.Date localEndTime = TimezoneUtils.utcToLocal(courtSchedule.getSessionEndTime());
+        java.util.Date localStartTime = Date.from(TimezoneUtils.utcToLocal(courtSchedule.getSessionStartTime()));
+        java.util.Date localEndTime = Date.from(TimezoneUtils.utcToLocal(courtSchedule.getSessionEndTime()));
 
         assertThat(sdf.format(localStartTime), is(DEFAULT_MORNING_START_TIME));
         assertThat(sdf.format(localEndTime), is(DEFAULT_MORNING_END_TIME));
@@ -232,8 +231,8 @@ class CourtSchedulerIT extends AbstractIT {
         assertThat(courtSchedule.getCourtScheduleId(), is(notNullValue()));
 
         // Convert the UTC times from the database to local time for comparison
-        java.util.Date localStartTime = TimezoneUtils.utcToLocal(courtSchedule.getSessionStartTime());
-        java.util.Date localEndTime = TimezoneUtils.utcToLocal(courtSchedule.getSessionEndTime());
+        java.util.Date localStartTime = Date.from(TimezoneUtils.utcToLocal(courtSchedule.getSessionStartTime()));
+        java.util.Date localEndTime = Date.from(TimezoneUtils.utcToLocal(courtSchedule.getSessionEndTime()));
 
         assertThat(sdf.format(localStartTime), is(DEFAULT_AFTERNOON_START_TIME));
         assertThat(sdf.format(localEndTime), is(DEFAULT_AFTERNOON_END_TIME));
@@ -250,8 +249,8 @@ class CourtSchedulerIT extends AbstractIT {
         assertThat(courtSchedule.getCourtScheduleId(), is(notNullValue()));
 
         // Convert the UTC times from the database to local time for comparison
-        java.util.Date localStartTime = TimezoneUtils.utcToLocal(courtSchedule.getSessionStartTime());
-        java.util.Date localEndTime = TimezoneUtils.utcToLocal(courtSchedule.getSessionEndTime());
+        java.util.Date localStartTime = Date.from(TimezoneUtils.utcToLocal(courtSchedule.getSessionStartTime()));
+        java.util.Date localEndTime = Date.from(TimezoneUtils.utcToLocal(courtSchedule.getSessionEndTime()));
 
         assertThat(sdf.format(localStartTime), is(DEFAULT_ALL_DAY_START_TIME));
         assertThat(sdf.format(localEndTime), is(DEFAULT_ALL_DAY_END_TIME));
@@ -274,8 +273,8 @@ class CourtSchedulerIT extends AbstractIT {
         for (final CourtSchedule courtSchedule : courtSchedules) {
             assertThat(courtSchedule.getCourtScheduleId(), is(notNullValue()));
 
-            final java.util.Date localStartTime = TimezoneUtils.utcToLocal(courtSchedule.getSessionStartTime());
-            final java.util.Date localEndTime = TimezoneUtils.utcToLocal(courtSchedule.getSessionEndTime());
+            final java.util.Date localStartTime = Date.from(TimezoneUtils.utcToLocal(courtSchedule.getSessionStartTime()));
+            final java.util.Date localEndTime = Date.from(TimezoneUtils.utcToLocal(courtSchedule.getSessionEndTime()));
 
             assertThat(sdf.format(localStartTime), is("09:15"));
             assertThat(sdf.format(localEndTime), is(DEFAULT_MORNING_END_TIME));
@@ -296,8 +295,8 @@ class CourtSchedulerIT extends AbstractIT {
         for (final CourtSchedule courtSchedule : courtSchedules) {
             assertThat(courtSchedule.getCourtScheduleId(), is(notNullValue()));
 
-            final java.util.Date localStartTime = TimezoneUtils.utcToLocal(courtSchedule.getSessionStartTime());
-            final java.util.Date localEndTime = TimezoneUtils.utcToLocal(courtSchedule.getSessionEndTime());
+            final java.util.Date localStartTime = Date.from(TimezoneUtils.utcToLocal(courtSchedule.getSessionStartTime()));
+            final java.util.Date localEndTime = Date.from(TimezoneUtils.utcToLocal(courtSchedule.getSessionEndTime()));
 
             assertThat(sdf.format(localStartTime), is("09:15"));
             assertThat(sdf.format(localEndTime), is(DEFAULT_ALL_DAY_END_TIME));
@@ -318,8 +317,8 @@ class CourtSchedulerIT extends AbstractIT {
         for (final CourtSchedule courtSchedule : courtSchedules) {
             assertThat(courtSchedule.getCourtScheduleId(), is(notNullValue()));
 
-            final java.util.Date localStartTime = TimezoneUtils.utcToLocal(courtSchedule.getSessionStartTime());
-            final java.util.Date localEndTime = TimezoneUtils.utcToLocal(courtSchedule.getSessionEndTime());
+            final java.util.Date localStartTime = Date.from(TimezoneUtils.utcToLocal(courtSchedule.getSessionStartTime()));
+            final java.util.Date localEndTime = Date.from(TimezoneUtils.utcToLocal(courtSchedule.getSessionEndTime()));
 
             assertThat(sdf.format(localStartTime), is(DEFAULT_AFTERNOON_START_TIME));
             assertThat(sdf.format(localEndTime), is(DEFAULT_AFTERNOON_END_TIME));
@@ -340,8 +339,8 @@ class CourtSchedulerIT extends AbstractIT {
         for (final CourtSchedule courtSchedule : courtSchedules) {
             assertThat(courtSchedule.getCourtScheduleId(), is(notNullValue()));
 
-            final java.util.Date localStartTime = TimezoneUtils.utcToLocal(courtSchedule.getSessionStartTime());
-            final java.util.Date localEndTime = TimezoneUtils.utcToLocal(courtSchedule.getSessionEndTime());
+            final java.util.Date localStartTime = Date.from(TimezoneUtils.utcToLocal(courtSchedule.getSessionStartTime()));
+            final java.util.Date localEndTime = Date.from(TimezoneUtils.utcToLocal(courtSchedule.getSessionEndTime()));
 
             assertThat(sdf.format(localStartTime), is("10:15"));
             assertThat(sdf.format(localEndTime), is("12:30"));
@@ -713,8 +712,8 @@ class CourtSchedulerIT extends AbstractIT {
         courtScheduleDuration.setMaxAdAfternoonDuration(maxDurationForAfternoon);
         courtScheduleDuration.setCourtScheduleId("abcdef12-3456-7890-abcd-ef1234567890");
         courtScheduleDuration.setSessionDate(getRandomFutureDateWithinNextYear());
-        courtScheduleDuration.setSessionStartTime(DateUtils.combineDateAndTime(courtScheduleDuration.getSessionDate(), "10:00"));
-        courtScheduleDuration.setSessionEndTime(DateUtils.combineDateAndTime(courtScheduleDuration.getSessionDate(), "16:00"));
+        courtScheduleDuration.setSessionStartTime(DateUtils.combineDateAndTime(courtScheduleDuration.getSessionDate(), "10:00").toInstant());
+        courtScheduleDuration.setSessionEndTime(DateUtils.combineDateAndTime(courtScheduleDuration.getSessionDate(), "16:00").toInstant());
         databaseSeeder.insertCourtSchedule(courtScheduleDuration);
 
         createAllocatedListing(courtScheduleDuration, hearingIdForMorning, bookingIdForMorning, 120, "10:00");
@@ -740,8 +739,8 @@ class CourtSchedulerIT extends AbstractIT {
         courtScheduleDuration.setIsOverbookingAllowed(false);
         courtScheduleDuration.setCourtScheduleId("abcdef12-3456-7890-abcd-ef1234567890");
         courtScheduleDuration.setSessionDate(getRandomFutureDateWithinNextYear());
-        courtScheduleDuration.setSessionStartTime(DateUtils.combineDateAndTime(courtScheduleDuration.getSessionDate(), "10:00"));
-        courtScheduleDuration.setSessionEndTime(DateUtils.combineDateAndTime(courtScheduleDuration.getSessionDate(), "16:00"));
+        courtScheduleDuration.setSessionStartTime(DateUtils.combineDateAndTime(courtScheduleDuration.getSessionDate(), "10:00").toInstant());
+        courtScheduleDuration.setSessionEndTime(DateUtils.combineDateAndTime(courtScheduleDuration.getSessionDate(), "16:00").toInstant());
         databaseSeeder.insertCourtSchedule(courtScheduleDuration);
 
         final String validateCourtSchedulePayload = getPayload("courtscheduler.validate.session.availability-insufficient-duration.json");
@@ -772,8 +771,8 @@ class CourtSchedulerIT extends AbstractIT {
         courtScheduleSlot.setCourtScheduleId("12345678-90ab-cdef-0123-456789abcdef");
         courtScheduleSlot.setCourtHouseId(sharedCourtHouseId);
         courtScheduleSlot.setSessionDate(getRandomFutureDateWithinNextYear());
-        courtScheduleSlot.setSessionStartTime(DateUtils.combineDateAndTime(courtScheduleSlot.getSessionDate(), "10:00"));
-        courtScheduleSlot.setSessionEndTime(DateUtils.combineDateAndTime(courtScheduleSlot.getSessionDate(), "16:00"));
+        courtScheduleSlot.setSessionStartTime(DateUtils.combineDateAndTime(courtScheduleSlot.getSessionDate(), "10:00").toInstant());
+        courtScheduleSlot.setSessionEndTime(DateUtils.combineDateAndTime(courtScheduleSlot.getSessionDate(), "16:00").toInstant());
         databaseSeeder.insertCourtSchedule(courtScheduleSlot);
 
         courtScheduleDuration.setBusinessType("TRL");
@@ -788,8 +787,8 @@ class CourtSchedulerIT extends AbstractIT {
         courtScheduleDuration.setCourtScheduleId("abcdef12-3456-7890-abcd-ef1234567890");
         courtScheduleDuration.setCourtHouseId(sharedCourtHouseId);
         courtScheduleDuration.setSessionDate(getRandomFutureDateWithinNextYear());
-        courtScheduleDuration.setSessionStartTime(DateUtils.combineDateAndTime(courtScheduleDuration.getSessionDate(), "10:00"));
-        courtScheduleDuration.setSessionEndTime(DateUtils.combineDateAndTime(courtScheduleDuration.getSessionDate(), "16:00"));
+        courtScheduleDuration.setSessionStartTime(DateUtils.combineDateAndTime(courtScheduleDuration.getSessionDate(), "10:00").toInstant());
+        courtScheduleDuration.setSessionEndTime(DateUtils.combineDateAndTime(courtScheduleDuration.getSessionDate(), "16:00").toInstant());
         databaseSeeder.insertCourtSchedule(courtScheduleDuration);
 
         final String validateCourtSchedulePayload = getPayload("courtscheduler.validate.session.availability-mixed.json");
@@ -845,8 +844,8 @@ class CourtSchedulerIT extends AbstractIT {
             schedule.setMaxDuration(maxDuration);
             schedule.setAvailableDuration(maxDuration);
             schedule.setSupportAdSplit(false);
-            schedule.setSessionStartTime(DateUtils.combineDateAndTime(schedule.getSessionDate(), "09:00"));
-            schedule.setSessionEndTime(DateUtils.combineDateAndTime(schedule.getSessionDate(), "17:00"));
+            schedule.setSessionStartTime(DateUtils.combineDateAndTime(schedule.getSessionDate(), "09:00").toInstant());
+            schedule.setSessionEndTime(DateUtils.combineDateAndTime(schedule.getSessionDate(), "17:00").toInstant());
             databaseSeeder.insertCourtSchedule(schedule);
             sessionDate = nextWeekday(sessionDate);
         }
@@ -877,8 +876,8 @@ class CourtSchedulerIT extends AbstractIT {
         courtSchedule.setMaxAdAfternoonDuration(maxDurationForAfternoon);
         courtSchedule.setCourtScheduleId("a1234567-89ab-cdef-0123-456789abcdef");
         courtSchedule.setSessionDate(getRandomFutureDateWithinNextYear());
-        courtSchedule.setSessionStartTime(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), "10:00"));
-        courtSchedule.setSessionEndTime(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), "16:00"));
+        courtSchedule.setSessionStartTime(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), "10:00").toInstant());
+        courtSchedule.setSessionEndTime(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), "16:00").toInstant());
         databaseSeeder.insertCourtSchedule(courtSchedule);
 
         final String validateCourtSchedulePayload = getPayload("courtscheduler.validate.session.availability-slot.json");
@@ -973,8 +972,8 @@ class CourtSchedulerIT extends AbstractIT {
         assertThat(courtScheduleAfterUpdate.getMaxAdMorningDuration(), is(120));
         assertThat(courtScheduleAfterUpdate.getMaxAdAfternoonDuration(), is(60));
 
-        final Date expectedStartTime = localDateToDateWithTime(expected.getSessionDate(), 10, 30);
-        final Date expectedEndTime = localDateToDateWithTime(expected.getSessionDate(), 17, 30);
+        final Instant expectedStartTime = localDateToDateWithTime(expected.getSessionDate(), 10, 30).toInstant();
+        final Instant expectedEndTime = localDateToDateWithTime(expected.getSessionDate(), 17, 30).toInstant();
         assertThat(courtScheduleAfterUpdate.getSessionStartTime(), is(expectedStartTime));
         assertThat(courtScheduleAfterUpdate.getSessionEndTime(), is(expectedEndTime));
     }
@@ -1015,10 +1014,10 @@ class CourtSchedulerIT extends AbstractIT {
         final CourtSchedule courtScheduleAfterUpdate = databaseReader.courtScheduleById(courtScheduleId.toString());
         assertThat(courtScheduleAfterUpdate.getMaxAdMorningDuration(), is(120));
         assertThat(courtScheduleAfterUpdate.getMaxAdAfternoonDuration(), is(60));
-        assertThat(courtScheduleAfterUpdate.getIsOverbookingAllowed(), is(true));
+        assertThat(courtScheduleAfterUpdate.isOverbookingAllowed(), is(true));
 
-        final Date expectedStartTime = localDateToDateWithTime(expected.getSessionDate(), 10, 30);
-        final Date expectedEndTime = localDateToDateWithTime(expected.getSessionDate(), 17, 30);
+        final Instant expectedStartTime = localDateToDateWithTime(expected.getSessionDate(), 10, 30).toInstant();
+        final Instant expectedEndTime = localDateToDateWithTime(expected.getSessionDate(), 17, 30).toInstant();
         assertThat(courtScheduleAfterUpdate.getSessionStartTime(), is(expectedStartTime));
         assertThat(courtScheduleAfterUpdate.getSessionEndTime(), is(expectedEndTime));
     }
@@ -1057,8 +1056,8 @@ class CourtSchedulerIT extends AbstractIT {
         assertThat(courtScheduleAfterUpdate.getMaxAdMorningDuration(), is(120));
         assertThat(courtScheduleAfterUpdate.getMaxAdAfternoonDuration(), is(60));
 
-        final Date expectedStartTime = localDateToDateWithTime(expected.getSessionDate(), 10, 0);
-        final Date expectedEndTime = localDateToDateWithTime(expected.getSessionDate(), 17, 0);
+        final Instant expectedStartTime = localDateToDateWithTime(expected.getSessionDate(), 10, 0).toInstant();
+        final Instant expectedEndTime = localDateToDateWithTime(expected.getSessionDate(), 17, 0).toInstant();
         assertThat(courtScheduleAfterUpdate.getSessionStartTime(), is(expectedStartTime));
         assertThat(courtScheduleAfterUpdate.getSessionEndTime(), is(expectedEndTime));
     }
@@ -1102,8 +1101,8 @@ class CourtSchedulerIT extends AbstractIT {
         expected.setSupportAdSplit(true);
         LocalDate futureDate = LocalDate.now().with(TemporalAdjusters.next(DayOfWeek.MONDAY));
         expected.setSessionDate(futureDate); // Set to future date to avoid past session validation
-        expected.setSessionStartTime(DateUtils.localDateToDateWithTime(futureDate, 10, 0));
-        expected.setSessionEndTime(DateUtils.localDateToDateWithTime(futureDate, 17, 0));
+        expected.setSessionStartTime(DateUtils.localDateToDateWithTime(futureDate, 10, 0).toInstant());
+        expected.setSessionEndTime(DateUtils.localDateToDateWithTime(futureDate, 17, 0).toInstant());
         expected.setCourtRoomId(courtRoomId); // Set initial courtroom ID to match update
         expected.setCourtHouseId(courtHouseId); // Set court house ID to match courtroom
         databaseSeeder.insertCourtSchedule(expected);
@@ -1142,8 +1141,8 @@ class CourtSchedulerIT extends AbstractIT {
         expected.setSupportAdSplit(true);
         LocalDate futureDate = LocalDate.now().with(TemporalAdjusters.next(DayOfWeek.MONDAY));
         expected.setSessionDate(futureDate); // Set to future date to avoid past session validation
-        expected.setSessionStartTime(DateUtils.localDateToDateWithTime(futureDate, 10, 0));
-        expected.setSessionEndTime(DateUtils.localDateToDateWithTime(futureDate, 17, 0));
+        expected.setSessionStartTime(DateUtils.localDateToDateWithTime(futureDate, 10, 0).toInstant());
+        expected.setSessionEndTime(DateUtils.localDateToDateWithTime(futureDate, 17, 0).toInstant());
         expected.setCourtRoomId(courtRoomId); // Set initial courtroom ID to match update
         expected.setCourtHouseId(courtHouseId); // Set court house ID to match courtroom
         databaseSeeder.insertCourtSchedule(expected);
@@ -1190,8 +1189,8 @@ class CourtSchedulerIT extends AbstractIT {
         expected.setCourtSession("AM"); // Set initial session type to match update
         expected.setPanel("YOUTH"); // Set initial panel to match update
         expected.setSessionDate(LocalDate.now().with(TemporalAdjusters.next(DayOfWeek.MONDAY)));
-        expected.setSessionStartTime(DateUtils.localDateToDateWithTime(expected.getSessionDate(), 10, 0));
-        expected.setSessionEndTime(DateUtils.localDateToDateWithTime(expected.getSessionDate(), 13, 0));
+        expected.setSessionStartTime(DateUtils.localDateToDateWithTime(expected.getSessionDate(), 10, 0).toInstant());
+        expected.setSessionEndTime(DateUtils.localDateToDateWithTime(expected.getSessionDate(), 13, 0).toInstant());
         databaseSeeder.insertCourtSchedule(expected);
 
         // Create allocated listing with hearing time within session window (11:00 is between 10:00-13:00)
@@ -1233,8 +1232,8 @@ class CourtSchedulerIT extends AbstractIT {
         expected.setCourtSession("AM");
         expected.setPanel("YOUTH");
         expected.setSessionDate(LocalDate.now().with(TemporalAdjusters.next(DayOfWeek.MONDAY)));
-        expected.setSessionStartTime(DateUtils.localDateToDateWithTime(expected.getSessionDate(), 10, 0));
-        expected.setSessionEndTime(DateUtils.localDateToDateWithTime(expected.getSessionDate(), 13, 0));
+        expected.setSessionStartTime(DateUtils.localDateToDateWithTime(expected.getSessionDate(), 10, 0).toInstant());
+        expected.setSessionEndTime(DateUtils.localDateToDateWithTime(expected.getSessionDate(), 13, 0).toInstant());
         expected.setCourtRoomId(courtRoomId); // Set initial courtroom ID to match update
         expected.setCourtHouseId(courtHouseId); // Set court house ID to match courtroom
         databaseSeeder.insertCourtSchedule(expected);
@@ -1279,8 +1278,8 @@ class CourtSchedulerIT extends AbstractIT {
         expected.setCourtSession("AM");
         expected.setPanel("YOUTH");
         expected.setSessionDate(LocalDate.now().with(TemporalAdjusters.next(DayOfWeek.MONDAY)));
-        expected.setSessionStartTime(DateUtils.localDateToDateWithTime(expected.getSessionDate(), 10, 0));
-        expected.setSessionEndTime(DateUtils.localDateToDateWithTime(expected.getSessionDate(), 13, 0));
+        expected.setSessionStartTime(DateUtils.localDateToDateWithTime(expected.getSessionDate(), 10, 0).toInstant());
+        expected.setSessionEndTime(DateUtils.localDateToDateWithTime(expected.getSessionDate(), 13, 0).toInstant());
         expected.setCourtRoomId(courtRoomId); // Set initial courtroom ID to match update
         expected.setCourtHouseId(courtHouseId); // Set court house ID to match courtroom
         databaseSeeder.insertCourtSchedule(expected);
@@ -1325,8 +1324,8 @@ class CourtSchedulerIT extends AbstractIT {
         // localDateToDateWithTime treats the input as London local time, but the validator's
         // sessionTimeFormatter renders the persisted instant in the JVM's default timezone (UTC
         // here) - a 1-hour gap collapses in BST and the MIN_HEARING_TIME validation no longer fires.
-        expected.setSessionStartTime(DateUtils.localDateToDateWithTime(expected.getSessionDate(), 11, 0));
-        expected.setSessionEndTime(DateUtils.localDateToDateWithTime(expected.getSessionDate(), 13, 0));
+        expected.setSessionStartTime(DateUtils.localDateToDateWithTime(expected.getSessionDate(), 11, 0).toInstant());
+        expected.setSessionEndTime(DateUtils.localDateToDateWithTime(expected.getSessionDate(), 13, 0).toInstant());
         expected.setCourtRoomId(courtRoomId); // Set initial courtroom ID to match update
         expected.setCourtHouseId(courtHouseId); // Set court house ID to match courtroom
         databaseSeeder.insertCourtSchedule(expected);
@@ -1501,8 +1500,8 @@ class CourtSchedulerIT extends AbstractIT {
         courtSchedule.setMaxAdAfternoonDuration(maxDurationForAfternoon);
         courtSchedule.setCourtScheduleId(courtScheduleId.toString());
         courtSchedule.setSessionDate(getRandomFutureDateWithinNextYear());
-        courtSchedule.setSessionStartTime(combineDateAndTime(courtSchedule.getSessionDate(), "10:00"));
-        courtSchedule.setSessionEndTime(combineDateAndTime(courtSchedule.getSessionDate(), "16:00"));
+        courtSchedule.setSessionStartTime(combineDateAndTime(courtSchedule.getSessionDate(), "10:00").toInstant());
+        courtSchedule.setSessionEndTime(combineDateAndTime(courtSchedule.getSessionDate(), "16:00").toInstant());
         String courtRoomId = "3fc02c0f-f92e-31da-9686-d626ac8ccdc3"; // Use same courtroom ID for initial and update
         String courtHouseId = "785339c1-af71-3322-a55b-ba255e0db1c2"; // Test Crown Court - same court house as courtroom
         courtSchedule.setCourtRoomId(courtRoomId); // Set initial courtroom ID to match update
@@ -1555,8 +1554,8 @@ class CourtSchedulerIT extends AbstractIT {
         courtSchedule.setMaxAdAfternoonDuration(maxDurationForAfternoon);
         courtSchedule.setCourtScheduleId(courtScheduleId.toString());
         courtSchedule.setSessionDate(getRandomFutureDateWithinNextYear());
-        courtSchedule.setSessionStartTime(combineDateAndTime(courtSchedule.getSessionDate(), "10:00"));
-        courtSchedule.setSessionEndTime(combineDateAndTime(courtSchedule.getSessionDate(), "16:00"));
+        courtSchedule.setSessionStartTime(combineDateAndTime(courtSchedule.getSessionDate(), "10:00").toInstant());
+        courtSchedule.setSessionEndTime(combineDateAndTime(courtSchedule.getSessionDate(), "16:00").toInstant());
         String courtRoomId = "3fc02c0f-f92e-31da-9686-d626ac8ccdc3"; // Use same courtroom ID for initial and update
         String courtHouseId = "785339c1-af71-3322-a55b-ba255e0db1c2"; // Test Crown Court - same court house as courtroom
         courtSchedule.setCourtRoomId(courtRoomId); // Set initial courtroom ID to match update
@@ -1630,8 +1629,8 @@ class CourtSchedulerIT extends AbstractIT {
         expected.setMaxAdAfternoonDuration(0);
         expected.setCourtScheduleId(courtScheduleId.toString());
         expected.setIsDraft(false);
-        expected.setSessionStartTime(from(expected.getSessionDate().atTime(10, 0).atZone(UTC).toInstant()));
-        expected.setSessionEndTime(from(expected.getSessionDate().atTime(17, 0).atZone(UTC).toInstant()));
+        expected.setSessionStartTime(expected.getSessionDate().atTime(10, 0).atZone(UTC).toInstant());
+        expected.setSessionEndTime(expected.getSessionDate().atTime(17, 0).atZone(UTC).toInstant());
         expected.setIsOverbookingAllowed(false);
         expected.setJurisdiction(MAGISTRATES.getJurisdiction());
         databaseSeeder.insertCourtSchedule(expected);
@@ -1691,8 +1690,8 @@ class CourtSchedulerIT extends AbstractIT {
         assertThat(judiciaryJsonObject.getString("surname"), is(courtScheduleJudiciary.getSurname()));
         assertThat(judiciaryJsonObject.getString(P_JUDICIARY_TYPE), is(courtScheduleJudiciary.getJudiciaryType()));
         assertThat(judiciaryJsonObject.getString("emailAddress"), is(courtScheduleJudiciary.getEmail()));
-        assertThat(judiciaryJsonObject.getBoolean(P_IS_BENCH_CHAIRMAN), is(courtScheduleJudiciary.getBenchChairman()));
-        assertThat(judiciaryJsonObject.getBoolean(P_IS_DEPUTY), is(courtScheduleJudiciary.getDeputy()));
+        assertThat(judiciaryJsonObject.getBoolean(P_IS_BENCH_CHAIRMAN), is(courtScheduleJudiciary.isBenchChairman()));
+        assertThat(judiciaryJsonObject.getBoolean(P_IS_DEPUTY), is(courtScheduleJudiciary.isDeputy()));
     }
 
     @Test
@@ -1713,8 +1712,8 @@ class CourtSchedulerIT extends AbstractIT {
         expected.setMaxAdAfternoonDuration(0);
         expected.setCourtScheduleId(courtScheduleId.toString());
         expected.setIsDraft(true);
-        expected.setSessionStartTime(from(expected.getSessionDate().atTime(10, 0).atZone(UTC).toInstant()));
-        expected.setSessionEndTime(from(expected.getSessionDate().atTime(17, 0).atZone(UTC).toInstant()));
+        expected.setSessionStartTime(expected.getSessionDate().atTime(10, 0).atZone(UTC).toInstant());
+        expected.setSessionEndTime(expected.getSessionDate().atTime(17, 0).atZone(UTC).toInstant());
         expected.setIsOverbookingAllowed(false);
         expected.setJurisdiction("CROWN");
         databaseSeeder.insertCourtSchedule(expected);
@@ -1781,8 +1780,8 @@ class CourtSchedulerIT extends AbstractIT {
         courtSchedule.setMaxSlots(0);
         courtSchedule.setAvailableSlots(0);
         courtSchedule.setSessionDate(getRandomFutureDateWithinNextYear());
-        courtSchedule.setSessionStartTime(combineDateAndTime(courtSchedule.getSessionDate(), "10:00"));
-        courtSchedule.setSessionEndTime(combineDateAndTime(courtSchedule.getSessionDate(), "16:00"));
+        courtSchedule.setSessionStartTime(combineDateAndTime(courtSchedule.getSessionDate(), "10:00").toInstant());
+        courtSchedule.setSessionEndTime(combineDateAndTime(courtSchedule.getSessionDate(), "16:00").toInstant());
         courtSchedule.setOuCode("B12345");
         courtSchedule.setIsDraft(false);
         courtSchedule.setJurisdiction(MAGISTRATES.getJurisdiction());
@@ -1846,13 +1845,13 @@ class CourtSchedulerIT extends AbstractIT {
         assertThat(judiciaryJsonObject.getString("surname"), is(courtScheduleJudiciary.getSurname()));
         assertThat(judiciaryJsonObject.getString(P_JUDICIARY_TYPE), is(courtScheduleJudiciary.getJudiciaryType()));
         assertThat(judiciaryJsonObject.getString("emailAddress"), is(courtScheduleJudiciary.getEmail()));
-        assertThat(judiciaryJsonObject.getBoolean(P_IS_BENCH_CHAIRMAN), is(courtScheduleJudiciary.getBenchChairman()));
-        assertThat(judiciaryJsonObject.getBoolean(P_IS_DEPUTY), is(courtScheduleJudiciary.getDeputy()));
+        assertThat(judiciaryJsonObject.getBoolean(P_IS_BENCH_CHAIRMAN), is(courtScheduleJudiciary.isBenchChairman()));
+        assertThat(judiciaryJsonObject.getBoolean(P_IS_DEPUTY), is(courtScheduleJudiciary.isDeputy()));
 
         final OffsetDateTime actualStartTime = OffsetDateTime.parse(courtSessionJson.getString("sessionStartTime"));
         final OffsetDateTime actualEndTime = OffsetDateTime.parse(courtSessionJson.getString("sessionEndTime"));
-        assertThat(actualStartTime.toInstant(), is(courtSchedule.getSessionStartTime().toInstant()));
-        assertThat(actualEndTime.toInstant(), is(courtSchedule.getSessionEndTime().toInstant()));
+        assertThat(actualStartTime.toInstant(), is(courtSchedule.getSessionStartTime()));
+        assertThat(actualEndTime.toInstant(), is(courtSchedule.getSessionEndTime()));
     }
 
     @Test
@@ -1880,8 +1879,8 @@ class CourtSchedulerIT extends AbstractIT {
         courtSchedule.setMaxAdMorningDuration(0);
         courtSchedule.setMaxAdAfternoonDuration(0);
         courtSchedule.setSessionDate(getRandomFutureDateWithinNextYear());
-        courtSchedule.setSessionStartTime(combineDateAndTime(courtSchedule.getSessionDate(), "10:00"));
-        courtSchedule.setSessionEndTime(combineDateAndTime(courtSchedule.getSessionDate(), "16:00"));
+        courtSchedule.setSessionStartTime(combineDateAndTime(courtSchedule.getSessionDate(), "10:00").toInstant());
+        courtSchedule.setSessionEndTime(combineDateAndTime(courtSchedule.getSessionDate(), "16:00").toInstant());
         courtSchedule.setIsDraft(false);
         courtSchedule.setJurisdiction(MAGISTRATES.getJurisdiction());
         courtSchedule.setActive(true);
@@ -1942,8 +1941,8 @@ class CourtSchedulerIT extends AbstractIT {
         courtSchedule.setMaxAdMorningDuration(0);
         courtSchedule.setMaxAdAfternoonDuration(0);
         courtSchedule.setSessionDate(getRandomFutureDateWithinNextYear());
-        courtSchedule.setSessionStartTime(combineDateAndTime(courtSchedule.getSessionDate(), "10:00"));
-        courtSchedule.setSessionEndTime(combineDateAndTime(courtSchedule.getSessionDate(), "16:00"));
+        courtSchedule.setSessionStartTime(combineDateAndTime(courtSchedule.getSessionDate(), "10:00").toInstant());
+        courtSchedule.setSessionEndTime(combineDateAndTime(courtSchedule.getSessionDate(), "16:00").toInstant());
         courtSchedule.setIsDraft(false);
         courtSchedule.setJurisdiction(CROWN.getJurisdiction());
         courtSchedule.setActive(true);
@@ -1993,8 +1992,8 @@ class CourtSchedulerIT extends AbstractIT {
         expected.setCourtSession(ALL_DAY);
         expected.setMaxAdAfternoonDuration(0);
         expected.setCourtScheduleId(UUID.randomUUID().toString());
-        expected.setSessionStartTime(from(expected.getSessionDate().atTime(10, 0).atZone(UTC).toInstant()));
-        expected.setSessionEndTime(from(expected.getSessionDate().atTime(17, 0).atZone(UTC).toInstant()));
+        expected.setSessionStartTime(expected.getSessionDate().atTime(10, 0).atZone(UTC).toInstant());
+        expected.setSessionEndTime(expected.getSessionDate().atTime(17, 0).atZone(UTC).toInstant());
         expected.setIsOverbookingAllowed(true);
         expected.setJurisdiction(MAGISTRATES.getJurisdiction());
         databaseSeeder.insertCourtSchedule(expected);
@@ -2004,7 +2003,7 @@ class CourtSchedulerIT extends AbstractIT {
         allocatedListing1.setCourtScheduleId(expected.getCourtScheduleId());
         allocatedListing1.setHearingId(UUID.randomUUID().toString());
         allocatedListing1.setBookingId(UUID.randomUUID().toString());
-        allocatedListing1.setHearingStartTime(from(expected.getSessionDate().atTime(10, 0).atZone(UTC).toInstant()));
+        allocatedListing1.setHearingStartTime(expected.getSessionDate().atTime(10, 0).atZone(UTC).toInstant());
         databaseSeeder.insertAllocatedListing(allocatedListing1);
 
         AllocatedListing allocatedListing2 = RANDOM.nextObject(AllocatedListing.class);
@@ -2012,7 +2011,7 @@ class CourtSchedulerIT extends AbstractIT {
         allocatedListing2.setCourtScheduleId(expected.getCourtScheduleId());
         allocatedListing2.setHearingId(UUID.randomUUID().toString());
         allocatedListing2.setBookingId(UUID.randomUUID().toString());
-        allocatedListing2.setHearingStartTime(from(expected.getSessionDate().atTime(9, 0).atZone(UTC).toInstant()));
+        allocatedListing2.setHearingStartTime(expected.getSessionDate().atTime(9, 0).atZone(UTC).toInstant());
         databaseSeeder.insertAllocatedListing(allocatedListing2);
 
         AllocatedListing allocatedListing3 = RANDOM.nextObject(AllocatedListing.class);
@@ -2020,7 +2019,7 @@ class CourtSchedulerIT extends AbstractIT {
         allocatedListing3.setCourtScheduleId(expected.getCourtScheduleId());
         allocatedListing3.setHearingId(UUID.randomUUID().toString());
         allocatedListing3.setBookingId(UUID.randomUUID().toString());
-        allocatedListing3.setHearingStartTime(from(expected.getSessionDate().atTime(15, 0).atZone(UTC).toInstant()));
+        allocatedListing3.setHearingStartTime(expected.getSessionDate().atTime(15, 0).atZone(UTC).toInstant());
         databaseSeeder.insertAllocatedListing(allocatedListing3);
 
         AllocatedListing allocatedListing4 = RANDOM.nextObject(AllocatedListing.class);
@@ -2028,7 +2027,7 @@ class CourtSchedulerIT extends AbstractIT {
         allocatedListing4.setCourtScheduleId(expected.getCourtScheduleId());
         allocatedListing4.setHearingId(UUID.randomUUID().toString());
         allocatedListing4.setBookingId(UUID.randomUUID().toString());
-        allocatedListing4.setHearingStartTime(from(expected.getSessionDate().atTime(14, 0).atZone(UTC).toInstant()));
+        allocatedListing4.setHearingStartTime(expected.getSessionDate().atTime(14, 0).atZone(UTC).toInstant());
         databaseSeeder.insertAllocatedListing(allocatedListing4);
 
         String getCourtScheduleRequestParams = getPayload("courtscheduler.get.court_schedule_query.json");
@@ -2086,8 +2085,8 @@ class CourtSchedulerIT extends AbstractIT {
         expected.setCourtSession(ALL_DAY);
         expected.setMaxAdAfternoonDuration(0);
         expected.setCourtScheduleId(UUID.randomUUID().toString());
-        expected.setSessionStartTime(from(expected.getSessionDate().atTime(10, 0).atZone(UTC).toInstant()));
-        expected.setSessionEndTime(from(expected.getSessionDate().atTime(17, 0).atZone(UTC).toInstant()));
+        expected.setSessionStartTime(expected.getSessionDate().atTime(10, 0).atZone(UTC).toInstant());
+        expected.setSessionEndTime(expected.getSessionDate().atTime(17, 0).atZone(UTC).toInstant());
         expected.setIsOverbookingAllowed(true);
         expected.setJurisdiction(MAGISTRATES.getJurisdiction());
         databaseSeeder.insertCourtSchedule(expected);
@@ -2152,8 +2151,8 @@ class CourtSchedulerIT extends AbstractIT {
         courtSchedule.setMaxAdAfternoonDuration(maxDurationForAfternoon);
         courtSchedule.setCourtScheduleId(courtScheduleId.toString());
         courtSchedule.setSessionDate(getRandomFutureDateWithinNextYear());
-        courtSchedule.setSessionStartTime(combineDateAndTime(courtSchedule.getSessionDate(), "10:00"));
-        courtSchedule.setSessionEndTime(combineDateAndTime(courtSchedule.getSessionDate(), "16:00"));
+        courtSchedule.setSessionStartTime(combineDateAndTime(courtSchedule.getSessionDate(), "10:00").toInstant());
+        courtSchedule.setSessionEndTime(combineDateAndTime(courtSchedule.getSessionDate(), "16:00").toInstant());
         courtSchedule.setIsOverbookingAllowed(false);
         courtSchedule.setJurisdiction(MAGISTRATES.getJurisdiction());
         databaseSeeder.insertCourtSchedule(courtSchedule);
@@ -2225,8 +2224,8 @@ class CourtSchedulerIT extends AbstractIT {
         courtSchedule.setMaxAdAfternoonDuration(maxDurationForAfternoon);
         courtSchedule.setCourtScheduleId(courtScheduleId);
         courtSchedule.setSessionDate(getRandomFutureDateWithinNextYear());
-        courtSchedule.setSessionStartTime(combineDateAndTime(courtSchedule.getSessionDate(), "10:00"));
-        courtSchedule.setSessionEndTime(combineDateAndTime(courtSchedule.getSessionDate(), "16:00"));
+        courtSchedule.setSessionStartTime(combineDateAndTime(courtSchedule.getSessionDate(), "10:00").toInstant());
+        courtSchedule.setSessionEndTime(combineDateAndTime(courtSchedule.getSessionDate(), "16:00").toInstant());
 
         databaseSeeder.insertCourtSchedule(courtSchedule);
 
@@ -2268,8 +2267,8 @@ class CourtSchedulerIT extends AbstractIT {
         courtSchedule.setMaxAdAfternoonDuration(maxDurationForAfternoon);
         courtSchedule.setCourtScheduleId(courtScheduleId);
         courtSchedule.setSessionDate(getRandomFutureDateWithinNextYear());
-        courtSchedule.setSessionStartTime(combineDateAndTime(courtSchedule.getSessionDate(), "10:00"));
-        courtSchedule.setSessionEndTime(combineDateAndTime(courtSchedule.getSessionDate(), "16:00"));
+        courtSchedule.setSessionStartTime(combineDateAndTime(courtSchedule.getSessionDate(), "10:00").toInstant());
+        courtSchedule.setSessionEndTime(combineDateAndTime(courtSchedule.getSessionDate(), "16:00").toInstant());
 
         databaseSeeder.insertCourtSchedule(courtSchedule);
 
@@ -2296,8 +2295,8 @@ class CourtSchedulerIT extends AbstractIT {
         magistratesSchedule.setCourtSession(ALL_DAY);
         magistratesSchedule.setCourtScheduleId(magistratesCourtScheduleId);
         magistratesSchedule.setSessionDate(getRandomFutureDateWithinNextYear());
-        magistratesSchedule.setSessionStartTime(combineDateAndTime(magistratesSchedule.getSessionDate(), "10:00"));
-        magistratesSchedule.setSessionEndTime(combineDateAndTime(magistratesSchedule.getSessionDate(), "16:00"));
+        magistratesSchedule.setSessionStartTime(combineDateAndTime(magistratesSchedule.getSessionDate(), "10:00").toInstant());
+        magistratesSchedule.setSessionEndTime(combineDateAndTime(magistratesSchedule.getSessionDate(), "16:00").toInstant());
         magistratesSchedule.setJurisdiction("MAGISTRATES");
         magistratesSchedule.setIsDraft(false);
         magistratesSchedule.setActive(true);
@@ -2313,8 +2312,8 @@ class CourtSchedulerIT extends AbstractIT {
         crownSchedule.setCourtSession(ALL_DAY);
         crownSchedule.setCourtScheduleId(crownCourtScheduleId);
         crownSchedule.setSessionDate(getRandomFutureDateWithinNextYear());
-        crownSchedule.setSessionStartTime(combineDateAndTime(crownSchedule.getSessionDate(), "10:00"));
-        crownSchedule.setSessionEndTime(combineDateAndTime(crownSchedule.getSessionDate(), "16:00"));
+        crownSchedule.setSessionStartTime(combineDateAndTime(crownSchedule.getSessionDate(), "10:00").toInstant());
+        crownSchedule.setSessionEndTime(combineDateAndTime(crownSchedule.getSessionDate(), "16:00").toInstant());
         crownSchedule.setJurisdiction("CROWN");
         crownSchedule.setIsDraft(true);
         crownSchedule.setActive(true);
@@ -2359,8 +2358,8 @@ class CourtSchedulerIT extends AbstractIT {
         magistratesWithListings.setCourtSession(ALL_DAY);
         magistratesWithListings.setCourtScheduleId(magistratesWithListingsId);
         magistratesWithListings.setSessionDate(getRandomFutureDateWithinNextYear());
-        magistratesWithListings.setSessionStartTime(combineDateAndTime(magistratesWithListings.getSessionDate(), "10:00"));
-        magistratesWithListings.setSessionEndTime(combineDateAndTime(magistratesWithListings.getSessionDate(), "16:00"));
+        magistratesWithListings.setSessionStartTime(combineDateAndTime(magistratesWithListings.getSessionDate(), "10:00").toInstant());
+        magistratesWithListings.setSessionEndTime(combineDateAndTime(magistratesWithListings.getSessionDate(), "16:00").toInstant());
         magistratesWithListings.setJurisdiction("MAGISTRATES");
         magistratesWithListings.setIsDraft(false);
         magistratesWithListings.setActive(true);
@@ -2381,8 +2380,8 @@ class CourtSchedulerIT extends AbstractIT {
         crownWithListings.setCourtSession(ALL_DAY);
         crownWithListings.setCourtScheduleId(crownWithListingsId);
         crownWithListings.setSessionDate(getRandomFutureDateWithinNextYear());
-        crownWithListings.setSessionStartTime(combineDateAndTime(crownWithListings.getSessionDate(), "10:00"));
-        crownWithListings.setSessionEndTime(combineDateAndTime(crownWithListings.getSessionDate(), "16:00"));
+        crownWithListings.setSessionStartTime(combineDateAndTime(crownWithListings.getSessionDate(), "10:00").toInstant());
+        crownWithListings.setSessionEndTime(combineDateAndTime(crownWithListings.getSessionDate(), "16:00").toInstant());
         crownWithListings.setJurisdiction("CROWN");
         crownWithListings.setIsDraft(true);
         crownWithListings.setActive(true);
@@ -2666,8 +2665,8 @@ class CourtSchedulerIT extends AbstractIT {
         courtSchedule.setCourtSession(ALL_DAY);
         courtSchedule.setCourtScheduleId(courtScheduleId);
         courtSchedule.setSessionDate(sessionDate);
-        courtSchedule.setSessionStartTime(combineDateAndTime(sessionDate, "10:00"));
-        courtSchedule.setSessionEndTime(combineDateAndTime(sessionDate, "16:00"));
+        courtSchedule.setSessionStartTime(combineDateAndTime(sessionDate, "10:00").toInstant());
+        courtSchedule.setSessionEndTime(combineDateAndTime(sessionDate, "16:00").toInstant());
         courtSchedule.setJurisdiction("MAGISTRATES");
         courtSchedule.setIsDraft(false);
         courtSchedule.setActive(true);
@@ -2695,8 +2694,8 @@ class CourtSchedulerIT extends AbstractIT {
         courtSchedule.setMaxAdAfternoonDuration(maxDurationForAfternoon);
         courtSchedule.setCourtScheduleId(courtScheduleId.toString());
         courtSchedule.setSessionDate(getRandomFutureDateWithinNextYear());
-        courtSchedule.setSessionStartTime(combineDateAndTime(courtSchedule.getSessionDate(), "10:00"));
-        courtSchedule.setSessionEndTime(combineDateAndTime(courtSchedule.getSessionDate(), "16:00"));
+        courtSchedule.setSessionStartTime(combineDateAndTime(courtSchedule.getSessionDate(), "10:00").toInstant());
+        courtSchedule.setSessionEndTime(combineDateAndTime(courtSchedule.getSessionDate(), "16:00").toInstant());
         courtSchedule.setIsOverbookingAllowed(false);
         courtSchedule.setActive(true);
         // Allocated (final) session — random() leaves isDraft unset, and the draft-strip would null the courtroom assertions below.
@@ -2752,8 +2751,8 @@ class CourtSchedulerIT extends AbstractIT {
 
         final OffsetDateTime actualStartTime = OffsetDateTime.parse(courtScheduleJsonObject.getString("sessionStartTime"));
         final OffsetDateTime actualEndTime = OffsetDateTime.parse(courtScheduleJsonObject.getString("sessionEndTime"));
-        assertThat(actualStartTime.toInstant(), is(courtSchedule.getSessionStartTime().toInstant()));
-        assertThat(actualEndTime.toInstant(), is(courtSchedule.getSessionEndTime().toInstant()));
+        assertThat(actualStartTime.toInstant(), is(courtSchedule.getSessionStartTime()));
+        assertThat(actualEndTime.toInstant(), is(courtSchedule.getSessionEndTime()));
     }
 
     @Test
@@ -2770,8 +2769,8 @@ class CourtSchedulerIT extends AbstractIT {
         courtSchedule.setMaxAdAfternoonDuration(180);
         courtSchedule.setCourtScheduleId(courtScheduleId.toString());
         courtSchedule.setSessionDate(getRandomFutureDateWithinNextYear());
-        courtSchedule.setSessionStartTime(combineDateAndTime(courtSchedule.getSessionDate(), "10:00"));
-        courtSchedule.setSessionEndTime(combineDateAndTime(courtSchedule.getSessionDate(), "16:00"));
+        courtSchedule.setSessionStartTime(combineDateAndTime(courtSchedule.getSessionDate(), "10:00").toInstant());
+        courtSchedule.setSessionEndTime(combineDateAndTime(courtSchedule.getSessionDate(), "16:00").toInstant());
         courtSchedule.setIsOverbookingAllowed(false);
         courtSchedule.setActive(true);
         databaseSeeder.insertCourtSchedule(courtSchedule);
@@ -2816,8 +2815,8 @@ class CourtSchedulerIT extends AbstractIT {
         courtSchedule.setAvailableDuration(360);
         courtSchedule.setCourtScheduleId(courtScheduleId.toString());
         courtSchedule.setSessionDate(getRandomFutureDateWithinNextYear());
-        courtSchedule.setSessionStartTime(combineDateAndTime(courtSchedule.getSessionDate(), "10:00"));
-        courtSchedule.setSessionEndTime(combineDateAndTime(courtSchedule.getSessionDate(), "16:00"));
+        courtSchedule.setSessionStartTime(combineDateAndTime(courtSchedule.getSessionDate(), "10:00").toInstant());
+        courtSchedule.setSessionEndTime(combineDateAndTime(courtSchedule.getSessionDate(), "16:00").toInstant());
         courtSchedule.setActive(true);
         databaseSeeder.insertCourtSchedule(courtSchedule);
 
@@ -2859,8 +2858,8 @@ class CourtSchedulerIT extends AbstractIT {
         courtSchedule.setMaxAdAfternoonDuration(180);
         courtSchedule.setCourtScheduleId(courtScheduleId.toString());
         courtSchedule.setSessionDate(getRandomFutureDateWithinNextYear());
-        courtSchedule.setSessionStartTime(combineDateAndTime(courtSchedule.getSessionDate(), "10:00"));
-        courtSchedule.setSessionEndTime(combineDateAndTime(courtSchedule.getSessionDate(), "16:00"));
+        courtSchedule.setSessionStartTime(combineDateAndTime(courtSchedule.getSessionDate(), "10:00").toInstant());
+        courtSchedule.setSessionEndTime(combineDateAndTime(courtSchedule.getSessionDate(), "16:00").toInstant());
         courtSchedule.setIsOverbookingAllowed(false);
         courtSchedule.setActive(true);
         databaseSeeder.insertCourtSchedule(courtSchedule);
@@ -2924,7 +2923,7 @@ class CourtSchedulerIT extends AbstractIT {
         allocatedListingForMorning.setHearingId(hearingIdForMorning.toString());
         allocatedListingForMorning.setBookingId(bookingIdForMorning.toString());
         allocatedListingForMorning.setDuration(duration);
-        allocatedListingForMorning.setHearingStartTime(combineDateAndTime(courtSchedule.getSessionDate(), time));
+        allocatedListingForMorning.setHearingStartTime(combineDateAndTime(courtSchedule.getSessionDate(), time).toInstant());
         databaseSeeder.insertAllocatedListing(allocatedListingForMorning);
         return allocatedListingForMorning;
     }
@@ -3415,8 +3414,8 @@ class CourtSchedulerIT extends AbstractIT {
 
         assertThat(assignedJudiciary, notNullValue());
         // Verify that isDeputy and isBenchChairman are persisted as false when not provided
-        assertFalse(assignedJudiciary.getDeputy(), "isDeputy should be persisted as false when not provided");
-        assertFalse(assignedJudiciary.getBenchChairman(), "isBenchChairman should be persisted as false when not provided");
+        assertFalse(assignedJudiciary.isDeputy(), "isDeputy should be persisted as false when not provided");
+        assertFalse(assignedJudiciary.isBenchChairman(), "isBenchChairman should be persisted as false when not provided");
     }
 
     @Test
@@ -3471,8 +3470,8 @@ class CourtSchedulerIT extends AbstractIT {
                     .filter(js -> STUB_JUDICIARY_MAGISTRATE_1.equals(js.getId().getJudiciaryId()))
                     .findFirst()
                     .orElseThrow();
-            assertTrue(magistrate1.getBenchChairman());
-            assertFalse(magistrate1.getDeputy());
+            assertTrue(magistrate1.isBenchChairman());
+            assertFalse(magistrate1.isDeputy());
             assertThat(magistrate1.getJudiciaryType(), is(LABEL_MAGISTRATE));
             assertThat(magistrate1.getCourtListingProfileId(),
                     is(courtSchedule1.getCourtScheduleId().equals(expectedSessionId)
@@ -3487,8 +3486,8 @@ class CourtSchedulerIT extends AbstractIT {
                     .filter(js -> STUB_JUDICIARY_MAGISTRATE_2.equals(js.getId().getJudiciaryId()))
                     .findFirst()
                     .orElseThrow();
-            assertFalse(magistrate2.getBenchChairman());
-            assertTrue(magistrate2.getDeputy());
+            assertFalse(magistrate2.isBenchChairman());
+            assertTrue(magistrate2.isDeputy());
             assertThat(magistrate2.getJudiciaryType(), is(LABEL_MAGISTRATE));
             assertThat(magistrate2.getCourtListingProfileId(),
                     is(courtSchedule1.getCourtScheduleId().equals(expectedSessionId)
@@ -3696,7 +3695,7 @@ class CourtSchedulerIT extends AbstractIT {
         allocatedListing.setCourtScheduleId(courtSchedule.getCourtScheduleId());
         allocatedListing.setCourtRoomId(courtSchedule.getCourtRoomNumber());
         allocatedListing.setOucode(courtSchedule.getOuCode());
-        allocatedListing.setHearingStartTime(Date.from(courtSchedule.getSessionDate().atTime(14, 0).atZone(UTC_ZONE).toInstant()));
+        allocatedListing.setHearingStartTime(courtSchedule.getSessionDate().atTime(14, 0).atZone(UTC_ZONE).toInstant());
         allocatedListing.setDuration(60);
         allocatedListing.setHearingId(randomUUID().toString());
         allocatedListing.setBookingId(randomUUID().toString());
@@ -3942,8 +3941,8 @@ class CourtSchedulerIT extends AbstractIT {
         expected.setCourtRoomId(courtRoomId); // Set initial courtroom ID
         expected.setCourtHouseId(courtHouseId); // Set court house ID to match courtroom
         expected.setSessionDate(LocalDate.now().with(TemporalAdjusters.next(DayOfWeek.MONDAY))); // Set to future date to avoid past session validation
-        expected.setSessionStartTime(DateUtils.localDateToDateWithTime(expected.getSessionDate(), 9, 0));
-        expected.setSessionEndTime(DateUtils.localDateToDateWithTime(expected.getSessionDate(), 13, 0));
+        expected.setSessionStartTime(DateUtils.localDateToDateWithTime(expected.getSessionDate(), 9, 0).toInstant());
+        expected.setSessionEndTime(DateUtils.localDateToDateWithTime(expected.getSessionDate(), 13, 0).toInstant());
         databaseSeeder.insertCourtSchedule(expected);
 
         // Create a hearing attached to this session
@@ -4006,8 +4005,8 @@ class CourtSchedulerIT extends AbstractIT {
         expected.setPanel("YOUTH");
         expected.setCourtRoomId("3fc02c0f-f92e-31da-9686-d626ac8ccdc3");
         expected.setSessionDate(LocalDate.now().with(TemporalAdjusters.next(DayOfWeek.MONDAY))); // Set to future date to avoid past session validation
-        expected.setSessionStartTime(DateUtils.localDateToDateWithTime(expected.getSessionDate(), 9, 0));
-        expected.setSessionEndTime(DateUtils.localDateToDateWithTime(expected.getSessionDate(), 13, 0));
+        expected.setSessionStartTime(DateUtils.localDateToDateWithTime(expected.getSessionDate(), 9, 0).toInstant());
+        expected.setSessionEndTime(DateUtils.localDateToDateWithTime(expected.getSessionDate(), 13, 0).toInstant());
         databaseSeeder.insertCourtSchedule(expected);
 
         // Create a hearing attached to this session
@@ -4193,8 +4192,8 @@ class CourtSchedulerIT extends AbstractIT {
         draftSessionWithHearing.setCourtRoomId("original-courtroom-id");
         draftSessionWithHearing.setJurisdiction("CROWN");
         draftSessionWithHearing.setCourtHouseId("785339c1-af71-3322-a55b-ba255e0db1c2");
-        draftSessionWithHearing.setSessionStartTime(DateUtils.localDateToDateWithTime(draftSessionWithHearing.getSessionDate(), 9, 0));
-        draftSessionWithHearing.setSessionEndTime(DateUtils.localDateToDateWithTime(draftSessionWithHearing.getSessionDate(), 13, 0));
+        draftSessionWithHearing.setSessionStartTime(DateUtils.localDateToDateWithTime(draftSessionWithHearing.getSessionDate(), 9, 0).toInstant());
+        draftSessionWithHearing.setSessionEndTime(DateUtils.localDateToDateWithTime(draftSessionWithHearing.getSessionDate(), 13, 0).toInstant());
         databaseSeeder.insertCourtSchedule(draftSessionWithHearing);
 
         // Create hearing for draft session (not eligible)
@@ -4216,8 +4215,8 @@ class CourtSchedulerIT extends AbstractIT {
         draftSessionNoHearings.setCourtRoomId("original-courtroom-id");
         draftSessionNoHearings.setJurisdiction("CROWN");
         draftSessionNoHearings.setCourtHouseId("785339c1-af71-3322-a55b-ba255e0db1c2");
-        draftSessionNoHearings.setSessionStartTime(DateUtils.localDateToDateWithTime(draftSessionNoHearings.getSessionDate(), 9, 0));
-        draftSessionNoHearings.setSessionEndTime(DateUtils.localDateToDateWithTime(draftSessionNoHearings.getSessionDate(), 13, 0));
+        draftSessionNoHearings.setSessionStartTime(DateUtils.localDateToDateWithTime(draftSessionNoHearings.getSessionDate(), 9, 0).toInstant());
+        draftSessionNoHearings.setSessionEndTime(DateUtils.localDateToDateWithTime(draftSessionNoHearings.getSessionDate(), 13, 0).toInstant());
         databaseSeeder.insertCourtSchedule(draftSessionNoHearings);
         // Assigned session -  NOT eligible
         UUID assignedSessionId = UUID.randomUUID();
@@ -4234,8 +4233,8 @@ class CourtSchedulerIT extends AbstractIT {
         assignedSession.setCourtRoomId("original-courtroom-id");
         assignedSession.setJurisdiction("CROWN");
         assignedSession.setCourtHouseId("785339c1-af71-3322-a55b-ba255e0db1c2");
-        assignedSession.setSessionStartTime(DateUtils.localDateToDateWithTime(assignedSession.getSessionDate(), 9, 0));
-        assignedSession.setSessionEndTime(DateUtils.localDateToDateWithTime(assignedSession.getSessionDate(), 13, 0));
+        assignedSession.setSessionStartTime(DateUtils.localDateToDateWithTime(assignedSession.getSessionDate(), 9, 0).toInstant());
+        assignedSession.setSessionEndTime(DateUtils.localDateToDateWithTime(assignedSession.getSessionDate(), 13, 0).toInstant());
         databaseSeeder.insertCourtSchedule(assignedSession);
 
         String assignCourtroomPayload = getPayload("assign-courtroom-multiple-eligible-sessions.json");
@@ -4319,8 +4318,8 @@ class CourtSchedulerIT extends AbstractIT {
         assignedSession.setCourtRoomId("original-courtroom-id");
         assignedSession.setJurisdiction("CROWN");
         assignedSession.setCourtHouseId("785339c1-af71-3322-a55b-ba255e0db1c2");
-        assignedSession.setSessionStartTime(DateUtils.localDateToDateWithTime(assignedSession.getSessionDate(), 9, 0));
-        assignedSession.setSessionEndTime(DateUtils.localDateToDateWithTime(assignedSession.getSessionDate(), 13, 0));
+        assignedSession.setSessionStartTime(DateUtils.localDateToDateWithTime(assignedSession.getSessionDate(), 9, 0).toInstant());
+        assignedSession.setSessionEndTime(DateUtils.localDateToDateWithTime(assignedSession.getSessionDate(), 13, 0).toInstant());
         databaseSeeder.insertCourtSchedule(assignedSession);
 
         // Create a hearing attached to this session
@@ -4386,8 +4385,8 @@ class CourtSchedulerIT extends AbstractIT {
         assignedSession.setCourtRoomId("original-courtroom-id");
         assignedSession.setJurisdiction("CROWN");
         assignedSession.setCourtHouseId("785339c1-af71-3322-a55b-ba255e0db1c2");
-        assignedSession.setSessionStartTime(DateUtils.localDateToDateWithTime(assignedSession.getSessionDate(), 9, 0));
-        assignedSession.setSessionEndTime(DateUtils.localDateToDateWithTime(assignedSession.getSessionDate(), 13, 0));
+        assignedSession.setSessionStartTime(DateUtils.localDateToDateWithTime(assignedSession.getSessionDate(), 9, 0).toInstant());
+        assignedSession.setSessionEndTime(DateUtils.localDateToDateWithTime(assignedSession.getSessionDate(), 13, 0).toInstant());
         databaseSeeder.insertCourtSchedule(assignedSession);
 
         // No hearings attached to this session
@@ -4478,8 +4477,8 @@ class CourtSchedulerIT extends AbstractIT {
         eligibleSession.setCourtRoomId("original-courtroom-id");
         eligibleSession.setJurisdiction("CROWN");
         eligibleSession.setCourtHouseId("785339c1-af71-3322-a55b-ba255e0db1c2");
-        eligibleSession.setSessionStartTime(DateUtils.localDateToDateWithTime(eligibleSession.getSessionDate(), 9, 0));
-        eligibleSession.setSessionEndTime(DateUtils.localDateToDateWithTime(eligibleSession.getSessionDate(), 13, 0));
+        eligibleSession.setSessionStartTime(DateUtils.localDateToDateWithTime(eligibleSession.getSessionDate(), 9, 0).toInstant());
+        eligibleSession.setSessionEndTime(DateUtils.localDateToDateWithTime(eligibleSession.getSessionDate(), 13, 0).toInstant());
         databaseSeeder.insertCourtSchedule(eligibleSession);
 
         UUID ineligibleSessionId = UUID.randomUUID();
@@ -4497,8 +4496,8 @@ class CourtSchedulerIT extends AbstractIT {
         ineligibleSession.setCourtRoomId("original-courtroom-id");
         ineligibleSession.setJurisdiction("CROWN");
         ineligibleSession.setCourtHouseId("785339c1-af71-3322-a55b-ba255e0db1c2");
-        ineligibleSession.setSessionStartTime(DateUtils.localDateToDateWithTime(ineligibleSession.getSessionDate(), 9, 0));
-        ineligibleSession.setSessionEndTime(DateUtils.localDateToDateWithTime(ineligibleSession.getSessionDate(), 13, 0));
+        ineligibleSession.setSessionStartTime(DateUtils.localDateToDateWithTime(ineligibleSession.getSessionDate(), 9, 0).toInstant());
+        ineligibleSession.setSessionEndTime(DateUtils.localDateToDateWithTime(ineligibleSession.getSessionDate(), 13, 0).toInstant());
         databaseSeeder.insertCourtSchedule(ineligibleSession);
 
         // Create a hearing for ineligible session
@@ -4571,8 +4570,8 @@ class CourtSchedulerIT extends AbstractIT {
         crownSession.setCourtRoomId("original-courtroom-id-crown");
         crownSession.setJurisdiction("CROWN");
         crownSession.setCourtHouseId("785339c1-af71-3322-a55b-ba255e0db1c2");
-        crownSession.setSessionStartTime(DateUtils.localDateToDateWithTime(crownSession.getSessionDate(), 9, 0));
-        crownSession.setSessionEndTime(DateUtils.localDateToDateWithTime(crownSession.getSessionDate(), 13, 0));
+        crownSession.setSessionStartTime(DateUtils.localDateToDateWithTime(crownSession.getSessionDate(), 9, 0).toInstant());
+        crownSession.setSessionEndTime(DateUtils.localDateToDateWithTime(crownSession.getSessionDate(), 13, 0).toInstant());
         databaseSeeder.insertCourtSchedule(crownSession);
 
         UUID magistratesSessionId = UUID.randomUUID();
@@ -4589,8 +4588,8 @@ class CourtSchedulerIT extends AbstractIT {
         magistratesSession.setCourtRoomId("original-courtroom-id-mags");
         magistratesSession.setJurisdiction("MAGISTRATES");
         magistratesSession.setCourtHouseId("785339c1-af71-3322-a55b-ba255e0db1c2");
-        magistratesSession.setSessionStartTime(DateUtils.localDateToDateWithTime(magistratesSession.getSessionDate(), 9, 0));
-        magistratesSession.setSessionEndTime(DateUtils.localDateToDateWithTime(magistratesSession.getSessionDate(), 13, 0));
+        magistratesSession.setSessionStartTime(DateUtils.localDateToDateWithTime(magistratesSession.getSessionDate(), 9, 0).toInstant());
+        magistratesSession.setSessionEndTime(DateUtils.localDateToDateWithTime(magistratesSession.getSessionDate(), 13, 0).toInstant());
         databaseSeeder.insertCourtSchedule(magistratesSession);
 
         String assignCourtroomPayload = getPayload("assign-courtroom.json");
@@ -4661,8 +4660,8 @@ class CourtSchedulerIT extends AbstractIT {
         correctCourtCentreSession.setCourtRoomId("original-courtroom-id");
         correctCourtCentreSession.setJurisdiction("CROWN");
         correctCourtCentreSession.setCourtHouseId("785339c1-af71-3322-a55b-ba255e0db1c2");
-        correctCourtCentreSession.setSessionStartTime(DateUtils.localDateToDateWithTime(correctCourtCentreSession.getSessionDate(), 9, 0));
-        correctCourtCentreSession.setSessionEndTime(DateUtils.localDateToDateWithTime(correctCourtCentreSession.getSessionDate(), 13, 0));
+        correctCourtCentreSession.setSessionStartTime(DateUtils.localDateToDateWithTime(correctCourtCentreSession.getSessionDate(), 9, 0).toInstant());
+        correctCourtCentreSession.setSessionEndTime(DateUtils.localDateToDateWithTime(correctCourtCentreSession.getSessionDate(), 13, 0).toInstant());
         databaseSeeder.insertCourtSchedule(correctCourtCentreSession);
 
         UUID wrongCourtCentreSessionId = UUID.randomUUID();
@@ -4679,8 +4678,8 @@ class CourtSchedulerIT extends AbstractIT {
         wrongCourtCentreSession.setCourtRoomId("original-courtroom-id");
         wrongCourtCentreSession.setJurisdiction("CROWN");
         wrongCourtCentreSession.setCourtHouseId("different-court-centre-id-12345");
-        wrongCourtCentreSession.setSessionStartTime(DateUtils.localDateToDateWithTime(wrongCourtCentreSession.getSessionDate(), 9, 0));
-        wrongCourtCentreSession.setSessionEndTime(DateUtils.localDateToDateWithTime(wrongCourtCentreSession.getSessionDate(), 13, 0));
+        wrongCourtCentreSession.setSessionStartTime(DateUtils.localDateToDateWithTime(wrongCourtCentreSession.getSessionDate(), 9, 0).toInstant());
+        wrongCourtCentreSession.setSessionEndTime(DateUtils.localDateToDateWithTime(wrongCourtCentreSession.getSessionDate(), 13, 0).toInstant());
         databaseSeeder.insertCourtSchedule(wrongCourtCentreSession);
 
         String assignCourtroomPayload = getPayload("assign-courtroom.json");
@@ -4753,8 +4752,8 @@ class CourtSchedulerIT extends AbstractIT {
         existingSession.setCourtRoomId("3fc02c0f-f92e-31da-9686-d626ac8ccdc3");
         existingSession.setCourtRoomName("Courtroom 01");
         existingSession.setSessionDate(LocalDate.now().plusDays(1));
-        existingSession.setSessionStartTime(DateUtils.localDateToDateWithTime(existingSession.getSessionDate(), 9, 0));
-        existingSession.setSessionEndTime(DateUtils.localDateToDateWithTime(existingSession.getSessionDate(), 13, 0));
+        existingSession.setSessionStartTime(DateUtils.localDateToDateWithTime(existingSession.getSessionDate(), 9, 0).toInstant());
+        existingSession.setSessionEndTime(DateUtils.localDateToDateWithTime(existingSession.getSessionDate(), 13, 0).toInstant());
         databaseSeeder.insertCourtSchedule(existingSession);
 
         UUID newSessionId = UUID.randomUUID();
@@ -4772,8 +4771,8 @@ class CourtSchedulerIT extends AbstractIT {
         newSession.setCourtHouseId("785339c1-af71-3322-a55b-ba255e0db1c2");
         newSession.setCourtRoomId("original-courtroom-id");
         newSession.setSessionDate(existingSession.getSessionDate()); // Same date
-        newSession.setSessionStartTime(DateUtils.localDateToDateWithTime(newSession.getSessionDate(), 9, 0));
-        newSession.setSessionEndTime(DateUtils.localDateToDateWithTime(newSession.getSessionDate(), 13, 0));
+        newSession.setSessionStartTime(DateUtils.localDateToDateWithTime(newSession.getSessionDate(), 9, 0).toInstant());
+        newSession.setSessionEndTime(DateUtils.localDateToDateWithTime(newSession.getSessionDate(), 13, 0).toInstant());
         databaseSeeder.insertCourtSchedule(newSession);
 
         String assignCourtroomPayload = getPayload("assign-courtroom.json");
@@ -4835,8 +4834,8 @@ class CourtSchedulerIT extends AbstractIT {
         existingSession.setCourtRoomId("3fc02c0f-f92e-31da-9686-d626ac8ccdc3");
         existingSession.setCourtRoomName("Courtroom 01");
         existingSession.setSessionDate(LocalDate.now().plusDays(1));
-        existingSession.setSessionStartTime(DateUtils.localDateToDateWithTime(existingSession.getSessionDate(), 9, 0));
-        existingSession.setSessionEndTime(DateUtils.localDateToDateWithTime(existingSession.getSessionDate(), 17, 0));
+        existingSession.setSessionStartTime(DateUtils.localDateToDateWithTime(existingSession.getSessionDate(), 9, 0).toInstant());
+        existingSession.setSessionEndTime(DateUtils.localDateToDateWithTime(existingSession.getSessionDate(), 17, 0).toInstant());
         databaseSeeder.insertCourtSchedule(existingSession);
 
         UUID newSessionId = UUID.randomUUID();
@@ -4854,8 +4853,8 @@ class CourtSchedulerIT extends AbstractIT {
         newSession.setCourtHouseId("785339c1-af71-3322-a55b-ba255e0db1c2");
         newSession.setCourtRoomId("original-courtroom-id");
         newSession.setSessionDate(existingSession.getSessionDate()); // Same date
-        newSession.setSessionStartTime(DateUtils.localDateToDateWithTime(newSession.getSessionDate(), 9, 0));
-        newSession.setSessionEndTime(DateUtils.localDateToDateWithTime(newSession.getSessionDate(), 13, 0));
+        newSession.setSessionStartTime(DateUtils.localDateToDateWithTime(newSession.getSessionDate(), 9, 0).toInstant());
+        newSession.setSessionEndTime(DateUtils.localDateToDateWithTime(newSession.getSessionDate(), 13, 0).toInstant());
         databaseSeeder.insertCourtSchedule(newSession);
 
         String assignCourtroomPayload = getPayload("assign-courtroom.json");
@@ -4917,8 +4916,8 @@ class CourtSchedulerIT extends AbstractIT {
         existingSession.setCourtRoomId("3fc02c0f-f92e-31da-9686-d626ac8ccdc3");
         existingSession.setCourtRoomName("Courtroom 01");
         existingSession.setSessionDate(LocalDate.now().plusDays(1));
-        existingSession.setSessionStartTime(DateUtils.localDateToDateWithTime(existingSession.getSessionDate(), 9, 0));
-        existingSession.setSessionEndTime(DateUtils.localDateToDateWithTime(existingSession.getSessionDate(), 13, 0));
+        existingSession.setSessionStartTime(DateUtils.localDateToDateWithTime(existingSession.getSessionDate(), 9, 0).toInstant());
+        existingSession.setSessionEndTime(DateUtils.localDateToDateWithTime(existingSession.getSessionDate(), 13, 0).toInstant());
         databaseSeeder.insertCourtSchedule(existingSession);
 
         UUID newSessionId = UUID.randomUUID();
@@ -4936,8 +4935,8 @@ class CourtSchedulerIT extends AbstractIT {
         newSession.setCourtHouseId("785339c1-af71-3322-a55b-ba255e0db1c2");
         newSession.setCourtRoomId("original-courtroom-id");
         newSession.setSessionDate(existingSession.getSessionDate()); // Same date
-        newSession.setSessionStartTime(DateUtils.localDateToDateWithTime(newSession.getSessionDate(), 9, 0));
-        newSession.setSessionEndTime(DateUtils.localDateToDateWithTime(newSession.getSessionDate(), 17, 0));
+        newSession.setSessionStartTime(DateUtils.localDateToDateWithTime(newSession.getSessionDate(), 9, 0).toInstant());
+        newSession.setSessionEndTime(DateUtils.localDateToDateWithTime(newSession.getSessionDate(), 17, 0).toInstant());
         databaseSeeder.insertCourtSchedule(newSession);
 
         String assignCourtroomPayload = getPayload("assign-courtroom.json");
@@ -5001,8 +5000,8 @@ class CourtSchedulerIT extends AbstractIT {
         draftSession.setCourtRoomId(originalCourtRoomId);
         draftSession.setCourtHouseId(courtHouseId);
         draftSession.setSessionDate(LocalDate.now().with(TemporalAdjusters.next(DayOfWeek.MONDAY)));
-        draftSession.setSessionStartTime(DateUtils.localDateToDateWithTime(draftSession.getSessionDate(), 9, 0));
-        draftSession.setSessionEndTime(DateUtils.localDateToDateWithTime(draftSession.getSessionDate(), 13, 0));
+        draftSession.setSessionStartTime(DateUtils.localDateToDateWithTime(draftSession.getSessionDate(), 9, 0).toInstant());
+        draftSession.setSessionEndTime(DateUtils.localDateToDateWithTime(draftSession.getSessionDate(), 13, 0).toInstant());
         databaseSeeder.insertCourtSchedule(draftSession);
 
         // Create allocated listing to simulate hearings booked
@@ -5049,8 +5048,8 @@ class CourtSchedulerIT extends AbstractIT {
         draftSession.setCourtRoomId(courtRoomId);
         draftSession.setCourtHouseId(courtHouseId);
         draftSession.setSessionDate(LocalDate.now().with(TemporalAdjusters.next(DayOfWeek.MONDAY)));
-        draftSession.setSessionStartTime(DateUtils.localDateToDateWithTime(draftSession.getSessionDate(), 9, 0));
-        draftSession.setSessionEndTime(DateUtils.localDateToDateWithTime(draftSession.getSessionDate(), 13, 0));
+        draftSession.setSessionStartTime(DateUtils.localDateToDateWithTime(draftSession.getSessionDate(), 9, 0).toInstant());
+        draftSession.setSessionEndTime(DateUtils.localDateToDateWithTime(draftSession.getSessionDate(), 13, 0).toInstant());
         databaseSeeder.insertCourtSchedule(draftSession);
 
         // Create allocated listing to simulate hearings booked
@@ -5098,8 +5097,8 @@ class CourtSchedulerIT extends AbstractIT {
         draftSession.setCourtRoomId(originalCourtRoomId);
         draftSession.setCourtHouseId(courtHouseId);
         draftSession.setSessionDate(LocalDate.now().with(TemporalAdjusters.next(DayOfWeek.MONDAY)));
-        draftSession.setSessionStartTime(DateUtils.localDateToDateWithTime(draftSession.getSessionDate(), 9, 0));
-        draftSession.setSessionEndTime(DateUtils.localDateToDateWithTime(draftSession.getSessionDate(), 13, 0));
+        draftSession.setSessionStartTime(DateUtils.localDateToDateWithTime(draftSession.getSessionDate(), 9, 0).toInstant());
+        draftSession.setSessionEndTime(DateUtils.localDateToDateWithTime(draftSession.getSessionDate(), 13, 0).toInstant());
         databaseSeeder.insertCourtSchedule(draftSession);
 
         // Create allocated listing to simulate hearings booked
@@ -5168,8 +5167,8 @@ class CourtSchedulerIT extends AbstractIT {
                     cs.setMaxSlots(0);
                     cs.setAvailableSlots(0);
                     cs.setSessionDate(sessionDate);
-                    cs.setSessionStartTime(combineDateAndTime(sessionDate, DEFAULT_MORNING_START_TIME));
-                    cs.setSessionEndTime(combineDateAndTime(sessionDate, DEFAULT_MORNING_END_TIME));
+                    cs.setSessionStartTime(combineDateAndTime(sessionDate, DEFAULT_MORNING_START_TIME).toInstant());
+                    cs.setSessionEndTime(combineDateAndTime(sessionDate, DEFAULT_MORNING_END_TIME).toInstant());
                     cs.setOuCode("B40IM00");
                     cs.setIsDraft(false);
                     cs.setJurisdiction(MAGISTRATES.getJurisdiction());

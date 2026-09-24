@@ -46,7 +46,7 @@ import uk.gov.moj.cpp.courtscheduler.repository.ProvisionalBookingRepository;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Date;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -113,12 +113,12 @@ class SlotsUpdateServiceTest {
         final List<AllocatedSlot> allocatedSlots = new AllocatedSlotConverter().convert(payload).getHearingSlots();
 
         final String provisionalBookingPayload = fileToString("/test-data/courtscheduler.get.provisional.hearing.slots.json");
-        final List<ProvisionalBookingInfo> provisionalBookingInfos = new ObjectMapper().readValue(provisionalBookingPayload, new TypeReference<>() {
+        final List<ProvisionalBookingInfo> provisionalBookingInfos = new ObjectMapper().findAndRegisterModules().readValue(provisionalBookingPayload, new TypeReference<>() {
         });
 
-        final Map<String, Date> courtScheduleInfo = provisionalBookingInfos
+        final Map<String, Instant> courtScheduleInfo = provisionalBookingInfos
                 .stream()
-                .collect(Collectors.toMap(ProvisionalBookingInfo::getCourtScheduleId, ProvisionalBookingInfo::getHearingStartTime));
+                .collect(Collectors.toMap(ProvisionalBookingInfo::getCourtScheduleId, info -> info.getHearingStartTime()));
 
         when(provisionalBookingRepository.getCourtScheduleInfo(any())).thenReturn(courtScheduleInfo);
         when(courtScheduleRepository.saveBookedSlots(any(), anyBoolean(), anyBoolean())).thenReturn(new Result("", true));
@@ -148,12 +148,12 @@ class SlotsUpdateServiceTest {
             final List<AllocatedSlot> allocatedSlots = new AllocatedSlotConverter().convert(payload).getHearingSlots();
 
             final String provisionalBookingPayload = fileToString("/test-data/courtscheduler.get.provisional.hearing.slots.json");
-            final List<ProvisionalBookingInfo> provisionalBookingInfos = new ObjectMapper().readValue(provisionalBookingPayload, new TypeReference<List<ProvisionalBookingInfo>>() {
+            final List<ProvisionalBookingInfo> provisionalBookingInfos = new ObjectMapper().findAndRegisterModules().readValue(provisionalBookingPayload, new TypeReference<List<ProvisionalBookingInfo>>() {
             });
 
-            final Map<String, Date> courtScheduleInfo = provisionalBookingInfos
+            final Map<String, Instant> courtScheduleInfo = provisionalBookingInfos
                     .stream()
-                    .collect(Collectors.toMap(ProvisionalBookingInfo::getCourtScheduleId, ProvisionalBookingInfo::getHearingStartTime));
+                    .collect(Collectors.toMap(ProvisionalBookingInfo::getCourtScheduleId, info -> info.getHearingStartTime()));
 
 
             when(provisionalBookingRepository.getCourtScheduleInfo(any())).thenReturn(courtScheduleInfo);
@@ -510,7 +510,7 @@ class SlotsUpdateServiceTest {
             existing.setDuration(10);
             existing.setRotaBusinessType("CR");
             existing.setSource("CROWN_FB_LIST");
-            existing.setHearingStartTime(java.sql.Timestamp.valueOf("2026-04-21 09:00:00"));
+            existing.setHearingStartTime(java.sql.Timestamp.valueOf("2026-04-21 09:00:00").toInstant());
 
             when(courtScheduleRepository.findAllocatedListingByHearingId(hearingId)).thenReturn(Optional.of(existing));
             // SPRDT-1274: the replay resolves the room UUID from the allocated session — the
@@ -643,8 +643,8 @@ class SlotsUpdateServiceTest {
 
             when(courtScheduleRepository.findAllocatedListingByHearingId(hearingId)).thenReturn(Optional.empty());
             final CourtSchedule session = buildSession(UUID.randomUUID().toString(), LocalDate.parse("2026-04-21"), false, "CR");
-            session.setSessionStartTime(java.sql.Timestamp.from(java.time.Instant.parse("2026-04-21T10:00:00Z")));
-            session.setSessionEndTime(java.sql.Timestamp.from(java.time.Instant.parse("2026-04-21T16:00:00Z")));
+            session.setSessionStartTime(java.time.Instant.parse("2026-04-21T10:00:00Z"));
+            session.setSessionEndTime(java.time.Instant.parse("2026-04-21T16:00:00Z"));
             when(courtScheduleRepository.searchCrownFallbackSlots(any(), any(), org.mockito.ArgumentMatchers.anyInt(), any(), any()))
                     .thenReturn(Optional.of(new CrownFallbackSearchResult(session, false)));
             final org.mockito.ArgumentCaptor<List<AllocatedSlot>> slotCaptor =
@@ -656,7 +656,7 @@ class SlotsUpdateServiceTest {
 
             final String persistedStartTime = slotCaptor.getValue().get(0).getHearingStartTime();
             assertEquals(uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toIsoString(
-                            new java.sql.Timestamp(session.getSessionStartTime().getTime())),
+                            session.getSessionStartTime()),
                     persistedStartTime);
         }
 
@@ -670,8 +670,8 @@ class SlotsUpdateServiceTest {
 
             when(courtScheduleRepository.findAllocatedListingByHearingId(hearingId)).thenReturn(Optional.empty());
             final CourtSchedule session = buildSession(UUID.randomUUID().toString(), LocalDate.parse("2026-04-21"), false, "CR");
-            session.setSessionStartTime(java.sql.Timestamp.from(java.time.Instant.parse("2026-04-21T10:00:00Z")));
-            session.setSessionEndTime(java.sql.Timestamp.from(java.time.Instant.parse("2026-04-21T16:00:00Z")));
+            session.setSessionStartTime(java.time.Instant.parse("2026-04-21T10:00:00Z"));
+            session.setSessionEndTime(java.time.Instant.parse("2026-04-21T16:00:00Z"));
             when(courtScheduleRepository.searchCrownFallbackSlots(any(), any(), org.mockito.ArgumentMatchers.anyInt(), any(), any()))
                     .thenReturn(Optional.of(new CrownFallbackSearchResult(session, false)));
             final org.mockito.ArgumentCaptor<List<AllocatedSlot>> slotCaptor =
@@ -694,7 +694,7 @@ class SlotsUpdateServiceTest {
             when(courtScheduleRepository.searchCrownFallbackSlots(any(), any(), org.mockito.ArgumentMatchers.anyInt(), any(), any()))
                     .thenReturn(Optional.of(new CrownFallbackSearchResult(session, false)));
             when(courtScheduleRepository.saveBookedSlots(any(), eq(false), eq(false)))
-                    .thenReturn(Result.FAILED("db failure"));
+                    .thenReturn(Result.failed("db failure"));
 
             Assertions.assertThrows(CrownFallbackNoSessionException.class,
                     () -> service.crownFallbackSearchAndBook(request));

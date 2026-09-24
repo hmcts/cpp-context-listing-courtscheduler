@@ -2,7 +2,6 @@ package uk.gov.moj.cpp.courtscheduler.api.converter;
 
 import static java.util.UUID.randomUUID;
 import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
@@ -32,8 +31,8 @@ class AddJudiciaryAvailabilityRuleConverterTest {
                 .add("startDate", "2026-01-01")
                 .add("endDate", "2026-01-31")
                 .add("repeatDays", Json.createArrayBuilder()
-                        .add(uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek.Monday.name())
-                        .add(uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek.Tuesday.name()))
+                        .add(uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek.MONDAY.name())
+                        .add(uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek.TUESDAY.name()))
                 .build();
 
         AddJudiciaryAvailabilityRuleRequest result = converter.convert(jsonObject);
@@ -44,8 +43,8 @@ class AddJudiciaryAvailabilityRuleConverterTest {
         assertThat(result.getStartDate().toString(), is("2026-01-01"));
         assertThat(result.getEndDate().toString(), is("2026-01-31"));
         assertThat(result.getRepeatDays().size(), is(2));
-        assertThat(result.getRepeatDays().get(0), is(AvailabilityDayOfWeek.Monday));
-        assertThat(result.getRepeatDays().get(1), is(AvailabilityDayOfWeek.Tuesday));
+        assertThat(result.getRepeatDays().get(0), is(AvailabilityDayOfWeek.MONDAY));
+        assertThat(result.getRepeatDays().get(1), is(AvailabilityDayOfWeek.TUESDAY));
     }
 
     @Test
@@ -68,8 +67,8 @@ class AddJudiciaryAvailabilityRuleConverterTest {
         assertNotNull(result);
         assertThat(result.getJudiciaryId(), is(judiciaryId));
         assertThat(result.getRepeatDays().size(), is(2));
-        assertThat(result.getRepeatDays().get(0), is(AvailabilityDayOfWeek.Tuesday));
-        assertThat(result.getRepeatDays().get(1), is(AvailabilityDayOfWeek.Wednesday));
+        assertThat(result.getRepeatDays().get(0), is(AvailabilityDayOfWeek.TUESDAY));
+        assertThat(result.getRepeatDays().get(1), is(AvailabilityDayOfWeek.WEDNESDAY));
     }
 
     @Test
@@ -89,7 +88,7 @@ class AddJudiciaryAvailabilityRuleConverterTest {
 
         assertNotNull(result);
         assertThat(result.getRepeatDays().size(), is(1));
-        assertThat(result.getRepeatDays().get(0), is(AvailabilityDayOfWeek.Monday));
+        assertThat(result.getRepeatDays().get(0), is(AvailabilityDayOfWeek.MONDAY));
     }
 }
 

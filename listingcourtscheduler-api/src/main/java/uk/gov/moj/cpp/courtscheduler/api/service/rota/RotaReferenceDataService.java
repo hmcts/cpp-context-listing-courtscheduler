@@ -52,6 +52,12 @@ public class RotaReferenceDataService {
      * @param executionId the execution ID for logging purposes (can be null)
      * @return Optional containing the Judiciary if found, empty otherwise
      */
+    @SuppressWarnings("PMD.AvoidCatchingGenericException")
+    // Deliberate broad safety net: this validates one judiciary record out of a whole
+    // rota-file batch. Any failure here (cache/lookup fault, malformed data) must be
+    // logged and recorded via RotaProcessLogService without aborting the rest of the
+    // file's processing - narrowing the catch risks an unhandled fault type killing the
+    // entire batch instead of skipping just this record.
     public Optional<Judiciary> validateAndFindJudiciaryByEmail(final String email, final String executionId) {
         if (!isNotBlank(email)) {
             logger.debug("Judiciary email is empty or blank, returning empty Optional");
@@ -96,6 +102,9 @@ public class RotaReferenceDataService {
      * @param executionId       the execution ID for logging purposes (can be null)
      * @return Optional containing the CourtRoom if found, empty otherwise
      */
+    @SuppressWarnings("PMD.AvoidCatchingGenericException")
+    // Deliberate broad safety net: same per-record fault isolation rationale as
+    // validateAndFindJudiciaryByEmail above - one bad venue must not abort the batch.
     public Optional<CourtRoom> validateAndFindVenue(final Venue venue,
                                                     final Map<String, String> exceptionMessages,
                                                     final String executionId) {

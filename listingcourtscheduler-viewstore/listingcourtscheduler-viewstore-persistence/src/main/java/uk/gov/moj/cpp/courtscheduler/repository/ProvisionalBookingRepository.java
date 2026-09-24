@@ -8,9 +8,8 @@ import uk.gov.moj.cpp.courtscheduler.persist.entity.ProvisionalBookingKey;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.ProvisionalBookingKey_;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.ProvisionalBooking_;
 
-import java.time.LocalDate;
+import java.time.Instant;
 import java.util.Collections;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -62,7 +61,7 @@ public interface ProvisionalBookingRepository
 interface ProvisionalBookingRepositoryCustom {
 
     /** Map {@code courtScheduleId → hearingStartTime} for every active booking matching the supplied booking IDs. */
-    Map<String, Date> getCourtScheduleInfo(List<String> bookingSlots);
+    Map<String, Instant> getCourtScheduleInfo(List<String> bookingSlots);
 
     /** Single-booking lookup by {@code bookingId} — uses the same JPA Criteria filter as {@link #findByBookingIdIn}. */
     Optional<ProvisionalBooking> findByBookingId(String bookingId);
@@ -86,8 +85,8 @@ class ProvisionalBookingRepositoryImpl implements ProvisionalBookingRepositoryCu
     private EntityManager entityManager;
 
     @Override
-    public Map<String, Date> getCourtScheduleInfo(final List<String> bookingSlots) {
-        final Map<String, Date> courtScheduleInfoMap = new HashMap<>();
+    public Map<String, Instant> getCourtScheduleInfo(final List<String> bookingSlots) {
+        final Map<String, Instant> courtScheduleInfoMap = new HashMap<>();
         final CriteriaBuilder cb = entityManager.getCriteriaBuilder();
         final CriteriaQuery<ProvisionalBooking> cq = cb.createQuery(ProvisionalBooking.class);
         final Root<ProvisionalBooking> root = cq.from(ProvisionalBooking.class);
@@ -96,10 +95,10 @@ class ProvisionalBookingRepositoryImpl implements ProvisionalBookingRepositoryCu
         final TypedQuery<ProvisionalBooking> tq = entityManager.createQuery(cq);
         tq.setParameter(bookingSlotsExpr, bookingSlots);
         tq.getResultList().forEach(provisionalBooking -> {
-            final Date hearingStart = provisionalBooking.getHearingStartTime();
+            final Instant hearingStart = provisionalBooking.getHearingStartTime();
             courtScheduleInfoMap.put(
                     provisionalBooking.getProvisionalBookingKey().getCourtSchedule().getCourtScheduleId(),
-                    hearingStart == null ? null : new Date(hearingStart.getTime()));
+                    hearingStart);
         });
         return courtScheduleInfoMap;
     }
@@ -140,9 +139,10 @@ class ProvisionalBookingRepositoryImpl implements ProvisionalBookingRepositoryCu
         provisionalBookingKey.setCourtSchedule(courtSchedule);
         provisionalBooking.setProvisionalBookingKey(provisionalBookingKey);
         provisionalBooking.setActive(true);
-        provisionalBooking.setCreatedOn(DateUtils.toSqlDate(LocalDate.now()));
-        provisionalBooking.setUpdatedOn(DateUtils.toSqlDate(LocalDate.now()));
-        provisionalBooking.setHearingStartTime(DateUtils.toRoundedTimestamp(provisionalSlot.getHearingStartTime()));
+        final Instant now = Instant.now();
+        provisionalBooking.setCreatedOn(now);
+        provisionalBooking.setUpdatedOn(now);
+        provisionalBooking.setHearingStartTime(DateUtils.toRoundedTimestamp(provisionalSlot.getHearingStartTime()).toInstant());
         entityManager.persist(provisionalBooking);
     }
 }

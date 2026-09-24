@@ -210,39 +210,43 @@ class RotaUtilsTest {
     }
 
     @Test
-    void shouldReturnNull_WhenCompositeKeyIsNull() {
+    void shouldReturnEmptyArray_WhenCompositeKeyIsNull() {
         // when
         String[] result = RotaUtils.parseCompositeKey(null);
 
         // then
-        assertNull(result);
+        assertNotNull(result);
+        assertThat(result.length, is(0));
     }
 
     @Test
-    void shouldReturnNull_WhenCompositeKeyIsEmpty() {
+    void shouldReturnEmptyArray_WhenCompositeKeyIsEmpty() {
         // when
         String[] result = RotaUtils.parseCompositeKey("");
 
         // then
-        assertNull(result);
+        assertNotNull(result);
+        assertThat(result.length, is(0));
     }
 
     @Test
-    void shouldReturnNull_WhenCompositeKeyHasNoSeparator() {
+    void shouldReturnEmptyArray_WhenCompositeKeyHasNoSeparator() {
         // when
         String[] result = RotaUtils.parseCompositeKey("nopart");
 
         // then
-        assertNull(result);
+        assertNotNull(result);
+        assertThat(result.length, is(0));
     }
 
     @Test
-    void shouldReturnNull_WhenCompositeKeyHasEmptyFirstPart() {
+    void shouldReturnEmptyArray_WhenCompositeKeyHasEmptyFirstPart() {
         // when
         String[] result = RotaUtils.parseCompositeKey("|part2");
 
         // then
-        assertNull(result);
+        assertNotNull(result);
+        assertThat(result.length, is(0));
     }
 
     @Test

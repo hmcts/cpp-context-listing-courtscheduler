@@ -41,11 +41,13 @@ public class ReferenceDataMapperService {
 
     private List<Judiciary> judiciaries = synchronizedList(new ArrayList<>());
 
-    private List<CourtRoomSessionAllocation> courtRoomSessionAllocations = synchronizedList(new ArrayList<CourtRoomSessionAllocation>());
+    private List<CourtRoomSessionAllocation> courtRoomSessionAllocations = synchronizedList(new ArrayList<>());
 
     private List<CourtRoom> courtRooms = synchronizedList(new ArrayList<>());
 
     private Map<String, BusinessType> businessTypeMap = new ConcurrentHashMap<>();
+
+    private static final int SINGLE_COURT_ROOM_COUNT = 1;
 
     private static final String COURT_DETAIL_NOT_FOUND = "COURT_DETAIL_NOT_FOUND";
     private static final String COURT_ROOM_FETCHED_BY_VENUE_NAME = "CourtRoom fetched by VenueName: %s%n,can't find by VenueId:%s%n";
@@ -111,10 +113,18 @@ public class ReferenceDataMapperService {
     }
 
     public void clearReferenceDataInMemory() {
-        if (nonNull(courtRooms)) courtRooms = null;
-        if (nonNull(courtRoomSessionAllocations)) courtRoomSessionAllocations = null;
-        if (nonNull(judiciaries)) judiciaries = null;
-        if (nonNull(businessTypeMap)) businessTypeMap.clear();
+        if (nonNull(courtRooms)) {
+            courtRooms.clear();
+        }
+        if (nonNull(courtRoomSessionAllocations)) {
+            courtRoomSessionAllocations.clear();
+        }
+        if (nonNull(judiciaries)) {
+            judiciaries.clear();
+        }
+        if (nonNull(businessTypeMap)) {
+            businessTypeMap.clear();
+        }
     }
 
     public void loadJudiciaries() {
@@ -157,9 +167,9 @@ public class ReferenceDataMapperService {
         if (courtRoomOptional.isPresent()) {
             return courtRoomOptional;
         } else {
-            if (courtRoomsByLocationAndVenueNameOrVenueId.size() > 1) {
+            if (courtRoomsByLocationAndVenueNameOrVenueId.size() > SINGLE_COURT_ROOM_COUNT) {
                 exceptionMessages.put(format(MULTIPLE_COURTROOMS_FOUND_BY_VENUE_NAME, venue.getVenueName(), venue.getVenueId()), COURT_DETAIL_NOT_FOUND);
-            } else if (courtRoomsByLocationAndVenueNameOrVenueId.size() == 1) {
+            } else if (courtRoomsByLocationAndVenueNameOrVenueId.size() == SINGLE_COURT_ROOM_COUNT) {
                 exceptionMessages.put(format(COURT_ROOM_FETCHED_BY_VENUE_NAME, venue.getVenueName(), venue.getVenueId()), COURT_DETAIL_NOT_FOUND);
             }
         }

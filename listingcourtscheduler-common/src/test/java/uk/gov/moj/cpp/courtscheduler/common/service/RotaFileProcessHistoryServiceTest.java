@@ -195,7 +195,7 @@ class RotaFileProcessHistoryServiceTest {
             RotaFileProcessHistory history = invocation.getArgument(0);
             assertNotNull(history.getProcessedOn());
             // Verify it's set to current time (within reasonable bounds)
-            long timeDiff = Math.abs(System.currentTimeMillis() - history.getProcessedOn().getTime());
+            long timeDiff = Math.abs(System.currentTimeMillis() - history.getProcessedOn().toEpochMilli());
             assertTrue(timeDiff < 5000); // Within 5 seconds
             return history;
         });
@@ -215,7 +215,7 @@ class RotaFileProcessHistoryServiceTest {
             RotaFileProcessHistory history = invocation.getArgument(0);
             assertNotNull(history.getProcessStartDate());
             // Verify it's set to current time (within reasonable bounds)
-            long timeDiff = Math.abs(System.currentTimeMillis() - history.getProcessStartDate().getTime());
+            long timeDiff = Math.abs(System.currentTimeMillis() - history.getProcessStartDate().toEpochMilli());
             assertTrue(timeDiff < 5000); // Within 5 seconds
             return history;
         });
@@ -231,7 +231,7 @@ class RotaFileProcessHistoryServiceTest {
             RotaFileProcessHistory history = invocation.getArgument(0);
             assertNotNull(history.getProcessEndDate());
             // Verify it's set to current time (within reasonable bounds)
-            long timeDiff = Math.abs(System.currentTimeMillis() - history.getProcessEndDate().getTime());
+            long timeDiff = Math.abs(System.currentTimeMillis() - history.getProcessEndDate().toEpochMilli());
             assertTrue(timeDiff < 5000); // Within 5 seconds
             return history;
         });

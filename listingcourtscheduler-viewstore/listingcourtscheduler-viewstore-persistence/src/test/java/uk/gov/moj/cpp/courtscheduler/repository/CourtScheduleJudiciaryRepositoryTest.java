@@ -14,10 +14,9 @@ import uk.gov.moj.cpp.courtscheduler.domain.MiFilterCriteria;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary;
 
+import java.time.Instant;
 import java.time.LocalDate;
-import java.util.Calendar;
 import java.util.Collections;
-import java.util.Date;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -101,14 +100,14 @@ class CourtScheduleJudiciaryRepositoryTest extends uk.gov.moj.cpp.courtscheduler
 
         courtScheduleJudiciaryRepository.save(courtScheduleJudiciary);
 
-        final Date updatedOn = Calendar.getInstance().getTime();
+        final Instant updatedOn = Instant.now();
         courtScheduleJudiciaryRepository.deactivateSchedules(List.of(courtScheduleId), updatedOn);
 
         final CourtScheduleJudiciary courtScheduleJudiciaryAfterDeactivation = courtScheduleJudiciaryRepository.findBy(courtScheduleJudiciary.getId());
         courtScheduleJudiciaryRepository.refresh(courtScheduleJudiciaryAfterDeactivation);
 
-        assertEquals(false, courtScheduleJudiciaryAfterDeactivation.getActive());
-        assertEquals(courtScheduleJudiciaryAfterDeactivation.getUpdatedOn().getTime(), updatedOn.getTime());
+        assertEquals(false, courtScheduleJudiciaryAfterDeactivation.isActive());
+        assertEquals(courtScheduleJudiciaryAfterDeactivation.getUpdatedOn().toEpochMilli(), updatedOn.toEpochMilli());
     }
 
     @Test
@@ -118,7 +117,7 @@ class CourtScheduleJudiciaryRepositoryTest extends uk.gov.moj.cpp.courtscheduler
 
         final CourtScheduleJudiciary courtScheduleJudiciary = newCourtScheduleJudiciaryWithSavedSchedule();
         courtScheduleJudiciary.setPosition("6");
-        courtScheduleJudiciary.setUpdatedOn(Calendar.getInstance().getTime());
+        courtScheduleJudiciary.setUpdatedOn(Instant.now());
         courtScheduleJudiciary.setActive(false);
         courtScheduleJudiciary.getId().setCourtScheduleId(courtScheduleId);
         courtScheduleJudiciary.getId().setJudiciaryId(judiciaryId);
@@ -127,15 +126,15 @@ class CourtScheduleJudiciaryRepositoryTest extends uk.gov.moj.cpp.courtscheduler
         courtScheduleJudiciaryRepository.save(courtScheduleJudiciary);
 
         final String newPosition = "10";
-        final Date updatedOn = Calendar.getInstance().getTime();
+        final Instant updatedOn = Instant.now();
         courtScheduleJudiciaryRepository.updateCourtScheduleJudiciaryPosition(newPosition, updatedOn, courtScheduleId, judiciaryId);
 
         final CourtScheduleJudiciary courtScheduleJudiciaryUpdated = courtScheduleJudiciaryRepository.findBy(courtScheduleJudiciary.getId());
         courtScheduleJudiciaryRepository.refresh(courtScheduleJudiciaryUpdated);
 
         assertEquals(courtScheduleJudiciaryUpdated.getPosition(), newPosition);
-        assertEquals(courtScheduleJudiciaryUpdated.getUpdatedOn().getTime(), updatedOn.getTime());
-        assertEquals(true, courtScheduleJudiciaryUpdated.getActive());
+        assertEquals(courtScheduleJudiciaryUpdated.getUpdatedOn().toEpochMilli(), updatedOn.toEpochMilli());
+        assertEquals(true, courtScheduleJudiciaryUpdated.isActive());
     }
 
     @Test

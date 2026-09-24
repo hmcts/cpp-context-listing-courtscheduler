@@ -2,7 +2,7 @@ package uk.gov.moj.cpp.courtscheduler.domain;
 
 import java.util.List;
 
-@SuppressWarnings({"PMD.BeanMembersShouldSerialize", "squid:S2384"})
+@SuppressWarnings("squid:S2384")
 public class AssignCourtroomRequest {
 
     private List<String> courtScheduleIds;

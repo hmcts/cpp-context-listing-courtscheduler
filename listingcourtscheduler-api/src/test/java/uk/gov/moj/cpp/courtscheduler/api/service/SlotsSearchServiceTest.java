@@ -30,7 +30,6 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
@@ -234,8 +233,8 @@ class SlotsSearchServiceTest {
                 .withMaxSlots(2)
                 .withJudiciaries(List.of(buildJudiciary(randomUUID(), "CHAIR")))
                 .withActive(true)
-                .withSessionStartTime(Date.from(LocalTime.parse("10:00").atDate(LocalDate.of(2025, 3, 12)).atZone(ZoneId.of("UTC")).toInstant()))
-                .withSessionEndTime(Date.from(LocalTime.parse("12:00").atDate(LocalDate.of(2025, 3, 12)).atZone(ZoneId.of("UTC")).toInstant()))
+                .withSessionStartTime(LocalTime.parse("10:00").atDate(LocalDate.of(2025, 3, 12)).atZone(ZoneId.of("UTC")).toInstant())
+                .withSessionEndTime(LocalTime.parse("12:00").atDate(LocalDate.of(2025, 3, 12)).atZone(ZoneId.of("UTC")).toInstant())
                 .withIsOverbookingAllowed(true)
                 .withMinHearingTime("09:00")
                 .withMaxHearingTime("12:00")
@@ -283,9 +282,9 @@ class SlotsSearchServiceTest {
                 .withMaxSlots(125)
                 .withJudiciaries(courtScheduleJudiciary)
                 .withActive(true)
-                .withSessionStartTime(Date.from(LocalTime.parse("10:00").atDate(LocalDate.of(2020, 12, 1)).atZone(ZoneId.of("UTC")).toInstant()))
-                .withSessionEndTime(Date.from(LocalTime.parse("13:00").atDate(LocalDate.of(2020, 12, 1)).atZone(ZoneId.of("UTC")).toInstant()))
-                .withNationalBreakTime(TimezoneUtils.calculateNationalBreakTime(LocalDate.of(2020, 12, 1)))
+                .withSessionStartTime(LocalTime.parse("10:00").atDate(LocalDate.of(2020, 12, 1)).atZone(ZoneId.of("UTC")).toInstant())
+                .withSessionEndTime(LocalTime.parse("13:00").atDate(LocalDate.of(2020, 12, 1)).atZone(ZoneId.of("UTC")).toInstant())
+                .withNationalBreakTime(TimezoneUtils.calculateNationalBreakTime(LocalDate.of(2020, 12, 1)).toInstant())
                 .withIsOverbookingAllowed(true)
                 .withIsDraft(false)
                 .withJurisdiction(MAGISTRATES.getJurisdiction())
@@ -316,8 +315,8 @@ class SlotsSearchServiceTest {
                 .withMaxSlots(2)
                 .withJudiciaries(List.of(buildJudiciary(randomUUID(),"CHAIR")))
                 .withActive(true)
-                .withSessionStartTime(Date.from(LocalTime.parse("10:00").atDate(LocalDate.of(2025, 3, 12)).atZone(ZoneId.of("UTC")).toInstant()))
-                .withSessionEndTime(Date.from(LocalTime.parse("12:00").atDate(LocalDate.of(2025, 3, 12)).atZone(ZoneId.of("UTC")).toInstant()))
+                .withSessionStartTime(LocalTime.parse("10:00").atDate(LocalDate.of(2025, 3, 12)).atZone(ZoneId.of("UTC")).toInstant())
+                .withSessionEndTime(LocalTime.parse("12:00").atDate(LocalDate.of(2025, 3, 12)).atZone(ZoneId.of("UTC")).toInstant())
                 .withIsOverbookingAllowed(true)
                 .build();
     }
@@ -345,8 +344,8 @@ class SlotsSearchServiceTest {
                 .withMaxSlots(2)
                 .withJudiciaries(List.of(buildJudiciary(randomUUID(),"CHAIR")))
                 .withActive(true)
-                .withSessionStartTime(Date.from(LocalTime.parse("10:00").atDate(LocalDate.of(2025, 3, 12)).atZone(ZoneId.of("UTC")).toInstant()))
-                .withSessionEndTime(Date.from(LocalTime.parse("12:00").atDate(LocalDate.of(2025, 3, 12)).atZone(ZoneId.of("UTC")).toInstant()))
+                .withSessionStartTime(LocalTime.parse("10:00").atDate(LocalDate.of(2025, 3, 12)).atZone(ZoneId.of("UTC")).toInstant())
+                .withSessionEndTime(LocalTime.parse("12:00").atDate(LocalDate.of(2025, 3, 12)).atZone(ZoneId.of("UTC")).toInstant())
                 .withIsOverbookingAllowed(true)
                 .withIsDraft(false)
                 .withJurisdiction(MAGISTRATES.getJurisdiction())

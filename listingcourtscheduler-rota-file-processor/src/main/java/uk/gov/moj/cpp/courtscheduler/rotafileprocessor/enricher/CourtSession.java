@@ -12,6 +12,6 @@ public class CourtSession {
     public String getCourtSession(final LocalDate sessionDate, final String session) {
         return sessionDate.getDayOfWeek()
                 .getDisplayName(TextStyle.SHORT, Locale.UK)
-                .toUpperCase() + session;
+                .toUpperCase(Locale.UK) + session;
     }
 }

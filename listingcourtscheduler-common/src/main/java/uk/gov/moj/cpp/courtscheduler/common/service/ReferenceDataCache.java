@@ -60,6 +60,8 @@ public class ReferenceDataCache {
     @Value("${redis.common-cache.key-5-mins-ttl:300}")
     private String redisCommonCacheKey5MinsTTL;
 
+    private static final int MULTIPLE_COURT_ROOMS_THRESHOLD = 1;
+
     private static final String COURT_DETAIL_NOT_FOUND = "COURT_DETAIL_NOT_FOUND";
     private static final String COURT_ROOM_FETCHED_BY_VENUE_NAME = "CourtRoom fetched by VenueName: %s%n,can't find by VenueId:%s%n";
     private static final String MULTIPLE_COURTROOMS_FOUND_BY_VENUE_NAME = "Multiple courtrooms found by VenueName : %s%n , but VenueId: %s%n selected by created_on";
@@ -75,10 +77,6 @@ public class ReferenceDataCache {
     public static final String ROTA_COURTROOMS_CACHE_KEY = "RotaCourtRooms_";
     public static final String ROTA_COURT_ROOM_SESSION_ALLOCATIONS_KEY = "RotaCourtRoomSessionAllocations_";
     public static final String ORGANISATION_UNIT_CACHE_PREFIX = "OrganisationUnit_";
-
-    public ReferenceDataCache() {
-        //Default Constructor
-    }
 
     public Optional<BusinessType> getRotaBusinessTypeByCode(final String businessTypeCode) {
         if (parseBoolean(redisCommonCacheEnabled)) {
@@ -314,12 +312,12 @@ public class ReferenceDataCache {
                 final List<CourtRoom> courtRooms = objectMapper.readValue(cacheResult, new TypeReference<>() {});
 
                 final Optional<CourtRoom> courtRoomWithVenueIdOptional = courtRooms.stream().filter(courtRoom -> courtRoom.getRotaVenueId().equals(venue.getVenueId())).findAny();
-                return courtRoomWithVenueIdOptional.isPresent() ? courtRoomWithVenueIdOptional : of(courtRooms.get(0));
+                return courtRoomWithVenueIdOptional.isPresent() ? courtRoomWithVenueIdOptional : of(courtRooms.getFirst());
             } catch (final JsonProcessingException jsonProcessingException) {
                 LOGGER.error("exception whilst reading cacheResult for getCourtRoomByVenueFromTheCache and converting to List<CourtRoom> with exception: {}", jsonProcessingException.getMessage(), jsonProcessingException);
             }
         }
-        return Optional.empty();
+        return empty();
     }
 
     private List<BusinessType> processRotaBusinessTypes() {
@@ -369,7 +367,7 @@ public class ReferenceDataCache {
 
         try {
             if (isNotEmpty(courtRoomSessionAllocations)) {
-                cacheService.add(ROTA_COURT_ROOM_SESSION_ALLOCATIONS_KEY, objectMapper.writeValueAsString(courtRoomSessionAllocations), redisCommonCacheKey5MinsTTL());
+                cacheService.add(ROTA_COURT_ROOM_SESSION_ALLOCATIONS_KEY, objectMapper.writeValueAsString(courtRoomSessionAllocations), redisCommonCacheKey5MinsTTLSeconds());
                 return courtRoomSessionAllocations;
             }
         } catch (final JsonProcessingException jsonProcessingException) {
@@ -382,7 +380,7 @@ public class ReferenceDataCache {
         final Optional<OrganisationUnit> organisationUnit = referenceDataService.getOrganisationUnit(organisationUnitId);
         organisationUnit.ifPresent(ou -> {
             try {
-                cacheService.add(ORGANISATION_UNIT_CACHE_PREFIX + organisationUnitId, objectMapper.writeValueAsString(ou), redisCommonCacheKey5MinsTTL());
+                cacheService.add(ORGANISATION_UNIT_CACHE_PREFIX + organisationUnitId, objectMapper.writeValueAsString(ou), redisCommonCacheKey5MinsTTLSeconds());
             } catch (final JsonProcessingException jsonProcessingException) {
                 LOGGER.error("exception whilst adding into the cache for organisationUnitId: {} with exception: {}", organisationUnitId, jsonProcessingException.getMessage(), jsonProcessingException);
             }
@@ -483,16 +481,16 @@ public class ReferenceDataCache {
         if (courtRoomOptional.isPresent()) {
             courtRoomsForVenue.set(courtRoomOptional.get());
         } else {
-            if (courtRoomList.size() > 1) {
+            if (courtRoomList.size() > MULTIPLE_COURT_ROOMS_THRESHOLD) {
                 exceptionMessages.put(format(MULTIPLE_COURTROOMS_FOUND_BY_VENUE_NAME, venue.getVenueName(), venue.getVenueId()), COURT_DETAIL_NOT_FOUND);
             } else {
                 exceptionMessages.put(format(COURT_ROOM_FETCHED_BY_VENUE_NAME, venue.getVenueName(), venue.getVenueId()), COURT_DETAIL_NOT_FOUND);
             }
-            courtRoomsForVenue.set(courtRoomList.get(0));
+            courtRoomsForVenue.set(courtRoomList.getFirst());
         }
     }
 
-    private Integer redisCommonCacheKey5MinsTTL() {
+    private Integer redisCommonCacheKey5MinsTTLSeconds() {
         return Integer.parseInt(redisCommonCacheKey5MinsTTL);
     }
 }

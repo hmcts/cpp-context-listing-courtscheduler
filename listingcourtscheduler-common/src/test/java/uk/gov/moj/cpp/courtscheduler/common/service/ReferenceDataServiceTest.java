@@ -12,14 +12,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static uk.gov.moj.cpp.courtscheduler.common.Jurisdiction.MAGISTRATES;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.MissingDataError.CREATE_SESSIONS_DUPLICATE_COURTROOMS_FOUND;
-import static uk.gov.moj.cpp.courtscheduler.common.helper.SessionsHelper.REFERENCEDATA_QUERY_PUBLIC_HOLIDAYS_NAME;
-import static uk.gov.moj.cpp.courtscheduler.common.helper.SessionsHelper.REFERENCEDATA_QUERY_ROTA_BUSINESS_TYPES_NAME;
-import static uk.gov.moj.cpp.courtscheduler.common.helper.SessionsHelper.REFERENCEDATA_QUERY_ROTA_COURT_ROOM_NAME;
-import static uk.gov.moj.cpp.courtscheduler.common.helper.SessionsHelper.REFERENCEDATA_QUERY_OU_COURT_ROOMS_NAME;
-import static uk.gov.moj.cpp.courtscheduler.common.helper.SessionsHelper.REFERENCEDATA_QUERY_ROTA_COURT_ROOM_SESSION_ALLOCATIONS_NAME;
-import static uk.gov.moj.cpp.courtscheduler.common.helper.SessionsHelper.REFERENCEDATA_QUERY_ROTA_JUDICIARIES_NAME;
 import static uk.gov.moj.cpp.courtscheduler.common.helper.SessionsHelper.getPayload;
-import static uk.gov.moj.cpp.courtscheduler.common.helper.SessionsHelper.mockBusinessType;
 import static uk.gov.moj.cpp.courtscheduler.common.helper.SessionsHelper.mockCourtRooms;
 
 import uk.gov.moj.cpp.courtscheduler.common.converter.JsonObjectToObjectConverter;

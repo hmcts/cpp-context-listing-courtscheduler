@@ -33,7 +33,7 @@ class GetJudiciaryAvailabilityRuleConverterTest {
 
         assertNotNull(result);
         assertThat(result.getRuleId(), is(ruleId));
-        assertThat(result.getWithJudiciary(), is(true));
+        assertThat(result.isWithJudiciary(), is(true));
     }
 
     @Test
@@ -48,7 +48,7 @@ class GetJudiciaryAvailabilityRuleConverterTest {
 
         assertNotNull(result);
         assertThat(result.getRuleId(), is(ruleId));
-        assertThat(result.getWithJudiciary(), is(true)); // Default value
+        assertThat(result.isWithJudiciary(), is(true)); // Default value
     }
 
     @Test
@@ -62,7 +62,7 @@ class GetJudiciaryAvailabilityRuleConverterTest {
         GetJudiciaryAvailabilityRuleRequest result = converter.convert(jsonObject);
 
         assertNotNull(result);
-        assertThat(result.getWithJudiciary(), is(true));
+        assertThat(result.isWithJudiciary(), is(true));
     }
 
     @Test
@@ -77,7 +77,7 @@ class GetJudiciaryAvailabilityRuleConverterTest {
         GetJudiciaryAvailabilityRuleRequest result = converter.convert(jsonObject);
 
         assertNotNull(result);
-        assertThat(result.getWithJudiciary(), is(true)); // Default value
+        assertThat(result.isWithJudiciary(), is(true)); // Default value
     }
 
     @Test
@@ -93,7 +93,7 @@ class GetJudiciaryAvailabilityRuleConverterTest {
 
         assertNotNull(result);
         assertThat(result.getRuleId(), is(ruleId));
-        assertThat(result.getWithJudiciary(), is(false));
+        assertThat(result.isWithJudiciary(), is(false));
     }
 
     @Test

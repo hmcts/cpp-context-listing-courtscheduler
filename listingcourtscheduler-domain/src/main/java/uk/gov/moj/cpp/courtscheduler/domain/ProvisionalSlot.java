@@ -43,18 +43,18 @@ public class ProvisionalSlot {
             return new ProvisionalSlotBuilder();
         }
 
-        public ProvisionalSlotBuilder withCourtScheduleId(String courtScheduleId) {
+        public ProvisionalSlotBuilder withCourtScheduleId(final String courtScheduleId) {
             this.courtScheduleId = courtScheduleId;
             return this;
         }
 
-        public ProvisionalSlotBuilder withHearingStartTime(String hearingStartTime) {
+        public ProvisionalSlotBuilder withHearingStartTime(final String hearingStartTime) {
             this.hearingStartTime = hearingStartTime;
             return this;
         }
 
         public ProvisionalSlot build() {
-            ProvisionalSlot provisionalSlot = new ProvisionalSlot();
+            final ProvisionalSlot provisionalSlot = new ProvisionalSlot();
             provisionalSlot.setCourtScheduleId(courtScheduleId);
             provisionalSlot.setHearingStartTime(hearingStartTime);
             return provisionalSlot;

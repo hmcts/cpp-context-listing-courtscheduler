@@ -33,6 +33,7 @@ import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.List;
+import java.util.Optional;
 
 import jakarta.inject.Inject;
 import jakarta.json.JsonObject;
@@ -44,9 +45,9 @@ import org.slf4j.LoggerFactory;
 public class HearingSlotsApiValidator {
     private static final Logger LOGGER = LoggerFactory.getLogger(HearingSlotsApiValidator.class.getName());
 
-    static final String SHOULD_BE_ENTERED = " should be entered";
+   /* package */ static final String SHOULD_BE_ENTERED = " should be entered";
 
-    static final String MAGS_COURT_SCHEDULE_ID_NOT_ALLOWED =
+   /* package */ static final String MAGS_COURT_SCHEDULE_ID_NOT_ALLOWED =
             "courtScheduleId is not permitted on mags.search.and.book — Magistrates bookings never anchor on a courtScheduleId";
 
     @Inject
@@ -74,8 +75,8 @@ public class HearingSlotsApiValidator {
         }
 
         // Validate startDate <= endDate
-        final var start = java.time.LocalDate.parse(hearingSlotRequestParam.sessionStartDate());
-        final var end = java.time.LocalDate.parse(hearingSlotRequestParam.sessionEndDate());
+        final java.time.LocalDate start = java.time.LocalDate.parse(hearingSlotRequestParam.sessionStartDate());
+        final java.time.LocalDate end = java.time.LocalDate.parse(hearingSlotRequestParam.sessionEndDate());
         if (end.isBefore(start)) {
             return buildErrorResponse(START_DATE_AFTER_END_DATE);
         }
@@ -122,18 +123,19 @@ public class HearingSlotsApiValidator {
 
         LOGGER.info("Validating list Hearing Slots input : {}", hearingSlots);
 
-        for (HearingSlot hearingSlot : hearingSlots) {
-            List<RequestedCourtSchedule> schedules = hearingSlot.getCourtScheduleIds();
+        for (final HearingSlot hearingSlot : hearingSlots) {
+            final List<RequestedCourtSchedule> schedules = hearingSlot.getCourtScheduleIds();
 
-            for (RequestedCourtSchedule requestedCourtSchedule : schedules) {
-                uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule cs = courtScheduleRepository.findBy(requestedCourtSchedule.getCourtScheduleId());
+            for (final RequestedCourtSchedule requestedCourtSchedule : schedules) {
+                final CourtSchedule cs = courtScheduleRepository.findBy(requestedCourtSchedule.getCourtScheduleId());
 
                 if (isNull(cs)) {
                     return buildErrorResponse("Requested CourSchedule not found. Id: " + requestedCourtSchedule.getCourtScheduleId());
                 }
 
-                if (invalidDuration(requestedCourtSchedule, cs))
+                if (invalidDuration(requestedCourtSchedule, cs)) {
                     return buildErrorResponse("No duration supplied for requested CourtSchedule: " + requestedCourtSchedule.getCourtScheduleId());
+                }
             }
         }
 
@@ -141,41 +143,51 @@ public class HearingSlotsApiValidator {
     }
 
 
-    private boolean invalidDuration(RequestedCourtSchedule schedule, CourtSchedule cs) {
+    private boolean invalidDuration(final RequestedCourtSchedule schedule, final CourtSchedule cs) {
         return !cs.isSlotBased() && isNull(schedule.getDurationInMinutes());
     }
 
     private void validateHearingStartTime(final String hearingStartTime) {
         if (isNotBlank(hearingStartTime)) {
-            try {
-                ZonedDateTime.parse(hearingStartTime);
-            } catch (final DateTimeParseException e) {
-                throw new ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST, format("Invalid hearingStartTime: %s and exception %s ", hearingStartTime, e.getMessage()));
-            }
+            parseHearingStartTime(hearingStartTime);
+        }
+    }
+
+    private ZonedDateTime parseHearingStartTime(final String hearingStartTime) {
+        try {
+            return ZonedDateTime.parse(hearingStartTime);
+        } catch (final DateTimeParseException e) {
+            throw new ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST, format("Invalid hearingStartTime: %s and exception %s ", hearingStartTime, e.getMessage()));
         }
     }
 
     private boolean isInvalidDateFormat(final String date) {
+        return parseDate(date).isEmpty();
+    }
+
+    private Optional<java.time.LocalDate> parseDate(final String date) {
         try {
-            java.time.LocalDate.parse(date);
+            return Optional.of(java.time.LocalDate.parse(date));
         } catch (final DateTimeParseException ignored) {
             LOGGER.debug("Invalid date string for hearing-slots validation (expected for bad input): {}", date);
-            return true;
+            return Optional.empty();
         }
-        return false;
     }
 
     private boolean isValidInstant(final String date) {
         if(date == null){
             return true;
         }
+        return parseInstant(date).isPresent();
+    }
+
+    private Optional<Instant> parseInstant(final String date) {
         try {
-            Instant.parse(date);
+            return Optional.of(Instant.parse(date));
         } catch (final DateTimeParseException ignored) {
             LOGGER.debug("Invalid instant string for hearing-slots validation (expected for bad input): {}", date);
-            return false;
+            return Optional.empty();
         }
-        return true;
     }
 
     private JsonObject getMessage(final String value) {
@@ -258,7 +270,7 @@ public class HearingSlotsApiValidator {
         return EMPTY_JSON_OBJECT;
     }
 
-    private JsonObject buildErrorResponse(String errorMessage) {
+    private JsonObject buildErrorResponse(final String errorMessage) {
         return createObjectBuilder()
                 .add(ERROR_MESSAGE, errorMessage)
                 .build();

@@ -1,10 +1,16 @@
 package uk.gov.moj.cpp.courtscheduler.repository;
 
+import static uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleQueryParameterNames.BUSINESS_TYPE;
+import static uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleQueryParameterNames.COURT_ROOM_ID;
+import static uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleQueryParameterNames.END_DATE;
+import static uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleQueryParameterNames.SESSION_DATE;
+import static uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleQueryParameterNames.START_DATE;
+
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleMatcherInfo;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 
+import java.time.Instant;
 import java.time.LocalDate;
-import java.util.Date;
 import java.util.List;
 
 import org.slf4j.Logger;
@@ -30,41 +36,35 @@ public interface CourtScheduleRepository
 
     Logger LOGGER = LoggerFactory.getLogger(CourtScheduleRepository.class);
 
-    String BUSINESS_TYPE = "businessType";
-    String COURT_ROOM_ID = "courtRoomId";
-    String OU_CODE = "ouCode";
-    String COURT_CENTRE_ID = "courtCentreId";
-    String SESSION_DATE = "sessionDate";
-
     // ---------------------------------------------------------------------
     //  Legacy {@code @Query}-annotated abstract methods.
     // ---------------------------------------------------------------------
 
     @Query("SELECT cs FROM CourtSchedule cs WHERE cs.ouCode IN :ouCodes AND cs.active = true AND cs.sessionDate BETWEEN :startDate AND :endDate")
     List<CourtSchedule> getExtractedCourtSchedules(@Param("ouCodes") List<String> ouCodes,
-                                                   @Param("startDate") LocalDate startDate,
-                                                   @Param("endDate") LocalDate endDate);
+                                                   @Param(START_DATE) LocalDate startDate,
+                                                   @Param(END_DATE) LocalDate endDate);
 
     @Query("SELECT cs FROM CourtSchedule cs WHERE cs.ouCode IN :ouCodes AND cs.sessionDate BETWEEN :startDate AND :endDate")
     List<CourtSchedule> getExtractedCourtSchedulesForGhostRota(@Param("ouCodes") List<String> ouCodes,
-                                                               @Param("startDate") LocalDate startDate,
-                                                               @Param("endDate") LocalDate endDate);
+                                                               @Param(START_DATE) LocalDate startDate,
+                                                               @Param(END_DATE) LocalDate endDate);
 
     @Query("SELECT cs FROM CourtSchedule cs WHERE cs.courtHouseId = :courtCentreId AND cs.courtRoomId = :courtRoomId AND cs.active = true AND cs.businessType = :businessType AND cs.sessionDate BETWEEN :startDate AND :endDate AND cs.jurisdiction = :jurisdiction")
     List<CourtSchedule> getSimilarSessions(@Param("courtCentreId") String courtCentreId,
                                            @Param("courtRoomId") String courtRoomId,
                                            @Param(BUSINESS_TYPE) String businessType,
-                                           @Param("startDate") LocalDate startDate,
-                                           @Param("endDate") LocalDate endDate,
+                                           @Param(START_DATE) LocalDate startDate,
+                                           @Param(END_DATE) LocalDate endDate,
                                            @Param("jurisdiction") String jurisdiction);
 
     @Modifying
     @Transactional
     @Query("UPDATE CourtSchedule cs SET cs.active = false, cs.updatedOn = :updatedOn WHERE cs.courtScheduleId IN :courtScheduleIds AND cs.listingProfileId is not null")
     void deactivateSlots(@Param("courtScheduleIds") List<String> courtScheduleIds,
-                         @Param("updatedOn") Date updatedOn);
+                         @Param("updatedOn") Instant updatedOn);
 
-    @Query("SELECT new uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleMatcherInfo(entity.courtScheduleId, entity.ouCode, entity.createdOn) "
+    @Query("SELECT new uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleMatcherInfo(entity.courtScheduleId, entity.ouCode) "
             + "FROM CourtSchedule entity WHERE entity.courtRoomId = :courtRoomId "
             + "AND entity.sessionDate = :sessionDate AND entity.businessType = :businessType "
             + "AND entity.courtSession = :courtSession")
@@ -115,13 +115,13 @@ public interface CourtScheduleRepository
             "AND cs.active = true")
     List<CourtSchedule> findActiveByCourtRoomIdBetweenDates(
             @Param(COURT_ROOM_ID) String courtRoomId,
-            @Param("startDate") LocalDate startDate,
-            @Param("endDate") LocalDate endDate,
+            @Param(START_DATE) LocalDate startDate,
+            @Param(END_DATE) LocalDate endDate,
             @Param(BUSINESS_TYPE) String businessType,
             @Param("courtSession") String courtSession);
 
     /** Method-name query — mirrors the legacy DeltaSpike abstract method. Used by the MI projection in the {@code Custom} fragment. */
-    List<CourtSchedule> findByUpdatedOnGreaterThanAndUpdatedOnLessThan(Date fromDate, Date toDate);
+    List<CourtSchedule> findByUpdatedOnGreaterThanAndUpdatedOnLessThan(Instant fromDate, Instant toDate);
 
     // ---------------------------------------------------------------------
     //  Backwards-compatible aliases for DeltaSpike's auto-generated CRUD methods.
