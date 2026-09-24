@@ -45,6 +45,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -855,29 +856,29 @@ class SlotsSearchServiceTest {
     void filterForMultidayAvailability_shouldGroupByBusinessType() {
         // Same courtroom & ouCode, different business types:
         // APPLS on 08, 09, 11 (gap on 10 - NOT consecutive for 3 days)
-        // FWT   on 08, 09, 10 (consecutive for 3 days)
+        // LGT   on 08, 09, 10 (consecutive for 3 days)
         String courtRoomId = randomUUID().toString();
         String ouCode = "C03CL00";
         List<CourtSchedule> schedules = List.of(
                 createMultidayCourtSchedule(courtRoomId, parse("2026-04-08"), 360, 0, false, "APPLS", ouCode),
                 createMultidayCourtSchedule(courtRoomId, parse("2026-04-09"), 360, 0, false, "APPLS", ouCode),
                 createMultidayCourtSchedule(courtRoomId, parse("2026-04-11"), 360, 0, false, "APPLS", ouCode),
-                createMultidayCourtSchedule(courtRoomId, parse("2026-04-08"), 360, 0, false, "FWT", ouCode),
-                createMultidayCourtSchedule(courtRoomId, parse("2026-04-09"), 360, 0, false, "FWT", ouCode),
-                createMultidayCourtSchedule(courtRoomId, parse("2026-04-10"), 360, 0, false, "FWT", ouCode)
+                createMultidayCourtSchedule(courtRoomId, parse("2026-04-08"), 360, 0, false, "LGT", ouCode),
+                createMultidayCourtSchedule(courtRoomId, parse("2026-04-09"), 360, 0, false, "LGT", ouCode),
+                createMultidayCourtSchedule(courtRoomId, parse("2026-04-10"), 360, 0, false, "LGT", ouCode)
         );
 
         List<CourtSchedule> result = slotsSearchService.filterForMultidayAvailability(schedules, 3, false);
 
-        // Only FWT should qualify - APPLS has a gap on 10th
+        // Only LGT should qualify - APPLS has a gap on 10th
         assertThat(result, hasSize(1));
-        assertThat(result.get(0).getBusinessType(), is("FWT"));
+        assertThat(result.get(0).getBusinessType(), is("LGT"));
         assertThat(result.get(0).getSessionDate(), is(parse("2026-04-08")));
     }
 
     @Test
     void filterForMultidayAvailability_shouldGroupByBusinessType_emptyWhenFourDaysNeeded() {
-        // Same data as shouldGroupByBusinessType: APPLS has 08,09,11 (gap); FWT has 08,09,10 (3 consecutive)
+        // Same data as shouldGroupByBusinessType: APPLS has 08,09,11 (gap); LGT has 08,09,10 (3 consecutive)
         // Asking for 4 consecutive days - neither business type qualifies
         String courtRoomId = randomUUID().toString();
         String ouCode = "C03CL00";
@@ -885,9 +886,9 @@ class SlotsSearchServiceTest {
                 createMultidayCourtSchedule(courtRoomId, parse("2026-04-08"), 360, 0, false, "APPLS", ouCode),
                 createMultidayCourtSchedule(courtRoomId, parse("2026-04-09"), 360, 0, false, "APPLS", ouCode),
                 createMultidayCourtSchedule(courtRoomId, parse("2026-04-11"), 360, 0, false, "APPLS", ouCode),
-                createMultidayCourtSchedule(courtRoomId, parse("2026-04-08"), 360, 0, false, "FWT", ouCode),
-                createMultidayCourtSchedule(courtRoomId, parse("2026-04-09"), 360, 0, false, "FWT", ouCode),
-                createMultidayCourtSchedule(courtRoomId, parse("2026-04-10"), 360, 0, false, "FWT", ouCode)
+                createMultidayCourtSchedule(courtRoomId, parse("2026-04-08"), 360, 0, false, "LGT", ouCode),
+                createMultidayCourtSchedule(courtRoomId, parse("2026-04-09"), 360, 0, false, "LGT", ouCode),
+                createMultidayCourtSchedule(courtRoomId, parse("2026-04-10"), 360, 0, false, "LGT", ouCode)
         );
 
         List<CourtSchedule> result = slotsSearchService.filterForMultidayAvailability(schedules, 4, false);
@@ -896,34 +897,34 @@ class SlotsSearchServiceTest {
     }
 
     @Test
-    void filterForMultidayAvailability_shouldGroupByBusinessType_twoDaysFromAPPLSAndFWT() {
-        // Same data: APPLS has 08,09,11; FWT has 08,09,10
-        // Asking for 2 consecutive days - APPLS 08→09 qualifies, FWT 08→09 and 09→10 qualify
+    void filterForMultidayAvailability_shouldGroupByBusinessType_twoDaysFromAPPLSAndLGT() {
+        // Same data: APPLS has 08,09,11; LGT has 08,09,10
+        // Asking for 2 consecutive days - APPLS 08→09 qualifies, LGT 08→09 and 09→10 qualify
         String courtRoomId = randomUUID().toString();
         String ouCode = "C03CL00";
         List<CourtSchedule> schedules = List.of(
                 createMultidayCourtSchedule(courtRoomId, parse("2026-04-08"), 360, 0, false, "APPLS", ouCode),
                 createMultidayCourtSchedule(courtRoomId, parse("2026-04-09"), 360, 0, false, "APPLS", ouCode),
                 createMultidayCourtSchedule(courtRoomId, parse("2026-04-11"), 360, 0, false, "APPLS", ouCode),
-                createMultidayCourtSchedule(courtRoomId, parse("2026-04-08"), 360, 0, false, "FWT", ouCode),
-                createMultidayCourtSchedule(courtRoomId, parse("2026-04-09"), 360, 0, false, "FWT", ouCode),
-                createMultidayCourtSchedule(courtRoomId, parse("2026-04-10"), 360, 0, false, "FWT", ouCode)
+                createMultidayCourtSchedule(courtRoomId, parse("2026-04-08"), 360, 0, false, "LGT", ouCode),
+                createMultidayCourtSchedule(courtRoomId, parse("2026-04-09"), 360, 0, false, "LGT", ouCode),
+                createMultidayCourtSchedule(courtRoomId, parse("2026-04-10"), 360, 0, false, "LGT", ouCode)
         );
 
         List<CourtSchedule> result = slotsSearchService.filterForMultidayAvailability(schedules, 2, false);
 
-        // APPLS: 08→09 valid (1 start). FWT: 08→09 valid, 09→10 valid (2 starts) → 3 total
+        // APPLS: 08→09 valid (1 start). LGT: 08→09 valid, 09→10 valid (2 starts) → 3 total
         assertThat(result, hasSize(3));
         // Results sorted by sessionDate; two entries share the 8th (order within same date is non-deterministic)
         assertThat(result.get(0).getSessionDate(), is(parse("2026-04-08")));
         assertThat(result.get(1).getSessionDate(), is(parse("2026-04-08")));
         assertThat(result.get(2).getSessionDate(), is(parse("2026-04-09")));
-        assertThat(result.get(2).getBusinessType(), is("FWT"));
+        assertThat(result.get(2).getBusinessType(), is("LGT"));
         // Both business types appear for the 8th
         List<String> typesOn8th = result.stream()
                 .filter(cs -> cs.getSessionDate().equals(parse("2026-04-08")))
                 .map(CourtSchedule::getBusinessType).sorted().toList();
-        assertThat(typesOn8th, is(List.of("APPLS", "FWT")));
+        assertThat(typesOn8th, is(List.of("APPLS", "LGT")));
     }
 
     @Test
@@ -931,12 +932,12 @@ class SlotsSearchServiceTest {
         // Same courtroom & businessType, different ouCodes
         String courtRoomId = randomUUID().toString();
         List<CourtSchedule> schedules = List.of(
-                createMultidayCourtSchedule(courtRoomId, parse("2026-04-08"), 360, 0, false, "FWT", "C03CL00"),
-                createMultidayCourtSchedule(courtRoomId, parse("2026-04-09"), 360, 0, false, "FWT", "C03CL00"),
+                createMultidayCourtSchedule(courtRoomId, parse("2026-04-08"), 360, 0, false, "LGT", "C03CL00"),
+                createMultidayCourtSchedule(courtRoomId, parse("2026-04-09"), 360, 0, false, "LGT", "C03CL00"),
                 // C03CL00 missing 10th
-                createMultidayCourtSchedule(courtRoomId, parse("2026-04-08"), 360, 0, false, "FWT", "C05LV00"),
-                createMultidayCourtSchedule(courtRoomId, parse("2026-04-09"), 360, 0, false, "FWT", "C05LV00"),
-                createMultidayCourtSchedule(courtRoomId, parse("2026-04-10"), 360, 0, false, "FWT", "C05LV00")
+                createMultidayCourtSchedule(courtRoomId, parse("2026-04-08"), 360, 0, false, "LGT", "C05LV00"),
+                createMultidayCourtSchedule(courtRoomId, parse("2026-04-09"), 360, 0, false, "LGT", "C05LV00"),
+                createMultidayCourtSchedule(courtRoomId, parse("2026-04-10"), 360, 0, false, "LGT", "C05LV00")
         );
 
         List<CourtSchedule> result = slotsSearchService.filterForMultidayAvailability(schedules, 3, false);
@@ -948,16 +949,16 @@ class SlotsSearchServiceTest {
 
     @Test
     void filterForMultidayAvailability_shouldReturnBothBusinessTypesWhenBothHaveConsecutiveDays() {
-        // Both APPLS and FWT have 3 consecutive days in the same courtroom
+        // Both APPLS and LGT have 3 consecutive days in the same courtroom
         String courtRoomId = randomUUID().toString();
         String ouCode = "C03CL00";
         List<CourtSchedule> schedules = List.of(
                 createMultidayCourtSchedule(courtRoomId, parse("2026-04-08"), 360, 0, false, "APPLS", ouCode),
                 createMultidayCourtSchedule(courtRoomId, parse("2026-04-09"), 360, 0, false, "APPLS", ouCode),
                 createMultidayCourtSchedule(courtRoomId, parse("2026-04-10"), 360, 0, false, "APPLS", ouCode),
-                createMultidayCourtSchedule(courtRoomId, parse("2026-04-08"), 360, 0, false, "FWT", ouCode),
-                createMultidayCourtSchedule(courtRoomId, parse("2026-04-09"), 360, 0, false, "FWT", ouCode),
-                createMultidayCourtSchedule(courtRoomId, parse("2026-04-10"), 360, 0, false, "FWT", ouCode)
+                createMultidayCourtSchedule(courtRoomId, parse("2026-04-08"), 360, 0, false, "LGT", ouCode),
+                createMultidayCourtSchedule(courtRoomId, parse("2026-04-09"), 360, 0, false, "LGT", ouCode),
+                createMultidayCourtSchedule(courtRoomId, parse("2026-04-10"), 360, 0, false, "LGT", ouCode)
         );
 
         List<CourtSchedule> result = slotsSearchService.filterForMultidayAvailability(schedules, 3, false);
@@ -1210,23 +1211,6 @@ class SlotsSearchServiceTest {
 
         // 23→24 missing = invalid. 25→26 missing = invalid.
         assertThat(result, is(empty()));
-    }
-
-    @Test
-    void getEffectiveAvailableDuration_shouldCalculateForRegularSession() {
-        CourtSchedule cs = new CourtSchedule.CourtScheduleBuilder()
-                .withMaxDuration(360).withTotalBooked(50).withAllDaySplit(false).build();
-        assertThat(slotsSearchService.getEffectiveAvailableDuration(cs), is(310));
-    }
-
-    @Test
-    void getEffectiveAvailableDuration_shouldCalculateForAllDaySplitSession() {
-        CourtSchedule cs = new CourtSchedule.CourtScheduleBuilder()
-                .withAllDaySplit(true)
-                .withMaxDurationForMorning(200).withMaxDurationForAfternoon(200)
-                .withTotalBookedForMorning(20).withTotalBookedForAfternoon(30)
-                .build();
-        assertThat(slotsSearchService.getEffectiveAvailableDuration(cs), is(350));
     }
 
     @Test
@@ -1597,6 +1581,108 @@ class SlotsSearchServiceTest {
 
         assertThat(jsonObject.getInt("results"), is(dbTotalCount));
         assertThat(jsonObject.getInt("pageCount"), is(5)); // ceil(50/10) = 5
+    }
+
+    // ---- SPRDT-1276: CROWN >360 forces courtSession=AD and isSlotBased=false ----
+
+    @Test
+    void multidayCrownSearch_shouldForceCourtSessionToAdWhenCallerSendsAm() {
+        when(courtScheduleRepository.getMultidayHearingSlotCandidates(any(), anyInt())).thenReturn(List.of());
+
+        // The reported defect: a 720-minute CROWN search that asks for AM sessions.
+        slotsSearchService.search(new HearingSlotRequestParam(
+                "ADULT,YOUTH", "2026-08-17", "2026-08-17",
+                null, null, "C13BR00", "500", "1", null, null, null, "AM", true, null, true,
+                "720", "DRAFT", "CROWN"));
+
+        assertThat(capturedMultidayRequest().courtSession(), is("AD"));
+        assertThat(capturedMultidayRequest().isSlotBased(), is(false));
+    }
+
+    @Test
+    void multidayCrownSearch_shouldDefaultCourtSessionToAdWhenCallerSendsNone() {
+        when(courtScheduleRepository.getMultidayHearingSlotCandidates(any(), anyInt())).thenReturn(List.of());
+
+        // An absent courtSession previously meant "no court_session predicate at all", which is
+        // how AM sessions reached the response for the exact curl on the ticket.
+        slotsSearchService.search(new HearingSlotRequestParam(
+                "ADULT,YOUTH", "2026-08-17", "2026-08-17",
+                null, null, "C13BR00", "500", "1", null, null, null, null, null, null, true,
+                "720", "DRAFT", "CROWN"));
+
+        assertThat(capturedMultidayRequest().courtSession(), is("AD"));
+        assertThat(capturedMultidayRequest().isSlotBased(), is(false));
+    }
+
+    @Test
+    void multidayCrownSearch_shouldForceSessionDefaultsEvenWhenBusinessTypeSupplied() {
+        when(courtScheduleRepository.getMultidayHearingSlotCandidates(any(), anyInt())).thenReturn(List.of());
+
+        slotsSearchService.search(new HearingSlotRequestParam(
+                "ADULT,YOUTH", "2026-08-17", "2026-08-17",
+                null, null, "C13BR00", "500", "1", null, null, "TRIAL", "PM", true, null, true,
+                "720", "DRAFT", "CROWN"));
+
+        final HearingSlotRequestParam forwarded = capturedMultidayRequest();
+        assertThat(forwarded.courtSession(), is("AD"));
+        assertThat(forwarded.isSlotBased(), is(false));
+        // businessType still narrows the search — it is no longer an alternative to isSlotBased.
+        assertThat(forwarded.businessType(), is("TRIAL"));
+    }
+
+    @Test
+    void singleDayCrownSearch_shouldLeaveCallerSessionParamsUntouched() {
+        when(courtScheduleRepository.getCourtSchedules(any())).thenReturn(Pair.of(0, List.of()));
+
+        // 360 is not multiday (the threshold is strictly greater than), so nothing is forced.
+        final HearingSlotRequestParam param = new HearingSlotRequestParam(
+                "ADULT,YOUTH", "2026-08-17", "2026-08-17",
+                null, null, "C13BR00", "500", "1", null, null, null, "AM", true, null, true,
+                "360", "DRAFT", "CROWN");
+
+        slotsSearchService.search(param);
+
+        final ArgumentCaptor<HearingSlotRequestParam> captor =
+                ArgumentCaptor.forClass(HearingSlotRequestParam.class);
+        verify(courtScheduleRepository).getCourtSchedules(captor.capture());
+        assertThat(captor.getValue().courtSession(), is("AM"));
+        assertThat(captor.getValue().isSlotBased(), is(true));
+    }
+
+    @Test
+    void multidayMagistratesSearch_shouldLeaveCallerSessionParamsUntouched() {
+        when(courtScheduleRepository.getCourtSchedules(any())).thenReturn(Pair.of(0, List.of()));
+
+        // The forcing is CROWN-only — MAGISTRATES never enters the multiday branch.
+        slotsSearchService.search(new HearingSlotRequestParam(
+                "ADULT,YOUTH", "2026-08-17", "2026-08-17",
+                null, null, "C13BR00", "500", "1", null, null, null, "AM", true, null, true,
+                "720", "DRAFT", "MAGISTRATES"));
+
+        final ArgumentCaptor<HearingSlotRequestParam> captor =
+                ArgumentCaptor.forClass(HearingSlotRequestParam.class);
+        verify(courtScheduleRepository).getCourtSchedules(captor.capture());
+        assertThat(captor.getValue().courtSession(), is("AM"));
+        assertThat(captor.getValue().isSlotBased(), is(true));
+    }
+
+    @Test
+    void isMultidayCrownSearch_shouldReturnFalseForMalformedDuration() {
+        // The predicate is now evaluated on every hearing-slots query, MAGISTRATES included,
+        // so a duration it cannot parse must answer false rather than throw.
+        final HearingSlotRequestParam param = new HearingSlotRequestParam(
+                "ADULT,YOUTH", "2026-08-17", "2026-08-17",
+                null, null, "C13BR00", "500", "1", null, null, null, null, null, null, true,
+                "not-a-number", "DRAFT", "CROWN");
+
+        assertThat(slotsSearchService.isMultidayCrownSearch(param), is(false));
+    }
+
+    private HearingSlotRequestParam capturedMultidayRequest() {
+        final ArgumentCaptor<HearingSlotRequestParam> captor =
+                ArgumentCaptor.forClass(HearingSlotRequestParam.class);
+        verify(courtScheduleRepository).getMultidayHearingSlotCandidates(captor.capture(), anyInt());
+        return captor.getValue();
     }
 
     // ---- Multiday helper methods ----

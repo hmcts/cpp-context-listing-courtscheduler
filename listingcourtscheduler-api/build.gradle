@@ -199,6 +199,46 @@ publishing {
     }
 }
 
+/* Publishing is not idempotent: Azure Artifacts feeds are immutable (re-PUT of an existing
+ * file → 409) and GitHub Packages rejects re-published versions (422). Without this guard a
+ * re-run after a partial failure (e.g. Azure succeeded, GitHub 422'd — run 30264466774) can
+ * never go green: the registry that already took the version rejects it forever. Skip a
+ * repository that already holds this publication's pom — maven-publish uploads the pom after
+ * the main (boot) jar, so its presence marks an earlier publish that got past the artifact
+ * upload the registries reject re-runs on. */
+tasks.withType(PublishToMavenRepository).configureEach {
+    onlyIf('version not already published to this repository') { task ->
+        def repo = task.repository
+        def repoUrl = repo.url.toString().replaceAll('/+$', '')
+        if (!repoUrl.startsWith('http')) {
+            return true
+        }
+        def pub = task.publication
+        def pomUrl = "${repoUrl}/${pub.groupId.replace('.', '/')}/${pub.artifactId}/${pub.version}/${pub.artifactId}-${pub.version}.pom"
+        try {
+            def conn = (HttpURLConnection) new URI(pomUrl).toURL().openConnection()
+            conn.requestMethod = 'HEAD'
+            if (repo.credentials?.username && repo.credentials?.password) {
+                def basic = "${repo.credentials.username}:${repo.credentials.password}".getBytes('UTF-8').encodeBase64()
+                conn.setRequestProperty('Authorization', "Basic ${basic}")
+            }
+            conn.connectTimeout = 10_000
+            conn.readTimeout = 10_000
+            def alreadyPublished = conn.responseCode == 200
+            conn.disconnect()
+            if (alreadyPublished) {
+                logger.lifecycle("Skipping ${task.name}: ${pub.groupId}:${pub.artifactId}:${pub.version} is already in '${repo.name}'")
+            }
+            return !alreadyPublished
+        } catch (Exception e) {
+            // A failed probe (DNS, timeout) must not mask the real publish outcome —
+            // attempt the publish and let it report the true error.
+            logger.warn("Could not probe '${repo.name}' for existing ${pub.version} (${e.message}); publishing anyway")
+            return true
+        }
+    }
+}
+
 tasks.named('test') {
     // Run every test class even when one fails, so the failure list is comprehensive.
     failFast = false

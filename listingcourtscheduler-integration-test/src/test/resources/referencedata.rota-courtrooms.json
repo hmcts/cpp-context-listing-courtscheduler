@@ -11705,6 +11705,20 @@
       "oucodeUUID": "ecd86f35-1c8e-3b82-aec1-c4850f71b00f",
       "courtroomName": "Courtroom 01",
       "courtroomId": "7d1d9f4d-ff87-4382-9fe5-adcc073f94a1"
+    },
+    {
+      "id": "11122233-4455-6677-8899-aabbccddeeff",
+      "rotaLocationId": 91,
+      "rotaVenueName": "Court 02",
+      "cppCourtRoomId": 9901,
+      "rotaVenueId": 0,
+      "oucode": "B99ZZ00",
+      "oucodeL3Name": "No-Default Magistrates' Court",
+      "oucodeL2Name": "Test Region",
+      "oucodeL2Code": "99",
+      "oucodeUUID": "99999999-8888-7777-6666-555555555555",
+      "courtroomName": "Courtroom 02",
+      "courtroomId": "44444444-5555-6666-7777-888888888888"
     }
   ]
 }

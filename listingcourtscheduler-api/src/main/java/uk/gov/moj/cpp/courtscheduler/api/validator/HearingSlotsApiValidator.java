@@ -22,7 +22,6 @@ import uk.gov.moj.cpp.courtscheduler.common.Jurisdiction;
 import uk.gov.moj.cpp.courtscheduler.domain.CrownSearchAndBookRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlot;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
-import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotSearchRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.MagsSearchAndBookRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.MoveHearingToPastDateRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant;
@@ -38,7 +37,6 @@ import java.util.List;
 import jakarta.inject.Inject;
 import jakarta.json.JsonObject;
 
-import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,24 +44,7 @@ import org.slf4j.LoggerFactory;
 public class HearingSlotsApiValidator {
     private static final Logger LOGGER = LoggerFactory.getLogger(HearingSlotsApiValidator.class.getName());
 
-    /**
-     * Minimum duration (minutes) accepted by {@code courtscheduler.multiday.searchandbook.hearing.slots}.
-     * Anything below this is not a true multi-day booking — a single full working day is 360 minutes, so
-     * 720 minutes is the smallest span that actually needs two distinct sessions. Requests below this
-     * are rejected with HTTP 400 so the single-day endpoint can be used instead.
-     */
-    static final int MULTIDAY_MIN_DURATION_MINUTES = 720;
-
     static final String SHOULD_BE_ENTERED = " should be entered";
-
-    static final String MULTIDAY_DURATION_BELOW_MINIMUM =
-            "Multi-day search and book requires durationInMinutes >= %d (one full day is %d mins; less than two days is not multi-day). Received: %d";
-
-    static final String COURT_SCHEDULE_ID_CANNOT_BE_NULL_OR_EMPTY =
-            "Multi-day search and book: courtScheduleId cannot be null or empty";
-
-    static final String HEARING_ID_CANNOT_BE_NULL_OR_EMPTY =
-            "Multi-day search and book: hearingId cannot be null or empty";
 
     static final String MAGS_COURT_SCHEDULE_ID_NOT_ALLOWED =
             "courtScheduleId is not permitted on mags.search.and.book — Magistrates bookings never anchor on a courtScheduleId";
@@ -137,27 +118,6 @@ public class HearingSlotsApiValidator {
         return EMPTY_JSON_OBJECT;
     }
 
-    public JsonObject searchAndBookRequestValidation(final HearingSlotSearchRequest hearingSlotSearchRequest) {
-
-        LOGGER.info("Validating Search and Book Hearing Slot request : {}", hearingSlotSearchRequest);
-
-        if (StringUtils.isBlank(hearingSlotSearchRequest.hearingId())) {
-            return getMessage(RequestParameterConstant.HEARING_ID.getLabel());
-        }
-
-        if (StringUtils.isBlank(hearingSlotSearchRequest.courtCentreId())) {
-            return getMessage(RequestParameterConstant.COURT_CENTRE.getLabel() + SHOULD_BE_ENTERED);
-        }
-
-        if (StringUtils.isBlank(hearingSlotSearchRequest.hearingSessionDate())) {
-            return getMessage(RequestParameterConstant.HEARING_SESSION_DATE.getLabel());
-        } else if (isInvalidDateFormat(hearingSlotSearchRequest.hearingSessionDate())) {
-            return getMessage(format(START_DATE_IS_IN_BAD_FORMAT, hearingSlotSearchRequest.hearingSessionDate()));
-        }
-
-        return EMPTY_JSON_OBJECT;
-    }
-
     public JsonObject listHearingSlotsValidation(final List<HearingSlot> hearingSlots) {
 
         LOGGER.info("Validating list Hearing Slots input : {}", hearingSlots);
@@ -220,42 +180,6 @@ public class HearingSlotsApiValidator {
 
     private JsonObject getMessage(final String value) {
         return buildErrorResponse(MANDATORY_SEARCH_CRITERIA + value + CANNOT_BE_NULL);
-    }
-
-    /**
-     * Validates a {@code courtscheduler.multiday.searchandbook.hearing.slots} request. Returns an empty
-     * object when valid; returns a {@code {errorMessage: ...}} object otherwise which the handler then
-     * wraps in {@link uk.gov.moj.cpp.courtscheduler.api.validator.ValidationException} to surface as
-     * HTTP 400 Bad Request.
-     *
-     * <p>Rules:
-     * <ul>
-     *   <li>{@code courtScheduleId} must be non-null and non-empty (anchor for the consecutive-day search)</li>
-     *   <li>{@code hearingId} must be non-null and non-empty (bookings are keyed on this)</li>
-     *   <li>{@code durationInMinutes} must be {@code >= MULTIDAY_MIN_DURATION_MINUTES} (720) — below that
-     *       is not a multi-day booking and should use the single-day endpoint instead</li>
-     * </ul>
-     */
-    public JsonObject getMultiDaySearchAndBookValidation(
-            final String courtScheduleId,
-            final String hearingId,
-            final int durationInMinutes) {
-        LOGGER.info("Validating multiDaySearchAndBook: courtScheduleId={}, hearingId={}, durationInMinutes={}",
-                courtScheduleId, hearingId, durationInMinutes);
-
-        if (isBlank(courtScheduleId)) {
-            return buildErrorResponse(COURT_SCHEDULE_ID_CANNOT_BE_NULL_OR_EMPTY);
-        }
-        if (isBlank(hearingId)) {
-            return buildErrorResponse(HEARING_ID_CANNOT_BE_NULL_OR_EMPTY);
-        }
-        if (durationInMinutes < MULTIDAY_MIN_DURATION_MINUTES) {
-            return buildErrorResponse(format(MULTIDAY_DURATION_BELOW_MINIMUM,
-                    MULTIDAY_MIN_DURATION_MINUTES,
-                    MULTIDAY_MIN_DURATION_MINUTES / 2,
-                    durationInMinutes));
-        }
-        return EMPTY_JSON_OBJECT;
     }
 
     // ─── SPRDT-1089: validations for the resource-based booking engine (Phase 1) ──

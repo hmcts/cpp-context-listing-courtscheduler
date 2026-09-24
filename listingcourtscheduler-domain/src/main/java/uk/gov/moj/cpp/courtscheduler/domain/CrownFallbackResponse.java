@@ -4,7 +4,7 @@ import java.util.Objects;
 
 public record CrownFallbackResponse(String hearingId,
                                     String courtScheduleId,
-                                    Integer courtRoomId,
+                                    String courtRoomId,
                                     String sessionDate,
                                     String sessionStartTime,
                                     String sessionEndTime,

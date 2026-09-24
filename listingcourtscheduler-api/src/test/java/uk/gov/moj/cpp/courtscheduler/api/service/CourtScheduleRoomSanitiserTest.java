@@ -93,7 +93,7 @@ class CourtScheduleRoomSanitiserTest {
         final CrownFallbackResponse result = CourtScheduleRoomSanitiser.stripCourtRoomFromDraftFallbackResponse(finalResponse);
 
         assertThat(result, is(sameInstance(finalResponse)));
-        assertThat(result.courtRoomId(), is(101));
+        assertThat(result.courtRoomId(), is("731816c1-5ee4-373a-9bda-840e13a5bcb0"));
     }
 
     @Test
@@ -102,7 +102,7 @@ class CourtScheduleRoomSanitiserTest {
     }
 
     private static CrownFallbackResponse fallbackResponse(final boolean draft) {
-        return new CrownFallbackResponse("hearing-1", "schedule-1", 101, "2026-06-01",
+        return new CrownFallbackResponse("hearing-1", "schedule-1", "731816c1-5ee4-373a-9bda-840e13a5bcb0", "2026-06-01",
                 "10:00", "16:00", 360, draft, "CROWN_TRIAL", "SOURCE", false);
     }
 

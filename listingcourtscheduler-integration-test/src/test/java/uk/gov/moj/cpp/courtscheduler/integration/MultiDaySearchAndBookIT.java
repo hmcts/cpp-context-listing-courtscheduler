@@ -149,29 +149,59 @@ class MultiDaySearchAndBookIT extends AbstractIT {
                 extractCourtScheduleIds(body(response)), is(empty()));
     }
 
-    // --- Gap #4: pre-existing allocated_listings on a later day exhausts availability ---
+    // --- Gap #4 (rewritten for F1, court-calendar always-assign rule): pre-existing
+    // allocated_listings on a later day no longer block — the short day is overbooked. ---
 
     @Test
-    void shouldReturnEmptyWhenLaterDayHasPreExistingAllocationsThatExhaustAvailability() throws Exception {
+    void shouldBookAllDaysWhenLaterDayHasPreExistingAllocationsThatReduceAvailability() throws Exception {
         final String roomId = UUID.randomUUID().toString();
+        final String hearingId = UUID.randomUUID().toString();
 
         final String day1Anchor = seedSession(ANCHOR_MONDAY, roomId, "BTX", CENTRE_A, "OU-A", false, false, 360, 0);
         final String day2Id = seedSession(ANCHOR_MONDAY.plusDays(1), roomId, "BTX", CENTRE_A, "OU-A", false, false, 360, 0);
-        seedSession(ANCHOR_MONDAY.plusDays(2), roomId, "BTX", CENTRE_A, "OU-A", false, false, 360, 0);
+        final String day3Id = seedSession(ANCHOR_MONDAY.plusDays(2), roomId, "BTX", CENTRE_A, "OU-A", false, false, 360, 0);
 
         // Pre-existing allocation from another hearing on day 2 consumes 200 of 360 minutes.
-        // Multiday needs 360 per day, so day 2 only has 160 left → booking must be rejected.
+        // F1: the shortfall is advisory — the booking must proceed and overbook day 2.
         databaseSeeder.insertAllocatedListing(allocatedListing(day2Id, UUID.randomUUID().toString(), 200));
 
-        final Response response = callCrown(day1Anchor, CENTRE_A, ANCHOR_MONDAY, 1080, UUID.randomUUID().toString());
+        final Response response = callCrown(day1Anchor, CENTRE_A, ANCHOR_MONDAY, 1080, hearingId);
 
         assertThat(response.getStatus(), is(OK.getStatusCode()));
-        assertThat("must not book when later day has insufficient remaining availability",
-                extractCourtScheduleIds(body(response)), is(empty()));
+        assertThat("books all three days despite day 2's reduced availability (always-assign rule)",
+                extractCourtScheduleIds(body(response)), contains(day1Anchor, day2Id, day3Id));
 
-        // No new allocated_listings beyond the pre-existing one should have been written.
-        assertThat("no new bookings written when availability check fails",
-                databaseReader.allocatedListings().size(), is(1));
+        assertThat("three new allocated_listings written alongside the pre-existing one",
+                databaseReader.allocatedListings().size(), is(4));
+    }
+
+    // --- F1 (court-calendar always-assign rule): the reported defect scenario — a day with NO
+    // availability and is_overbooking_allowed=false must not block the multiday assignment. ---
+
+    @Test
+    void shouldBookAllDaysWhenADayIsFullyBookedAndOverbookingDisallowed() throws Exception {
+        final String roomId = UUID.randomUUID().toString();
+        final String hearingId = UUID.randomUUID().toString();
+
+        final String day1Anchor = seedSession(ANCHOR_MONDAY, roomId, "BTX", CENTRE_A, "OU-A", false, false, 360, 0);
+        final String day2Id = seedSession(ANCHOR_MONDAY.plusDays(1), roomId, "BTX", CENTRE_A, "OU-A", false, false, 360, 0);
+
+        // Day 2 is FULLY booked by another hearing and overbooking is NOT allowed — previously the
+        // whole 2-day block was rejected and the hearing stayed unassigned (RC-1).
+        databaseSeeder.insertAllocatedListing(allocatedListing(day2Id, UUID.randomUUID().toString(), 360));
+
+        final Response response = callCrown(day1Anchor, CENTRE_A, ANCHOR_MONDAY, 720, hearingId);
+
+        assertThat(response.getStatus(), is(OK.getStatusCode()));
+        assertThat("the hearing is assigned to both days, overbooking the full day",
+                extractCourtScheduleIds(body(response)), contains(day1Anchor, day2Id));
+
+        final List<AllocatedListing> hearingRows = databaseReader.allocatedListings().stream()
+                .filter(al -> hearingId.equals(al.getHearingId()))
+                .collect(Collectors.toList());
+        assertThat("both days booked for this hearing, 360 minutes each", hearingRows.size(), is(2));
+        assertThat(hearingRows.stream().map(AllocatedListing::getDuration).collect(Collectors.toList()),
+                containsInAnyOrder(360, 360));
     }
 
     // --- Gap #16: historic / past-date anchor ---
@@ -338,6 +368,48 @@ class MultiDaySearchAndBookIT extends AbstractIT {
                 day1AfterMove.getAvailableDuration(), is(360));
     }
 
+    // --- Single→multi-day conversion (update-hearing-for-listing): a hearing already booked on
+    // ONE day is extended to two days, anchored on its OWN booked session. Two traps must both be
+    // avoided: (1) the idempotency guard must not misread the request as a replay of the existing
+    // 1-day block — the anchor matches the block's first day but the day count differs, so it is a
+    // RESIZE; and (2) the availability check must not count the hearing's own not-yet-released 360
+    // minutes against the anchor day (reclaimHearingsOwnCapacity). Before the fix this returned the
+    // existing single session untouched and day 2 was never booked. ---
+
+    @Test
+    void shouldExtendSingleDayHearingToMultiDayWhenAnchoredOnItsOwnBookedSession() throws Exception {
+        final String roomId = UUID.randomUUID().toString();
+        final String hearingId = UUID.randomUUID().toString();
+
+        final String day1Id = seedSession(ANCHOR_MONDAY, roomId, "BTX", CENTRE_A, "OU-A", false, false, 360, 0);
+        final String day2Id = seedSession(ANCHOR_MONDAY.plusDays(1), roomId, "BTX", CENTRE_A, "OU-A", false, false, 360, 0);
+
+        // The hearing's existing single-day booking fully consumes day 1's capacity.
+        databaseSeeder.insertAllocatedListing(allocatedListing(day1Id, hearingId, 360));
+
+        // Convert to 2 days (720 mins), anchored on the hearing's own day-1 session.
+        final Response response = callCrown(day1Id, CENTRE_A, ANCHOR_MONDAY, 720, hearingId);
+
+        assertThat(response.getStatus(), is(OK.getStatusCode()));
+        final String responseBody = body(response);
+        assertThat("conversion books BOTH days, not just the pre-existing one",
+                extractCourtScheduleIds(responseBody), contains(day1Id, day2Id));
+
+        // The old single-day row is replaced by the 2-day block — exactly 2 rows for this hearing,
+        // no duplicate allocation left behind on day 1.
+        final List<AllocatedListing> rowsAfterConversion = databaseReader.allocatedListings().stream()
+                .filter(al -> hearingId.equals(al.getHearingId()))
+                .collect(Collectors.toList());
+        assertThat("single-day booking replaced by a 2-day block", rowsAfterConversion.size(), is(2));
+        assertThat(rowsAfterConversion.stream()
+                        .map(AllocatedListing::getCourtScheduleId)
+                        .collect(Collectors.toList()),
+                containsInAnyOrder(day1Id, day2Id));
+        assertThat("the 720-minute total is split evenly across the two booked days",
+                rowsAfterConversion.stream().map(AllocatedListing::getDuration).collect(Collectors.toList()),
+                containsInAnyOrder(360, 360));
+    }
+
     /**
      * Idempotency holds even when sessions allow overbooking: the (court_schedule_id, hearing_id)
      * guard means repeating the same call with the same hearingId does NOT create duplicate
@@ -364,21 +436,17 @@ class MultiDaySearchAndBookIT extends AbstractIT {
                 databaseReader.allocatedListings().size(), is(2));
     }
 
-    // --- Gap #5: transactional rollback / no partial state on failure ---
+    // --- Gap #5 (rewritten for F1): no partial state on STRUCTURAL failure. Availability no
+    // longer rejects (always-assign rule), but a run that is structurally incomplete — a missing
+    // session day — still returns empty and must not leave partial allocated_listings behind. ---
 
     @Test
-    void shouldNotWritePartialAllocatedListingsWhenAvailabilityCheckFailsMidway() throws Exception {
-        // The service evaluates availability for ALL sessions BEFORE attempting any booking.
-        // This test verifies that when the check fails on day N, no allocated_listings are
-        // written for days 1..N-1.
+    void shouldNotWritePartialAllocatedListingsWhenRunIsStructurallyIncomplete() throws Exception {
         final String roomId = UUID.randomUUID().toString();
 
+        // Only 2 of the 3 required consecutive days exist in the anchor's room — day 3 is missing.
         final String day1Anchor = seedSession(ANCHOR_MONDAY, roomId, "BTX", CENTRE_A, "OU-A", false, false, 360, 0);
-        final String day2Id = seedSession(ANCHOR_MONDAY.plusDays(1), roomId, "BTX", CENTRE_A, "OU-A", false, false, 360, 0);
-        seedSession(ANCHOR_MONDAY.plusDays(2), roomId, "BTX", CENTRE_A, "OU-A", false, false, 360, 0);
-
-        // Burn day 2's availability so the multiday booking will be rejected.
-        databaseSeeder.insertAllocatedListing(allocatedListing(day2Id, UUID.randomUUID().toString(), 360));
+        seedSession(ANCHOR_MONDAY.plusDays(1), roomId, "BTX", CENTRE_A, "OU-A", false, false, 360, 0);
 
         final int allocatedListingsBefore = databaseReader.allocatedListings().size();
 
@@ -386,7 +454,7 @@ class MultiDaySearchAndBookIT extends AbstractIT {
         assertThat(response.getStatus(), is(OK.getStatusCode()));
         assertThat(extractCourtScheduleIds(body(response)), is(empty()));
 
-        assertThat("no partial allocated_listings written when availability fails — count unchanged",
+        assertThat("no partial allocated_listings written when the run is structurally incomplete — count unchanged",
                 databaseReader.allocatedListings().size(), is(allocatedListingsBefore));
     }
 

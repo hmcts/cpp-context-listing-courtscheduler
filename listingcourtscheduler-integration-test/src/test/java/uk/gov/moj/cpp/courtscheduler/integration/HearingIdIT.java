@@ -188,6 +188,74 @@ class HearingIdIT extends AbstractIT {
         }
     }
 
+    @Test
+    void shouldFilterHearingIdsByStatus() throws Exception {
+        final LocalDate today = LocalDate.now();
+        final LocalDate sessionDate = today.minusDays(5);
+
+        final CourtSchedule draftCourtSchedule = createCourtSchedule(sessionDate, "COURT-SCHEDULE-DRAFT", "HOUSE-DRAFT");
+        draftCourtSchedule.setIsDraft(true);
+        databaseSeeder.insertCourtSchedule(draftCourtSchedule);
+
+        final CourtSchedule finalCourtSchedule = createCourtSchedule(sessionDate, "COURT-SCHEDULE-FINAL", "HOUSE-FINAL");
+        finalCourtSchedule.setIsDraft(false);
+        databaseSeeder.insertCourtSchedule(finalCourtSchedule);
+
+        final String draftHearingId = randomUUID().toString();
+        final LocalDateTime draftHearingStartTime = sessionDate.atTime(9, 0);
+        final AllocatedListing draftAllocatedListing =
+                createAllocateListing("1", "BOOKING-DRAFT", draftCourtSchedule.getCourtScheduleId(), draftHearingId, draftHearingStartTime);
+        databaseSeeder.insertAllocatedListing(draftAllocatedListing);
+
+        final String finalHearingId = randomUUID().toString();
+        final LocalDateTime finalHearingStartTime = sessionDate.atTime(10, 0);
+        final AllocatedListing finalAllocatedListing =
+                createAllocateListing("2", "BOOKING-FINAL", finalCourtSchedule.getCourtScheduleId(), finalHearingId, finalHearingStartTime);
+        databaseSeeder.insertAllocatedListing(finalAllocatedListing);
+
+        String hearingIdsReq = getPayload("courtscheduler.get.hearing.slots.json");
+        hearingIdsReq = hearingIdsReq.replace("PANEL", "ADULT");
+        hearingIdsReq = hearingIdsReq.replace("OU_CODE", "BA123");
+        hearingIdsReq = hearingIdsReq.replace("COURT_SESSION", "AM");
+        final LocalDate startDate = today.minusDays(10);
+        hearingIdsReq = hearingIdsReq.replace("SESSION_START_DATE", startDate.toString());
+        hearingIdsReq = hearingIdsReq.replace("SESSION_END_DATE", today.minusDays(1).toString());
+
+        final Map<String, Object> map = new ObjectMapper().readValue(hearingIdsReq, new TypeReference<>() {
+        });
+
+        // status=FINAL -> only the non-draft (FINAL) hearing
+        map.put("status", "FINAL");
+        RequestParams requestParams = getRequestParams(map);
+        ResponseData responseData = poll(requestParams).with().timeout(30L, SECONDS).pollInterval(50L, MILLISECONDS).pollDelay(0L, MILLISECONDS).until();
+        assertEquals(OK.getStatusCode(), responseData.getStatus().getStatusCode());
+        JsonObject jsonObject = stringToJsonObjectConverter.convert(responseData.getPayload());
+        assertThat(jsonObject.getInt("results"), is(1));
+        JsonArray hearingIds = jsonObject.getJsonArray("hearingIds");
+        assertThat(hearingIds.getJsonObject(0).getString("hearingId"), is(finalHearingId));
+
+        // status=DRAFT -> only the DRAFT hearing
+        map.put("status", "DRAFT");
+        requestParams = getRequestParams(map);
+        responseData = poll(requestParams).with().timeout(30L, SECONDS).pollInterval(50L, MILLISECONDS).pollDelay(0L, MILLISECONDS).until();
+        assertEquals(OK.getStatusCode(), responseData.getStatus().getStatusCode());
+        jsonObject = stringToJsonObjectConverter.convert(responseData.getPayload());
+        assertThat(jsonObject.getInt("results"), is(1));
+        hearingIds = jsonObject.getJsonArray("hearingIds");
+        assertThat(hearingIds.getJsonObject(0).getString("hearingId"), is(draftHearingId));
+
+        // status absent -> BOTH draft and non-draft hearings (ordered by court_house_name: HOUSE-DRAFT < HOUSE-FINAL)
+        map.remove("status");
+        requestParams = getRequestParams(map);
+        responseData = poll(requestParams).with().timeout(30L, SECONDS).pollInterval(50L, MILLISECONDS).pollDelay(0L, MILLISECONDS).until();
+        assertEquals(OK.getStatusCode(), responseData.getStatus().getStatusCode());
+        jsonObject = stringToJsonObjectConverter.convert(responseData.getPayload());
+        assertThat(jsonObject.getInt("results"), is(2));
+        hearingIds = jsonObject.getJsonArray("hearingIds");
+        assertThat(hearingIds.getJsonObject(0).getString("hearingId"), is(draftHearingId));
+        assertThat(hearingIds.getJsonObject(1).getString("hearingId"), is(finalHearingId));
+    }
+
     private CourtSchedule createCourtSchedule(LocalDate sessionDate,
                                               String courtScheduleId,
                                               String courtHouseName) {

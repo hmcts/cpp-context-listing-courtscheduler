@@ -60,6 +60,41 @@
           "courtroomId": 1000,
           "courtroomName": "Courtroom 02",
           "venueId": 1
+        },
+        {
+          "id": "77777777-6666-3555-8444-333333333333",
+          "venueName": "TEST CROWN COURT",
+          "courtroomId": 1001,
+          "courtroomName": "Courtroom 03 (Shared)",
+          "venueId": 1
+        }
+      ]
+    },
+    {
+      "id": "b45de9f1-2c7a-3f4e-9d68-1a2b3c4d5e6f",
+      "oucode": "C45GU00",
+      "lja": "4545",
+      "oucodeL1Code": "C",
+      "courtId": "101",
+      "oucodeL1Name": "Crown Courts",
+      "oucodeL3Name": "Second Crown Court",
+      "oucodeL3WelshName": "Ail Lys Goron",
+      "address1": "Second Street",
+      "address2": "Second City",
+      "address3": "Second County",
+      "postcode": "SE2 2ND",
+      "defaultStartTime": "10:00:00",
+      "defaultDurationHrs": "07:00:00",
+      "oucodeL2Code": "45",
+      "oucodeL2Name": "Second Region",
+      "region": "Second Region",
+      "courtrooms": [
+        {
+          "id": "77777777-6666-3555-8444-333333333333",
+          "venueName": "TEST CROWN COURT",
+          "courtroomId": 1001,
+          "courtroomName": "Courtroom 03 (Shared)",
+          "venueId": 1
         }
       ]
     },
@@ -122,6 +157,32 @@
           "venueName": "Northallerton Magistrates' Court",
           "courtroomId": 7777,
           "courtroomName": "Courtroom Refdata Test",
+          "venueId": 1
+        }
+      ]
+    },
+    {
+      "id": "99999999-8888-7777-6666-555555555555",
+      "oucode": "B99ZZ00",
+      "lja": "9999",
+      "oucodeL1Code": "B",
+      "courtId": "99",
+      "oucodeL1Name": "Magistrates' Courts",
+      "oucodeL3Name": "No-Default Magistrates' Court",
+      "oucodeL3WelshName": "No-Default Magistrates' Court",
+      "address1": "Test Address",
+      "address2": "Test Region",
+      "address3": "Test Region",
+      "postcode": "TE5 7ST",
+      "oucodeL2Code": "99",
+      "oucodeL2Name": "Test Region",
+      "region": "Test Region",
+      "courtrooms": [
+        {
+          "id": "44444444-5555-6666-7777-888888888888",
+          "venueName": "No-Default Magistrates' Court",
+          "courtroomId": 9901,
+          "courtroomName": "Courtroom 02",
           "venueId": 1
         }
       ]

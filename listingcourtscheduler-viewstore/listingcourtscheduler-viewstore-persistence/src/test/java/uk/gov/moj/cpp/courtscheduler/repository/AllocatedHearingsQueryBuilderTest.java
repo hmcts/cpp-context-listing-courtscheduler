@@ -622,4 +622,66 @@ class AllocatedHearingsQueryBuilderTest extends uk.gov.moj.cpp.courtscheduler.re
                 null // jurisdiction
         );
     }
+
+    private HearingSlotRequestParam createBasicRequestParamWithStatus(final String status) {
+        return new HearingSlotRequestParam(
+                "MAGISTRATES", // panel
+                "2024-01-01", // sessionStartDate
+                "2024-01-31", // sessionEndDate
+                null, // exactHearingStartDateTime
+                null, // oucodeL2Code
+                null, // ouCode
+                "10", // pageSize
+                "1", // pageNumber
+                null, // courtRoomId
+                null, // courtRoomNumber
+                null, // businessType
+                null, // courtSession
+                null, // isSlotBased
+                null, // hearingStartTime
+                null, // showOverbookedSlots
+                null, // duration
+                status, // status
+                null // jurisdiction
+        );
+    }
+
+    @Test
+    public void testQueryWithStatusFinalAddsNonDraftClause() {
+        // Given
+        HearingSlotRequestParam requestParam = createBasicRequestParamWithStatus("FINAL");
+
+        // When
+        AllocatedHearingsQueryBuilder builder = new AllocatedHearingsQueryBuilder(requestParam);
+        String query = builder.getAllocatedHearingsQuery();
+
+        // Then
+        assertThat(query, containsString("cs.is_draft = false"));
+    }
+
+    @Test
+    public void testQueryWithStatusDraftAddsDraftClause() {
+        // Given
+        HearingSlotRequestParam requestParam = createBasicRequestParamWithStatus("DRAFT");
+
+        // When
+        AllocatedHearingsQueryBuilder builder = new AllocatedHearingsQueryBuilder(requestParam);
+        String query = builder.getAllocatedHearingsQuery();
+
+        // Then
+        assertThat(query, containsString("cs.is_draft = true"));
+    }
+
+    @Test
+    public void testQueryWithStatusAbsentOrAllAppliesNoFilter() {
+        // Given / When / Then: null status
+        HearingSlotRequestParam requestParamNull = createBasicRequestParamWithStatus(null);
+        AllocatedHearingsQueryBuilder builderNull = new AllocatedHearingsQueryBuilder(requestParamNull);
+        assertThat(builderNull.getAllocatedHearingsQuery(), not(containsString("is_draft")));
+
+        // "ALL" status
+        HearingSlotRequestParam requestParamAll = createBasicRequestParamWithStatus("ALL");
+        AllocatedHearingsQueryBuilder builderAll = new AllocatedHearingsQueryBuilder(requestParamAll);
+        assertThat(builderAll.getAllocatedHearingsQuery(), not(containsString("is_draft")));
+    }
 }
