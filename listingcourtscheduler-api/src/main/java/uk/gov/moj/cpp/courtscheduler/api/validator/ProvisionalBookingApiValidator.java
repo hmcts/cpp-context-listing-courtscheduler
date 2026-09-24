@@ -23,6 +23,7 @@ import java.util.Optional;
 
 import jakarta.json.JsonObject;
 
+import org.owasp.encoder.Encode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,7 +44,7 @@ public class ProvisionalBookingApiValidator {
                     return EMPTY_JSON_OBJECT;
                 }
             } catch (ConverterException converterException) {
-                LOGGER.error("provisionalSlot payload is incorrect : {}", converterException.getMessage());
+                LOGGER.error("provisionalSlot payload is incorrect : {}", Encode.forJava(converterException.getMessage()));
                 return getMessage(PAYLOAD_NOT_CORRECT);
             }
             LOGGER.info("Mandatory data missing on Provisional Booking Payload : {}", provisionalBookingSlots);

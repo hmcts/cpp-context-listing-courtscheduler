@@ -8,6 +8,7 @@ import java.time.LocalDate;
 import java.util.Date;
 import java.util.List;
 
+import org.owasp.encoder.Encode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -203,7 +204,7 @@ public interface CourtScheduleRepository
                             && courtScheduleFound.getPanel().equals(courtSchedule.getPanel()) && courtScheduleFound.isActive())
                     .findAny()
                     .orElse(persistedCourtSchedule);
-            LOGGER.info("found persisted court schedule to update for rota file with courtScheduleId: {}", persistedCourtSchedule.getCourtScheduleId());
+            LOGGER.info("found persisted court schedule to update for rota file with courtScheduleId: {}", Encode.forJava(persistedCourtSchedule.getCourtScheduleId()));
         }
         return persistedCourtSchedule;
     }

@@ -38,6 +38,7 @@ import java.util.Optional;
 import org.springframework.stereotype.Service;
 import jakarta.inject.Inject;
 
+import org.owasp.encoder.Encode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -86,7 +87,7 @@ public class CourtScheduleEnricher {
                     .findAny();
             if (courtScheduleOptional.isPresent() && isNotEmpty(courtScheduleOptional.get().getCourtScheduleId())) {
                 final CourtSchedule courtSchedule = courtScheduleOptional.get();
-                LOGGER.info("slot matched between file and db with ouCode: {} - courtScheduleId: {}", courtSchedule.getOuCode(), courtSchedule.getCourtScheduleId());
+                LOGGER.info("slot matched between file and db with ouCode: {} - courtScheduleId: {}", Encode.forJava(courtSchedule.getOuCode()), Encode.forJava(courtSchedule.getCourtScheduleId()));
                 courtScheduleBuilder.courtScheduleId(courtSchedule.getCourtScheduleId());
                 courtScheduleBuilder.createdOn(courtSchedule.getCreatedOn());
             }

@@ -53,6 +53,7 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
+import org.owasp.encoder.Encode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -101,7 +102,7 @@ public class JudiciaryAvailabilityService {
 
         final JudiciaryAvailabilityRule entity = repository.findById(request.getRuleId()).orElse(null);
         if (entity == null) {
-            LOGGER.warn(JUDICIARY_AVAILABILITY_RULE_WITH_ID_NOT_FOUND, request.getRuleId());
+            LOGGER.warn(JUDICIARY_AVAILABILITY_RULE_WITH_ID_NOT_FOUND, Encode.forJava(request.getRuleId()));
             throw new IllegalArgumentException(RULE_NOT_FOUND);
         }
 
@@ -134,18 +135,18 @@ public class JudiciaryAvailabilityService {
 
         final JudiciaryAvailabilityRule entity = repository.findById(request.getRuleId()).orElse(null);
         if (entity == null) {
-            LOGGER.warn(JUDICIARY_AVAILABILITY_RULE_WITH_ID_NOT_FOUND, request.getRuleId());
+            LOGGER.warn(JUDICIARY_AVAILABILITY_RULE_WITH_ID_NOT_FOUND, Encode.forJava(request.getRuleId()));
             throw new IllegalArgumentException(RULE_NOT_FOUND);
         }
 
         repository.remove(entity);
-        LOGGER.info("Deleted judiciary availability rule with id: {}", request.getRuleId());
+        LOGGER.info("Deleted judiciary availability rule with id: {}", Encode.forJava(request.getRuleId()));
     }
 
     public FindJudiciaryAvailabilityResponse findJudiciaryAvailability(final LocalDate startDate, final LocalDate endDate,
                                                                              final String courtHouseId, final String judiciaryId) {
         LOGGER.info("Finding judiciary availability for: startDate={}, endDate={}, courtHouseId={}, judiciaryId={}",
-                startDate, endDate, courtHouseId, judiciaryId);
+                startDate, endDate, Encode.forJava(courtHouseId), Encode.forJava(judiciaryId));
 
         // Find all rules that overlap with the query date range
         final List<JudiciaryAvailabilityRule> rules = repository.findRulesByDateRange(
@@ -278,7 +279,7 @@ public class JudiciaryAvailabilityService {
         final String judiciaryId = query.getJudiciaryId();
 
         LOGGER.info("Finding judiciary availability rules for: startDate={}, endDate={}, courtHouseId={}, judiciaryId={}",
-                startDate, endDate, courtHouseId, judiciaryId);
+                startDate, endDate, Encode.forJava(courtHouseId), Encode.forJava(judiciaryId));
 
         // Get default pagination values if not provided
         final int pageSize = query.getPageSize() != null ? query.getPageSize() : 20;
@@ -327,7 +328,7 @@ public class JudiciaryAvailabilityService {
     }
 
     public GetJudiciaryAvailabilityRuleResponse getJudiciaryAvailabilityRule(final String ruleId, final Boolean withJudiciaryParam) {
-        LOGGER.info("Getting judiciary availability rule for ruleId: {}", ruleId);
+        LOGGER.info("Getting judiciary availability rule for ruleId: {}", Encode.forJava(ruleId));
 
         if (ruleId == null || ruleId.isEmpty()) {
             throw new IllegalArgumentException("Rule ID is required");
@@ -335,7 +336,7 @@ public class JudiciaryAvailabilityService {
 
         final JudiciaryAvailabilityRule entity = repository.findById(ruleId).orElse(null);
         if (entity == null) {
-            LOGGER.warn(JUDICIARY_AVAILABILITY_RULE_WITH_ID_NOT_FOUND, ruleId);
+            LOGGER.warn(JUDICIARY_AVAILABILITY_RULE_WITH_ID_NOT_FOUND, Encode.forJava(ruleId));
             throw new IllegalArgumentException(RULE_NOT_FOUND);
         }
 
@@ -349,7 +350,7 @@ public class JudiciaryAvailabilityService {
             final List<Judiciary> fetchedJudiciaries = referenceDataService.getJudiciariesWithSpecialismByIds(judiciaryIdList);
             if (!fetchedJudiciaries.isEmpty()) {
                 judiciary = fetchedJudiciaries.get(0);
-                LOGGER.info("Fetched judiciary for ruleId {}", ruleId);
+                LOGGER.info("Fetched judiciary for ruleId {}", Encode.forJava(ruleId));
             }
         }
 
@@ -933,7 +934,7 @@ public class JudiciaryAvailabilityService {
 
         final JudiciaryAvailabilityRule rule = repository.findById(request.getRuleId()).orElse(null);
         if (rule == null) {
-            LOGGER.warn(JUDICIARY_AVAILABILITY_RULE_WITH_ID_NOT_FOUND, request.getRuleId());
+            LOGGER.warn(JUDICIARY_AVAILABILITY_RULE_WITH_ID_NOT_FOUND, Encode.forJava(request.getRuleId()));
             return String.format(RULE_NOT_FOUND);
         }
 
@@ -948,7 +949,7 @@ public class JudiciaryAvailabilityService {
                 );
 
         if (matchingSessions.isEmpty()) {
-            LOGGER.info("No matching sessions found for rule {}", request.getRuleId());
+            LOGGER.info("No matching sessions found for rule {}", Encode.forJava(request.getRuleId()));
             return null;
         } else {
             return CANNOT_DELETE_ITINERARY_IN_USE;

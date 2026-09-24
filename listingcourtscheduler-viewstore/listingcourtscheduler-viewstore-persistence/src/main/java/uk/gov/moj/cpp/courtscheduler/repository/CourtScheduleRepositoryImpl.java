@@ -80,6 +80,7 @@ import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.modelmapper.ModelMapper;
+import org.owasp.encoder.Encode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -530,7 +531,7 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
         try {
             courtScheduleBatchInsertService.persistBatch(batch);
         } catch (Exception e) {
-            LOGGER.warn("Batch insert of {} records failed ({}); falling back to per-record retry", batch.size(), e.getMessage());
+            LOGGER.warn("Batch insert of {} records failed ({}); falling back to per-record retry", batch.size(), Encode.forJava(e.getMessage()));
             processIndividualRecordsFast(batch, failedSchedules);
         }
     }
@@ -547,7 +548,7 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
                 // Each record is handled in its own REQUIRES_NEW transaction via retry service
                 courtScheduleRetryService.upsertOne(cs);
             } catch (Exception ex) {
-                LOGGER.warn("Failed to upsert individual record {}: {}", cs.getCourtScheduleId(), ex.getMessage());
+                LOGGER.warn("Failed to upsert individual record {}: {}", cs.getCourtScheduleId(), Encode.forJava(ex.getMessage()));
                 failedSchedules.add(cs);
             }
         }

@@ -41,6 +41,7 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import org.springframework.transaction.annotation.Transactional;
 
+import org.owasp.encoder.Encode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -134,7 +135,7 @@ public class JudiciaryAssignmentService {
             entityManager.flush();
         }
         LOGGER.info("assignJudiciaryToSessions: courtSchedules={}, sessionJudiciaries={}, persisted={}, executionId={}",
-                courtScheduleIds.size(), sessionJudiciaries.size(), persisted, executionId);
+                courtScheduleIds.size(), sessionJudiciaries.size(), persisted, Encode.forJava(executionId));
     }
 
     private static String extractJudiciaryType(final SessionJudiciary sessionJudiciary) {
@@ -400,10 +401,10 @@ public class JudiciaryAssignmentService {
                                                         final String judiciaryId,
                                                         final String sessionId) {
         if (isDuplicateAssignment(ex)) {
-            LOGGER.warn("Skipping duplicate judiciary assignment for judiciaryId {} and sessionId {}", judiciaryId, sessionId);
+            LOGGER.warn("Skipping duplicate judiciary assignment for judiciaryId {} and sessionId {}", Encode.forJava(judiciaryId), Encode.forJava(sessionId));
             return AssignmentAttempt.failure(judiciaryId, sessionId, AssignmentFailure.ReasonEnum.DUPLICATE_ASSIGNMENT);
         } else {
-            LOGGER.error("Unexpected error while assigning judiciary {} to session {}", judiciaryId, sessionId, ex);
+            LOGGER.error("Unexpected error while assigning judiciary {} to session {}", Encode.forJava(judiciaryId), Encode.forJava(sessionId), ex);
             return AssignmentAttempt.failure(judiciaryId, sessionId, AssignmentFailure.ReasonEnum.PERSISTENCE_ERROR);
         }
     }
@@ -488,7 +489,7 @@ public class JudiciaryAssignmentService {
                                       final String executionId) {
         if (!missingJudiciaryIds.isEmpty()) {
             final String joined = String.join(", ", missingJudiciaryIds);
-            LOGGER.warn("Missing judiciary ids for assignment (skipValidations=true): {}", joined);
+            LOGGER.warn("Missing judiciary ids for assignment (skipValidations=true): {}", Encode.forJava(joined));
             final RotaProcessLog log = rotaProcessLog()
                     .withExecutionId(executionId)
                     .withErrorCode(MissingDataError.JUDICIARY_ID_NOT_FOUND_ASSIGNMENT.code())
@@ -498,7 +499,7 @@ public class JudiciaryAssignmentService {
         }
         if (!missingSessionIds.isEmpty()) {
             final String joined = String.join(", ", missingSessionIds);
-            LOGGER.warn("Missing session ids for assignment (skipValidations=true): {}", joined);
+            LOGGER.warn("Missing session ids for assignment (skipValidations=true): {}", Encode.forJava(joined));
             final RotaProcessLog log = rotaProcessLog()
                     .withExecutionId(executionId)
                     .withErrorCode(MissingDataError.SESSION_ID_NOT_FOUND_ASSIGNMENT.code())

@@ -37,6 +37,7 @@ import java.util.List;
 import jakarta.inject.Inject;
 import jakarta.json.JsonObject;
 
+import org.owasp.encoder.Encode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -194,8 +195,8 @@ public class HearingSlotsApiValidator {
      */
     public JsonObject crownSearchAndBookValidation(final CrownSearchAndBookRequest request) {
         LOGGER.info("Validating crownSearchAndBook: hearingId={}, courtCentreId={}, hearingDate={}, durationInMinutes={}, courtScheduleId={}",
-                request.getHearingId(), request.getCourtCentreId(), request.getHearingDate(),
-                request.getDurationInMinutes(), request.getCourtScheduleId());
+                Encode.forJava(request.getHearingId()), Encode.forJava(request.getCourtCentreId()), request.getHearingDate(),
+                request.getDurationInMinutes(), Encode.forJava(request.getCourtScheduleId()));
 
         if (isBlank(request.getHearingId())) {
             return getMessage(RequestParameterConstant.HEARING_ID.getLabel());
@@ -217,7 +218,7 @@ public class HearingSlotsApiValidator {
      */
     public JsonObject magsSearchAndBookValidation(final MagsSearchAndBookRequest request) {
         LOGGER.info("Validating magsSearchAndBook: hearingId={}, courtCentreId={}, hearingDate={}, durationInMinutes={}, isPolice={}",
-                request.getHearingId(), request.getCourtCentreId(), request.getHearingDate(),
+                Encode.forJava(request.getHearingId()), Encode.forJava(request.getCourtCentreId()), request.getHearingDate(),
                 request.getDurationInMinutes(), request.getIsPolice());
 
         if (isBlank(request.getHearingId())) {
@@ -244,7 +245,7 @@ public class HearingSlotsApiValidator {
      */
     public JsonObject moveHearingToPastDateValidation(final MoveHearingToPastDateRequest request) {
         LOGGER.info("Validating moveHearingToPastDate: hearingId={}, courtCentreId={}, jurisdiction={}, startDate={}",
-                request.getHearingId(), request.getCourtCentreId(), request.getJurisdiction(), request.getStartDate());
+                Encode.forJava(request.getHearingId()), Encode.forJava(request.getCourtCentreId()), request.getJurisdiction(), request.getStartDate());
 
         if (isBlank(request.getHearingId())) {
             return getMessage(RequestParameterConstant.HEARING_ID.getLabel());
