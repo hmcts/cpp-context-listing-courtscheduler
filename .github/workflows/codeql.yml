@@ -48,7 +48,7 @@ jobs:
         # integration-test module, so CodeQL doesn't pull docker compose during
         # the build phase.
         run: |
-          ./gradlew build cyclonedxBom -x test
+          ./gradlew build cyclonedxDirectBom -x test
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v4
