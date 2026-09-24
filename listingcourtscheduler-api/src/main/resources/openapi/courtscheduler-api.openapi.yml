@@ -135,21 +135,22 @@ paths:
       requestBody:
         required: true
         content:
-          # Both media types intentionally stay PassthroughObject (not AssignJudiciariesRequest/
-          # CourtschedulerUnassignJudiciary directly): this operationId is genuinely polymorphic by
-          # Content-Type (assign vs unassign are different shapes), and openapi-generator's Spring
-          # codegen can only type the ONE generated method parameter from ONE of the media types —
-          # making either concrete here would silently break Jackson binding/@Valid for the other
-          # shape. The controller reads the raw body and does
-          # objectMapper.convertValue(body, AssignJudiciariesRequest.class) itself for the
-          # assign branch; AssignJudiciariesRequest stays a real (unused-by-codegen-here) schema
-          # for that purpose and for documentation.
+          # Both media types intentionally stay PassthroughObject under the hood — via the
+          # documentation-only CourtschedulerAssignJudiciary/CourtschedulerUnassignJudiciary names
+          # below, not the real AssignJudiciariesRequest — this operationId is genuinely
+          # polymorphic by Content-Type (assign vs unassign are different shapes), and
+          # openapi-generator's Spring codegen can only type the ONE generated method parameter
+          # from ONE of the media types — making either concrete here would silently break Jackson
+          # binding/@Valid for the other shape. The controller reads the raw body and does
+          # objectMapper.convertValue(body, AssignJudiciariesRequest.class) itself for the assign
+          # branch; AssignJudiciariesRequest stays a real, separately-defined schema for that
+          # purpose and for documentation.
           application/vnd.courtscheduler.assign-judiciary+json:
             schema:
-              $ref: '#/components/schemas/PassthroughObject'
+              $ref: '#/components/schemas/CourtschedulerAssignJudiciary'
           application/vnd.courtscheduler.unassign.judiciary+json:
             schema:
-              $ref: '#/components/schemas/PassthroughObject'
+              $ref: '#/components/schemas/CourtschedulerUnassignJudiciary'
       responses:
         '202':
           description: Accepted
@@ -333,16 +334,16 @@ paths:
           # real (unused-by-codegen-here) schemas for documentation.
           application/vnd.courtscheduler.crown.search.and.book+json:
             schema:
-              $ref: '#/components/schemas/PassthroughObject'
+              $ref: '#/components/schemas/CourtschedulerCrownSearchAndBook'
           application/vnd.courtscheduler.mags.search.and.book+json:
             schema:
-              $ref: '#/components/schemas/PassthroughObject'
+              $ref: '#/components/schemas/CourtschedulerMagsSearchAndBook'
           application/vnd.courtscheduler.move-hearing-to-past-date+json:
             schema:
-              $ref: '#/components/schemas/PassthroughObject'
+              $ref: '#/components/schemas/CourtschedulerMoveHearingToPastDate'
           application/vnd.courtscheduler.change-court-room-for-multiday-hearing+json:
             schema:
-              $ref: '#/components/schemas/PassthroughObject'
+              $ref: '#/components/schemas/CourtschedulerChangeCourtRoomForMultidayHearing'
       responses:
         '200':
           description: OK
@@ -496,13 +497,13 @@ paths:
           # objectMapper.convertValue(...)s into the right type per branch itself.
           application/vnd.courtscheduler.validate.create+json:
             schema:
-              $ref: '#/components/schemas/PassthroughObject'
+              $ref: '#/components/schemas/CourtschedulerValidateCreate'
           application/vnd.courtscheduler.validate.update+json:
             schema:
-              $ref: '#/components/schemas/PassthroughObject'
+              $ref: '#/components/schemas/CourtschedulerValidateUpdate'
           application/vnd.courtscheduler.validate.delete+json:
             schema:
-              $ref: '#/components/schemas/PassthroughObject'
+              $ref: '#/components/schemas/CourtschedulerValidateDelete'
       responses:
         '200':
           description: OK
@@ -1185,6 +1186,11 @@ components:
         sessionId: { type: string, nullable: true }
         reason: { type: string, nullable: true, enum: [JUDICIARY_NOT_FOUND, SESSION_NOT_FOUND, DUPLICATE_ASSIGNMENT, PERSISTENCE_ERROR] }
 
+    # Not AssignJudiciariesRequest: this is a documentation-only name for the assign branch of
+    # postCourtschedulerSessionJudiciary's polymorphic-by-content-type body (see the comment on
+    # that operation) - unused by codegen (resolves to PassthroughObject like its sibling below),
+    # kept separate from the real, structured AssignJudiciariesRequest schema used elsewhere.
+    CourtschedulerAssignJudiciary:               { $ref: '#/components/schemas/PassthroughObject' }
     CourtschedulerUnassignJudiciary:            { $ref: '#/components/schemas/PassthroughObject' }
 
     CourtschedulerUpdateHearingSlots:            { $ref: '#/components/schemas/AllocatedSlots' }
@@ -1289,13 +1295,19 @@ components:
           items: { $ref: '#/components/schemas/CourtScheduleJudiciary' }
         source: { type: string, nullable: true }
 
-    CourtschedulerCrownSearchAndBook:            { $ref: '#/components/schemas/CrownSearchAndBookRequest' }
+    # Orphaned: none of these four are $ref'd by any path - the corresponding operations bind
+    # their request bodies straight to CrownSearchAndBookRequest / MagsSearchAndBookRequest /
+    # MoveHearingToPastDateRequest / ChangeCourtRoomForMultidayHearingRequest directly (real Java
+    # usage confirmed via objectMapper.convertValue elsewhere). Kept as PassthroughObject, matching
+    # team/ccsph2, rather than pointing at those real request schemas, which implied wiring that
+    # doesn't exist for these unused documentation names.
+    CourtschedulerCrownSearchAndBook:            { $ref: '#/components/schemas/PassthroughObject' }
     CourtschedulerCrownSearchAndBookResponse:    { $ref: '#/components/schemas/PassthroughObject' } # response is now a Java record - out of scope for this migration
-    CourtschedulerMagsSearchAndBook:             { $ref: '#/components/schemas/MagsSearchAndBookRequest' }
+    CourtschedulerMagsSearchAndBook:             { $ref: '#/components/schemas/PassthroughObject' }
     CourtschedulerMagsSearchAndBookResponse:     { $ref: '#/components/schemas/PassthroughObject' } # record - out of scope
-    CourtschedulerMoveHearingToPastDate:         { $ref: '#/components/schemas/MoveHearingToPastDateRequest' }
+    CourtschedulerMoveHearingToPastDate:         { $ref: '#/components/schemas/PassthroughObject' }
     CourtschedulerMoveHearingToPastDateResponse: { $ref: '#/components/schemas/PassthroughObject' } # record - out of scope
-    CourtschedulerChangeCourtRoomForMultidayHearing: { $ref: '#/components/schemas/ChangeCourtRoomForMultidayHearingRequest' }
+    CourtschedulerChangeCourtRoomForMultidayHearing: { $ref: '#/components/schemas/PassthroughObject' }
     CourtschedulerChangeCourtRoomForMultidayHearingResponse: { $ref: '#/components/schemas/PassthroughObject' } # record - out of scope
 
     AssignJudiciaryToSessionsRequest:
@@ -1454,9 +1466,13 @@ components:
     CourtschedulerRotaslProcessRotaFiles:         { $ref: '#/components/schemas/PassthroughObject' }
     CourtschedulerRotaslCleanRedundantRotaData:   { $ref: '#/components/schemas/PassthroughObject' }
 
-    CourtschedulerValidateCreate:                 { $ref: '#/components/schemas/CreateSessionRequestParam' }
-    CourtschedulerValidateUpdate:                 { $ref: '#/components/schemas/UpdateCourtSchedule' }
-    CourtschedulerValidateDelete:                 { $ref: '#/components/schemas/SessionsParam' }
+    # Orphaned: none of these three are $ref'd by any path (postValidate's create/update/delete
+    # media types all point straight at PassthroughObject - see that operation's comment). Kept
+    # as PassthroughObject, matching team/ccsph2, rather than pointing at CreateSessionRequestParam
+    # / UpdateCourtSchedule / SessionsParam, which implied a real wiring that doesn't exist.
+    CourtschedulerValidateCreate:                 { $ref: '#/components/schemas/PassthroughObject' }
+    CourtschedulerValidateUpdate:                 { $ref: '#/components/schemas/PassthroughObject' }
+    CourtschedulerValidateDelete:                 { $ref: '#/components/schemas/PassthroughObject' }
     CourtschedulerValidateSessionAvailability:    { $ref: '#/components/schemas/PassthroughObject' } # domain class is now a Java record - out of scope
     CourtschedulerValidateResponse:               { $ref: '#/components/schemas/PassthroughObject' }
 

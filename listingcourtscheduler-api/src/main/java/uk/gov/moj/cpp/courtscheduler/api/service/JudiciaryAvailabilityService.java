@@ -79,12 +79,7 @@ public class JudiciaryAvailabilityService {
         final JudiciaryAvailabilityRule entity = new JudiciaryAvailabilityRule();
         entity.setId(randomUUID().toString());
 
-        populateEntityFields(entity, new CourtschedulerJudiciaryAvailabilityRuleDetails()
-                .judiciaryId(request.getJudiciaryId())
-                .courtHouseId(request.getCourtHouseId())
-                .startDate(request.getStartDate())
-                .endDate(request.getEndDate())
-                .sessionType(request.getSessionType()));
+        populateEntityFields(entity, toDetails(request));
         entity.setRepeatDays(convertRepeatDaysToEntity(request.getRepeatDays()));
         entity.setUnavailabilities(convertUnavailabilitiesToEntity(request.getUnavailabilities(), entity));
 
@@ -106,12 +101,7 @@ public class JudiciaryAvailabilityService {
             throw new IllegalArgumentException(RULE_NOT_FOUND);
         }
 
-        populateEntityFields(entity, new CourtschedulerJudiciaryAvailabilityRuleDetails()
-                .judiciaryId(request.getJudiciaryId())
-                .courtHouseId(request.getCourtHouseId())
-                .startDate(request.getStartDate())
-                .endDate(request.getEndDate())
-                .sessionType(request.getSessionType()));
+        populateEntityFields(entity, toDetails(request));
 
         // Update repeat days (required field - always initialized)
         entity.getRepeatDays().clear();
@@ -560,6 +550,24 @@ public class JudiciaryAvailabilityService {
         entity.setFromDate(details.getStartDate());
         entity.setToDate(details.getEndDate());
         entity.setSessionType(details.getSessionType() != null ? SessionType.valueOf(details.getSessionType()) : SessionType.AD);
+    }
+
+    private CourtschedulerJudiciaryAvailabilityRuleDetails toDetails(final AddJudiciaryAvailabilityRuleRequest request) {
+        return new CourtschedulerJudiciaryAvailabilityRuleDetails()
+                .judiciaryId(request.getJudiciaryId())
+                .courtHouseId(request.getCourtHouseId())
+                .startDate(request.getStartDate())
+                .endDate(request.getEndDate())
+                .sessionType(request.getSessionType());
+    }
+
+    private CourtschedulerJudiciaryAvailabilityRuleDetails toDetails(final UpdateJudiciaryAvailabilityRuleRequest request) {
+        return new CourtschedulerJudiciaryAvailabilityRuleDetails()
+                .judiciaryId(request.getJudiciaryId())
+                .courtHouseId(request.getCourtHouseId())
+                .startDate(request.getStartDate())
+                .endDate(request.getEndDate())
+                .sessionType(request.getSessionType());
     }
 
     /**
