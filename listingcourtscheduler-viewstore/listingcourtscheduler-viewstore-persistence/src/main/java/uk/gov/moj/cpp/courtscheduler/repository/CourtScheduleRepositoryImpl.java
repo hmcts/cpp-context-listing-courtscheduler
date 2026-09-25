@@ -1898,7 +1898,7 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
                         judiciaryList.stream()
                                 .map(CourtScheduleRepositoryImpl::mapJudiciaryEntityToDomain)
                                 .toList());
-                allocatedSlot.setSource(allocatedSlot.getIsPolice() ? "POLICE" : "NONPOLICE");
+                allocatedSlot.setSource(Boolean.TRUE.equals(allocatedSlot.getIsPolice()) ? "POLICE" : "NONPOLICE");
                 matchedSlots.add(allocatedSlot);
             } else {
                 LOGGER.error(format("Could not update slot as court schedule id not found for combination %s, %s, %s, %s",
@@ -2326,7 +2326,7 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
                 allocatedListing.setOucode(allocatedSlot.getOuCode());
                 allocatedListing.setCourtRoomId(Integer.parseInt(allocatedSlot.getCourtRoomId()));
                 allocatedListing.setRotaBusinessType(courtSchedule.getBusinessType());
-                allocatedListing.setDuration(allocatedSlot.getIsSlotBased() ? SLOT_DEFAULT : allocatedSlot.getDuration());
+                allocatedListing.setDuration(Boolean.TRUE.equals(allocatedSlot.getIsSlotBased()) ? SLOT_DEFAULT : allocatedSlot.getDuration());
                 allocatedListing.setHearingStartTime(toExactTimestamp(allocatedSlot.getHearingStartTime()));
                 allocatedListing.setSource(allocatedSlot.getSource());
                 LOGGER.info("bookSlotsWithoutCourtScheduleId saveAllocatedListing {}", allocatedListing);

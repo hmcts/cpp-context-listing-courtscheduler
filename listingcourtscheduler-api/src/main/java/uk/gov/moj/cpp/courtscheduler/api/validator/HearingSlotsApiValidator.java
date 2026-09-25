@@ -256,6 +256,9 @@ public class HearingSlotsApiValidator {
         if (request.getStartDate() == null) {
             return getMessage("startDate");
         }
+        if (request.getEndDate() != null && request.getEndDate().isBefore(request.getStartDate())) {
+            return buildErrorResponse("endDate must not be before startDate");
+        }
         return EMPTY_JSON_OBJECT;
     }
 

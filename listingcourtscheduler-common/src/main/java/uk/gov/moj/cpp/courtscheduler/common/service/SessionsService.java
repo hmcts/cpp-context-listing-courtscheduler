@@ -407,7 +407,7 @@ public class SessionsService {
 
         provisionalCourtScheduleEntities.forEach(provisionalCourtScheduleEntity -> {
             provisionalCourtScheduleEntity.setUpdatedOn(Calendar.getInstance().getTime());
-            provisionalCourtScheduleEntity.setSlotBased(businessTypeMap.get(provisionalCourtScheduleEntity.getBusinessType()).getSlot());
+            provisionalCourtScheduleEntity.setSlotBased(Boolean.TRUE.equals(businessTypeMap.get(provisionalCourtScheduleEntity.getBusinessType()).getSlot()));
             courtScheduleRepository.save(provisionalCourtScheduleEntity);
         });
 
@@ -479,7 +479,7 @@ public class SessionsService {
                     courtScheduleEntity.setCreatedOn(Calendar.getInstance().getTime());
                 }
                 courtScheduleEntity.setUpdatedOn(Calendar.getInstance().getTime());
-                courtScheduleEntity.setSlotBased(businessTypeMap.get(slot.getBusinessType()).getSlot());
+                courtScheduleEntity.setSlotBased(Boolean.TRUE.equals(businessTypeMap.get(slot.getBusinessType()).getSlot()));
                 courtScheduleIdsOfSavedSlots.add(courtScheduleEntity.getCourtScheduleId());
                 courtScheduleService.saveSlot(courtScheduleEntity);
             }
@@ -1137,7 +1137,7 @@ public class SessionsService {
     private Optional<String> validateListModeMultiDay(
             final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule anchor,
             final int requestedDuration) {
-        int daysNeeded = requestedDuration / 360;
+        int daysNeeded = (int) Math.ceil(requestedDuration / 360.0);
         LocalDate startDate = anchor.getSessionDate();
         if (startDate == null) {
             return of("Court schedule has no session date");

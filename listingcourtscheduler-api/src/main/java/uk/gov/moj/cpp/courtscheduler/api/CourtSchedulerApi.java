@@ -78,6 +78,7 @@ import uk.gov.moj.cpp.courtscheduler.exception.ExtendMultidayHearingException;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.RequestedDay;
 import uk.gov.moj.cpp.courtscheduler.exception.NoAllocationOnDateException;
 import uk.gov.moj.cpp.courtscheduler.exception.NoSessionAvailableException;
+import uk.gov.moj.cpp.courtscheduler.exception.SlotsBookException;
 import uk.gov.moj.cpp.courtscheduler.envelope.SkipEnvelope;
 import uk.gov.moj.cpp.courtscheduler.openapi.api.CourtscheduleOpenApi;
 import uk.gov.moj.cpp.courtscheduler.openapi.api.HearingsOpenApi;
@@ -538,6 +539,11 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
             // PATCH extend endpoint used, so the listing caller can propagate them to the UI.
             return ResponseEntity.unprocessableEntity()
                     .body(JsonValueConverter.toMap(buildExtendErrorBody(e)));
+        } catch (SlotsBookException e) {
+            // A DB persist failure during booking — same flat error body as the other
+            // booking-family failures above, rather than falling through to a generic 500.
+            return ResponseEntity.unprocessableEntity()
+                    .body(JsonValueConverter.toMap(buildErrorBody("BOOKING_PERSIST_FAILED", e.getMessage())));
         }
         throw new ResponseStatusException(HttpStatus.UNSUPPORTED_MEDIA_TYPE,
                 "Unsupported Content-Type for /hearings/{hearingId}: " + contentType);

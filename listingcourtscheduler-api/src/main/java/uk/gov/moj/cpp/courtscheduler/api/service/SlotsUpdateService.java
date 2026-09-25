@@ -305,12 +305,14 @@ public class SlotsUpdateService {
         // the caller needs — resolve the UUID from the allocated session itself. NB
         // findCourtScheduleById converts via convertForOverbooking, which drops the room, so the
         // full-fields list lookup is used instead.
-        final String courtRoomUuid = courtScheduleRepository
+        final Optional<CourtSchedule> session = courtScheduleRepository
                 .getCourtSchedulesByIdList(List.of(existing.getCourtScheduleId()))
                 .stream()
-                .filter(session -> !Boolean.TRUE.equals(session.getDraft()))
+                .findFirst();
+        final Boolean isDraft = session.map(CourtSchedule::getDraft).orElse(null);
+        final String courtRoomUuid = session
+                .filter(s -> !Boolean.TRUE.equals(s.getDraft()))
                 .map(CourtSchedule::getCourtRoomId)
-                .findFirst()
                 .orElse(null);
         return new CrownFallbackResponse(
                 existing.getHearingId(),
@@ -320,7 +322,7 @@ public class SlotsUpdateService {
                 startIso,
                 null,
                 existing.getDuration(),
-                null,
+                isDraft,
                 existing.getRotaBusinessType(),
                 existing.getSource(),
                 false);
@@ -460,6 +462,7 @@ public class SlotsUpdateService {
                         courtScheduleRepository.findConsecutiveSessionsForCentre(
                                 request.getCourtCentreId(), request.getHearingDate(), daysNeeded),
                         daysNeeded, request.getHearingId(), perDay);
+        CourtScheduleRoomSanitiser.stripCourtRoomFromDraftSessions(sessions);
         return new CrownSearchAndBookResponse(
                 request.getHearingId(), null, null, sessions,
                 null, null, null, null, null, null, null, null);
@@ -505,6 +508,7 @@ public class SlotsUpdateService {
         // anchor row ended up source=MOVE, continuation rows stayed at persistSessions' default).
         // Passing the source straight into persistSessions makes every row correct in one write.
         persistSessions(sessions, request.getHearingId(), false, perDay, SOURCE_MOVE);
+        CourtScheduleRoomSanitiser.stripCourtRoomFromDraftSessions(sessions);
 
         return new CrownSearchAndBookResponse(
                 request.getHearingId(), null, SOURCE_MOVE, sessions,

@@ -97,7 +97,7 @@ public class SlotsSearchService {
 
     Pair<Integer, List<CourtSchedule>> getMultidayCourtSchedules(HearingSlotRequestParam requestParam) {
         final int duration = parseInt(requestParam.duration());
-        final int daysNeeded = duration / FULL_DAY_DURATION_MINS;
+        final int daysNeeded = (int) Math.ceil(duration / (double) FULL_DAY_DURATION_MINS);
 
         LOGGER.info("Multiday CROWN search: duration={}, daysNeeded={}, courtSession forced {}->{}, isSlotBased forced {}->{}",
                 duration, daysNeeded, requestParam.courtSession(), MULTIDAY_COURT_SESSION,
