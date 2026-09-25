@@ -3,7 +3,7 @@ package uk.gov.moj.cpp.courtscheduler.integration.performance;
 import org.junit.jupiter.api.Test;
 import uk.gov.moj.cpp.courtscheduler.integration.utils.RequestParams;
 import uk.gov.moj.cpp.courtscheduler.integration.utils.ResponseData;
-import uk.gov.moj.cpp.courtscheduler.domain.JudiciaryUnavailabilityRequest;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.JudiciaryUnavailability;
 import uk.gov.moj.cpp.courtscheduler.integration.AbstractIT;
 import uk.gov.moj.cpp.courtscheduler.integration.utils.DatabaseSeeder.RuleData;
 
@@ -90,10 +90,10 @@ class JudiciaryAvailabilityBatchIT extends AbstractIT {
             // Create at least 1 unavailable rule (but not affecting the query range)
             final LocalDate unavailableStart = LocalDate.of(2026, 1, 20);
             final LocalDate unavailableEnd = LocalDate.of(2026, 1, 25);
-            final JudiciaryUnavailabilityRequest unavail = new JudiciaryUnavailabilityRequest();
+            final JudiciaryUnavailability unavail = new JudiciaryUnavailability();
             unavail.setStartDate(unavailableStart);
             unavail.setEndDate(unavailableEnd);
-            List<JudiciaryUnavailabilityRequest> unavailabilities = new ArrayList<>();
+            List<JudiciaryUnavailability> unavailabilities = new ArrayList<>();
             unavailabilities.add(unavail);
             allRules.add(new RuleData(
                     randomUUID().toString(),
@@ -147,10 +147,10 @@ class JudiciaryAvailabilityBatchIT extends AbstractIT {
                     availableEnd3,
                     List.of("Thursday", "Friday")
             ));
-            final JudiciaryUnavailabilityRequest unavail = new JudiciaryUnavailabilityRequest();
+            final JudiciaryUnavailability unavail = new JudiciaryUnavailability();
             unavail.setStartDate(queryStartDate);
             unavail.setEndDate(queryEndDate);
-            List<JudiciaryUnavailabilityRequest> unavailabilities = new ArrayList<>();
+            List<JudiciaryUnavailability> unavailabilities = new ArrayList<>();
             unavailabilities.add(unavail);
             // Create 1 unavailable rule that makes them unavailable during the query range
             allRules.add(new RuleData(

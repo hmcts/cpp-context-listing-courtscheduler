@@ -31,6 +31,9 @@ openApiGenerate {
             skipDefaultInterface: 'true',
             useResponseEntity   : 'true'
     ]
+    globalProperties = [
+            apis: ""
+    ]
 }
 
 sourceSets.main.java.srcDir "$buildDir/generated/openapi/src/main/java"

@@ -13,8 +13,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import uk.gov.moj.cpp.courtscheduler.api.service.rota.RotaReferenceDataService;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
-import uk.gov.moj.cpp.courtscheduler.domain.Venue;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtRoom;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.Venue;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -46,10 +46,10 @@ class VenueCourtRoomHelperTest {
         listingProfile = new HashMap<>();
         executionId = "execution-123";
         missingReferenceDataMappingMap = new HashMap<>();
-        expectedCourtRoom = CourtRoom.CourtRoomBuilder.aCourtRoom()
-                .withCourtRoomId("courtroom-1")
-                .withOucode("OU001")
-                .build();
+        expectedCourtRoom = new CourtRoom()
+                .courtroomId("courtroom-1")
+                .oucode("OU001")
+                ;
     }
 
     @Test
@@ -59,7 +59,7 @@ class VenueCourtRoomHelperTest {
         listingProfile.put("venueId", "200");
         listingProfile.put("venueName", "Test Venue");
 
-        Venue venue = new Venue(100, 200, "Test Venue");
+        Venue venue = new Venue().locationId(100).venueId(200).venueName("Test Venue");
         when(referenceDataValidationService.validateAndFindVenue(
                 eq(venue), anyMap(), eq(executionId)))
                 .thenReturn(Optional.of(expectedCourtRoom));
@@ -126,7 +126,7 @@ class VenueCourtRoomHelperTest {
         listingProfile.put("venueId", "200");
         listingProfile.put("venueName", "Test Venue");
 
-        Venue venue = new Venue(100, 200, "Test Venue");
+        Venue venue = new Venue().locationId(100).venueId(200).venueName("Test Venue");
         when(referenceDataValidationService.validateAndFindVenue(
                 eq(venue), anyMap(), eq(executionId)))
                 .thenReturn(Optional.empty());

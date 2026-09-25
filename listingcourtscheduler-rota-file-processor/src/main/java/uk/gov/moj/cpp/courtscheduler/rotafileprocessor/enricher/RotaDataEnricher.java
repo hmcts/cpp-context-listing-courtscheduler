@@ -8,7 +8,6 @@ import static org.apache.commons.lang3.ObjectUtils.defaultIfNull;
 import static org.apache.commons.lang3.StringUtils.isNotEmpty;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.MissingDataError.ROTA_PROCESSING_ERROR;
 import static uk.gov.moj.cpp.courtscheduler.common.utils.ProcessingDataInfoMessages.SESSION_ALLOCATION_MAX_SLOT_UPDATE_MSG;
-import static uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule.CourtScheduleBuilder.courtSchedule;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.ALL_DAY;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.BUSINESS_TYPE;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.LINKED_SESSION_ID;
@@ -23,8 +22,9 @@ import static uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog.RotaPr
 // (removed) replaced by Spring CommonPlatformQueryClient
 import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataMapperService;
 import uk.gov.moj.cpp.courtscheduler.common.service.RotaProcessLogService;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtRoomSessionAllocation;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtRoomSessionAllocation;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
 
@@ -140,7 +140,7 @@ public class RotaDataEnricher {
 
         final String listingSession = courtSession.getCourtSession(courtSchedule.getSessionDate(), sessionStr);
         final Optional<CourtRoomSessionAllocation> sessionAllocation  = referenceDataMapperService.findByOuCodeAndRoomIdAndListingSessionAndBusinessType(courtSchedule.getOuCode(), courtSchedule.getCourtRoomNumber(), listingSession, courtSchedule.getBusinessType());
-        final CourtSchedule.CourtScheduleBuilder courtScheduleBuilder = courtSchedule().withCourtSchedule(courtSchedule);
+        final CourtSchedule courtScheduleBuilder = copyOf(courtSchedule);
 
         // Precedence: refdata allocation time > hardcoded defaults.
         // (Rota file rows do not carry custom session times; custom times are only honoured
@@ -150,9 +150,9 @@ public class RotaDataEnricher {
         final String resolvedStartTime = resolveSessionTime(null, refDataStartTime, DEFAULT_ALL_DAY_START_TIME);
         final String resolvedEndTime = resolveSessionTime(null, refDataEndTime, DEFAULT_ALL_DAY_END_TIME);
 
-        courtScheduleBuilder.withCourtSession(ALL_DAY)
-                .withSessionStartTime(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), resolvedStartTime))
-                .withSessionEndTime(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), resolvedEndTime));
+        courtScheduleBuilder.courtSession(ALL_DAY)
+                .sessionStartTime(DateUtils.toOffsetDateTime(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), resolvedStartTime)))
+                .sessionEndTime(DateUtils.toOffsetDateTime(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), resolvedEndTime)));
 
         final Optional<CourtSchedule> courtScheduleOptional = activeCourtSchedulesByOuCodesWithinDateRange.stream()
                 .filter(activeCourtSchedule -> activeCourtSchedule.getCourtRoomId().equals(courtSchedule.getCourtRoomId())
@@ -161,26 +161,74 @@ public class RotaDataEnricher {
                         && activeCourtSchedule.getCourtSession().equals(ALL_DAY))
                 .findAny();
         if(courtScheduleOptional.isPresent() && isNotEmpty(courtScheduleOptional.get().getCourtScheduleId())) {
-            courtScheduleBuilder.withCourtScheduleId(courtScheduleOptional.get().getCourtScheduleId());
-            courtScheduleBuilder.withCreatedOn(courtScheduleOptional.get().getCreatedOn());
+            courtScheduleBuilder.courtScheduleId(courtScheduleOptional.get().getCourtScheduleId());
+            courtScheduleBuilder.createdOn(courtScheduleOptional.get().getCreatedOn());
         } else {
-            courtScheduleBuilder.withCourtScheduleId(randomUUID().toString());
+            courtScheduleBuilder.courtScheduleId(randomUUID().toString());
         }
 
         if (sessionAllocation.isPresent()) {
             final CourtRoomSessionAllocation allocation = sessionAllocation.get();
 
             final int allocationMaxSlot = defaultIfNull(allocation.getMaxSlot(), 0);
-            courtScheduleBuilder.withMaxSlots(defaultIfNull(courtSchedule.getMaxSlots(), 0) + allocationMaxSlot);
-            courtScheduleBuilder.withAvailableSlots(defaultIfNull(courtSchedule.getAvailableSlots(), 0) + allocationMaxSlot);
+            courtScheduleBuilder.maxSlots(defaultIfNull(courtSchedule.getMaxSlots(), 0) + allocationMaxSlot);
+            courtScheduleBuilder.availableSlots(defaultIfNull(courtSchedule.getAvailableSlots(), 0) + allocationMaxSlot);
 
             final int allocationMaxDurationMins = defaultIfNull(allocation.getMaxDurationMins(), 0);
-            courtScheduleBuilder.withMaxDuration(defaultIfNull(courtSchedule.getMaxDuration(), 0) + allocationMaxDurationMins);
-            courtScheduleBuilder.withAvailableDuration(defaultIfNull(courtSchedule.getAvailableDuration(), 0) + allocationMaxDurationMins);
+            courtScheduleBuilder.maxDuration(defaultIfNull(courtSchedule.getMaxDuration(), 0) + allocationMaxDurationMins);
+            courtScheduleBuilder.availableDuration(defaultIfNull(courtSchedule.getAvailableDuration(), 0) + allocationMaxDurationMins);
 
             logger.info(format(SESSION_ALLOCATION_MAX_SLOT_UPDATE_MSG, allocation.getOucode(), allocation.getCourtRoomId(),courtScheduleBuilder.getSessionDate(), allocation.getCourtSession(),
                     allocation.getRotaBusinessTypeCode(), courtScheduleBuilder.getMaxSlots(), courtScheduleBuilder.getMaxDuration()));
         }
-        return courtScheduleBuilder.build();
+        return courtScheduleBuilder;
+    }
+
+    /**
+     * Defensive copy: generated OpenAPI models have no copy-constructor, only no-arg + fluent
+     * setters, so this replaces the old hand-written CourtScheduleBuilder#withCourtSchedule
+     * bulk-copy.
+     */
+    private static CourtSchedule copyOf(final CourtSchedule source) {
+        return new CourtSchedule()
+                .courtScheduleId(source.getCourtScheduleId())
+                .sessionDate(source.getSessionDate())
+                .ouCode(source.getOuCode())
+                .courtHouseName(source.getCourtHouseName())
+                .courtHouseId(source.getCourtHouseId())
+                .courtRoomId(source.getCourtRoomId())
+                .courtRoomNumber(source.getCourtRoomNumber())
+                .courtRoomName(source.getCourtRoomName())
+                .businessType(source.getBusinessType())
+                .courtSession(source.getCourtSession())
+                .slotBased(source.getSlotBased())
+                .maxSlots(source.getMaxSlots())
+                .maxDuration(source.getMaxDuration())
+                .listingProfileId(source.getListingProfileId())
+                .operationalUnit(source.getOperationalUnit())
+                .panel(source.getPanel())
+                .availableDuration(source.getAvailableDuration())
+                .availableSlots(source.getAvailableSlots())
+                .judiciaries(source.getJudiciaries())
+                .slotStartTimes(source.getSlotStartTimes())
+                .active(source.getActive())
+                .createdOn(source.getCreatedOn())
+                .updatedOn(source.getUpdatedOn())
+                .allDaySplit(source.getAllDaySplit())
+                .maxDurationForMorning(source.getMaxDurationForMorning())
+                .maxDurationForAfternoon(source.getMaxDurationForAfternoon())
+                .totalBooked(source.getTotalBooked())
+                .sessionStartTime(source.getSessionStartTime())
+                .sessionEndTime(source.getSessionEndTime())
+                .totalBookedForMorning(source.getTotalBookedForMorning())
+                .totalBookedForAfternoon(source.getTotalBookedForAfternoon())
+                .availableDurationForMorning(source.getAvailableDurationForMorning())
+                .availableDurationForAfternoon(source.getAvailableDurationForAfternoon())
+                .overbookingAllowed(source.getOverbookingAllowed())
+                .nationalBreakTime(source.getNationalBreakTime())
+                .draft(source.getDraft())
+                .minHearingTime(source.getMinHearingTime())
+                .maxHearingTime(source.getMaxHearingTime())
+                .jurisdiction(source.getJurisdiction());
     }
 }

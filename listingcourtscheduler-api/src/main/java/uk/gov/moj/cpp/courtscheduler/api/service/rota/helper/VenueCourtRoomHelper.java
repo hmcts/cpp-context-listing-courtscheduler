@@ -7,8 +7,8 @@ import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.VENUE
 
 // (removed) Requester replaced by Spring CommonPlatformQueryClient
 import uk.gov.moj.cpp.courtscheduler.api.service.rota.RotaReferenceDataService;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
-import uk.gov.moj.cpp.courtscheduler.domain.Venue;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtRoom;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.Venue;
 
 import java.util.Map;
 
@@ -72,7 +72,7 @@ public class VenueCourtRoomHelper {
         try {
             final Integer locationId = Integer.parseInt(locationIdStr);
             final Integer venueId = Integer.parseInt(venueIdStr);
-            final Venue venue = new Venue(locationId, venueId, venueName);
+            final Venue venue = new Venue().locationId(locationId).venueId(venueId).venueName(venueName);
 
             final CourtRoom courtRoom = referenceDataValidationService.validateAndFindVenue(venue, missingReferenceDataMappingMap, executionId)
                     .orElse(null);

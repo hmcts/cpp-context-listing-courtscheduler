@@ -49,13 +49,13 @@ class CourtScheduleJudiciaryServiceTest {
         final List<CourtScheduleJudiciary> courtScheduleJudiciaryEntities = getCourtScheduleJudiciaryEntities(courtScheduleId, courtListingProfileId);
         when(courtScheduleJudiciaryRepository.findInCourtScheduleIds(eq(courtScheduleIds))).thenReturn(courtScheduleJudiciaryEntities);
 
-        final Map<String, List<uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary>> judiciarySchedulesMap = courtScheduleJudiciaryService.findRelatedJudiciarySchedules(courtScheduleIds);
+        final Map<String, List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtScheduleJudiciary>> judiciarySchedulesMap = courtScheduleJudiciaryService.findRelatedJudiciarySchedules(courtScheduleIds);
 
         assertFalse(judiciarySchedulesMap.isEmpty());
         assertTrue(judiciarySchedulesMap.containsKey(courtListingProfileId));
         assertEquals(1, judiciarySchedulesMap.size());
 
-        final List<uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary> courtScheduleJudiciaries = judiciarySchedulesMap.get(courtListingProfileId);
+        final List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtScheduleJudiciary> courtScheduleJudiciaries = judiciarySchedulesMap.get(courtListingProfileId);
         courtScheduleJudiciaryEntities.forEach(
                 courtScheduleJudiciaryEntity -> {
                     courtScheduleJudiciaries.stream()

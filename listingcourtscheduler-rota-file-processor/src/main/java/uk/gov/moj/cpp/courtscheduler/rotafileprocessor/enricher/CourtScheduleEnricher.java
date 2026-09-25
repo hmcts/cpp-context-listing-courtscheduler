@@ -23,10 +23,10 @@ import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.resolveSessio
 
 // (removed) replaced by Spring CommonPlatformQueryClient
 import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataMapperService;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtRoomSessionAllocation;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
-import uk.gov.moj.cpp.courtscheduler.domain.Venue;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtRoom;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtRoomSessionAllocation;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.Venue;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.TimezoneUtils;
 
@@ -38,6 +38,7 @@ import java.util.Optional;
 import org.springframework.stereotype.Service;
 import jakarta.inject.Inject;
 
+import org.owasp.encoder.Encode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -57,7 +58,7 @@ public class CourtScheduleEnricher {
                                final Map<String, String> missingReferenceDataMappingMap,
                                final List<CourtSchedule> activeCourtSchedulesByOuCodesWithinRotaPeriod,
                                final String executionId) {
-        final CourtSchedule.CourtScheduleBuilder builder = new CourtSchedule.CourtScheduleBuilder();
+        final CourtSchedule courtScheduleBuilder = new CourtSchedule();
         final String businessTypeCode = listingProfile.get(BUSINESS_TYPE);
         final String courtSessionStr = listingProfile.get(SESSION);
         final Integer locationId = Integer.parseInt(listingProfile.get(LOCATION_ID));
@@ -66,49 +67,49 @@ public class CourtScheduleEnricher {
         final Optional<CourtRoom> courtRoom = courtRoom(locationId, venueId, venueName, missingReferenceDataMappingMap);
         if (courtRoom.isPresent()) {
             final CourtRoom courtRoomDetail = courtRoom.get();
-            populateCourtProperties(builder, courtRoomDetail);
+            populateCourtProperties(courtScheduleBuilder, courtRoomDetail);
             // Fetch session allocation up front so refdata-supplied start/end times
             // can be applied during populateListingProperties (with custom time precedence).
             final Optional<CourtRoomSessionAllocation> sessionAllocation =
                     lookupSessionAllocation(businessTypeCode, sessionDate, courtSessionStr, courtRoomDetail);
 
-            populateListingProperties(builder, listingProfile, sessionDate, courtSessionStr, businessTypeCode, sessionAllocation);
+            populateListingProperties(courtScheduleBuilder, listingProfile, sessionDate, courtSessionStr, businessTypeCode, sessionAllocation);
             sessionAllocation.ifPresent(allocation -> {
-                populateSessionAllocationProperties(builder, allocation);
-                LOGGER.info(format(SESSION_ALLOCATION_MAX_SLOT_UPDATE_MSG, allocation.getOucode(), allocation.getCourtRoomId(), builder.getSessionDate(), allocation.getCourtSession(), allocation.getRotaBusinessTypeCode(), allocation.getMaxSlot(), allocation.getMaxDurationMins()));
+                populateSessionAllocationProperties(courtScheduleBuilder, allocation);
+                LOGGER.info(format(SESSION_ALLOCATION_MAX_SLOT_UPDATE_MSG, allocation.getOucode(), allocation.getCourtRoomId(), courtScheduleBuilder.getSessionDate(), allocation.getCourtSession(), allocation.getRotaBusinessTypeCode(), allocation.getMaxSlot(), allocation.getMaxDurationMins()));
             });
 
             final Optional<CourtSchedule> courtScheduleOptional = activeCourtSchedulesByOuCodesWithinRotaPeriod.stream()
-                    .filter(activeCourtSchedule -> activeCourtSchedule.getCourtRoomId().equals(builder.getCourtRoomId())
-                            && activeCourtSchedule.getSessionDate().equals(builder.getSessionDate())
-                            && activeCourtSchedule.getBusinessType().equals(builder.getBusinessType())
-                            && activeCourtSchedule.getCourtSession().equals(builder.getCourtSession()))
+                    .filter(activeCourtSchedule -> activeCourtSchedule.getCourtRoomId().equals(courtScheduleBuilder.getCourtRoomId())
+                            && activeCourtSchedule.getSessionDate().equals(courtScheduleBuilder.getSessionDate())
+                            && activeCourtSchedule.getBusinessType().equals(courtScheduleBuilder.getBusinessType())
+                            && activeCourtSchedule.getCourtSession().equals(courtScheduleBuilder.getCourtSession()))
                     .findAny();
             if (courtScheduleOptional.isPresent() && isNotEmpty(courtScheduleOptional.get().getCourtScheduleId())) {
                 final CourtSchedule courtSchedule = courtScheduleOptional.get();
-                LOGGER.info("slot matched between file and db with ouCode: {} - courtScheduleId: {}", courtSchedule.getOuCode(), courtSchedule.getCourtScheduleId());
-                builder.withCourtScheduleId(courtSchedule.getCourtScheduleId());
-                builder.withCreatedOn(courtSchedule.getCreatedOn());
+                LOGGER.info("slot matched between file and db with ouCode: {} - courtScheduleId: {}", Encode.forJava(courtSchedule.getOuCode()), Encode.forJava(courtSchedule.getCourtScheduleId()));
+                courtScheduleBuilder.courtScheduleId(courtSchedule.getCourtScheduleId());
+                courtScheduleBuilder.createdOn(courtSchedule.getCreatedOn());
             }
         } else {
             final String venueDetails = format("%d - %s - %d", locationId, venueName, venueId);
             missingReferenceDataMappingMap.putIfAbsent(venueDetails, REF_DATA_VENUE_NOT_FOUND.code());
         }
-        return builder.withActive(true).build();
+        return courtScheduleBuilder.active(true);
     }
 
-    private void populateListingProperties(final CourtSchedule.CourtScheduleBuilder builder,
+    private void populateListingProperties(final CourtSchedule courtScheduleBuilder,
                                            final Map<String, String> listingProfile,
                                            final LocalDate sessionDate,
                                            final String courtSessionStr,
                                            final String businessType,
                                            final Optional<CourtRoomSessionAllocation> sessionAllocation) {
-        builder.withCourtScheduleId(randomUUID().toString())
-                .withListingProfileId(listingProfile.get(ID))
-                .withPanel(listingProfile.get(PANEL))
-                .withBusinessType(businessType)
-                .withSessionDate(sessionDate)
-                .withCourtSession(courtSessionStr);
+        courtScheduleBuilder.courtScheduleId(randomUUID().toString())
+                .listingProfileId(listingProfile.get(ID))
+                .panel(listingProfile.get(PANEL))
+                .businessType(businessType)
+                .sessionDate(sessionDate)
+                .courtSession(courtSessionStr);
 
         // Precedence: refdata allocation time > hardcoded defaults.
         // (Rota file rows do not carry custom session times; custom times are only honoured
@@ -119,15 +120,15 @@ public class CourtScheduleEnricher {
         if (AM_SESSION.equals(courtSessionStr)) {
             final String startTime = resolveSessionTime(null, refDataStartTime, DEFAULT_MORNING_START_TIME);
             final String endTime = resolveSessionTime(null, refDataEndTime, DEFAULT_MORNING_END_TIME);
-            builder.withSessionStartTime(DateUtils.combineDateAndTime(sessionDate, startTime))
-                    .withSessionEndTime(DateUtils.combineDateAndTime(sessionDate, endTime));
+            courtScheduleBuilder.sessionStartTime(DateUtils.toOffsetDateTime(DateUtils.combineDateAndTime(sessionDate, startTime)))
+                    .sessionEndTime(DateUtils.toOffsetDateTime(DateUtils.combineDateAndTime(sessionDate, endTime)));
         } else if (PM_SESSION.equals(courtSessionStr)) {
             final String startTime = resolveSessionTime(null, refDataStartTime, DEFAULT_AFTERNOON_START_TIME);
             final String endTime = resolveSessionTime(null, refDataEndTime, DEFAULT_AFTERNOON_END_TIME);
-            builder.withSessionStartTime(DateUtils.combineDateAndTime(sessionDate, startTime))
-                    .withSessionEndTime(DateUtils.combineDateAndTime(sessionDate, endTime));
+            courtScheduleBuilder.sessionStartTime(DateUtils.toOffsetDateTime(DateUtils.combineDateAndTime(sessionDate, startTime)))
+                    .sessionEndTime(DateUtils.toOffsetDateTime(DateUtils.combineDateAndTime(sessionDate, endTime)));
         }
-        builder.withNationalBreakTime(TimezoneUtils.calculateNationalBreakTime(sessionDate));
+        courtScheduleBuilder.nationalBreakTime(DateUtils.toOffsetDateTime(TimezoneUtils.calculateNationalBreakTime(sessionDate)));
 
     }
 
@@ -142,25 +143,25 @@ public class CourtScheduleEnricher {
         return sessionAllocation;
     }
 
-    private void populateCourtProperties(final CourtSchedule.CourtScheduleBuilder builder, final CourtRoom courtRoomDetail) {
-        builder.withOuCode(courtRoomDetail.getOucode())
-                .withOperationalUnit(courtRoomDetail.getOucodeL2Code())
-                .withCourtHouseName(courtRoomDetail.getOucodeL3Name())
-                .withCourtHouseId(courtRoomDetail.getOucodeUUID())
-                .withCourtRoomId(courtRoomDetail.getCourtroomId())
-                .withCourtRoomNumber(courtRoomDetail.getCppCourtRoomId())
-                .withCourtRoomName(courtRoomDetail.getCourtroomName())
-                .withJurisdiction(MAGISTRATES.getJurisdiction());
+    private void populateCourtProperties(final CourtSchedule courtScheduleBuilder, final CourtRoom courtRoomDetail) {
+        courtScheduleBuilder.ouCode(courtRoomDetail.getOucode())
+                .operationalUnit(courtRoomDetail.getOucodeL2Code())
+                .courtHouseName(courtRoomDetail.getOucodeL3Name())
+                .courtHouseId(courtRoomDetail.getOucodeUUID())
+                .courtRoomId(courtRoomDetail.getCourtroomId())
+                .courtRoomNumber(courtRoomDetail.getCppCourtRoomId())
+                .courtRoomName(courtRoomDetail.getCourtroomName())
+                .jurisdiction(MAGISTRATES.getJurisdiction());
     }
 
-    private void populateSessionAllocationProperties(final CourtSchedule.CourtScheduleBuilder builder, final CourtRoomSessionAllocation allocation) {
-        builder.withMaxSlots(allocation.getMaxSlot())
-                .withAvailableSlots(allocation.getMaxSlot())
-                .withMaxDuration(allocation.getMaxDurationMins())
-                .withAvailableDuration(allocation.getMaxDurationMins());
+    private void populateSessionAllocationProperties(final CourtSchedule courtScheduleBuilder, final CourtRoomSessionAllocation allocation) {
+        courtScheduleBuilder.maxSlots(allocation.getMaxSlot())
+                .availableSlots(allocation.getMaxSlot())
+                .maxDuration(allocation.getMaxDurationMins())
+                .availableDuration(allocation.getMaxDurationMins());
     }
 
     private Optional<CourtRoom> courtRoom(final Integer locationId, final Integer venueId, final String venueName, final Map<String, String> exceptionMessages) {
-        return referenceDataMapperService.findByVenue(new Venue(locationId, venueId, venueName), exceptionMessages);
+        return referenceDataMapperService.findByVenue(new Venue().locationId(locationId).venueId(venueId).venueName(venueName), exceptionMessages);
     }
 }

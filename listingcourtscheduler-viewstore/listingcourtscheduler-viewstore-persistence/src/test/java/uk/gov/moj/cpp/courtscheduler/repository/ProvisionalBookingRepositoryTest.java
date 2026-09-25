@@ -6,7 +6,7 @@ import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.hamcrest.MatcherAssert.assertThat;
 
-import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalSlot;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.ProvisionalSlot;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.ProvisionalBooking;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.ProvisionalBookingKey;
@@ -116,8 +116,9 @@ class ProvisionalBookingRepositoryTest extends uk.gov.moj.cpp.courtscheduler.rep
     @Test
     public void shouldSaveProvisionalBooking() {
         final CourtSchedule courtSchedule = random(CourtSchedule.class);
-        final ProvisionalSlot provisionalSlot = new ProvisionalSlot(courtSchedule.getCourtScheduleId(),
-                "2020-01-01T11:00:00.000Z");
+        final ProvisionalSlot provisionalSlot = new ProvisionalSlot()
+                .courtScheduleId(courtSchedule.getCourtScheduleId())
+                .hearingStartTime("2020-01-01T11:00:00.000Z");
         final String bookingId = randomUUID().toString();
 
         courtScheduleRepository.save(courtSchedule);

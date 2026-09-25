@@ -21,9 +21,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import uk.gov.moj.cpp.courtscheduler.domain.AddJudiciaryAvailabilityRuleRequest;
-import uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek;
-import uk.gov.moj.cpp.courtscheduler.domain.DeleteJudiciaryAvailabilityRuleRequest;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.AddJudiciaryAvailabilityRuleRequest;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.DeleteJudiciaryAvailabilityRuleRequest;
 
 @ExtendWith(MockitoExtension.class)
 class JudiciaryAvailabilityRuleApiValidatorTest {
@@ -40,8 +39,8 @@ class JudiciaryAvailabilityRuleApiValidatorTest {
         this.request.setCourtHouseId(UUID.randomUUID().toString());
         this.request.setStartDate(LocalDate.of(2026, 1, 1));
         this.request.setEndDate(LocalDate.of(2026, 1, 31));
-        
-        this.request.setRepeatDays(Arrays.asList(uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek.Monday, uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek.Tuesday));
+
+        this.request.setRepeatDays(Arrays.asList("Monday", "Tuesday"));
     }
 
     @Test
@@ -135,7 +134,7 @@ class JudiciaryAvailabilityRuleApiValidatorTest {
 
     @Test
     void shouldReturnErrorWhenRepeatDayIsNull() {
-        this.request.setRepeatDays(Arrays.asList((uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek) null));
+        this.request.setRepeatDays(Arrays.asList((String) null));
 
         JsonObject result = this.validator.validateAddJudiciaryAvailabilityRule(this.request);
 
@@ -145,7 +144,7 @@ class JudiciaryAvailabilityRuleApiValidatorTest {
 
     @Test
     void shouldAcceptValidDayNames() {
-        this.request.setRepeatDays(Arrays.asList(AvailabilityDayOfWeek.Monday, AvailabilityDayOfWeek.Tuesday, AvailabilityDayOfWeek.Wednesday, AvailabilityDayOfWeek.Thursday, AvailabilityDayOfWeek.Friday));
+        this.request.setRepeatDays(Arrays.asList("Monday", "Tuesday", "Wednesday", "Thursday", "Friday"));
 
         JsonObject result = this.validator.validateAddJudiciaryAvailabilityRule(this.request);
 
@@ -154,7 +153,7 @@ class JudiciaryAvailabilityRuleApiValidatorTest {
 
     @Test
     void shouldAcceptDayNamesCaseInsensitive() {
-        this.request.setRepeatDays(Arrays.asList(AvailabilityDayOfWeek.Monday, AvailabilityDayOfWeek.Tuesday, AvailabilityDayOfWeek.Wednesday));
+        this.request.setRepeatDays(Arrays.asList("Monday", "Tuesday", "Wednesday"));
 
         JsonObject result = this.validator.validateAddJudiciaryAvailabilityRule(this.request);
 
@@ -165,7 +164,6 @@ class JudiciaryAvailabilityRuleApiValidatorTest {
     void shouldReturnEmptyJsonObjectForValidDeleteRequest() {
         DeleteJudiciaryAvailabilityRuleRequest deleteRequest = new DeleteJudiciaryAvailabilityRuleRequest();
         deleteRequest.setRuleId(UUID.randomUUID().toString());
-        deleteRequest.setJudiciaryId(UUID.randomUUID().toString());
 
         JsonObject result = this.validator.validateDeleteJudiciaryAvailabilityRule(deleteRequest);
 
@@ -202,29 +200,10 @@ class JudiciaryAvailabilityRuleApiValidatorTest {
         Assertions.assertTrue(result.getString("errorMessage").contains("ruleId"));
     }
 
-    @Test
-    void shouldNotReturnErrorWhenJudiciaryIdIsBlankForDelete() {
-        DeleteJudiciaryAvailabilityRuleRequest deleteRequest = new DeleteJudiciaryAvailabilityRuleRequest();
-        deleteRequest.setRuleId(UUID.randomUUID().toString());
-        deleteRequest.setJudiciaryId("");
+    // Note: judiciaryId is not modeled on DeleteJudiciaryAvailabilityRuleRequest (it was
+    // an unused inherited field on the old hand-written DeleteJudiciaryAvailabilityRuleRequest —
+    // the validator never read it), so the judiciaryId-blank/null-for-delete cases are no longer
+    // applicable and were removed rather than kept as no-op assertions.
 
-        JsonObject result = this.validator.validateDeleteJudiciaryAvailabilityRule(deleteRequest);
-
-        // judiciaryId is optional for delete operations, so no error should be returned
-        Assertions.assertTrue(result.isEmpty());
-    }
-
-    @Test
-    void shouldNotReturnErrorWhenJudiciaryIdIsNullForDelete() {
-        DeleteJudiciaryAvailabilityRuleRequest deleteRequest = new DeleteJudiciaryAvailabilityRuleRequest();
-        deleteRequest.setRuleId(UUID.randomUUID().toString());
-        deleteRequest.setJudiciaryId(null);
-
-        JsonObject result = this.validator.validateDeleteJudiciaryAvailabilityRule(deleteRequest);
-
-        // judiciaryId is optional for delete operations, so no error should be returned
-        Assertions.assertTrue(result.isEmpty());
-    }
     // Note: ruleId and judiciaryId validation removed for delete operations as they're always present from URL path parameters
 }
-

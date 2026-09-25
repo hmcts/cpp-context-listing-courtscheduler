@@ -5,12 +5,11 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.Mockito.when;
-import static uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary.judiciary;
 import static org.springframework.test.util.ReflectionTestUtils.setField;
 
 import uk.gov.moj.cpp.courtscheduler.common.service.SessionsService;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtScheduleJudiciary;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -85,27 +84,26 @@ class ProvisionalDataProducerTest {
 
     private CourtSchedule courtSchedule(final String sessionDate) {
         final List<CourtScheduleJudiciary> judiciaries = new ArrayList<CourtScheduleJudiciary>();
-        judiciaries.add(judiciary().withRotaJudiciaryId("123").withPosition("CHAIR").build());
+        judiciaries.add(new CourtScheduleJudiciary().rotaJudiciaryId("123").position("CHAIR"));
 
-        return new CourtSchedule.CourtScheduleBuilder()
-                .withCourtScheduleId(UUID.randomUUID().toString())
-                .withListingProfileId(UUID.randomUUID().toString())
-                .withSessionDate(parse(sessionDate))
-                .withOuCode("CABC90")
-                .withCourtRoomId("001c067d-eaca-4ce5-ad90-a366ef3e4bb6")
-                .withCourtRoomNumber(1234)
-                .withCourtHouseName("Liverpool Mags Court")
-                .withCourtHouseId("0b9417b8-91b4-385d-9e01-069855777c4f")
-                .withCourtRoomName("Court name1")
-                .withOperationalUnit("ANC")
-                .withBusinessType("BYS")
-                .withPanel("PANEL")
-                .withCourtSession("AM")
-                .withMaxDuration(182)
-                .withAvailableSlots(125)
-                .withAvailableDuration(182)
-                .withMaxSlots(125)
-                .withJudiciaries(judiciaries)
-                .build();
+        return new CourtSchedule()
+                .courtScheduleId(UUID.randomUUID().toString())
+                .listingProfileId(UUID.randomUUID().toString())
+                .sessionDate(parse(sessionDate))
+                .ouCode("CABC90")
+                .courtRoomId("001c067d-eaca-4ce5-ad90-a366ef3e4bb6")
+                .courtRoomNumber(1234)
+                .courtHouseName("Liverpool Mags Court")
+                .courtHouseId("0b9417b8-91b4-385d-9e01-069855777c4f")
+                .courtRoomName("Court name1")
+                .operationalUnit("ANC")
+                .businessType("BYS")
+                .panel("PANEL")
+                .courtSession("AM")
+                .maxDuration(182)
+                .availableSlots(125)
+                .availableDuration(182)
+                .maxSlots(125)
+                .judiciaries(judiciaries);
     }
 }

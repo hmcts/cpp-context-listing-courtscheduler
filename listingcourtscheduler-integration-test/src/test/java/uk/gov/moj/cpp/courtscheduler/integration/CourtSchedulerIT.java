@@ -1691,8 +1691,8 @@ class CourtSchedulerIT extends AbstractIT {
         assertThat(judiciaryJsonObject.getString("surname"), is(courtScheduleJudiciary.getSurname()));
         assertThat(judiciaryJsonObject.getString(P_JUDICIARY_TYPE), is(courtScheduleJudiciary.getJudiciaryType()));
         assertThat(judiciaryJsonObject.getString("emailAddress"), is(courtScheduleJudiciary.getEmail()));
-        assertThat(judiciaryJsonObject.getBoolean(P_IS_BENCH_CHAIRMAN), is(courtScheduleJudiciary.getBenchChairman()));
-        assertThat(judiciaryJsonObject.getBoolean(P_IS_DEPUTY), is(courtScheduleJudiciary.getDeputy()));
+        assertThat(judiciaryJsonObject.getBoolean("benchChairman"), is(courtScheduleJudiciary.getBenchChairman()));
+        assertThat(judiciaryJsonObject.getBoolean("deputy"), is(courtScheduleJudiciary.getDeputy()));
     }
 
     @Test
@@ -1846,8 +1846,8 @@ class CourtSchedulerIT extends AbstractIT {
         assertThat(judiciaryJsonObject.getString("surname"), is(courtScheduleJudiciary.getSurname()));
         assertThat(judiciaryJsonObject.getString(P_JUDICIARY_TYPE), is(courtScheduleJudiciary.getJudiciaryType()));
         assertThat(judiciaryJsonObject.getString("emailAddress"), is(courtScheduleJudiciary.getEmail()));
-        assertThat(judiciaryJsonObject.getBoolean(P_IS_BENCH_CHAIRMAN), is(courtScheduleJudiciary.getBenchChairman()));
-        assertThat(judiciaryJsonObject.getBoolean(P_IS_DEPUTY), is(courtScheduleJudiciary.getDeputy()));
+        assertThat(judiciaryJsonObject.getBoolean("benchChairman"), is(courtScheduleJudiciary.getBenchChairman()));
+        assertThat(judiciaryJsonObject.getBoolean("deputy"), is(courtScheduleJudiciary.getDeputy()));
 
         final OffsetDateTime actualStartTime = OffsetDateTime.parse(courtSessionJson.getString("sessionStartTime"));
         final OffsetDateTime actualEndTime = OffsetDateTime.parse(courtSessionJson.getString("sessionEndTime"));

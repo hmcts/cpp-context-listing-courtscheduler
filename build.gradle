@@ -66,6 +66,11 @@ subprojects {
         testCompileOnly "org.projectlombok:lombok:${lombokVersion}"
         testAnnotationProcessor "org.projectlombok:lombok:${lombokVersion}"
 
+        // Log-injection (CWE-117) defense: encodes untrusted values (exception messages,
+        // request-supplied IDs) before they reach a log statement. Same usage as
+        // cp-court-list-publishing-service.
+        implementation "org.owasp.encoder:encoder:${owaspEncoderVersion}"
+
         testImplementation 'org.junit.jupiter:junit-jupiter'
         testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine'
         testRuntimeOnly 'org.junit.platform:junit-platform-launcher'

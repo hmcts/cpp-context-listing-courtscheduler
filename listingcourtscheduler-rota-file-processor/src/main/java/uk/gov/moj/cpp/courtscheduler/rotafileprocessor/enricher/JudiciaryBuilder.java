@@ -1,6 +1,5 @@
 package uk.gov.moj.cpp.courtscheduler.rotafileprocessor.enricher;
 
-import static uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary.judiciary;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.COURT_LISTING_PROFILE_ID;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.EMAIL_ADDRESS;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.FORENAMES;
@@ -13,7 +12,8 @@ import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.ROTA_
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.SURNAME;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.TITLE;
 
-import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtScheduleJudiciary;
+import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
 
 import java.util.Calendar;
 import java.util.Map;
@@ -27,23 +27,22 @@ public class JudiciaryBuilder {
         final String position = schedule.get(POSITION);
         final boolean isBenchChairman = isBenchChair(position);
 
-        return judiciary()
-                .withCourtScheduleId(courtScheduleId)
-                .withCourtListingProfileId(schedule.get(COURT_LISTING_PROFILE_ID))
-                .withJudiciaryId(schedule.get(JUDICIARY_ID))
-                .withRotaJudiciaryId(schedule.get(ROTA_JUDICIARY_ID))
-                .withTitle(schedule.get(TITLE))
-                .withForenames(schedule.get(FORENAMES))
-                .withSurname(schedule.get(SURNAME))
-                .withEmailAddress(schedule.get(EMAIL_ADDRESS))
-                .withJudiciaryType(schedule.get(JUDICIARY_TYPE))
-                .withPosition(schedule.get(POSITION))
-                .withIsBenchChairman(isBenchChairman)
-                .withIsDeputy(!isBenchChairman)
-                .withCreatedOn(Calendar.getInstance().getTime())
-                .withUpdatedOn(Calendar.getInstance().getTime())
-                .withActive(true)
-                .build();
+        return new CourtScheduleJudiciary()
+                .courtScheduleId(courtScheduleId)
+                .courtListingProfileId(schedule.get(COURT_LISTING_PROFILE_ID))
+                .judiciaryId(schedule.get(JUDICIARY_ID))
+                .rotaJudiciaryId(schedule.get(ROTA_JUDICIARY_ID))
+                .title(schedule.get(TITLE))
+                .forenames(schedule.get(FORENAMES))
+                .surname(schedule.get(SURNAME))
+                .emailAddress(schedule.get(EMAIL_ADDRESS))
+                .judiciaryType(schedule.get(JUDICIARY_TYPE))
+                .position(schedule.get(POSITION))
+                .benchChairman(isBenchChairman)
+                .deputy(!isBenchChairman)
+                .createdOn(DateUtils.toOffsetDateTime(Calendar.getInstance().getTime()))
+                .updatedOn(DateUtils.toOffsetDateTime(Calendar.getInstance().getTime()))
+                .active(true);
     }
 
     private boolean isBenchChair(final String postion) {

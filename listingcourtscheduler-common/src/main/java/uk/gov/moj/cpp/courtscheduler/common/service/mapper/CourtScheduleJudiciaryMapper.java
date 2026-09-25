@@ -1,6 +1,7 @@
 package uk.gov.moj.cpp.courtscheduler.common.service.mapper;
 
 import static java.util.Objects.isNull;
+import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toOffsetDateTime;
 
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciaryKey;
@@ -12,7 +13,7 @@ public class CourtScheduleJudiciaryMapper {
         throw new UnsupportedOperationException("This is a utility class and cannot be instantiated");
     }
 
-    public static CourtScheduleJudiciary toEntity(uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary domain) {
+    public static CourtScheduleJudiciary toEntity(uk.gov.moj.cpp.courtscheduler.openapi.model.CourtScheduleJudiciary domain) {
         if (domain == null) {
             return null;
         }
@@ -30,33 +31,32 @@ public class CourtScheduleJudiciaryMapper {
         entity.setRotaJudiciaryId(domain.getRotaJudiciaryId());
         entity.setTitle(domain.getTitle());
         entity.setPosition(domain.getPosition());
-        entity.setCreatedOn(domain.getCreatedOn());
-        entity.setUpdatedOn(domain.getUpdatedOn());
-        entity.setActive(domain.isActive());
+        entity.setCreatedOn(domain.getCreatedOn() != null ? java.util.Date.from(domain.getCreatedOn().toInstant()) : null);
+        entity.setUpdatedOn(domain.getUpdatedOn() != null ? java.util.Date.from(domain.getUpdatedOn().toInstant()) : null);
+        entity.setActive(Boolean.TRUE.equals(domain.getActive()));
         return entity;
     }
 
-    public static uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary toDomain(CourtScheduleJudiciary entity) {
+    public static uk.gov.moj.cpp.courtscheduler.openapi.model.CourtScheduleJudiciary toDomain(CourtScheduleJudiciary entity) {
         if (isNull(entity)) {
             return null;
         }
 
-        return uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary.judiciary()
-                .withJudiciaryId(entity.getId().getJudiciaryId())
-                .withCourtScheduleId(entity.getId().getCourtScheduleId())
-                .withJudiciaryType(entity.getJudiciaryType())
-                .withSurname(entity.getSurname())
-                .withForenames(entity.getForenames())
-                .withPosition(entity.getPosition())
-                .withCourtListingProfileId(entity.getCourtListingProfileId())
-                .withIsBenchChairman(entity.getBenchChairman())
-                .withRotaJudiciaryId(entity.getRotaJudiciaryId())
-                .withTitle(entity.getTitle())
-                .withIsDeputy(entity.getDeputy())
-                .withEmailAddress(entity.getEmail())
-                .withCreatedOn(entity.getCreatedOn())
-                .withUpdatedOn(entity.getUpdatedOn())
-                .withActive(entity.getActive())
-                .build();
+        return new uk.gov.moj.cpp.courtscheduler.openapi.model.CourtScheduleJudiciary()
+                .judiciaryId(entity.getId().getJudiciaryId())
+                .courtScheduleId(entity.getId().getCourtScheduleId())
+                .judiciaryType(entity.getJudiciaryType())
+                .surname(entity.getSurname())
+                .forenames(entity.getForenames())
+                .position(entity.getPosition())
+                .courtListingProfileId(entity.getCourtListingProfileId())
+                .benchChairman(entity.getBenchChairman())
+                .rotaJudiciaryId(entity.getRotaJudiciaryId())
+                .title(entity.getTitle())
+                .deputy(entity.getDeputy())
+                .emailAddress(entity.getEmail())
+                .createdOn(toOffsetDateTime(entity.getCreatedOn()))
+                .updatedOn(toOffsetDateTime(entity.getUpdatedOn()))
+                .active(entity.getActive());
     }
 }

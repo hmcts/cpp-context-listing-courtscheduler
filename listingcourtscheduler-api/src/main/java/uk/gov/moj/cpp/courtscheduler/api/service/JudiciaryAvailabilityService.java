@@ -2,20 +2,20 @@ package uk.gov.moj.cpp.courtscheduler.api.service;
 
 import static java.util.UUID.randomUUID;
 
-import uk.gov.moj.cpp.courtscheduler.domain.AddJudiciaryAvailabilityRuleRequest;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.AddJudiciaryAvailabilityRuleRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek;
-import uk.gov.moj.cpp.courtscheduler.domain.BaseJudiciaryAvailabilityRuleWithDetailsRequest;
-import uk.gov.moj.cpp.courtscheduler.domain.DeleteJudiciaryAvailabilityRuleRequest;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.DeleteJudiciaryAvailabilityRuleRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.DateSessionType;
-import uk.gov.moj.cpp.courtscheduler.domain.UpdateJudiciaryAvailabilityRuleRequest;
-import uk.gov.moj.cpp.courtscheduler.domain.FindJudiciaryAvailabilityRequest;
-import uk.gov.moj.cpp.courtscheduler.domain.FindJudiciaryAvailabilityResponse;
-import uk.gov.moj.cpp.courtscheduler.domain.FindJudiciaryAvailabilityRuleRequest;
-import uk.gov.moj.cpp.courtscheduler.domain.FindJudiciaryAvailabilityRuleResponse;
-import uk.gov.moj.cpp.courtscheduler.domain.GetJudiciaryAvailabilityRuleRequest;
-import uk.gov.moj.cpp.courtscheduler.domain.GetJudiciaryAvailabilityRuleResponse;
-import uk.gov.moj.cpp.courtscheduler.domain.Judiciary;
-import uk.gov.moj.cpp.courtscheduler.domain.JudiciaryAvailabilityRuleResponse;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.UpdateJudiciaryAvailabilityRuleRequest;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.FindJudiciaryAvailabilityResponse;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.FindJudiciaryAvailabilityRuleResponse;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerFindJudiciaryAvailabilityRuleQuery;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.GetJudiciaryAvailabilityRuleResponse;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerJudiciaryAvailabilityRuleDetails;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.Judiciary;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.JudiciaryAvailabilityRuleResponse;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.JudiciaryUnavailability;
+import uk.gov.moj.cpp.courtscheduler.domain.UnavailabilityReason;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.JudiciaryAvailabilityRule;
 import uk.gov.moj.cpp.courtscheduler.domain.SessionType;
 import uk.gov.moj.cpp.courtscheduler.repository.JudiciaryAvailabilityRuleRepository;
@@ -53,6 +53,7 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
+import org.owasp.encoder.Encode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -77,13 +78,13 @@ public class JudiciaryAvailabilityService {
 
         final JudiciaryAvailabilityRule entity = new JudiciaryAvailabilityRule();
         entity.setId(randomUUID().toString());
-        
-        populateEntityFields(entity, request);
+
+        populateEntityFields(entity, toDetails(request));
         entity.setRepeatDays(convertRepeatDaysToEntity(request.getRepeatDays()));
         entity.setUnavailabilities(convertUnavailabilitiesToEntity(request.getUnavailabilities(), entity));
 
         repository.save(entity);
-        LOGGER.info("Saved judiciary availability rule with id: {} and {} unavailabilities", 
+        LOGGER.info("Saved judiciary availability rule with id: {} and {} unavailabilities",
                 entity.getId(), entity.getUnavailabilities().size());
     }
 
@@ -96,16 +97,16 @@ public class JudiciaryAvailabilityService {
 
         final JudiciaryAvailabilityRule entity = repository.findById(request.getRuleId()).orElse(null);
         if (entity == null) {
-            LOGGER.warn(JUDICIARY_AVAILABILITY_RULE_WITH_ID_NOT_FOUND, request.getRuleId());
+            LOGGER.warn(JUDICIARY_AVAILABILITY_RULE_WITH_ID_NOT_FOUND, Encode.forJava(request.getRuleId()));
             throw new IllegalArgumentException(RULE_NOT_FOUND);
         }
 
-        populateEntityFields(entity, request);
-        
+        populateEntityFields(entity, toDetails(request));
+
         // Update repeat days (required field - always initialized)
         entity.getRepeatDays().clear();
         entity.getRepeatDays().addAll(convertRepeatDaysToEntity(request.getRepeatDays()));
-        
+
         // Update unavailabilities (optional field - clear existing to handle orphan removal properly)
         if (entity.getUnavailabilities() == null) {
             entity.setUnavailabilities(new ArrayList<>());
@@ -124,23 +125,25 @@ public class JudiciaryAvailabilityService {
 
         final JudiciaryAvailabilityRule entity = repository.findById(request.getRuleId()).orElse(null);
         if (entity == null) {
-            LOGGER.warn(JUDICIARY_AVAILABILITY_RULE_WITH_ID_NOT_FOUND, request.getRuleId());
+            LOGGER.warn(JUDICIARY_AVAILABILITY_RULE_WITH_ID_NOT_FOUND, Encode.forJava(request.getRuleId()));
             throw new IllegalArgumentException(RULE_NOT_FOUND);
         }
 
         repository.remove(entity);
-        LOGGER.info("Deleted judiciary availability rule with id: {}", request.getRuleId());
+        LOGGER.info("Deleted judiciary availability rule with id: {}", Encode.forJava(request.getRuleId()));
     }
 
-    public FindJudiciaryAvailabilityResponse findJudiciaryAvailability(final FindJudiciaryAvailabilityRequest request) {
-        LOGGER.info("Finding judiciary availability for: {}", request);
+    public FindJudiciaryAvailabilityResponse findJudiciaryAvailability(final LocalDate startDate, final LocalDate endDate,
+                                                                             final String courtHouseId, final String judiciaryId) {
+        LOGGER.info("Finding judiciary availability for: startDate={}, endDate={}, courtHouseId={}, judiciaryId={}",
+                startDate, endDate, Encode.forJava(courtHouseId), Encode.forJava(judiciaryId));
 
         // Find all rules that overlap with the query date range
         final List<JudiciaryAvailabilityRule> rules = repository.findRulesByDateRange(
-                request.getStartDate(),
-                request.getEndDate(),
-                request.getCourtHouseId(),
-                request.getJudiciaryId()
+                startDate,
+                endDate,
+                courtHouseId,
+                judiciaryId
         );
 
         LOGGER.info("Found {} rules overlapping with date range", rules.size());
@@ -152,21 +155,21 @@ public class JudiciaryAvailabilityService {
         // Compile rules for each judiciary
         final List<String> availableJudiciaries = new ArrayList<>();
         for (Map.Entry<String, List<JudiciaryAvailabilityRule>> entry : rulesByJudiciary.entrySet()) {
-            final String judiciaryId = entry.getKey();
+            final String eachJudiciaryId = entry.getKey();
             final List<JudiciaryAvailabilityRule> judiciaryRules = entry.getValue();
 
             final Set<LocalDate> unavailabilityDates = new HashSet<>();
             // Compile available days for this judiciary
-            final Set<String> compiledAvailableDays = compileAvailableDays(judiciaryRules, request.getStartDate(), request.getEndDate(), unavailabilityDates);
+            final Set<String> compiledAvailableDays = compileAvailableDays(judiciaryRules, startDate, endDate, unavailabilityDates);
 
             // Check if any date in the query range matches the compiled days
-            if (hasMatchingDates(request.getStartDate(), request.getEndDate(), compiledAvailableDays, unavailabilityDates)) {
-                availableJudiciaries.add(judiciaryId);
+            if (hasMatchingDates(startDate, endDate, compiledAvailableDays, unavailabilityDates)) {
+                availableJudiciaries.add(eachJudiciaryId);
             }
         }
 
         LOGGER.info("Found {} available judiciaries", availableJudiciaries.size());
-        return new FindJudiciaryAvailabilityResponse(availableJudiciaries);
+        return new FindJudiciaryAvailabilityResponse().availableJudiciaries(availableJudiciaries);
     }
 
     /**
@@ -259,20 +262,26 @@ public class JudiciaryAvailabilityService {
         return hasMatchingDates(d, d, compiled, unavailabilityDates);
     }
 
-    public FindJudiciaryAvailabilityRuleResponse findJudiciaryAvailabilityRules(final FindJudiciaryAvailabilityRuleRequest request) {
-        LOGGER.info("Finding judiciary availability rules for: {}", request);
+    public FindJudiciaryAvailabilityRuleResponse findJudiciaryAvailabilityRules(final CourtschedulerFindJudiciaryAvailabilityRuleQuery query) {
+        final LocalDate startDate = query.getStartDate();
+        final LocalDate endDate = query.getEndDate();
+        final String courtHouseId = query.getCourtHouseId();
+        final String judiciaryId = query.getJudiciaryId();
+
+        LOGGER.info("Finding judiciary availability rules for: startDate={}, endDate={}, courtHouseId={}, judiciaryId={}",
+                startDate, endDate, Encode.forJava(courtHouseId), Encode.forJava(judiciaryId));
 
         // Get default pagination values if not provided
-        final int pageSize = request.getPageSize() != null ? request.getPageSize() : 20;
-        final int pageNumber = request.getPageNumber() != null ? request.getPageNumber() : 1;
-        final boolean withJudiciary = Boolean.TRUE.equals(request.getWithJudiciary());
+        final int pageSize = query.getPageSize() != null ? query.getPageSize() : 20;
+        final int pageNumber = query.getPageNumber() != null ? query.getPageNumber() : 1;
+        final boolean withJudiciary = Boolean.TRUE.equals(query.getWithJudiciary());
 
         // Find rules with pagination
         final java.util.Map.Entry<Integer, List<JudiciaryAvailabilityRule>> result = repository.findRulesByDateRangeWithPagination(
-                request.getStartDate(),
-                request.getEndDate(),
-                request.getCourtHouseId(),
-                request.getJudiciaryId(),
+                startDate,
+                endDate,
+                courtHouseId,
+                judiciaryId,
                 pageSize,
                 pageNumber
         );
@@ -282,16 +291,17 @@ public class JudiciaryAvailabilityService {
 
         LOGGER.info("Found {} rules (total: {}) for page {} with page size {}", rules.size(), totalCount, pageNumber, pageSize);
 
-        // Convert entities to domain response objects
+        // Convert entities to response objects
         final List<JudiciaryAvailabilityRuleResponse> ruleResponses = rules.stream()
                 .map(this::convertToResponse)
                 .toList();
 
-        final FindJudiciaryAvailabilityRuleResponse response = new FindJudiciaryAvailabilityRuleResponse(ruleResponses, totalCount, pageNumber, pageSize);
+        final FindJudiciaryAvailabilityRuleResponse response = new FindJudiciaryAvailabilityRuleResponse()
+                .rules(ruleResponses).totalCount(totalCount).pageNumber(pageNumber).pageSize(pageSize);
 
         // Always initialize judiciaries list (empty if not requested)
-        final List<Judiciary> judiciaries = new ArrayList<>();
-        
+        final List<uk.gov.moj.cpp.courtscheduler.openapi.model.Judiciary> judiciaries = new ArrayList<>();
+
         // Fetch judiciaries if requested
         if (withJudiciary) {
             final List<String> judiciaryIdList = extractUniqueJudiciaryIds(rules);
@@ -301,41 +311,42 @@ public class JudiciaryAvailabilityService {
                 LOGGER.info("Fetched {} judiciaries for {} unique IDs", fetchedJudiciaries.size(), judiciaryIdList.size());
             }
         }
-        
+
         response.setJudiciaries(judiciaries);
 
         return response;
     }
 
-    public GetJudiciaryAvailabilityRuleResponse getJudiciaryAvailabilityRule(final GetJudiciaryAvailabilityRuleRequest request) {
-        LOGGER.info("Getting judiciary availability rule for ruleId: {}", request.getRuleId());
+    public GetJudiciaryAvailabilityRuleResponse getJudiciaryAvailabilityRule(final String ruleId, final Boolean withJudiciaryParam) {
+        LOGGER.info("Getting judiciary availability rule for ruleId: {}", Encode.forJava(ruleId));
 
-        if (request.getRuleId() == null || request.getRuleId().isEmpty()) {
+        if (ruleId == null || ruleId.isEmpty()) {
             throw new IllegalArgumentException("Rule ID is required");
         }
 
-        final JudiciaryAvailabilityRule entity = repository.findById(request.getRuleId()).orElse(null);
+        final JudiciaryAvailabilityRule entity = repository.findById(ruleId).orElse(null);
         if (entity == null) {
-            LOGGER.warn(JUDICIARY_AVAILABILITY_RULE_WITH_ID_NOT_FOUND, request.getRuleId());
+            LOGGER.warn(JUDICIARY_AVAILABILITY_RULE_WITH_ID_NOT_FOUND, Encode.forJava(ruleId));
             throw new IllegalArgumentException(RULE_NOT_FOUND);
         }
 
         final JudiciaryAvailabilityRuleResponse ruleResponse = convertToResponse(entity);
 
         // Fetch judiciary if requested
-        final boolean withJudiciary = Boolean.TRUE.equals(request.getWithJudiciary());
-        Judiciary judiciary = null;
+        final boolean withJudiciary = Boolean.TRUE.equals(withJudiciaryParam);
+        uk.gov.moj.cpp.courtscheduler.openapi.model.Judiciary judiciary = null;
         if (withJudiciary && entity.getJudiciaryId() != null) {
             final List<String> judiciaryIdList = List.of(entity.getJudiciaryId());
             final List<Judiciary> fetchedJudiciaries = referenceDataService.getJudiciariesWithSpecialismByIds(judiciaryIdList);
             if (!fetchedJudiciaries.isEmpty()) {
                 judiciary = fetchedJudiciaries.get(0);
-                LOGGER.info("Fetched judiciary for ruleId {}", request.getRuleId());
+                LOGGER.info("Fetched judiciary for ruleId {}", Encode.forJava(ruleId));
             }
         }
 
-        return new GetJudiciaryAvailabilityRuleResponse(ruleResponse, judiciary);
+        return new GetJudiciaryAvailabilityRuleResponse().rule(ruleResponse).judiciary(judiciary);
     }
+
 
     private JudiciaryAvailabilityRuleResponse convertToResponse(final JudiciaryAvailabilityRule entity) {
         final JudiciaryAvailabilityRuleResponse response = new JudiciaryAvailabilityRuleResponse();
@@ -344,28 +355,27 @@ public class JudiciaryAvailabilityService {
         response.setCourtHouseId(entity.getCourtHouseId());
         response.setStartDate(entity.getFromDate());
         response.setEndDate(entity.getToDate());
-        response.setSessionType(entity.getSessionType());
+        response.setSessionType(entity.getSessionType() == null ? null : entity.getSessionType().name());
 
-        // Convert entity repeat days to domain repeat days (enum)
+        // Convert entity repeat days (enum) to wire repeat days (String)
         if (entity.getRepeatDays() != null && !entity.getRepeatDays().isEmpty()) {
-            final List<AvailabilityDayOfWeek> domainRepeatDays = new ArrayList<>();
+            final List<String> repeatDays = new ArrayList<>();
             for (uk.gov.moj.cpp.courtscheduler.persist.entity.JudiciaryAvailabilityRuleRepeatDay entityDay : entity.getRepeatDays()) {
-                domainRepeatDays.add(entityDay.getDayOfWeek());
+                repeatDays.add(entityDay.getDayOfWeek().name());
             }
-            response.setRepeatDays(domainRepeatDays);
+            response.setRepeatDays(repeatDays);
         }
 
-        // Convert entity unavailabilities to domain unavailabilities
+        // Convert entity unavailabilities to wire unavailabilities
         if (entity.getUnavailabilities() != null && !entity.getUnavailabilities().isEmpty()) {
-            final List<uk.gov.moj.cpp.courtscheduler.domain.JudiciaryUnavailabilityResponse> domainUnavailabilities = new ArrayList<>();
+            final List<JudiciaryUnavailability> unavailabilities = new ArrayList<>();
             for (uk.gov.moj.cpp.courtscheduler.persist.entity.JudiciaryUnavailability entityUnavailability : entity.getUnavailabilities()) {
-                domainUnavailabilities.add(new uk.gov.moj.cpp.courtscheduler.domain.JudiciaryUnavailabilityResponse(
-                        entityUnavailability.getFromDate(),
-                        entityUnavailability.getToDate(),
-                        entityUnavailability.getReason()
-                ));
+                unavailabilities.add(new JudiciaryUnavailability()
+                        .startDate(entityUnavailability.getFromDate())
+                        .endDate(entityUnavailability.getToDate())
+                        .reason(entityUnavailability.getReason() == null ? null : entityUnavailability.getReason().name()));
             }
-            response.setUnavailabilities(domainUnavailabilities);
+            response.setUnavailabilities(unavailabilities);
         }
 
         return response;
@@ -526,28 +536,51 @@ public class JudiciaryAvailabilityService {
 
     /**
      * Populates entity fields from request (judiciaryId, courtHouseId, startDate, endDate, sessionType).
-     * These fields are required as per contract.
+     * These fields are required as per contract. {@code AddJudiciaryAvailabilityRuleRequest}
+     * and {@code UpdateJudiciaryAvailabilityRuleRequest} share these five fields but no
+     * common Java supertype (openapi-generator flattens {@code allOf} into a standalone class
+     * rather than inheritance), so callers assemble the shared
+     * {@code CourtschedulerJudiciaryAvailabilityRuleDetails} from their own request before calling
+     * this method.
      */
-    private void populateEntityFields(final JudiciaryAvailabilityRule entity, 
-                                     final BaseJudiciaryAvailabilityRuleWithDetailsRequest request) {
-        entity.setJudiciaryId(request.getJudiciaryId());
-        entity.setCourtHouseId(request.getCourtHouseId());
-        entity.setFromDate(request.getStartDate());
-        entity.setToDate(request.getEndDate());
-        entity.setSessionType(request.getSessionType() != null ? request.getSessionType() : SessionType.AD);
+    private void populateEntityFields(final JudiciaryAvailabilityRule entity,
+                                     final CourtschedulerJudiciaryAvailabilityRuleDetails details) {
+        entity.setJudiciaryId(details.getJudiciaryId());
+        entity.setCourtHouseId(details.getCourtHouseId());
+        entity.setFromDate(details.getStartDate());
+        entity.setToDate(details.getEndDate());
+        entity.setSessionType(details.getSessionType() != null ? SessionType.valueOf(details.getSessionType()) : SessionType.AD);
+    }
+
+    private CourtschedulerJudiciaryAvailabilityRuleDetails toDetails(final AddJudiciaryAvailabilityRuleRequest request) {
+        return new CourtschedulerJudiciaryAvailabilityRuleDetails()
+                .judiciaryId(request.getJudiciaryId())
+                .courtHouseId(request.getCourtHouseId())
+                .startDate(request.getStartDate())
+                .endDate(request.getEndDate())
+                .sessionType(request.getSessionType());
+    }
+
+    private CourtschedulerJudiciaryAvailabilityRuleDetails toDetails(final UpdateJudiciaryAvailabilityRuleRequest request) {
+        return new CourtschedulerJudiciaryAvailabilityRuleDetails()
+                .judiciaryId(request.getJudiciaryId())
+                .courtHouseId(request.getCourtHouseId())
+                .startDate(request.getStartDate())
+                .endDate(request.getEndDate())
+                .sessionType(request.getSessionType());
     }
 
     /**
-     * Converts domain repeat days (enum) to entity repeat days.
+     * Converts wire repeat days (String) to entity repeat days.
      * repeatDays is required as per contract.
      */
     private List<uk.gov.moj.cpp.courtscheduler.persist.entity.JudiciaryAvailabilityRuleRepeatDay> convertRepeatDaysToEntity(
-            final List<AvailabilityDayOfWeek> domainRepeatDays) {
+            final List<String> wireRepeatDays) {
         final List<uk.gov.moj.cpp.courtscheduler.persist.entity.JudiciaryAvailabilityRuleRepeatDay> entityRepeatDays = new ArrayList<>();
-        if (domainRepeatDays != null) {
-            for (AvailabilityDayOfWeek dayOfWeek : domainRepeatDays) {
-                final uk.gov.moj.cpp.courtscheduler.persist.entity.JudiciaryAvailabilityRuleRepeatDay persistDay = 
-                        new uk.gov.moj.cpp.courtscheduler.persist.entity.JudiciaryAvailabilityRuleRepeatDay(dayOfWeek);
+        if (wireRepeatDays != null) {
+            for (String dayOfWeek : wireRepeatDays) {
+                final uk.gov.moj.cpp.courtscheduler.persist.entity.JudiciaryAvailabilityRuleRepeatDay persistDay =
+                        new uk.gov.moj.cpp.courtscheduler.persist.entity.JudiciaryAvailabilityRuleRepeatDay(AvailabilityDayOfWeek.valueOf(dayOfWeek));
                 entityRepeatDays.add(persistDay);
             }
         }
@@ -555,22 +588,22 @@ public class JudiciaryAvailabilityService {
     }
 
     /**
-     * Converts domain unavailabilities to entity unavailabilities.
+     * Converts wire unavailabilities to entity unavailabilities.
      */
     private List<uk.gov.moj.cpp.courtscheduler.persist.entity.JudiciaryUnavailability> convertUnavailabilitiesToEntity(
-            final List<uk.gov.moj.cpp.courtscheduler.domain.JudiciaryUnavailabilityRequest> domainUnavailabilities,
+            final List<JudiciaryUnavailability> wireUnavailabilities,
             final JudiciaryAvailabilityRule entity) {
         final List<uk.gov.moj.cpp.courtscheduler.persist.entity.JudiciaryUnavailability> entityUnavailabilities = new ArrayList<>();
-        if (domainUnavailabilities != null && !domainUnavailabilities.isEmpty()) {
-            for (uk.gov.moj.cpp.courtscheduler.domain.JudiciaryUnavailabilityRequest unavailabilityRequest : domainUnavailabilities) {
-                final uk.gov.moj.cpp.courtscheduler.persist.entity.JudiciaryUnavailability unavailability = 
+        if (wireUnavailabilities != null && !wireUnavailabilities.isEmpty()) {
+            for (JudiciaryUnavailability unavailabilityRequest : wireUnavailabilities) {
+                final uk.gov.moj.cpp.courtscheduler.persist.entity.JudiciaryUnavailability unavailability =
                         new uk.gov.moj.cpp.courtscheduler.persist.entity.JudiciaryUnavailability();
                 unavailability.setId(randomUUID().toString());
                 unavailability.setRule(entity);
                 unavailability.setFromDate(unavailabilityRequest.getStartDate());
                 unavailability.setToDate(unavailabilityRequest.getEndDate());
-                unavailability.setReason(unavailabilityRequest.getReason());
-                
+                unavailability.setReason(unavailabilityRequest.getReason() == null ? null : UnavailabilityReason.valueOf(unavailabilityRequest.getReason()));
+
                 entityUnavailabilities.add(unavailability);
                 LOGGER.debug("Created judiciary unavailability with id: {}", unavailability.getId());
             }
@@ -594,39 +627,39 @@ public class JudiciaryAvailabilityService {
      * Returns the first validation error message encountered, or null if validation passed.
      */
     public String validateAddJudiciaryAvailabilityRule(final AddJudiciaryAvailabilityRuleRequest request) {
-        String error = validateDateRangeMaxThreeYears(request);
+        String error = validateDateRangeMaxThreeYears(request.getStartDate(), request.getEndDate());
         if (error != null) {
             return error;
         }
-        
-        error = validateFutureDatesForCreation(request);
+
+        error = validateFutureDatesForCreation(request.getStartDate(), request.getEndDate());
         if (error != null) {
             return error;
         }
-        
-        error = validateUnavailabilityDateRanges(request);
+
+        error = validateUnavailabilityDateRanges(request.getStartDate(), request.getEndDate(), request.getUnavailabilities());
         if (error != null) {
             return error;
         }
-        
-        error = validateUnavailabilityOverlaps(request);
+
+        error = validateUnavailabilityOverlaps(request.getUnavailabilities());
         if (error != null) {
             return error;
         }
-        
-        error = validateOverlappingRules(request, null);
+
+        error = validateOverlappingRules(request.getJudiciaryId(), request.getStartDate(), request.getEndDate(), null);
         if (error != null) {
             return error;
         }
-        
-        error = validateUnavailabilityAffectsAssignedSessions(request);
-        
+
+        error = validateUnavailabilityAffectsAssignedSessions(request.getJudiciaryId(), request.getUnavailabilities());
+
         return error;
     }
 
-    private String validateDateRangeMaxThreeYears(final BaseJudiciaryAvailabilityRuleWithDetailsRequest request) {
-        if (request.getStartDate() != null && request.getEndDate() != null) {
-            final long yearsBetween = java.time.temporal.ChronoUnit.YEARS.between(request.getStartDate(), request.getEndDate());
+    private String validateDateRangeMaxThreeYears(final LocalDate startDate, final LocalDate endDate) {
+        if (startDate != null && endDate != null) {
+            final long yearsBetween = java.time.temporal.ChronoUnit.YEARS.between(startDate, endDate);
             if (yearsBetween > 3) {
                 return DATE_RANGE_MUST_BE_3_YEARS_OR_LESS;
             }
@@ -634,48 +667,46 @@ public class JudiciaryAvailabilityService {
         return null;
     }
 
-    private String validateFutureDatesForCreation(final AddJudiciaryAvailabilityRuleRequest request) {
+    private String validateFutureDatesForCreation(final LocalDate startDate, final LocalDate endDate) {
         final LocalDate today = LocalDate.now();
-        if (request.getStartDate() != null && request.getStartDate().isBefore(today)) {
+        if (startDate != null && startDate.isBefore(today)) {
             return START_DATE_MUST_BE_IN_FUTURE;
         }
-        if (request.getEndDate() != null && request.getEndDate().isBefore(today)) {
+        if (endDate != null && endDate.isBefore(today)) {
             return END_DATE_MUST_BE_IN_FUTURE;
         }
         return null;
     }
 
-    private String validateUnavailabilityDateRanges(final BaseJudiciaryAvailabilityRuleWithDetailsRequest request) {
-        if (request.getUnavailabilities() == null || request.getUnavailabilities().isEmpty()) {
+    private String validateUnavailabilityDateRanges(final LocalDate startDate, final LocalDate endDate,
+                                                     final List<JudiciaryUnavailability> unavailabilities) {
+        if (unavailabilities == null || unavailabilities.isEmpty()) {
             return null;
         }
-        
-        for (int i = 0; i < request.getUnavailabilities().size(); i++) {
-            final uk.gov.moj.cpp.courtscheduler.domain.JudiciaryUnavailabilityRequest unavailability = 
-                    request.getUnavailabilities().get(i);
+
+        for (int i = 0; i < unavailabilities.size(); i++) {
+            final JudiciaryUnavailability unavailability = unavailabilities.get(i);
             if (unavailability.getStartDate() != null && unavailability.getEndDate() != null) {
-                if (request.getStartDate() != null && unavailability.getStartDate().isBefore(request.getStartDate())) {
-                    return String.format(UNAVAILABILITY_START_DATE_MUST_BE_BETWEEN, i + 1, request.getStartDate(), request.getEndDate());
+                if (startDate != null && unavailability.getStartDate().isBefore(startDate)) {
+                    return String.format(UNAVAILABILITY_START_DATE_MUST_BE_BETWEEN, i + 1, startDate, endDate);
                 }
-                if (request.getEndDate() != null && unavailability.getEndDate().isAfter(request.getEndDate())) {
-                    return String.format(UNAVAILABILITY_END_DATE_MUST_BE_BETWEEN, i + 1, request.getStartDate(), request.getEndDate());
+                if (endDate != null && unavailability.getEndDate().isAfter(endDate)) {
+                    return String.format(UNAVAILABILITY_END_DATE_MUST_BE_BETWEEN, i + 1, startDate, endDate);
                 }
             }
         }
         return null;
     }
 
-    private String validateUnavailabilityOverlaps(final BaseJudiciaryAvailabilityRuleWithDetailsRequest request) {
-        if (request.getUnavailabilities() == null || request.getUnavailabilities().isEmpty()) {
+    private String validateUnavailabilityOverlaps(final List<JudiciaryUnavailability> unavailabilities) {
+        if (unavailabilities == null || unavailabilities.isEmpty()) {
             return null;
         }
-        
-        for (int i = 0; i < request.getUnavailabilities().size(); i++) {
-            for (int j = i + 1; j < request.getUnavailabilities().size(); j++) {
-                final uk.gov.moj.cpp.courtscheduler.domain.JudiciaryUnavailabilityRequest u1 = 
-                        request.getUnavailabilities().get(i);
-                final uk.gov.moj.cpp.courtscheduler.domain.JudiciaryUnavailabilityRequest u2 = 
-                        request.getUnavailabilities().get(j);
+
+        for (int i = 0; i < unavailabilities.size(); i++) {
+            for (int j = i + 1; j < unavailabilities.size(); j++) {
+                final JudiciaryUnavailability u1 = unavailabilities.get(i);
+                final JudiciaryUnavailability u2 = unavailabilities.get(j);
                 if (doDateRangesOverlap(u1.getStartDate(), u1.getEndDate(), u2.getStartDate(), u2.getEndDate())) {
                     return UNAVAILABILITY_DATES_CANNOT_OVERLAP;
                 }
@@ -684,18 +715,18 @@ public class JudiciaryAvailabilityService {
         return null;
     }
 
-    private String validateOverlappingRules(final BaseJudiciaryAvailabilityRuleWithDetailsRequest request, final String excludeRuleId) {
-        if (request.getJudiciaryId() == null || request.getStartDate() == null || request.getEndDate() == null) {
+    private String validateOverlappingRules(final String judiciaryId, final LocalDate startDate, final LocalDate endDate, final String excludeRuleId) {
+        if (judiciaryId == null || startDate == null || endDate == null) {
             return null;
         }
-        
+
         final List<JudiciaryAvailabilityRule> overlappingRules = repository.findRulesByDateRange(
-                request.getStartDate(),
-                request.getEndDate(),
+                startDate,
+                endDate,
                 null, // courtHouseId - check all court houses
-                request.getJudiciaryId()
+                judiciaryId
         );
-        
+
         final List<JudiciaryAvailabilityRule> rulesToCheck = excludeRuleId != null
                 ? overlappingRules.stream()
                         .filter(rule -> !rule.getId().equals(excludeRuleId))
@@ -709,26 +740,25 @@ public class JudiciaryAvailabilityService {
         return null;
     }
 
-    private String validateUnavailabilityAffectsAssignedSessions(final BaseJudiciaryAvailabilityRuleWithDetailsRequest request) {
-        if (request.getJudiciaryId() == null || request.getStartDate() == null || request.getEndDate() == null) {
+    private String validateUnavailabilityAffectsAssignedSessions(final String judiciaryId, final List<JudiciaryUnavailability> unavailabilities) {
+        if (judiciaryId == null) {
             return null;
         }
-        
-        if (request.getUnavailabilities() == null || request.getUnavailabilities().isEmpty()) {
+
+        if (unavailabilities == null || unavailabilities.isEmpty()) {
             return null;
         }
-        
-        for (final uk.gov.moj.cpp.courtscheduler.domain.JudiciaryUnavailabilityRequest unavailability : 
-                request.getUnavailabilities()) {
+
+        for (final JudiciaryUnavailability unavailability : unavailabilities) {
             if (unavailability.getStartDate() != null && unavailability.getEndDate() != null) {
                 final List<String> affectedSessions = courtScheduleJudiciaryRepository
                         .findCourtScheduleIdsByJudiciaryAndDateRange(
-                                request.getJudiciaryId(),
+                                judiciaryId,
                                 unavailability.getStartDate(),
                                 unavailability.getEndDate()
                         );
                 if (!affectedSessions.isEmpty()) {
-                    return String.format(ADDING_UNAVAILABILITY_WOULD_AFFECT_SESSIONS, 
+                    return String.format(ADDING_UNAVAILABILITY_WOULD_AFFECT_SESSIONS,
                             unavailability.getStartDate(), unavailability.getEndDate(), affectedSessions.size());
                 }
             }
@@ -745,45 +775,45 @@ public class JudiciaryAvailabilityService {
         if (error != null) {
             return error;
         }
-        
+
         final JudiciaryAvailabilityRule existingRule = repository.findById(request.getRuleId()).orElse(null);
-        error = validateExistingRule(request, existingRule);
+        error = validateExistingRule(existingRule);
         if (error != null) {
             return error;
         }
-        
-        error = validateDateRangeMaxThreeYears(request);
+
+        error = validateDateRangeMaxThreeYears(request.getStartDate(), request.getEndDate());
         if (error != null) {
             return error;
         }
-        
+
         error = validateChangedDatesForUpdate(request, existingRule);
         if (error != null) {
             return error;
         }
-        
+
         error = validateDateRangeChangesAffectAssignedSessions(request, existingRule);
         if (error != null) {
             return error;
         }
-        
-        error = validateUnavailabilityDateRanges(request);
+
+        error = validateUnavailabilityDateRanges(request.getStartDate(), request.getEndDate(), request.getUnavailabilities());
         if (error != null) {
             return error;
         }
-        
-        error = validateUnavailabilityOverlaps(request);
+
+        error = validateUnavailabilityOverlaps(request.getUnavailabilities());
         if (error != null) {
             return error;
         }
-        
-        error = validateOverlappingRules(request, request.getRuleId());
+
+        error = validateOverlappingRules(request.getJudiciaryId(), request.getStartDate(), request.getEndDate(), request.getRuleId());
         if (error != null) {
             return error;
         }
-        
-        error = validateUnavailabilityAffectsAssignedSessions(request);
-        
+
+        error = validateUnavailabilityAffectsAssignedSessions(request.getJudiciaryId(), request.getUnavailabilities());
+
         return error;
     }
 
@@ -794,8 +824,7 @@ public class JudiciaryAvailabilityService {
         return null;
     }
 
-    private String validateExistingRule(final UpdateJudiciaryAvailabilityRuleRequest request, 
-                                         final JudiciaryAvailabilityRule existingRule) {
+    private String validateExistingRule(final JudiciaryAvailabilityRule existingRule) {
         if (existingRule == null) {
             return String.format(RULE_NOT_FOUND);
         }
@@ -810,7 +839,7 @@ public class JudiciaryAvailabilityService {
         final LocalDate today = LocalDate.now();
         final boolean startDateChanged = !Objects.equals(existingRule.getFromDate(), request.getStartDate());
         final boolean endDateChanged = !Objects.equals(existingRule.getToDate(), request.getEndDate());
-        
+
         if (startDateChanged && request.getStartDate() != null && request.getStartDate().isBefore(today)) {
             return NEW_START_DATE_MUST_BE_IN_FUTURE;
         }
@@ -825,28 +854,28 @@ public class JudiciaryAvailabilityService {
         if (request.getJudiciaryId() == null) {
             return null;
         }
-        
+
         final boolean startDateChanged = !Objects.equals(existingRule.getFromDate(), request.getStartDate());
         final boolean endDateChanged = !Objects.equals(existingRule.getToDate(), request.getEndDate());
-        
+
         if (!startDateChanged && !endDateChanged) {
             return null;
         }
-        
+
         final LocalDate oldStart = existingRule.getFromDate();
         final LocalDate oldEnd = existingRule.getToDate();
         final LocalDate newStart = request.getStartDate();
         final LocalDate newEnd = request.getEndDate();
-        
+
         if (startDateChanged && newStart != null && newStart.isAfter(oldStart)) {
-            String error = validateStartDateChangeAffectsSessions(request, oldStart, newStart);
+            String error = validateStartDateChangeAffectsSessions(request.getJudiciaryId(), oldStart, newStart);
             if (error != null) {
                 return error;
             }
         }
-        
+
         if (endDateChanged && newEnd != null && newEnd.isBefore(oldEnd)) {
-            String error = validateEndDateChangeAffectsSessions(request, oldEnd, newEnd);
+            String error = validateEndDateChangeAffectsSessions(request.getJudiciaryId(), oldEnd, newEnd);
             if (error != null) {
                 return error;
             }
@@ -854,29 +883,29 @@ public class JudiciaryAvailabilityService {
         return null;
     }
 
-    private String validateStartDateChangeAffectsSessions(final UpdateJudiciaryAvailabilityRuleRequest request,
+    private String validateStartDateChangeAffectsSessions(final String judiciaryId,
                                                         final LocalDate oldStart,
                                                         final LocalDate newStart) {
         final List<String> affectedSessions = courtScheduleJudiciaryRepository
                 .findCourtScheduleIdsByJudiciaryAndDateRange(
-                        request.getJudiciaryId(),
+                        judiciaryId,
                         oldStart,
                         newStart.minusDays(1)
                 );
         if (!affectedSessions.isEmpty()) {
-            return "Changing the start date affects " + affectedSessions.size() + 
-                    " sessions already assigned between " + oldStart + " and " + newStart + 
+            return "Changing the start date affects " + affectedSessions.size() +
+                    " sessions already assigned between " + oldStart + " and " + newStart +
                     ". Review these sessions before you continue.";
         }
         return null;
     }
 
-    private String validateEndDateChangeAffectsSessions(final UpdateJudiciaryAvailabilityRuleRequest request,
+    private String validateEndDateChangeAffectsSessions(final String judiciaryId,
                                                       final LocalDate oldEnd,
                                                       final LocalDate newEnd) {
         final List<String> affectedSessions = courtScheduleJudiciaryRepository
                 .findCourtScheduleIdsByJudiciaryAndDateRange(
-                        request.getJudiciaryId(),
+                        judiciaryId,
                         newEnd.plusDays(1),
                         oldEnd
                 );
@@ -913,7 +942,7 @@ public class JudiciaryAvailabilityService {
 
         final JudiciaryAvailabilityRule rule = repository.findById(request.getRuleId()).orElse(null);
         if (rule == null) {
-            LOGGER.warn(JUDICIARY_AVAILABILITY_RULE_WITH_ID_NOT_FOUND, request.getRuleId());
+            LOGGER.warn(JUDICIARY_AVAILABILITY_RULE_WITH_ID_NOT_FOUND, Encode.forJava(request.getRuleId()));
             return String.format(RULE_NOT_FOUND);
         }
 
@@ -928,7 +957,7 @@ public class JudiciaryAvailabilityService {
                 );
 
         if (matchingSessions.isEmpty()) {
-            LOGGER.info("No matching sessions found for rule {}", request.getRuleId());
+            LOGGER.info("No matching sessions found for rule {}", Encode.forJava(request.getRuleId()));
             return null;
         } else {
             return CANNOT_DELETE_ITINERARY_IN_USE;
