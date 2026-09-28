@@ -15,7 +15,7 @@ tags:
   - name: courtschedule
   - name: hearingslots
   - name: hearings
-  - name: provisional-booking
+  - name: unconfirmed-booking
   - name: mi
   - name: rotasl
   - name: validate
@@ -367,16 +367,16 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /provisionalBooking:
+  /unconfirmedBooking:
     post:
-      tags: [provisional-booking]
+      tags: [unconfirmed-booking]
       operationId: postCreateProvisionalBooking
       requestBody:
         required: true
         content:
-          application/vnd.courtscheduler.create.provisional.booking+json:
+          application/vnd.courtscheduler.create.unconfirmed.booking+json:
             # Body is bound as Map<String, Object> (see PassthroughObject below); real request
-            # validation happens against src/raml/json/schema/courtscheduler.create.provisional.booking.json
+            # validation happens against src/raml/json/schema/courtscheduler.create.unconfirmed.booking.json
             # via RequestSchemaValidationFilter. Each provisionalSlots[] item there now also
             # accepts an optional integer "duration" (minutes) — additive, not required, so
             # existing callers are unaffected.
@@ -386,7 +386,7 @@ paths:
         '200':
           description: OK
           content:
-            application/vnd.courtscheduler.create.provisional.booking.response+json:
+            application/vnd.courtscheduler.create.unconfirmed.booking.response+json:
               schema:
                 $ref: '#/components/schemas/CourtschedulerCreateProvisionalBookingResponse'
             # Backward compatibility: the legacy WildFly endpoint returned application/json
@@ -397,7 +397,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/CourtschedulerCreateProvisionalBookingResponse'
     get:
-      tags: [provisional-booking]
+      tags: [unconfirmed-booking]
       operationId: getProvisionalBooking
       parameters:
         - { in: query, name: bookingIds, required: true, schema: { type: string } }
@@ -405,13 +405,13 @@ paths:
         '200':
           description: OK
           content:
-            application/vnd.courtscheduler.get.provisional.booking+json:
+            application/vnd.courtscheduler.get.unconfirmed.booking+json:
               schema:
                 $ref: '#/components/schemas/CourtschedulerGetProvisionalBooking'
 
-  /provisionalBooking/status:
+  /unconfirmedBooking/status:
     get:
-      tags: [provisional-booking]
+      tags: [unconfirmed-booking]
       operationId: getBookingStatus
       parameters:
         - { in: query, name: bookingIds, required: true, schema: { type: string } }
@@ -549,7 +549,7 @@ paths:
             # type, so listing's HearingSlotsService.validateSessionAvailability() sends
             # `Accept: application/json`. Keep it producible, else strict content negotiation
             # rejects the request with 406 before validation ever runs. Same fix as
-            # /provisionalBooking. See SessionAvailabilityValidationIT.
+            # /unconfirmedBooking. See SessionAvailabilityValidationIT.
             application/json:
               schema:
                 $ref: '#/components/schemas/CourtschedulerValidateResponse'

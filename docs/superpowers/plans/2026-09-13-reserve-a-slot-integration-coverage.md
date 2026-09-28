@@ -163,12 +163,12 @@ Add to `ProvisionalBookingIT`. Build payloads with a small private helper rather
 
 You will need three private helpers, in the style of the existing ones:
 
-- `reserveOneSession(String courtScheduleId)` → posts `POST /provisionalBooking` for one session and returns the minted bookingId.
+- `reserveOneSession(String courtScheduleId)` → posts `POST /unconfirmedBooking` for one session and returns the minted bookingId.
 - `reserveOneSession(String courtScheduleId, String bookingId)` → the same, with `"bookingId"` in the request body so the booking is reused.
 - `listHearingsPayload(String hearingId, String bookingId, CourtSchedule session)` → `{"hearingSlots":[{"hearingId":…,"bookingId":…,"courtScheduleIds":[{"courtScheduleId":…,"hearingStartTime":…}]}]}`. **`bookingId` is a sibling of `hearingId`, never inside `courtScheduleIds[]`.**
-- `bookingStatusOf(String bookingId)` → `GET /provisionalBooking/status?bookingIds=<id>` via `getCommand(getRequestParams(...))` with accept `application/vnd.courtscheduler.get.booking-status+json`, returning `bookings[0].status`.
+- `bookingStatusOf(String bookingId)` → `GET /unconfirmedBooking/status?bookingIds=<id>` via `getCommand(getRequestParams(...))` with accept `application/vnd.courtscheduler.get.booking-status+json`, returning `bookings[0].status`.
 
-Check the existing `courtscheduler.create.provisional.booking.json` fixture before writing `reserveOneSession` — reuse it with a replace if it fits one session.
+Check the existing `courtscheduler.create.unconfirmed.booking.json` fixture before writing `reserveOneSession` — reuse it with a replace if it fits one session.
 
 - [ ] **Step 2: Run them**
 
@@ -199,7 +199,7 @@ In the existing multi-slot test's Javadoc, the phrase **"the real share path"** 
 
 **Interfaces:** consumes `POST /listing-query-api/query/api/rest/listing/bookingStatus`, request media type `application/vnd.listing.query.booking.status+json`, body `{"bookingIds":[…]}`, answering `{"bookings":[{bookingId, safeToShare, status}]}`.
 
-**Read first.** `CourtScheduleDraftStatusIT.java` is the template — same kind of endpoint, same WireMock stubbing, same `AbstractIT`. Copy its shape, including how it reads its URL from `endpoint.properties` via `PropertyUtil` and how it posts and reads the body. Then read `CourtSchedulerServiceStub` to see how a **GET** with query parameters is stubbed (`stubFor(get(urlPathEqualTo(...)))` around lines 181-231) — the downstream call here is `GET /provisionalBooking/status?bookingIds=…`.
+**Read first.** `CourtScheduleDraftStatusIT.java` is the template — same kind of endpoint, same WireMock stubbing, same `AbstractIT`. Copy its shape, including how it reads its URL from `endpoint.properties` via `PropertyUtil` and how it posts and reads the body. Then read `CourtSchedulerServiceStub` to see how a **GET** with query parameters is stubbed (`stubFor(get(urlPathEqualTo(...)))` around lines 181-231) — the downstream call here is `GET /unconfirmedBooking/status?bookingIds=…`.
 
 - [ ] **Step 1: Add the endpoint entry and the stub helpers**
 
@@ -209,7 +209,7 @@ In `endpoint.properties`, beside the draft-status entry:
 listing.query.booking-status=listing-service/query/api/rest/listing/bookingStatus
 ```
 
-In `CourtSchedulerServiceStub`, add a constant for `/provisionalBooking/status` and two helpers, matching the file's existing style:
+In `CourtSchedulerServiceStub`, add a constant for `/unconfirmedBooking/status` and two helpers, matching the file's existing style:
 - one stubbing a 200 with a supplied `bookings` array body
 - one stubbing a server error, mirroring `stubSearchCourtSchedulesByIdServerError`
 

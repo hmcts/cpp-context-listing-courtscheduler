@@ -39,7 +39,7 @@ So today a clerk can reserve into a full session, `available_slots` goes negativ
 
 **Interfaces:**
 - Consumes: `SessionsService.validateSessionAvailabilityListMode(List<String> courtScheduleIds, Integer requestedDuration)` → `Optional<String>` — **public**, in `listingcourtscheduler-common`, which `listingcourtscheduler-api` already depends on (`build.gradle:44`). Empty means "fine"; a present value is the human-readable reason. It already handles slot-based and duration-based sessions and already honours `isOverbookingAllowed`.
-- Produces: `reserveAll` throws the existing `NoCapacityException` when the session cannot take the booking. `CourtSchedulerApi:829` already maps that to **409 CONFLICT**, so no API change is needed — verify that mapping still covers the `POST /provisionalBooking` path before relying on it.
+- Produces: `reserveAll` throws the existing `NoCapacityException` when the session cannot take the booking. `CourtSchedulerApi:829` already maps that to **409 CONFLICT**, so no API change is needed — verify that mapping still covers the `POST /unconfirmedBooking` path before relying on it.
 
 **Read first.** Read `ReservationService` in full — particularly `reserveAll`, `guardAgainstConfirmedAllocation` and the class Javadoc — and `SessionsService.validateSessionAvailabilityListMode` with its two branches.
 

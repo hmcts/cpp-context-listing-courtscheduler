@@ -5229,7 +5229,7 @@ class CourtSchedulerIT extends AbstractIT {
      * would never exercise that bug — direct seeding never decrements {@code available_slots} in
      * the first place, so "assert capacity restored" would just be asserting nothing changed from
      * nothing. Reservations here are therefore created through the real
-     * {@code POST /provisionalBooking} path (mirrors {@code ProvisionalBookingIT}), so capacity is
+     * {@code POST /unconfirmedBooking} path (mirrors {@code ProvisionalBookingIT}), so capacity is
      * genuinely taken before the purge runs. Do not "simplify" this back to direct seeding — that
      * silently removes the guard and lets BUG-1 back in unnoticed.
      */
@@ -5303,16 +5303,16 @@ class CourtSchedulerIT extends AbstractIT {
     }
 
     /**
-     * Picks the given session for the first time via the real {@code POST /provisionalBooking}
+     * Picks the given session for the first time via the real {@code POST /unconfirmedBooking}
      * endpoint (no {@code bookingId} supplied, so the server mints a new one) — this is what
      * actually decrements {@code court_schedule.available_slots}, unlike direct seeding.
      */
     private String reserveViaProvisionalBooking(final String courtScheduleId) throws Exception {
-        final String payload = getPayload("courtscheduler.create.provisional.booking.json")
+        final String payload = getPayload("courtscheduler.create.unconfirmed.booking.json")
                 .replace("COURTSCHEDULER_ID", courtScheduleId);
 
-        final Response response = postCommand("/provisionalBooking",
-                "application/vnd.courtscheduler.create.provisional.booking+json",
+        final Response response = postCommand("/unconfirmedBooking",
+                "application/vnd.courtscheduler.create.unconfirmed.booking+json",
                 SYSTEM_USER_ID,
                 payload);
 

@@ -4,7 +4,7 @@
 
 **Goal:** When a clerk changes their mind and picks a different session, the hold on the session they abandoned is released in the same request that takes the new one — so a clerk can never hold two sessions for one next-hearing.
 
-**Architecture:** The re-pick comes back under the **same bookingId**, instead of minting a new one. Nothing else is needed: a reservation's `hearing_id` *is* its bookingId, and `saveBookedSlots` already opens with a hearing-wide `releaseOldAllocatedListings(hearing_id)`. Reusing the id therefore makes the existing pipeline wipe every row of the previous pick — all of them, including a multi-day Crown hold — and take the new ones, in one transaction. `POST /provisionalBooking` gains one optional `bookingId`: supplied means "reuse this booking", absent means "mint me one".
+**Architecture:** The re-pick comes back under the **same bookingId**, instead of minting a new one. Nothing else is needed: a reservation's `hearing_id` *is* its bookingId, and `saveBookedSlots` already opens with a hearing-wide `releaseOldAllocatedListings(hearing_id)`. Reusing the id therefore makes the existing pipeline wipe every row of the previous pick — all of them, including a multi-day Crown hold — and take the new ones, in one transaction. `POST /unconfirmedBooking` gains one optional `bookingId`: supplied means "reuse this booking", absent means "mint me one".
 
 **Tech Stack:** Java 17. **cpp-context-listing-courtscheduler is Gradle. cpp-context-hearing is Maven.** Never mix them up.
 
@@ -62,8 +62,8 @@ That was written when per-pick uniqueness was the design. It now describes the f
 | `.../domain/ProvisionalBookingSlots.java` | **Modify** — rename `replacesBookingId` → `bookingId` |
 | `.../api/service/ReservationService.java` | **Modify** — delete the 3-arg overload and `releasePreviousHold`; rewrite the class Javadoc paragraph |
 | `.../api/service/ProvisionalBookingService.java` | **Modify** — reuse the supplied id or mint |
-| `.../api/src/raml/json/courtscheduler.create.provisional.booking.json` | **Modify** — example |
-| `.../api/src/raml/json/schema/courtscheduler.create.provisional.booking.json` | **Modify** — rename the optional property |
+| `.../api/src/raml/json/courtscheduler.create.unconfirmed.booking.json` | **Modify** — example |
+| `.../api/src/raml/json/schema/courtscheduler.create.unconfirmed.booking.json` | **Modify** — rename the optional property |
 | `.../api/src/test/.../ReservationServiceTest.java` | **Modify** — delete the 4 release tests |
 | `.../api/src/test/.../ProvisionalBookingServiceTest.java` | **Modify** — 2-arg stubs again, 2 new tests |
 | `.../viewstore-persistence/src/test/.../CourtScheduleRepositoryTest.java` | **Modify** — 1 new test, the real behaviour proof |
@@ -90,7 +90,7 @@ mvn clean install -DskipTests
 **Files:** as listed above for Task 1.
 
 **Interfaces:**
-- Produces: `POST /provisionalBooking` accepts an optional top-level `bookingId` (string), sibling of `provisionalSlots`. Supplied → that booking is reused and returned; absent → one is minted and returned. The response is unchanged in shape: `{"bookingId": "..."}`.
+- Produces: `POST /unconfirmedBooking` accepts an optional top-level `bookingId` (string), sibling of `provisionalSlots`. Supplied → that booking is reused and returned; absent → one is minted and returned. The response is unchanged in shape: `{"bookingId": "..."}`.
 - Restores: `ReservationService.reserveAll(String bookingId, List<ProvisionalSlot> slots)` as the **only** signature. The 3-arg form added by the superseded plan is deleted.
 
 **Read first.** Open `ReservationService.java` in full, and read `CourtScheduleRepositoryImpl.bookSlotsWithCourtScheduleId` (around line 1048) so you can see for yourself that the release you are deleting is already performed there. Do not take this plan's word for it.
@@ -232,7 +232,7 @@ Expected: PASS throughout, including every pre-existing test. Before you accept 
 
 - [ ] **Step 6: Update the API spec and build**
 
-In `courtscheduler.create.provisional.booking.json` (example) and its schema, the field added by the superseded plan is **renamed**, not added: `replacesBookingId` → `bookingId`. It stays optional — do not put it in any `required` list. The schema description becomes:
+In `courtscheduler.create.unconfirmed.booking.json` (example) and its schema, the field added by the superseded plan is **renamed**, not added: `replacesBookingId` → `bookingId`. It stays optional — do not put it in any `required` list. The schema description becomes:
 
 ```json
     "bookingId": {
@@ -258,7 +258,7 @@ Expected: `BUILD SUCCESSFUL`. Finally, `grep -rn "replacesBookingId" --include=*
 **Files:** command schema + example, `BookProvisionalHearingSlotsCommandHandler`, `HearingAggregate:1261`, `BookProvisionalHearingSlots` event, `BookProvisionalHearingSlotsProcessor`, and those classes' tests. **This repo is Maven.**
 
 **Interfaces:**
-- Produces: the `POST /provisionalBooking` body gains a top-level `bookingId` string when, and only when, the command carried one. Task 1 is the consumer and is already built — the field name must match exactly.
+- Produces: the `POST /unconfirmedBooking` body gains a top-level `bookingId` string when, and only when, the command carried one. Task 1 is the consumer and is already built — the field name must match exactly.
 
 **Read first.** Open `BookProvisionalHearingSlots.java` and read `addSlotInfoFromMap` and its comment about event replay rebuilding slots field by field. **That hazard does not apply here** — `bookingId` is a top-level field handled by the `@JsonCreator` constructor, not a map-reconstructed slot field. Add it as a constructor parameter with its own `@JsonProperty`, exactly as `bookingType` and `priority` already are.
 

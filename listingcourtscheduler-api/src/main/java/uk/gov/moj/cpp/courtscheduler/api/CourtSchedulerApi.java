@@ -86,7 +86,7 @@ import uk.gov.moj.cpp.courtscheduler.envelope.SkipEnvelope;
 import uk.gov.moj.cpp.courtscheduler.openapi.api.CourtscheduleOpenApi;
 import uk.gov.moj.cpp.courtscheduler.openapi.api.HearingsOpenApi;
 import uk.gov.moj.cpp.courtscheduler.openapi.api.MiOpenApi;
-import uk.gov.moj.cpp.courtscheduler.openapi.api.ProvisionalBookingOpenApi;
+import uk.gov.moj.cpp.courtscheduler.openapi.api.UnconfirmedBookingOpenApi;
 import uk.gov.moj.cpp.courtscheduler.openapi.api.SessionOpenApi;
 import uk.gov.moj.cpp.courtscheduler.openapi.api.ValidateOpenApi;
 
@@ -107,7 +107,7 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
                                           HearingsOpenApi,
                                           MiOpenApi,
                                           ValidateOpenApi,
-                                          ProvisionalBookingOpenApi {
+                                          UnconfirmedBookingOpenApi {
 
     private static final Logger LOG = LoggerFactory.getLogger(CourtSchedulerApi.class);
 
@@ -812,12 +812,12 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
     }
 
     /* ============================================================
-     *  ProvisionalBookingOpenApi — provisional booking endpoints
+     *  UnconfirmedBookingOpenApi — unconfirmed booking endpoints
      * ============================================================ */
 
     @Override
     public ResponseEntity<Map<String, Object>> postCreateProvisionalBooking(final Map<String, Object> body) {
-        LOG.info("courtscheduler.create.provisional.booking: {}", body);
+        LOG.info("courtscheduler.create.unconfirmed.booking: {}", body);
         final ProvisionalBookingSlots slots = provisionalSlotConverter.convert(toJson(body));
         final JsonObject validate = provisionalBookingApiValidator.createProvisionalBookingValidation(slots);
         if (!validate.isEmpty()) {
@@ -833,7 +833,7 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
 
     @Override
     public ResponseEntity<Map<String, Object>> getProvisionalBooking(final String bookingIds) {
-        LOG.info("courtscheduler.get.provisional.booking bookingIds={}", bookingIds);
+        LOG.info("courtscheduler.get.unconfirmed.booking bookingIds={}", bookingIds);
         final JsonObject validate = provisionalBookingApiValidator.getProvisionalBookingValidation(bookingIds);
         if (!validate.isEmpty()) {
             throw new ValidationException(validate);
@@ -842,7 +842,7 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
         return ResponseEntity.ok(JsonValueConverter.toMap(response));
     }
 
-    /** GET /provisionalBooking/status — is each booking id still held? */
+    /** GET /unconfirmedBooking/status — is each booking id still held? */
     @Override
     public ResponseEntity<Map<String, Object>> getBookingStatus(final String bookingIds) {
         LOG.info("courtscheduler.get.booking-status bookingIds={}", bookingIds);

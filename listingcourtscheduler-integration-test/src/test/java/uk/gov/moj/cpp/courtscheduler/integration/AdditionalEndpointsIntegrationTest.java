@@ -9,7 +9,7 @@ import org.springframework.http.ResponseEntity;
 
 /**
  * Smoke tests for the controllers added on top of the original CourtSchedule contract:
- * hearing-slot, provisional-booking, MI export, OU code, validate, session, rotasl.
+ * hearing-slot, unconfirmed-booking, MI export, OU code, validate, session, rotasl.
  *
  * <p>Each test exercises the path/verb/Accept combination against the real wired pipeline
  * (converters → validators → services → repositories) and asserts the endpoint does not
@@ -63,9 +63,9 @@ class AdditionalEndpointsIntegrationTest extends AbstractIntegrationTest {
     @Test
     void postProvisionalBooking_doesNotBlowUp() {
         final ResponseEntity<String> response = post(
-                "/provisionalBooking",
+                "/unconfirmedBooking",
                 SYSTEM_USER_ID,
-                "application/vnd.courtscheduler.create.provisional.booking+json",
+                "application/vnd.courtscheduler.create.unconfirmed.booking+json",
                 "{\"courtScheduleIds\":[]}");
         assertThat(response.getStatusCode().is5xxServerError()).isFalse();
     }
@@ -73,9 +73,9 @@ class AdditionalEndpointsIntegrationTest extends AbstractIntegrationTest {
     @Test
     void getProvisionalBooking_doesNotBlowUp() {
         final ResponseEntity<String> response = get(
-                "/provisionalBooking?bookingIds=" + UUID.randomUUID(),
+                "/unconfirmedBooking?bookingIds=" + UUID.randomUUID(),
                 SYSTEM_USER_ID,
-                "application/vnd.courtscheduler.get.provisional.booking+json");
+                "application/vnd.courtscheduler.get.unconfirmed.booking+json");
         assertThat(response.getStatusCode().is5xxServerError()).isFalse();
     }
 

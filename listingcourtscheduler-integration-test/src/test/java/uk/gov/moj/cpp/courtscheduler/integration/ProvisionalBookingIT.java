@@ -38,7 +38,7 @@ import org.junit.jupiter.api.Test;
 
 public class ProvisionalBookingIT extends AbstractIT {
 
-    private final String RELATIVE_PATH = "/provisionalBooking";
+    private final String RELATIVE_PATH = "/unconfirmedBooking";
 
     @Test
     void shouldCreateProvisionalHearingSlot() throws SQLException {
@@ -47,10 +47,10 @@ public class ProvisionalBookingIT extends AbstractIT {
         databaseSeeder.insertCourtSchedule(courtSchedule);
 
 
-        String provisionalBookingPayload = getPayload("courtscheduler.create.provisional.booking.json");
+        String provisionalBookingPayload = getPayload("courtscheduler.create.unconfirmed.booking.json");
         provisionalBookingPayload = provisionalBookingPayload.replace("COURTSCHEDULER_ID", courtScheduleId);
 
-        final Response response = postCommand(RELATIVE_PATH, "application/vnd.courtscheduler.create.provisional.booking+json", SYSTEM_USER_ID, provisionalBookingPayload);
+        final Response response = postCommand(RELATIVE_PATH, "application/vnd.courtscheduler.create.unconfirmed.booking+json", SYSTEM_USER_ID, provisionalBookingPayload);
 
         assertThat(response.getStatus(), is(OK.getStatusCode()));
         String responseString = response.readEntity(String.class); // Ensure to read the entity as String
@@ -62,7 +62,7 @@ public class ProvisionalBookingIT extends AbstractIT {
      * Backward-compatibility guard: a legacy WildFly client posted to this endpoint with
      * {@code Accept: application/json} (the legacy default response type — the RAML declared no
      * response media type for provisional booking). The migrated OpenAPI declares
-     * {@code produces: application/vnd.courtscheduler.create.provisional.booking.response+json},
+     * {@code produces: application/vnd.courtscheduler.create.unconfirmed.booking.response+json},
      * so with strict content negotiation a specific {@code Accept: application/json} must NOT be
      * rejected with 406. (The happy-path test above doesn't catch this — it sends no Accept, so
      * RestTemplate uses {@code *}/{@code *}, which matches any produces.)
@@ -73,12 +73,12 @@ public class ProvisionalBookingIT extends AbstractIT {
         CourtSchedule courtSchedule = bookableCourtSchedule(courtScheduleId);
         databaseSeeder.insertCourtSchedule(courtSchedule);
 
-        String provisionalBookingPayload = getPayload("courtscheduler.create.provisional.booking.json")
+        String provisionalBookingPayload = getPayload("courtscheduler.create.unconfirmed.booking.json")
                 .replace("COURTSCHEDULER_ID", courtScheduleId);
 
         final Response response = postCommandWithAccept(
                 RELATIVE_PATH,
-                "application/vnd.courtscheduler.create.provisional.booking+json",
+                "application/vnd.courtscheduler.create.unconfirmed.booking+json",
                 "application/json",
                 SYSTEM_USER_ID,
                 provisionalBookingPayload);
@@ -91,7 +91,7 @@ public class ProvisionalBookingIT extends AbstractIT {
     /**
      * Mirrors the real production caller — cpp-context-hearing's
      * {@code ProvisionalBookingService.bookSlots} (Apache HttpClient) sends
-     * {@code Content-Type: …create.provisional.booking+json}, {@code CJSCPPUID}, and
+     * {@code Content-Type: …create.unconfirmed.booking+json}, {@code CJSCPPUID}, and
      * NO {@code Accept} header. This is the traffic that actually hits the endpoint, so it
      * must return 200 (an absent Accept is treated as {@code *}/{@code *}).
      */
@@ -101,12 +101,12 @@ public class ProvisionalBookingIT extends AbstractIT {
         CourtSchedule courtSchedule = bookableCourtSchedule(courtScheduleId);
         databaseSeeder.insertCourtSchedule(courtSchedule);
 
-        String provisionalBookingPayload = getPayload("courtscheduler.create.provisional.booking.json")
+        String provisionalBookingPayload = getPayload("courtscheduler.create.unconfirmed.booking.json")
                 .replace("COURTSCHEDULER_ID", courtScheduleId);
 
         final Response response = postCommandWithoutAccept(
                 RELATIVE_PATH,
-                "application/vnd.courtscheduler.create.provisional.booking+json",
+                "application/vnd.courtscheduler.create.unconfirmed.booking+json",
                 SYSTEM_USER_ID,
                 provisionalBookingPayload);
 
@@ -136,13 +136,13 @@ public class ProvisionalBookingIT extends AbstractIT {
         final ProvisionalSlot provisionalSlot = new ProvisionalSlot(courtSchedule.getCourtScheduleId(), "2020-01-01T11:00:00.000Z");
         databaseSeeder.bookSlots(List.of(provisionalSlot), bookingId);
 
-        String provisionalBooking = getPayload("courtscheduler.get.provisional.booking.json");
+        String provisionalBooking = getPayload("courtscheduler.get.unconfirmed.booking.json");
         provisionalBooking = provisionalBooking.replace("BOOKING_ID", bookingId);
         ObjectMapper mapper = new ObjectMapper();
         Map<String, Object> map = mapper.readValue(provisionalBooking, new TypeReference<>() {
         });
 
-        final RequestParams requestParams = getRequestParams(RELATIVE_PATH, "application/vnd.courtscheduler.get.provisional.booking+json", SYSTEM_USER_ID, map);
+        final RequestParams requestParams = getRequestParams(RELATIVE_PATH, "application/vnd.courtscheduler.get.unconfirmed.booking+json", SYSTEM_USER_ID, map);
         final ResponseData tempResponseData = poll(requestParams).with().timeout(30L, SECONDS).pollInterval(50L, MILLISECONDS).pollDelay(0L, MILLISECONDS).until();
 
         assertThat(tempResponseData.getStatus().getStatusCode(), is(OK.getStatusCode()));
@@ -179,13 +179,13 @@ public class ProvisionalBookingIT extends AbstractIT {
         databaseSeeder.insertCourtSchedule(session1);
         databaseSeeder.insertCourtSchedule(session2);
 
-        // ---------- pick: POST /provisionalBooking with TWO sessions ----------
-        final String payload = getPayload("courtscheduler.create.provisional.booking.two-slots.json")
+        // ---------- pick: POST /unconfirmedBooking with TWO sessions ----------
+        final String payload = getPayload("courtscheduler.create.unconfirmed.booking.two-slots.json")
                 .replace("COURTSCHEDULER_ID_1", courtScheduleId1)
                 .replace("COURTSCHEDULER_ID_2", courtScheduleId2);
 
         final Response bookResponse = postCommand(RELATIVE_PATH,
-                "application/vnd.courtscheduler.create.provisional.booking+json", SYSTEM_USER_ID, payload);
+                "application/vnd.courtscheduler.create.unconfirmed.booking+json", SYSTEM_USER_ID, payload);
 
         assertThat(bookResponse.getStatus(), is(OK.getStatusCode()));
         final String bookingId = new JSONObject(bookResponse.readEntity(String.class)).getString("bookingId");
@@ -378,7 +378,7 @@ public class ProvisionalBookingIT extends AbstractIT {
     }
 
     /**
-     * Task 5: {@code POST /provisionalBooking} now goes through {@code ReservationService.reserve},
+     * Task 5: {@code POST /unconfirmedBooking} now goes through {@code ReservationService.reserve},
      * which (a) filters sessions on {@code isActive} — 404s otherwise, (b) calls
      * {@code session.getSessionDate().toString()} directly — NPEs on a null session date, and
      * (c) runs the real capacity-decrementing {@code saveBookedSlots} pipeline. A plain
@@ -400,12 +400,12 @@ public class ProvisionalBookingIT extends AbstractIT {
     }
 
     /**
-     * Picks one session for the first time: {@code POST /provisionalBooking} with a single
+     * Picks one session for the first time: {@code POST /unconfirmedBooking} with a single
      * {@code provisionalSlots} entry and no {@code bookingId}, so the server mints one. Reuses the
      * single-session fixture as-is (it already fits one session).
      */
     private String reserveOneSession(final String courtScheduleId) {
-        final String payload = getPayload("courtscheduler.create.provisional.booking.json")
+        final String payload = getPayload("courtscheduler.create.unconfirmed.booking.json")
                 .replace("COURTSCHEDULER_ID", courtScheduleId);
         return postReserveOneSession(payload);
     }
@@ -417,7 +417,7 @@ public class ProvisionalBookingIT extends AbstractIT {
      * added onto the parsed JSON instead of hand-building the whole payload.
      */
     private String reserveOneSession(final String courtScheduleId, final String bookingId) {
-        final String payload = new JSONObject(getPayload("courtscheduler.create.provisional.booking.json")
+        final String payload = new JSONObject(getPayload("courtscheduler.create.unconfirmed.booking.json")
                 .replace("COURTSCHEDULER_ID", courtScheduleId))
                 .put("bookingId", bookingId)
                 .toString();
@@ -426,7 +426,7 @@ public class ProvisionalBookingIT extends AbstractIT {
 
     private String postReserveOneSession(final String payload) {
         final Response response = postCommand(RELATIVE_PATH,
-                "application/vnd.courtscheduler.create.provisional.booking+json", SYSTEM_USER_ID, payload);
+                "application/vnd.courtscheduler.create.unconfirmed.booking+json", SYSTEM_USER_ID, payload);
         final String body = response.readEntity(String.class);
         assertThat("the pick must succeed: " + body, response.getStatus(), is(OK.getStatusCode()));
         return new JSONObject(body).getString("bookingId");
@@ -451,11 +451,11 @@ public class ProvisionalBookingIT extends AbstractIT {
     }
 
     /**
-     * {@code GET /provisionalBooking/status?bookingIds=<id>} (NEW-7a pre-share gate). Returns the
+     * {@code GET /unconfirmedBooking/status?bookingIds=<id>} (NEW-7a pre-share gate). Returns the
      * single {@code bookings[0].status} for the one id queried.
      */
     private String bookingStatusOf(final String bookingId) {
-        final RequestParams params = getRequestParams("/provisionalBooking/status",
+        final RequestParams params = getRequestParams("/unconfirmedBooking/status",
                 "application/vnd.courtscheduler.get.booking-status+json", SYSTEM_USER_ID,
                 Map.of("bookingIds", bookingId));
         final Response response = getCommand(params);

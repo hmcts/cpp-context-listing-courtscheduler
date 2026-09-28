@@ -242,19 +242,19 @@ rule "API - Action - courtscheduler.list.hearings-in-sessions"
     $outcome.setSuccess(true);
 end
 
-rule "API - Action - courtscheduler.create.provisional.booking"
+rule "API - Action - courtscheduler.create.unconfirmed.booking"
   when
     $outcome: Outcome();
-    $action: Action(name == "courtscheduler.create.provisional.booking");
+    $action: Action(name == "courtscheduler.create.unconfirmed.booking");
         eval(userAndGroupProvider.isMemberOfAnyOfTheSuppliedGroups($action, SecurityGroupConstants.systemUserRoles()));
   then
     $outcome.setSuccess(true);
 end
 
-rule "API - Action - courtscheduler.get.provisional.booking"
+rule "API - Action - courtscheduler.get.unconfirmed.booking"
   when
     $outcome: Outcome();
-    $action: Action(name == "courtscheduler.get.provisional.booking");
+    $action: Action(name == "courtscheduler.get.unconfirmed.booking");
         eval(userAndGroupProvider.isMemberOfAnyOfTheSuppliedGroups($action, SecurityGroupConstants.systemUserRoles()));
   then
     $outcome.setSuccess(true);

@@ -472,32 +472,32 @@ protocols: [ HTTP, HTTPS ]
           session and courtroom; only the tail days are booked (into the request's courtRoomId when
           supplied) or released.
 
-/provisionalBooking:
+/unconfirmedBooking:
   post:
     description:  |
       You can book slot provisionally by giving corresponding courtScheduleId(s) inside request body
       ...
         (mapping):
-            requestType: application/vnd.courtscheduler.create.provisional.booking+json
-            name: courtscheduler.create.provisional.booking
+            requestType: application/vnd.courtscheduler.create.unconfirmed.booking+json
+            name: courtscheduler.create.unconfirmed.booking
       ...
     body:
-      application/vnd.courtscheduler.create.provisional.booking+json:
-        schema:  !include json/schema/courtscheduler.create.provisional.booking.json
-        example:  !include json/courtscheduler.create.provisional.booking.json
+      application/vnd.courtscheduler.create.unconfirmed.booking+json:
+        schema:  !include json/schema/courtscheduler.create.unconfirmed.booking.json
+        example:  !include json/courtscheduler.create.unconfirmed.booking.json
     responses:
       200:
         body:
-          example: !include json/courtscheduler.create.provisional.booking.response.json
-          schema:  !include json/schema/courtscheduler.create.provisional.booking.response.json
+          example: !include json/courtscheduler.create.unconfirmed.booking.response.json
+          schema:  !include json/schema/courtscheduler.create.unconfirmed.booking.response.json
 
   get:
     description:  |
       Query via parameters
       ...
         (mapping):
-            responseType: application/vnd.courtscheduler.get.provisional.booking+json
-            name: courtscheduler.get.provisional.booking
+            responseType: application/vnd.courtscheduler.get.unconfirmed.booking+json
+            name: courtscheduler.get.unconfirmed.booking
       ...
     queryParameters:
       bookingIds:
@@ -507,11 +507,11 @@ protocols: [ HTTP, HTTPS ]
     responses:
       200:
         body:
-          application/vnd.courtscheduler.get.provisional.booking+json:
-            example: !include json/courtscheduler.get.provisional.booking.json
-            schema:  !include json/schema/courtscheduler.get.provisional.booking.json
+          application/vnd.courtscheduler.get.unconfirmed.booking+json:
+            example: !include json/courtscheduler.get.unconfirmed.booking.json
+            schema:  !include json/schema/courtscheduler.get.unconfirmed.booking.json
 
-/provisionalBooking/status:
+/unconfirmedBooking/status:
   get:
     description:  |
       Reports, for each booking id, whether the draft that carries it is still safe to share, and

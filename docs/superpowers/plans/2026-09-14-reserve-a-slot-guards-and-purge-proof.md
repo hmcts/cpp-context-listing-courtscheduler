@@ -41,7 +41,7 @@ BUG-1 was precisely a purge that deleted the row and left the capacity consumed.
 Keep the existing test's two-row shape — one expired, one not — because the not-expired row is what proves the purge is selective. Change how they are created:
 
 1. Seed a court schedule with **pinned** capacity (do not rely on `RANDOM`): slot-based, active, `availableSlots` and `maxSlots` both set to a known value such as 5, a future `sessionDate`. `createTestCourtSchedule()` at line 3654 pins some fields but leaves capacity to `RANDOM` — pin it explicitly in your test or in a small local helper, and say which you did.
-2. Create **two separate reservations** on that session by calling `POST /provisionalBooking` twice (media type `application/vnd.courtscheduler.create.provisional.booking+json`), capturing each returned `bookingId`. Two calls, not one with two slots — they must be independent bookings so one can expire while the other does not.
+2. Create **two separate reservations** on that session by calling `POST /unconfirmedBooking` twice (media type `application/vnd.courtscheduler.create.unconfirmed.booking+json`), capturing each returned `bookingId`. Two calls, not one with two slots — they must be independent bookings so one can expire while the other does not.
 3. Assert capacity has actually dropped by two before you purge. If it has not, the reservation did not go through the real pipeline and the rest of the test is meaningless — assert this explicitly with a message saying so.
 4. Age **one** of them with `databaseSeeder.updateAllocatedListingExpiresAt(<its row id>, LocalDate.now().minusDays(1))`. Find the row id by reading `databaseReader.allocatedListings()` and matching on `hearingId` equal to that bookingId — a reservation's `hearing_id` is its bookingId.
 5. Leave the other at its natural expiry (today). The existing test's comment explains why "not yet expired" needs a **future** date to exercise the not-purged branch, since the cutoff is a date and a today-dated expiry survives until the day rolls over. Preserve that reasoning — set the survivor to `plusDays(1)` as the current test does.
@@ -50,7 +50,7 @@ Keep the existing test's two-row shape — one expired, one not — because the 
    - **`availableSlots` is back up by exactly one** — the purged reservation's slot returned, the surviving reservation's did not
    - assert the exact number, not a direction: a message like `"the purge deleted the row without restoring its slot — this is BUG-1"` on the capacity assertion.
 
-Keep the existing comment about the date-based cutoff. Add a short Javadoc saying why the reservations are made through `POST /provisionalBooking` rather than seeded, and naming BUG-1 — otherwise someone will "simplify" it back to direct seeding and silently remove the guard.
+Keep the existing comment about the date-based cutoff. Add a short Javadoc saying why the reservations are made through `POST /unconfirmedBooking` rather than seeded, and naming BUG-1 — otherwise someone will "simplify" it back to direct seeding and silently remove the guard.
 
 - [ ] **Step 2: Run it**
 

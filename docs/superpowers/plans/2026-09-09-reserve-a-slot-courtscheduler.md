@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Make courtscheduler hold real, expiring capacity when a clerk picks a court session, reusing the existing `/provisionalBooking` endpoints, and fix two defects in the merged LPT-2432/2433 work.
+**Goal:** Make courtscheduler hold real, expiring capacity when a clerk picks a court session, reusing the existing `/unconfirmedBooking` endpoints, and fix two defects in the merged LPT-2432/2433 work.
 
-**Architecture:** A reservation is an `allocated_listings` row written through the normal `saveBookedSlots` pipeline (so `court_schedule.available_slots` / `available_duration` is genuinely decremented) with `expires_at` set and `source = RESERVED_UNCONFIRMED`. Its `hearing_id` is the minted `bookingId`. `POST /provisionalBooking` creates reservations instead of `provisional_booking` rows; `GET /provisionalBooking` reads them back, falling back to legacy `provisional_booking` rows for drafts saved before go-live; confirmation at share releases the reservation and books under the real hearing id.
+**Architecture:** A reservation is an `allocated_listings` row written through the normal `saveBookedSlots` pipeline (so `court_schedule.available_slots` / `available_duration` is genuinely decremented) with `expires_at` set and `source = RESERVED_UNCONFIRMED`. Its `hearing_id` is the minted `bookingId`. `POST /unconfirmedBooking` creates reservations instead of `provisional_booking` rows; `GET /unconfirmedBooking` reads them back, falling back to legacy `provisional_booking` rows for drafts saved before go-live; confirmation at share releases the reservation and books under the real hearing id.
 
 **Tech Stack:** Java 17, Spring Boot, Gradle, JPA/Hibernate, PostgreSQL, JUnit 5, Mockito, Hamcrest.
 
@@ -22,7 +22,7 @@
 - Every release must treat "no reservation found" as a **no-op, not an error** — legacy magistrates drafts have no reservation.
 - `provisional_booking` is **read-only legacy** after this plan. No new rows are written to it. Existing rows must keep resolving indefinitely (drafts have no TTL).
 - Multi-slot reservation is **all-or-nothing**. A partial hold is a defect.
-- Do not change the path or media type of `/provisionalBooking`. Consumers (cpp-context-hearing, cpp-context-listing) call it directly over HTTP and must not need redeploying in lockstep.
+- Do not change the path or media type of `/unconfirmedBooking`. Consumers (cpp-context-hearing, cpp-context-listing) call it directly over HTTP and must not need redeploying in lockstep.
 
 **Build and test commands**
 
@@ -574,8 +574,8 @@ This task is contract-only: no behaviour change yet, so it can ship ahead of the
 
 **Files:**
 - Modify: `listingcourtscheduler-domain/src/main/java/uk/gov/moj/cpp/courtscheduler/domain/ProvisionalSlot.java`
-- Modify: `listingcourtscheduler-api/src/raml/json/schema/courtscheduler.create.provisional.booking.json`
-- Modify: `listingcourtscheduler-api/src/raml/json/courtscheduler.create.provisional.booking.json`
+- Modify: `listingcourtscheduler-api/src/raml/json/schema/courtscheduler.create.unconfirmed.booking.json`
+- Modify: `listingcourtscheduler-api/src/raml/json/courtscheduler.create.unconfirmed.booking.json`
 - Modify: `listingcourtscheduler-api/src/main/resources/openapi/courtscheduler-api.openapi.yml`
 - Test: `listingcourtscheduler-domain/src/test/java/uk/gov/moj/cpp/courtscheduler/domain/ProvisionalSlotTest.java`
 
@@ -653,7 +653,7 @@ and in `ProvisionalSlotBuilder`, the field, the `withDuration` method, and `prov
 
 - [ ] **Step 4: Add `duration` to the request schema**
 
-In `src/raml/json/schema/courtscheduler.create.provisional.booking.json`, inside the `provisionalSlots` item `properties`:
+In `src/raml/json/schema/courtscheduler.create.unconfirmed.booking.json`, inside the `provisionalSlots` item `properties`:
 
 ```json
           "duration": {
@@ -666,7 +666,7 @@ Leave it out of `required` — omitted means "slot-based session, no duration ne
 
 - [ ] **Step 5: Add it to the example and the OpenAPI spec**
 
-In `src/raml/json/courtscheduler.create.provisional.booking.json`, add `"duration": 60` to each slot. Mirror the same optional integer property in the request schema inside `openapi/courtscheduler-api.openapi.yml`.
+In `src/raml/json/courtscheduler.create.unconfirmed.booking.json`, add `"duration": 60` to each slot. Mirror the same optional integer property in the request schema inside `openapi/courtscheduler-api.openapi.yml`.
 
 - [ ] **Step 6: Run the tests**
 
@@ -856,7 +856,7 @@ Expected: PASS.
 git add listingcourtscheduler-api
 git commit -m "feat: provisional booking now creates capacity-holding reservations
 
-POST /provisionalBooking reserves each session through ReservationService
+POST /unconfirmedBooking reserves each session through ReservationService
 instead of inserting a provisional_booking row. All-or-nothing: any slot that
 cannot be held rolls the whole booking back and returns 409."
 ```
@@ -997,7 +997,7 @@ Expected: PASS.
 git add listingcourtscheduler-api
 git commit -m "feat: resolve booking ids from reservations, falling back to legacy rows
 
-GET /provisionalBooking now reads allocated_listings reservations. Booking ids
+GET /unconfirmedBooking now reads allocated_listings reservations. Booking ids
 with no reservation fall back to provisional_booking, which pre-go-live
 magistrates drafts still point at. Response shape is unchanged."
 ```
@@ -1121,7 +1121,7 @@ The UI blocks sharing when a hold has expired. Sharing is asynchronous, so the c
 
 **Interfaces:**
 - Consumes: `AllocatedListingRepository.findByHearingId(String)`; the legacy fallback from Task 6.
-- Produces: `ProvisionalBookingService.getBookingStatus(String bookingIds)` → `JsonObject` of shape `{"bookings":[{"bookingId":"...","live":true}]}`, served at `GET /provisionalBooking/status?bookingIds=`.
+- Produces: `ProvisionalBookingService.getBookingStatus(String bookingIds)` → `JsonObject` of shape `{"bookings":[{"bookingId":"...","live":true}]}`, served at `GET /unconfirmedBooking/status?bookingIds=`.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -1199,10 +1199,10 @@ Expected: FAIL — `getBookingStatus` does not exist.
 
 - [ ] **Step 4: Expose it**
 
-Add to `src/raml/courtscheduler-api.raml`, immediately after the existing `/provisionalBooking` block:
+Add to `src/raml/courtscheduler-api.raml`, immediately after the existing `/unconfirmedBooking` block:
 
 ```yaml
-/provisionalBooking/status:
+/unconfirmedBooking/status:
   get:
     description:  |
       Reports whether each booking id still has a hold behind it — a reservation, or a legacy
@@ -1263,7 +1263,7 @@ Add to `src/raml/courtscheduler-api.raml`, immediately after the existing `/prov
 Add the handler to `CourtSchedulerApi` beside `getProvisionalBooking`:
 
 ```java
-    /** GET /provisionalBooking/status — is each booking id still held? */
+    /** GET /unconfirmedBooking/status — is each booking id still held? */
     @Override
     public ResponseEntity<Map<String, Object>> getBookingStatus(final String bookingIds) {
         LOG.info("courtscheduler.get.booking-status bookingIds={}", Encode.forJava(bookingIds));
@@ -1289,7 +1289,7 @@ Expected: PASS.
 git add -A
 git commit -m "feat: expose a live-reservation check for the pre-share gate
 
-GET /provisionalBooking/status?bookingIds= reports whether each booking still
+GET /unconfirmedBooking/status?bookingIds= reports whether each booking still
 has a hold. Legacy provisional_booking rows count as live so pre-go-live
 magistrates drafts are not blocked at share."
 ```

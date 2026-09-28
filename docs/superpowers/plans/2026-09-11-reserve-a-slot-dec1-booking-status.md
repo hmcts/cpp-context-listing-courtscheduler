@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Make `GET /provisionalBooking/status` distinguish *"the hold expired"* from *"this draft was already shared"*, so the pre-share gate stops blocking a legitimate re-share.
+**Goal:** Make `GET /unconfirmedBooking/status` distinguish *"the hold expired"* from *"this draft was already shared"*, so the pre-share gate stops blocking a legitimate re-share.
 
 **Architecture:** No new table, no tombstone, no new query path. `allocated_listings.booking_id` already carries the answer, and since BUG-3 the confirmed row written at share time is stamped with it. A reservation row and a confirmed row are structurally disjoint — the reservation puts the bookingId in `hearing_id` and leaves `booking_id` NULL; the confirmed row puts the real hearing id in `hearing_id` and the bookingId in `booking_id` — so one derived finder, `findByBookingId`, returns confirmed rows and nothing else. `hasLiveHold` grows from a two-way boolean into a four-way status.
 
@@ -67,7 +67,7 @@ Keeping `live` and adding `status` beside it would leave a field in the response
 - Modify: `listingcourtscheduler-api/src/main/java/uk/gov/moj/cpp/courtscheduler/api/service/ProvisionalBookingService.java:103-156`
 - Modify: `listingcourtscheduler-api/src/raml/json/courtscheduler.get.booking-status.json`
 - Modify: `listingcourtscheduler-api/src/raml/json/schema/courtscheduler.get.booking-status.json`
-- Modify: `listingcourtscheduler-api/src/raml/courtscheduler-api.raml` (the `/provisionalBooking/status` description block only)
+- Modify: `listingcourtscheduler-api/src/raml/courtscheduler-api.raml` (the `/unconfirmedBooking/status` description block only)
 - Test: `listingcourtscheduler-api/src/test/java/uk/gov/moj/cpp/courtscheduler/api/service/ProvisionalBookingServiceTest.java`
 
 **Interfaces:**
@@ -333,7 +333,7 @@ Expected: PASS, all five status tests plus every pre-existing test in the class.
 }
 ```
 
-In `courtscheduler-api.raml`, replace the `/provisionalBooking/status` `description` text (around line 516) with:
+In `courtscheduler-api.raml`, replace the `/unconfirmedBooking/status` `description` text (around line 516) with:
 
 ```
       Reports, for each booking id, whether the draft that carries it is still safe to share, and

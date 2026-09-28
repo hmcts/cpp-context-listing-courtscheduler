@@ -399,23 +399,23 @@ Supports complex filtering:
 
 ### Provisional Booking Endpoints
 
-#### POST `/provisionalBooking`
+#### POST `/unconfirmedBooking`
 **Purpose:** Create provisional booking
 
-**Request:** `application/vnd.courtscheduler.create.provisional.booking+json`
+**Request:** `application/vnd.courtscheduler.create.unconfirmed.booking+json`
 
 **Key Fields:**
 - `courtScheduleIds`: Array of court schedule IDs to book provisionally
 
 **Response:** Provisional booking details with booking IDs
 
-#### GET `/provisionalBooking`
+#### GET `/unconfirmedBooking`
 **Purpose:** Get provisional booking details
 
 **Query Parameters:**
 - `bookingIds`: Comma-separated booking IDs
 
-**Response:** `application/vnd.courtscheduler.get.provisional.booking+json`
+**Response:** `application/vnd.courtscheduler.get.unconfirmed.booking+json`
 
 ### Management Information (MI) Endpoints
 

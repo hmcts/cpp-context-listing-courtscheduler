@@ -43,8 +43,8 @@ Today, re-picking for magistrates writes fresh `provisional_booking` rows under 
 | `listingcourtscheduler-domain/src/main/java/uk/gov/moj/cpp/courtscheduler/domain/ProvisionalBookingSlots.java` | **Modify** — add `replacesBookingId` field + accessors |
 | `listingcourtscheduler-api/src/main/java/uk/gov/moj/cpp/courtscheduler/api/service/ReservationService.java` | **Modify** — 3-arg `reserveAll` overload that releases first |
 | `listingcourtscheduler-api/src/main/java/uk/gov/moj/cpp/courtscheduler/api/service/ProvisionalBookingService.java` | **Modify** — one line, pass the field through |
-| `listingcourtscheduler-api/src/raml/json/courtscheduler.create.provisional.booking.json` | **Modify** — example |
-| `listingcourtscheduler-api/src/raml/json/schema/courtscheduler.create.provisional.booking.json` | **Modify** — optional property |
+| `listingcourtscheduler-api/src/raml/json/courtscheduler.create.unconfirmed.booking.json` | **Modify** — example |
+| `listingcourtscheduler-api/src/raml/json/schema/courtscheduler.create.unconfirmed.booking.json` | **Modify** — optional property |
 | `listingcourtscheduler-api/src/test/java/uk/gov/moj/cpp/courtscheduler/api/service/ReservationServiceTest.java` | **Modify** — 4 new tests |
 
 **Task 2 — cpp-context-hearing (Maven), branch `team/ccsph2`**
@@ -243,7 +243,7 @@ Expected: PASS, including every pre-existing test in both classes. `ProvisionalB
 
 - [ ] **Step 5: Update the API spec and build**
 
-`courtscheduler.create.provisional.booking.json` (example) — add the new field above `provisionalSlots`:
+`courtscheduler.create.unconfirmed.booking.json` (example) — add the new field above `provisionalSlots`:
 
 ```json
 {
@@ -263,7 +263,7 @@ Expected: PASS, including every pre-existing test in both classes. `ProvisionalB
 }
 ```
 
-`schema/courtscheduler.create.provisional.booking.json` — add the property as a sibling of `provisionalSlots`, inside the top-level `properties` object. Do **not** add it to any `required` list:
+`schema/courtscheduler.create.unconfirmed.booking.json` — add the property as a sibling of `provisionalSlots`, inside the top-level `properties` object. Do **not** add it to any `required` list:
 
 ```json
     "replacesBookingId": {
@@ -289,7 +289,7 @@ Expected: `BUILD SUCCESSFUL`.
 **Files:** as listed above for Task 2. **This repo is Maven.**
 
 **Interfaces:**
-- Produces: the `POST /provisionalBooking` body gains a top-level `replacesBookingId` string when, and only when, the command carried one. Task 1 is the consumer and is already built — the field name must match it exactly.
+- Produces: the `POST /unconfirmedBooking` body gains a top-level `replacesBookingId` string when, and only when, the command carried one. Task 1 is the consumer and is already built — the field name must match it exactly.
 - Consumes: nothing new.
 
 **Read first.** Open `BookProvisionalHearingSlots.java` and read `addSlotInfoFromMap` and its comment about event replay rebuilding slots field by field. **That hazard does not apply here** — `replacesBookingId` is a top-level field handled by the `@JsonCreator` constructor, not one of the map-reconstructed slot fields. Add it as a constructor parameter with its own `@JsonProperty`, exactly as `bookingType` and `priority` already are, and it replays correctly.
