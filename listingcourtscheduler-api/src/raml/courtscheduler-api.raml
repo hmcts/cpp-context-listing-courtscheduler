@@ -519,9 +519,13 @@ protocols: [ HTTP, HTTPS ]
       because sharing itself is asynchronous.
 
       status is RESERVED (a reservation still holds capacity), SHARED (already shared — the
-      confirmed row carries this booking id), LEGACY (a draft saved before reserve-a-slot
-      shipped), or NONE (the hold expired and was purged). safeToShare is status != NONE, so a
-      re-share of an already-shared result is not blocked.
+      confirmed row carries this booking id), or NONE (no row under this booking id in either
+      shape, so there is no hold). safeToShare is status != NONE, so a re-share of an
+      already-shared result is not blocked.
+
+      LEGACY was removed: it was returned when only a row in the deprecated provisional_booking
+      table existed. That row proves a booking was once recorded, never that a session is still
+      held, so answering "safe" waved through the oldest and most likely stale drafts.
       ...
         (mapping):
             responseType: application/vnd.courtscheduler.get.booking-status+json

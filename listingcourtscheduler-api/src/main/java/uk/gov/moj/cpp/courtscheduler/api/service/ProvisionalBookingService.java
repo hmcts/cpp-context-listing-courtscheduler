@@ -37,7 +37,6 @@ public class ProvisionalBookingService {
     private static final String SAFE_TO_SHARE = "safeToShare";
     private static final String STATUS_RESERVED = "RESERVED";
     private static final String STATUS_SHARED = "SHARED";
-    private static final String STATUS_LEGACY = "LEGACY";
     private static final String STATUS_NONE = "NONE";
     @Inject
     private ProvisionalBookingRepository provisionalBookingRepository;
@@ -179,12 +178,15 @@ public class ProvisionalBookingService {
         if (!rows.isEmpty()) {
             return STATUS_SHARED;
         }
-        // Drafts saved before reserve-a-slot shipped. findByBookingIdIn does not filter on the
-        // active flag, so a soft-deleted row still answers — which is what we want: a legacy
-        // draft is safe to share whether or not it already was.
-        if (!provisionalBookingRepository.findByBookingIdIn(List.of(bookingId)).isEmpty()) {
-            return STATUS_LEGACY;
-        }
+        // No row under this booking id, in either shape, so there is no hold to share against.
+        //
+        // This used to fall back to the legacy provisional_booking table and answer LEGACY,
+        // on the grounds that a pre-reserve-a-slot draft never had a reservation and so should
+        // not be reported as expired. That fallback is gone deliberately: a provisional_booking
+        // row proves only that a booking was once recorded, never that a session is still held.
+        // Answering LEGACY therefore waved through exactly the drafts most likely to be stale -
+        // the oldest ones - which is the opposite of what the gate is for. Absence of an
+        // unconfirmed booking now means what it says: the hold is gone, so re-pick.
         return STATUS_NONE;
     }
 
