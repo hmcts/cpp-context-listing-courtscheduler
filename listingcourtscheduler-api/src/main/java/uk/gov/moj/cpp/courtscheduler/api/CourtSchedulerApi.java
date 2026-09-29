@@ -618,13 +618,29 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
         return ResponseEntity.ok(toResponseMap(response));
     }
 
+    /**
+     * courtCentreId/courtRoomId/jurisdiction/startTime/endTime mirror main's contract (the review
+     * artifact this reconciles); courtScheduleId is an additive CROWN payback anchor main has no
+     * equivalent for (main's CROWN never reaches this endpoint). startTime/endTime are absolute UTC
+     * instants: only their DATES drive the [startDate, endDate] span booked here — court-schedule
+     * sessions in this service are booked per day, not per time-slot, so the time-of-day is not
+     * otherwise matched.
+     */
     private ResponseEntity<Map<String, Object>> moveHearingToPastDate(final String hearingId, final JsonObject payload) {
+        final String startTimeRaw = getStringOrNull(payload, "startTime");
+        final String endTimeRaw = getStringOrNull(payload, "endTime");
+        final java.time.LocalDate startDate = startTimeRaw == null ? null
+                : java.time.ZonedDateTime.parse(startTimeRaw).toLocalDate();
+        final java.time.LocalDate endDate = endTimeRaw == null ? null
+                : java.time.ZonedDateTime.parse(endTimeRaw).toLocalDate();
+
         final MoveHearingToPastDateRequest moveRequest = new MoveHearingToPastDateRequest()
                 .setHearingId(hearingId)
                 .setCourtCentreId(getStringOrNull(payload, "courtCentreId"))
+                .setCourtRoomId(getStringOrNull(payload, "courtRoomId"))
                 .setJurisdiction(getStringOrNull(payload, "jurisdiction"))
-                .setStartDate(getDateOrNull(payload, "startDate"))
-                .setEndDate(getDateOrNull(payload, "endDate"))
+                .setStartDate(startDate)
+                .setEndDate(endDate)
                 .setDurationInMinutes(payload.containsKey("durationInMinutes") ? payload.getInt("durationInMinutes") : 0)
                 .setCourtScheduleId(getStringOrNull(payload, "courtScheduleId"));
 
