@@ -7,53 +7,53 @@ import org.junit.platform.launcher.TestExecutionListener;
 import org.junit.platform.launcher.TestIdentifier;
 import org.junit.platform.launcher.TestPlan;
 
-public class TestDurationExtension implements TestWatcher, TestExecutionListener {
-    private final TestDurationListener listener = new TestDurationListener();
+public class DurationTrackingExtension implements TestWatcher, TestExecutionListener {
+    private final DurationTrackingListener listener = new DurationTrackingListener();
     private static final boolean ENABLED = Boolean.getBoolean("enable.test.duration.tracking");
 
     @Override
-    public void testPlanExecutionStarted(TestPlan testPlan) {
+    public void testPlanExecutionStarted(final TestPlan testPlan) {
         if (ENABLED) {
             listener.testPlanExecutionStarted(testPlan);
         }
     }
 
     @Override
-    public void testPlanExecutionFinished(TestPlan testPlan) {
+    public void testPlanExecutionFinished(final TestPlan testPlan) {
         if (ENABLED) {
             listener.testPlanExecutionFinished(testPlan);
         }
     }
 
     @Override
-    public void executionStarted(TestIdentifier testIdentifier) {
+    public void executionStarted(final TestIdentifier testIdentifier) {
         if (ENABLED) {
             listener.executionStarted(testIdentifier);
         }
     }
 
     @Override
-    public void executionFinished(TestIdentifier testIdentifier, TestExecutionResult testExecutionResult) {
+    public void executionFinished(final TestIdentifier testIdentifier, final TestExecutionResult testExecutionResult) {
         if (ENABLED) {
             listener.executionFinished(testIdentifier, testExecutionResult);
         }
     }
 
     @Override
-    public void testSuccessful(ExtensionContext context) {
-        // Test was successful, no need to do anything as the TestDurationListener
+    public void testSuccessful(final ExtensionContext context) {
+        // Test was successful, no need to do anything as the DurationTrackingListener
         // already handles recording test durations through its TestExecutionListener methods
     }
 
     @Override
-    public void testFailed(ExtensionContext context, Throwable cause) {
-        // Test failed, no need to do anything as the TestDurationListener
+    public void testFailed(final ExtensionContext context, final Throwable cause) {
+        // Test failed, no need to do anything as the DurationTrackingListener
         // already handles recording test durations through its TestExecutionListener methods
     }
 
     @Override
-    public void testAborted(ExtensionContext context, Throwable cause) {
-        // Test was aborted, no need to do anything as the TestDurationListener
+    public void testAborted(final ExtensionContext context, final Throwable cause) {
+        // Test was aborted, no need to do anything as the DurationTrackingListener
         // already handles recording test durations through its TestExecutionListener methods
     }
 } 

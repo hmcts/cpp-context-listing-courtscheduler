@@ -106,7 +106,7 @@ class NewRotaFileProcessorIT extends AbstractIT {
 
     private final AzureBlobClientService azureBlobClientService = new AzureBlobClientService();
     private LocalDateTime maxCreatedOnForCourtScheduleJudiciary;
-    private static final List<String> filesToBeDeletedFromOutputContainer = new ArrayList<>();
+    private static final List<String> FILES_TO_BE_DELETED_FROM_OUTPUT_CONTAINER = new ArrayList<>();
 
 
     @BeforeEach
@@ -116,7 +116,6 @@ class NewRotaFileProcessorIT extends AbstractIT {
         setField(azureBlobClientService, "rotaslInputContainerName", AZURE_BLOB_INPUT_CONTAINER_NAME);
         setField(azureBlobClientService, "rotaslArchiveContainerName", AZURE_BLOB_INPUT_CONTAINER_NAME);
         setField(azureBlobClientService, "storageApplicationParameters", storageApplicationParameters);
-        maxCreatedOnForCourtScheduleJudiciary = null;
         
         // Override stubs to use updated files for NewRotaFileProcessorIT
         stubGetReferenceDataJudiciaries(UPDATED_JUDICIARIES_FILE);
@@ -125,7 +124,7 @@ class NewRotaFileProcessorIT extends AbstractIT {
 
     @AfterEach
     void tearDown() {
-        filesToBeDeletedFromOutputContainer.forEach(fileToBeDeleted -> 
+        FILES_TO_BE_DELETED_FROM_OUTPUT_CONTAINER.forEach(fileToBeDeleted -> 
                 azureBlobClientService.deleteFile(fileToBeDeleted, of(AZURE_BLOB_OUTPUT_CONTAINER_NAME)));
     }
 
@@ -136,7 +135,7 @@ class NewRotaFileProcessorIT extends AbstractIT {
         
         // First run: process with old flow
         logger.info("Processing first rota file: {}", BEDFORD_SHIRE_MASTER_FILE_BASE_NAME);
-        processFullRotaFile(ROTA_FILE_PROCESSOR_REQUEST_OLD,
+        verifyFullRotaFileProcessed(ROTA_FILE_PROCESSOR_REQUEST_OLD,
                 expectedSchedules, expectedJudiciaries);
         validateRunResults("First run", expectedSchedules, expectedJudiciaries);
         
@@ -145,7 +144,7 @@ class NewRotaFileProcessorIT extends AbstractIT {
         
         // Second run: process with new flow
         logger.info("Processing second rota file: {}", BEDFORD_SHIRE_MASTER_FILE_BASE_NAME);
-        processFullRotaFile(ROTA_FILE_PROCESSOR_REQUEST_NEW,
+        verifyFullRotaFileProcessed(ROTA_FILE_PROCESSOR_REQUEST_NEW,
                 expectedSchedules, expectedJudiciaries);
         validateRunResults("Second run", expectedSchedules, expectedJudiciaries);
     }
@@ -158,7 +157,7 @@ class NewRotaFileProcessorIT extends AbstractIT {
         
         // First run: process with old flow
         logger.info("Processing first rota file: {}", BEDFORD_SHIRE_MASTER_FILE_BASE_NAME);
-        processFullRotaFile(ROTA_FILE_PROCESSOR_REQUEST_OLD,
+        verifyFullRotaFileProcessed(ROTA_FILE_PROCESSOR_REQUEST_OLD,
                 expectedSchedulesFirstRun, expectedJudiciariesFirstRun);
         validateRunResults("First run", expectedSchedulesFirstRun, expectedJudiciariesFirstRun);
         
@@ -172,13 +171,13 @@ class NewRotaFileProcessorIT extends AbstractIT {
         
         // Second run: process with new flow
         logger.info("Processing second rota file: {}", BEDFORD_SHIRE_MASTER_FILE_BASE_NAME);
-        processFullRotaFile(ROTA_FILE_PROCESSOR_REQUEST_NEW,
+        verifyFullRotaFileProcessed(ROTA_FILE_PROCESSOR_REQUEST_NEW,
                 expectedTotalSchedules, expectedJudiciariesSecondRun);
         validateRunResults("Second run", expectedTotalSchedules, expectedJudiciariesSecondRun);
     }
 
 
-    private void processFullRotaFile(final String payloadFileName,
+    private void verifyFullRotaFileProcessed(final String payloadFileName,
                                      final int expectedNumberOfSlots, final int expectedNumberOfJudiciaries) throws IOException, SQLException {
         final Stopwatch stopwatch = Stopwatch.createStarted();
         final String finalMasterRotaFileName = uploadRotaFile();
@@ -196,14 +195,14 @@ class NewRotaFileProcessorIT extends AbstractIT {
         
         final List<CourtSchedule> courtScheduleEntities = databaseReader.courtSchedules();
         assertDefaultStartTimeAndEndTime(courtScheduleEntities);
-        filesToBeDeletedFromOutputContainer.add(finalMasterRotaFileName);
+        FILES_TO_BE_DELETED_FROM_OUTPUT_CONTAINER.add(finalMasterRotaFileName);
     }
     
     private String uploadRotaFile() throws IOException {
         final String generatedUniqueFileId = randomUUID().toString().substring(0, 8);
-        final String finalMasterRotaFileName = format("%s_%s.xml", NewRotaFileProcessorIT.BEDFORD_SHIRE_MASTER_FILE_BASE_NAME, generatedUniqueFileId);
-        final String resourcePath = format(ROTAFILEPROCESSOR_RESOURCE_PATH, NewRotaFileProcessorIT.BEDFORD_SHIRE_MASTER_FILE_BASE_NAME);
-        final InputStream rotaFileInputStream = getClass().getClassLoader().getResourceAsStream(resourcePath);
+        final String finalMasterRotaFileName = format("%s_%s.xml", BEDFORD_SHIRE_MASTER_FILE_BASE_NAME, generatedUniqueFileId);
+        final String resourcePath = format(ROTAFILEPROCESSOR_RESOURCE_PATH, BEDFORD_SHIRE_MASTER_FILE_BASE_NAME);
+        final InputStream rotaFileInputStream = Thread.currentThread().getContextClassLoader().getResourceAsStream(resourcePath);
 
         try (rotaFileInputStream) {
             if (isNull(rotaFileInputStream)) {
@@ -320,12 +319,16 @@ class NewRotaFileProcessorIT extends AbstractIT {
     
     private void insertCourtSchedulerMigrationStatus(final List<String> ouCodes) throws SQLException {
         for (final String ouCode : ouCodes) {
-            final CourtSchedulerMigrationStatus courtSchedulerMigrationStatus = new CourtSchedulerMigrationStatus();
-            courtSchedulerMigrationStatus.setOuCode(ouCode);
-            courtSchedulerMigrationStatus.setCourtCentreId("000f36bc-f33a-42ea-8a6c-8103636c5341");
-            courtSchedulerMigrationStatus.setMigrated(false);
-            databaseSeeder.insertCourtScheduleMigrationStatus(courtSchedulerMigrationStatus);
+            databaseSeeder.insertCourtScheduleMigrationStatus(newMigrationStatus(ouCode));
         }
+    }
+
+    private static CourtSchedulerMigrationStatus newMigrationStatus(final String ouCode) {
+        final CourtSchedulerMigrationStatus courtSchedulerMigrationStatus = new CourtSchedulerMigrationStatus();
+        courtSchedulerMigrationStatus.setOuCode(ouCode);
+        courtSchedulerMigrationStatus.setCourtCentreId("000f36bc-f33a-42ea-8a6c-8103636c5341");
+        courtSchedulerMigrationStatus.setMigrated(false);
+        return courtSchedulerMigrationStatus;
     }
     
     private static void assertDefaultStartTimeAndEndTime(final List<CourtSchedule> courtSchedules) {
@@ -358,10 +361,10 @@ class NewRotaFileProcessorIT extends AbstractIT {
             final String position = judiciary.getPosition();
             final String rotaJudiciaryId = judiciary.getRotaJudiciaryId();
             
-            assertTrue(!position.trim().isEmpty(), 
+            assertTrue(!position.isBlank(), 
                     format("%s: position should not be empty for judiciary with courtScheduleId=%s, judiciaryId=%s", 
                             runName, judiciary.getId().getCourtScheduleId(), judiciary.getId().getJudiciaryId()));
-            assertTrue(!rotaJudiciaryId.trim().isEmpty(), 
+            assertTrue(!rotaJudiciaryId.isBlank(), 
                     format("%s: rotaJudiciaryId should not be empty for judiciary with courtScheduleId=%s, judiciaryId=%s", 
                             runName, judiciary.getId().getCourtScheduleId(), judiciary.getId().getJudiciaryId()));
         });

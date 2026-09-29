@@ -28,6 +28,7 @@ import static uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleColumnNa
 import static uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleColumnNames.SESSION_START_TIME;
 import static uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleColumnNames.SUPPORT_AD_SPLIT;
 import static uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleColumnNames.UPDATED_ON;
+import java.io.Serializable;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Objects;
@@ -172,7 +173,10 @@ import org.hibernate.annotations.UpdateTimestamp;
         )
 })
 
-public class CourtSchedule {
+public class CourtSchedule implements Serializable {
+
+    // Serializable because ProvisionalBookingKey (an @Embeddable id, which must be Serializable) references it.
+    private static final long serialVersionUID = 1L;
 
     @Id
     @Column(name = "id", nullable = false)

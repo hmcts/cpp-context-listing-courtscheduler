@@ -42,6 +42,18 @@ import org.junit.jupiter.api.Test;
  * attributes, and idempotency via {@code allocated_listings} inspection.
  */
 class CrownFallbackSearchAndBookIT extends AbstractIT {
+    private static final String HEARINGS = "/hearings/";
+    private static final String C01_CY00 = "C01CY00";
+    private static final String C99_XX00 = "C99XX00";
+    private static final String CROWN_FB_LIST_2 = "CROWN_FB_LIST";
+    private static final String COURT_CENTRE_ID = "courtCentreId";
+    private static final String COURT_ROOM_ID = "courtRoomId";
+    private static final String COURT_SCHEDULE_ID = "courtScheduleId";
+    private static final String DURATION_IN_MINUTES = "durationInMinutes";
+    private static final String HEARING_DATE = "hearingDate";
+    private static final String IS_DRAFT = "isDraft";
+    private static final String SOURCE = "source";
+
 
     private static final String ACCEPT = "application/vnd.courtscheduler.crown.search.and.book+json";
 
@@ -52,14 +64,14 @@ class CrownFallbackSearchAndBookIT extends AbstractIT {
         final String hearingId = UUID.randomUUID().toString();
         final LocalDate date = LocalDate.now().plusDays(14);
 
-        final String sessionId = seedSession(date, roomId, "CR", centreId, "C01CY00", false, false, 360);
+        final String sessionId = seedSession(date, roomId, "CR", centreId, C01_CY00, false, false, 360);
 
-        final Response response = callFallback(hearingId, centreId, roomId, date, 10, "CROWN_FB_LIST");
+        final Response response = callFallback(hearingId, centreId, roomId, date, 10, CROWN_FB_LIST_2);
 
         assertThat(response.getStatus(), is(OK.getStatusCode()));
         final JsonObject body = parse(body(response));
-        assertThat(body.getString("courtScheduleId"), is(sessionId));
-        assertThat(body.getString("source"), is("CROWN_FB_LIST"));
+        assertThat(body.getString(COURT_SCHEDULE_ID), is(sessionId));
+        assertThat(body.getString(SOURCE), is(CROWN_FB_LIST_2));
 
         final List<String> booked = databaseReader.allocatedListings().stream()
                 .filter(al -> hearingId.equals(al.getHearingId()))
@@ -76,14 +88,14 @@ class CrownFallbackSearchAndBookIT extends AbstractIT {
         final String hearingId = UUID.randomUUID().toString();
         final LocalDate date = LocalDate.now().plusDays(14);
 
-        final String draftId = seedSession(date, roomId, "CR", centreId, "C01CY00", true, false, 360);
+        final String draftId = seedSession(date, roomId, "CR", centreId, C01_CY00, true, false, 360);
 
-        final Response response = callFallback(hearingId, centreId, null, date, 10, "CROWN_FB_LIST");
+        final Response response = callFallback(hearingId, centreId, null, date, 10, CROWN_FB_LIST_2);
 
         assertThat(response.getStatus(), is(OK.getStatusCode()));
         final JsonObject body = parse(body(response));
         assertThat("draft session booked when no courtRoomId supplied",
-                body.getString("courtScheduleId"), is(draftId));
+                body.getString(COURT_SCHEDULE_ID), is(draftId));
     }
 
     @Test
@@ -94,7 +106,7 @@ class CrownFallbackSearchAndBookIT extends AbstractIT {
 
         // no seeded sessions AND no ouCode on the request → auto-create has neither a template nor
         // request metadata to build from (SPRDT-1283), so the fallback still exhausts all tiers
-        final Response response = callFallback(hearingId, centreId, null, date, 10, "CROWN_FB_LIST");
+        final Response response = callFallback(hearingId, centreId, null, date, 10, CROWN_FB_LIST_2);
 
         assertThat(response.getStatus(), is(422));
         assertThat(response.readEntity(String.class), containsString("NO_SESSION_FOUND"));
@@ -107,21 +119,21 @@ class CrownFallbackSearchAndBookIT extends AbstractIT {
         final String hearingId = UUID.randomUUID().toString();
         final LocalDate date = LocalDate.now().plusDays(14);
 
-        final String sessionId = seedSession(date, roomId, "CR", centreId, "C01CY00", false, false, 360);
+        final String sessionId = seedSession(date, roomId, "CR", centreId, C01_CY00, false, false, 360);
 
-        final Response first = callFallback(hearingId, centreId, roomId, date, 10, "CROWN_FB_LIST");
+        final Response first = callFallback(hearingId, centreId, roomId, date, 10, CROWN_FB_LIST_2);
         assertThat(first.getStatus(), is(OK.getStatusCode()));
         final JsonObject firstBody = parse(body(first));
-        assertThat("first call returns a courtScheduleId", firstBody.getString("courtScheduleId"), is(sessionId));
+        assertThat("first call returns a courtScheduleId", firstBody.getString(COURT_SCHEDULE_ID), is(sessionId));
         assertThat("first call writes one allocated_listings row",
                 databaseReader.allocatedListings().stream()
                         .filter(al -> hearingId.equals(al.getHearingId())).count(), is(1L));
 
-        final Response second = callFallback(hearingId, centreId, roomId, date, 10, "CROWN_FB_LIST");
+        final Response second = callFallback(hearingId, centreId, roomId, date, 10, CROWN_FB_LIST_2);
         assertThat(second.getStatus(), is(OK.getStatusCode()));
         final JsonObject secondBody = parse(body(second));
         assertThat("idempotent replay returns same courtScheduleId",
-                secondBody.getString("courtScheduleId"), is(sessionId));
+                secondBody.getString(COURT_SCHEDULE_ID), is(sessionId));
         assertThat("no additional row written on replay",
                 databaseReader.allocatedListings().stream()
                         .filter(al -> hearingId.equals(al.getHearingId())).count(), is(1L));
@@ -136,14 +148,14 @@ class CrownFallbackSearchAndBookIT extends AbstractIT {
         final String hearingId = UUID.randomUUID().toString();
         final LocalDate date = LocalDate.now().plusDays(14);
 
-        final String id = seedSession(date, roomId, "UNUSUAL_BT", centreId, "C01CY00", false, false, 360);
+        final String id = seedSession(date, roomId, "UNUSUAL_BT", centreId, C01_CY00, false, false, 360);
 
         final Response response = callFallback(hearingId, centreId, roomId, date, 10, "CROWN_FB_ADJOURN");
 
         assertThat(response.getStatus(), is(OK.getStatusCode()));
         final JsonObject body = parse(body(response));
-        assertThat(body.getString("courtScheduleId"), is(id));
-        assertThat(body.getString("source"), is("CROWN_FB_ADJOURN"));
+        assertThat(body.getString(COURT_SCHEDULE_ID), is(id));
+        assertThat(body.getString(SOURCE), is("CROWN_FB_ADJOURN"));
     }
 
     @Test
@@ -157,13 +169,13 @@ class CrownFallbackSearchAndBookIT extends AbstractIT {
         final String hearingId = UUID.randomUUID().toString();
         final LocalDate date = LocalDate.now().plusDays(14);
 
-        final String sessionId = seedSession(date, roomId, "CR", centreId, "C01CY00", false, false, 5);
+        final String sessionId = seedSession(date, roomId, "CR", centreId, C01_CY00, false, false, 5);
 
-        final Response response = callFallback(hearingId, centreId, roomId, date, 10, "CROWN_FB_LIST");
+        final Response response = callFallback(hearingId, centreId, roomId, date, 10, CROWN_FB_LIST_2);
 
         assertThat(response.getStatus(), is(OK.getStatusCode()));
         final JsonObject body = parse(body(response));
-        assertThat(body.getString("courtScheduleId"), is(sessionId));
+        assertThat(body.getString(COURT_SCHEDULE_ID), is(sessionId));
         assertThat("overbooked flag reports the capacity shortfall", body.getBoolean("overbooked"), is(true));
     }
 
@@ -178,25 +190,25 @@ class CrownFallbackSearchAndBookIT extends AbstractIT {
 
         // Template session at the same centre+room but on a different date: the target date has no
         // session, so the engine must create one, copying only residual metadata from this template.
-        seedSession(date.plusDays(7), roomId, "CR", centreId, "C01CY00", false, false, 300);
+        seedSession(date.plusDays(7), roomId, "CR", centreId, C01_CY00, false, false, 300);
 
         // An afternoon hearing time: the created session must still end at 17:00 (SPRDT-1324), not
         // at start + the 360-minute capacity, which would have put it at 18:30. 17:00 is a
         // Europe/London wall-clock time (16:00 UTC while BST applies), so it is asserted in that zone.
-        final Response response = postCommand("/hearings/" + hearingId, ACCEPT, SYSTEM_USER_ID,
+        final Response response = postCommand(HEARINGS + hearingId, ACCEPT, SYSTEM_USER_ID,
                 Json.createObjectBuilder()
-                        .add("courtCentreId", centreId)
-                        .add("courtRoomId", roomId)
-                        .add("hearingDate", date.toString())
-                        .add("durationInMinutes", 10)
+                        .add(COURT_CENTRE_ID, centreId)
+                        .add(COURT_ROOM_ID, roomId)
+                        .add(HEARING_DATE, date.toString())
+                        .add(DURATION_IN_MINUTES, 10)
                         .add("earliestHearingTime", date + "T12:30:00Z")
-                        .add("source", "CROWN_FB_LIST")
+                        .add(SOURCE, CROWN_FB_LIST_2)
                         .build().toString());
 
         assertThat(response.getStatus(), is(OK.getStatusCode()));
         final JsonObject body = parse(body(response));
-        final String createdId = body.getString("courtScheduleId");
-        assertThat(body.getBoolean("isDraft"), is(false));
+        final String createdId = body.getString(COURT_SCHEDULE_ID);
+        assertThat(body.getBoolean(IS_DRAFT), is(false));
 
         final CourtSchedule created = databaseReader.courtScheduleById(createdId);
         assertThat(created.getBusinessType(), is("LNG"));
@@ -223,14 +235,14 @@ class CrownFallbackSearchAndBookIT extends AbstractIT {
         final String hearingId = UUID.randomUUID().toString();
         final LocalDate date = LocalDate.now().plusDays(14);
 
-        seedSession(date.plusDays(7), roomId, "CR", centreId, "C01CY00", false, false, 300);
+        seedSession(date.plusDays(7), roomId, "CR", centreId, C01_CY00, false, false, 300);
 
-        final Response response = callFallback(hearingId, centreId, null, date, 10, "CROWN_FB_LIST");
+        final Response response = callFallback(hearingId, centreId, null, date, 10, CROWN_FB_LIST_2);
 
         assertThat(response.getStatus(), is(OK.getStatusCode()));
         final JsonObject body = parse(body(response));
-        final String createdId = body.getString("courtScheduleId");
-        assertThat(body.getBoolean("isDraft"), is(true));
+        final String createdId = body.getString(COURT_SCHEDULE_ID);
+        assertThat(body.getBoolean(IS_DRAFT), is(true));
 
         final CourtSchedule created = databaseReader.courtScheduleById(createdId);
         assertThat(created.getBusinessType(), is("GENC"));
@@ -257,26 +269,26 @@ class CrownFallbackSearchAndBookIT extends AbstractIT {
         final String hearingTime = date + "T11:30:00Z";
 
         // deliberately NO seeded session anywhere at this centre
-        final Response response = postCommand("/hearings/" + hearingId, ACCEPT, SYSTEM_USER_ID,
+        final Response response = postCommand(HEARINGS + hearingId, ACCEPT, SYSTEM_USER_ID,
                 Json.createObjectBuilder()
-                        .add("courtCentreId", centreId)
-                        .add("courtRoomId", roomId)
-                        .add("hearingDate", date.toString())
-                        .add("durationInMinutes", 60)
+                        .add(COURT_CENTRE_ID, centreId)
+                        .add(COURT_ROOM_ID, roomId)
+                        .add(HEARING_DATE, date.toString())
+                        .add(DURATION_IN_MINUTES, 60)
                         .add("earliestHearingTime", hearingTime)
-                        .add("source", "CROWN_FB_LIST")
-                        .add("ouCode", "C99XX00")
+                        .add(SOURCE, CROWN_FB_LIST_2)
+                        .add("ouCode", C99_XX00)
                         .add("courtCentreName", "Never Seeded Crown Court")
                         .add("courtRoomName", "Courtroom 7")
                         .build().toString());
 
         assertThat(response.getStatus(), is(OK.getStatusCode()));
         final JsonObject body = parse(body(response));
-        final String createdId = body.getString("courtScheduleId");
-        assertThat(body.getBoolean("isDraft"), is(false));
+        final String createdId = body.getString(COURT_SCHEDULE_ID);
+        assertThat(body.getBoolean(IS_DRAFT), is(false));
 
         final CourtSchedule created = databaseReader.courtScheduleById(createdId);
-        assertThat(created.getOuCode(), is("C99XX00"));
+        assertThat(created.getOuCode(), is(C99_XX00));
         assertThat(created.getCourtHouseId(), is(centreId));
         assertThat(created.getCourtHouseName(), is("Never Seeded Crown Court"));
         assertThat(created.getCourtRoomId(), is(roomId));
@@ -311,26 +323,26 @@ class CrownFallbackSearchAndBookIT extends AbstractIT {
         final String hearingId = UUID.randomUUID().toString();
         final LocalDate date = LocalDate.now().plusDays(14);
 
-        final Response response = postCommand("/hearings/" + hearingId, ACCEPT, SYSTEM_USER_ID,
+        final Response response = postCommand(HEARINGS + hearingId, ACCEPT, SYSTEM_USER_ID,
                 Json.createObjectBuilder()
-                        .add("courtCentreId", centreId)
-                        .add("hearingDate", date.toString())
-                        .add("durationInMinutes", 60)
-                        .add("source", "CROWN_FB_LIST")
-                        .add("ouCode", "C99XX00")
+                        .add(COURT_CENTRE_ID, centreId)
+                        .add(HEARING_DATE, date.toString())
+                        .add(DURATION_IN_MINUTES, 60)
+                        .add(SOURCE, CROWN_FB_LIST_2)
+                        .add("ouCode", C99_XX00)
                         .build().toString());
 
         assertThat(response.getStatus(), is(OK.getStatusCode()));
         final JsonObject body = parse(body(response));
-        final String createdId = body.getString("courtScheduleId");
-        assertThat(body.getBoolean("isDraft"), is(true));
+        final String createdId = body.getString(COURT_SCHEDULE_ID);
+        assertThat(body.getBoolean(IS_DRAFT), is(true));
 
         final CourtSchedule created = databaseReader.courtScheduleById(createdId);
-        assertThat(created.getOuCode(), is("C99XX00"));
+        assertThat(created.getOuCode(), is(C99_XX00));
         assertThat(created.getBusinessType(), is("GENC"));
         assertThat(created.isDraft(), is(true));
         // no name supplied -> ouCode stands in for display metadata; room is the virtual room
-        assertThat(created.getCourtHouseName(), is("C99XX00"));
+        assertThat(created.getCourtHouseName(), is(C99_XX00));
         assertThat(created.getCourtRoomId(), is(UUID.nameUUIDFromBytes(
                 ("CROWN-FB-ROOM:" + centreId).getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString()));
     }
@@ -347,20 +359,20 @@ class CrownFallbackSearchAndBookIT extends AbstractIT {
 
         // seeded session runs 10:00-17:00; the hearing asks for 23:00 — far enough outside the
         // window that no test-JVM-vs-app timezone offset can pull it back inside
-        final String sessionId = seedSession(date, roomId, "CR", centreId, "C01CY00", false, false, 360);
+        final String sessionId = seedSession(date, roomId, "CR", centreId, C01_CY00, false, false, 360);
 
-        final Response response = postCommand("/hearings/" + hearingId, ACCEPT, SYSTEM_USER_ID,
+        final Response response = postCommand(HEARINGS + hearingId, ACCEPT, SYSTEM_USER_ID,
                 Json.createObjectBuilder()
-                        .add("courtCentreId", centreId)
-                        .add("courtRoomId", roomId)
-                        .add("hearingDate", date.toString())
-                        .add("durationInMinutes", 60)
+                        .add(COURT_CENTRE_ID, centreId)
+                        .add(COURT_ROOM_ID, roomId)
+                        .add(HEARING_DATE, date.toString())
+                        .add(DURATION_IN_MINUTES, 60)
                         .add("earliestHearingTime", date + "T23:00:00Z")
-                        .add("source", "CROWN_FB_LIST")
+                        .add(SOURCE, CROWN_FB_LIST_2)
                         .build().toString());
 
         assertThat(response.getStatus(), is(OK.getStatusCode()));
-        assertThat(parse(body(response)).getString("courtScheduleId"), is(sessionId));
+        assertThat(parse(body(response)).getString(COURT_SCHEDULE_ID), is(sessionId));
 
         final List<AllocatedListing> booked = databaseReader.allocatedListings().stream()
                 .filter(al -> hearingId.equals(al.getHearingId()))
@@ -400,14 +412,14 @@ class CrownFallbackSearchAndBookIT extends AbstractIT {
                                    final int durationInMinutes,
                                    final String source) {
         final jakarta.json.JsonObjectBuilder b = Json.createObjectBuilder()
-                .add("courtCentreId", courtCentreId)
-                .add("hearingDate", hearingDate.toString())
-                .add("durationInMinutes", durationInMinutes)
-                .add("source", source);
+                .add(COURT_CENTRE_ID, courtCentreId)
+                .add(HEARING_DATE, hearingDate.toString())
+                .add(DURATION_IN_MINUTES, durationInMinutes)
+                .add(SOURCE, source);
         if (courtRoomId != null) {
-            b.add("courtRoomId", courtRoomId);
+            b.add(COURT_ROOM_ID, courtRoomId);
         }
-        return postCommand("/hearings/" + hearingId, ACCEPT, SYSTEM_USER_ID, b.build().toString());
+        return postCommand(HEARINGS + hearingId, ACCEPT, SYSTEM_USER_ID, b.build().toString());
     }
 
     private static String body(final Response response) {

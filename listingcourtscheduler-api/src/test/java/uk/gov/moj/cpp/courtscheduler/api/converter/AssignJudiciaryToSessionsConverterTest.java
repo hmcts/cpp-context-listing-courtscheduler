@@ -20,6 +20,15 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class AssignJudiciaryToSessionsConverterTest {
+    private static final String UUID_3FA85F64 = "3fa85f64-5717-4562-b3fc-2c963f66afa6";
+    private static final String UUID_8A9F3E44 = "8a9f3e44-2d6a-4f4b-b7d1-9e6b9fbf1111";
+    private static final String MAGISTRATE_2 = "MAGISTRATE";
+    private static final String COURT_SCHEDULE_IDS = "courtScheduleIds";
+    private static final String JUDICIAL_ID = "judicialId";
+    private static final String JUDICIAL_ROLE_TYPE = "judicialRoleType";
+    private static final String JUDICIARY = "judiciary";
+    private static final String JUDICIARY_TYPE = "judiciaryType";
+
 
     @InjectMocks
     private AssignJudiciaryToSessionsConverter converter;
@@ -27,14 +36,14 @@ class AssignJudiciaryToSessionsConverterTest {
     @Test
     void shouldExtractJudicialRoleTypeJudiciaryType() {
         final JsonObject payload = Json.createObjectBuilder()
-                .add("courtScheduleIds", Json.createArrayBuilder()
-                        .add("8a9f3e44-2d6a-4f4b-b7d1-9e6b9fbf1111")
+                .add(COURT_SCHEDULE_IDS, Json.createArrayBuilder()
+                        .add(UUID_8A9F3E44)
                         .build())
-                .add("judiciary", Json.createArrayBuilder()
+                .add(JUDICIARY, Json.createArrayBuilder()
                         .add(createObjectBuilder()
-                                .add("judicialId", "3fa85f64-5717-4562-b3fc-2c963f66afa6")
-                                .add("judicialRoleType", createObjectBuilder()
-                                        .add("judiciaryType", "DISTRICT_JUDGE")
+                                .add(JUDICIAL_ID, UUID_3FA85F64)
+                                .add(JUDICIAL_ROLE_TYPE, createObjectBuilder()
+                                        .add(JUDICIARY_TYPE, "DISTRICT_JUDGE")
                                         .build())
                                 .add("isBenchChairman", true)
                                 .add("isDeputy", false)
@@ -47,7 +56,7 @@ class AssignJudiciaryToSessionsConverterTest {
         assertEquals(1, r.getCourtScheduleIds().size());
         assertEquals(1, r.getJudiciary().size());
         final SessionJudiciary j = r.getJudiciary().get(0);
-        assertEquals("3fa85f64-5717-4562-b3fc-2c963f66afa6", j.getJudicialId());
+        assertEquals(UUID_3FA85F64, j.getJudicialId());
         assertEquals("DISTRICT_JUDGE", j.getJudiciaryType());
         assertTrue(j.isBenchChairman());
     }
@@ -62,9 +71,9 @@ class AssignJudiciaryToSessionsConverterTest {
     @Test
     void shouldFilterOutNonUuidCourtScheduleIds() {
         final JsonObject payload = Json.createObjectBuilder()
-                .add("courtScheduleIds", Json.createArrayBuilder()
+                .add(COURT_SCHEDULE_IDS, Json.createArrayBuilder()
                         .add("not-a-uuid")
-                        .add("8a9f3e44-2d6a-4f4b-b7d1-9e6b9fbf1111")
+                        .add(UUID_8A9F3E44)
                         .add("")
                         .build())
                 .build();
@@ -72,24 +81,24 @@ class AssignJudiciaryToSessionsConverterTest {
         final AssignJudiciaryToSessionsRequest r = converter.convert(payload);
 
         assertEquals(1, r.getCourtScheduleIds().size());
-        assertEquals("8a9f3e44-2d6a-4f4b-b7d1-9e6b9fbf1111", r.getCourtScheduleIds().get(0));
+        assertEquals(UUID_8A9F3E44, r.getCourtScheduleIds().get(0));
     }
 
     @Test
     void shouldParseMultipleSessionsAndJudiciaryLines() {
         final JsonObject payload = Json.createObjectBuilder()
-                .add("courtScheduleIds", Json.createArrayBuilder()
-                        .add("8a9f3e44-2d6a-4f4b-b7d1-9e6b9fbf1111")
+                .add(COURT_SCHEDULE_IDS, Json.createArrayBuilder()
+                        .add(UUID_8A9F3E44)
                         .add("1b2c3d44-7e8f-4b9a-8c7d-2a3b4c5d6666")
                         .build())
-                .add("judiciary", Json.createArrayBuilder()
+                .add(JUDICIARY, Json.createArrayBuilder()
                         .add(createObjectBuilder()
-                                .add("judicialId", "3fa85f64-5717-4562-b3fc-2c963f66afa6")
-                                .add("judicialRoleType", createObjectBuilder().add("judiciaryType", "MAGISTRATE").build())
+                                .add(JUDICIAL_ID, UUID_3FA85F64)
+                                .add(JUDICIAL_ROLE_TYPE, createObjectBuilder().add(JUDICIARY_TYPE, MAGISTRATE_2).build())
                                 .build())
                         .add(createObjectBuilder()
-                                .add("judicialId", "7e6f4a11-1111-2222-3333-444455556666")
-                                .add("judicialRoleType", createObjectBuilder().add("judiciaryType", "MAGISTRATE").build())
+                                .add(JUDICIAL_ID, "7e6f4a11-1111-2222-3333-444455556666")
+                                .add(JUDICIAL_ROLE_TYPE, createObjectBuilder().add(JUDICIARY_TYPE, MAGISTRATE_2).build())
                                 .build())
                         .build())
                 .build();
@@ -98,14 +107,14 @@ class AssignJudiciaryToSessionsConverterTest {
 
         assertEquals(2, r.getCourtScheduleIds().size());
         assertEquals(2, r.getJudiciary().size());
-        assertEquals("MAGISTRATE", r.getJudiciary().get(1).getJudiciaryType());
+        assertEquals(MAGISTRATE_2, r.getJudiciary().get(1).getJudiciaryType());
     }
 
     @Test
     void shouldReturnEmptyJudiciaryWhenKeyMissing() {
         final JsonObject payload = Json.createObjectBuilder()
-                .add("courtScheduleIds", Json.createArrayBuilder()
-                        .add("8a9f3e44-2d6a-4f4b-b7d1-9e6b9fbf1111")
+                .add(COURT_SCHEDULE_IDS, Json.createArrayBuilder()
+                        .add(UUID_8A9F3E44)
                         .build())
                 .build();
 
@@ -118,12 +127,12 @@ class AssignJudiciaryToSessionsConverterTest {
     @Test
     void shouldLeaveJudiciaryTypeNullWhenRoleTypeMissing() {
         final JsonObject payload = Json.createObjectBuilder()
-                .add("courtScheduleIds", Json.createArrayBuilder()
-                        .add("8a9f3e44-2d6a-4f4b-b7d1-9e6b9fbf1111")
+                .add(COURT_SCHEDULE_IDS, Json.createArrayBuilder()
+                        .add(UUID_8A9F3E44)
                         .build())
-                .add("judiciary", Json.createArrayBuilder()
+                .add(JUDICIARY, Json.createArrayBuilder()
                         .add(createObjectBuilder()
-                                .add("judicialId", "3fa85f64-5717-4562-b3fc-2c963f66afa6")
+                                .add(JUDICIAL_ID, UUID_3FA85F64)
                                 .build())
                         .build())
                 .build();
@@ -138,16 +147,16 @@ class AssignJudiciaryToSessionsConverterTest {
     void shouldReturnEmptyCourtScheduleIdsWhenKeyNullOrAbsent() {
         assertTrue(converter.convert(Json.createObjectBuilder().build()).getCourtScheduleIds().isEmpty());
         final AssignJudiciaryToSessionsRequest r = converter.convert(
-                Json.createObjectBuilder().addNull("courtScheduleIds").build());
+                Json.createObjectBuilder().addNull(COURT_SCHEDULE_IDS).build());
         assertTrue(r.getCourtScheduleIds().isEmpty());
     }
 
     @Test
     void shouldIgnoreNonStringElementsInCourtScheduleIdsArray() {
         final JsonObject payload = Json.createObjectBuilder()
-                .add("courtScheduleIds", Json.createArrayBuilder()
+                .add(COURT_SCHEDULE_IDS, Json.createArrayBuilder()
                         .add(JsonValue.TRUE)
-                        .add("8a9f3e44-2d6a-4f4b-b7d1-9e6b9fbf1111")
+                        .add(UUID_8A9F3E44)
                         .build())
                 .build();
         final AssignJudiciaryToSessionsRequest r = converter.convert(payload);
@@ -157,18 +166,18 @@ class AssignJudiciaryToSessionsConverterTest {
     @Test
     void shouldReturnEmptyJudiciaryWhenJudiciaryKeyIsJsonNull() {
         assertTrue(converter.convert(Json.createObjectBuilder()
-                .addNull("judiciary")
+                .addNull(JUDICIARY)
                 .build()).getJudiciary().isEmpty());
     }
 
     @Test
     void shouldSkipNonObjectElementsInJudiciaryArray() {
         final JsonObject payload = Json.createObjectBuilder()
-                .add("judiciary", Json.createArrayBuilder()
+                .add(JUDICIARY, Json.createArrayBuilder()
                         .add("not-an-object")
                         .add(createObjectBuilder()
-                                .add("judicialId", "3fa85f64-5717-4562-b3fc-2c963f66afa6")
-                                .add("judicialRoleType", createObjectBuilder().add("judiciaryType", "RECORDER").build())
+                                .add(JUDICIAL_ID, UUID_3FA85F64)
+                                .add(JUDICIAL_ROLE_TYPE, createObjectBuilder().add(JUDICIARY_TYPE, "RECORDER").build())
                                 .build())
                         .build())
                 .build();
@@ -180,14 +189,14 @@ class AssignJudiciaryToSessionsConverterTest {
     @Test
     void shouldLeaveJudiciaryTypeNullWhenNestedObjectIncomplete() {
         final JsonObject payload = Json.createObjectBuilder()
-                .add("judiciary", Json.createArrayBuilder()
+                .add(JUDICIARY, Json.createArrayBuilder()
                         .add(createObjectBuilder()
-                                .add("judicialId", "3fa85f64-5717-4562-b3fc-2c963f66afa6")
-                                .add("judicialRoleType", createObjectBuilder().build())
+                                .add(JUDICIAL_ID, UUID_3FA85F64)
+                                .add(JUDICIAL_ROLE_TYPE, createObjectBuilder().build())
                                 .build())
                         .add(createObjectBuilder()
-                                .add("judicialId", "7e6f4a11-1111-2222-3333-444455556666")
-                                .add("judicialRoleType", createObjectBuilder().addNull("judiciaryType").build())
+                                .add(JUDICIAL_ID, "7e6f4a11-1111-2222-3333-444455556666")
+                                .add(JUDICIAL_ROLE_TYPE, createObjectBuilder().addNull(JUDICIARY_TYPE).build())
                                 .build())
                         .build())
                 .build();
@@ -200,13 +209,13 @@ class AssignJudiciaryToSessionsConverterTest {
     @Test
     void shouldLeaveJudicialIdAndFlagsNullWhenOmittedOrNull() {
         final JsonObject payload = Json.createObjectBuilder()
-                .add("judiciary", Json.createArrayBuilder()
+                .add(JUDICIARY, Json.createArrayBuilder()
                         .add(createObjectBuilder()
-                                .add("judicialRoleType", createObjectBuilder().add("judiciaryType", "MAGISTRATE").build())
+                                .add(JUDICIAL_ROLE_TYPE, createObjectBuilder().add(JUDICIARY_TYPE, MAGISTRATE_2).build())
                                 .build())
                         .add(createObjectBuilder()
-                                .addNull("judicialId")
-                                .add("judicialRoleType", createObjectBuilder().add("judiciaryType", "MAGISTRATE").build())
+                                .addNull(JUDICIAL_ID)
+                                .add(JUDICIAL_ROLE_TYPE, createObjectBuilder().add(JUDICIARY_TYPE, MAGISTRATE_2).build())
                                 .addNull("isDeputy")
                                 .addNull("isBenchChairman")
                                 .build())
@@ -214,7 +223,7 @@ class AssignJudiciaryToSessionsConverterTest {
                 .build();
         final AssignJudiciaryToSessionsRequest r = converter.convert(payload);
         assertNull(r.getJudiciary().get(0).getJudicialId());
-        assertEquals("MAGISTRATE", r.getJudiciary().get(0).getJudiciaryType());
+        assertEquals(MAGISTRATE_2, r.getJudiciary().get(0).getJudiciaryType());
         assertNull(r.getJudiciary().get(0).isDeputy());
         assertNull(r.getJudiciary().get(0).isBenchChairman());
 
@@ -226,10 +235,10 @@ class AssignJudiciaryToSessionsConverterTest {
     @Test
     void shouldParseIsDeputyWhenPresent() {
         final JsonObject payload = Json.createObjectBuilder()
-                .add("judiciary", Json.createArrayBuilder()
+                .add(JUDICIARY, Json.createArrayBuilder()
                         .add(createObjectBuilder()
-                                .add("judicialId", "3fa85f64-5717-4562-b3fc-2c963f66afa6")
-                                .add("judicialRoleType", createObjectBuilder().add("judiciaryType", "DJ").build())
+                                .add(JUDICIAL_ID, UUID_3FA85F64)
+                                .add(JUDICIAL_ROLE_TYPE, createObjectBuilder().add(JUDICIARY_TYPE, "DJ").build())
                                 .add("isDeputy", true)
                                 .add("isBenchChairman", false)
                                 .build())

@@ -26,12 +26,12 @@ class RotaFileProcessHistoryRepositoryTest extends uk.gov.moj.cpp.courtscheduler
 
     @AfterEach
     public void tearDown() {
-        List<RotaFileProcessHistory> all = rotaFileProcessHistoryRepository.findAll();
+        final List<RotaFileProcessHistory> all = rotaFileProcessHistoryRepository.findAll();
         all.forEach(rotaFileProcessHistory -> rotaFileProcessHistoryRepository.delete(rotaFileProcessHistory));
     }
 
     @Test
-    public void shouldSave() {
+    void shouldSave() {
 
         final RotaFileProcessHistory rotaFileProcessHistory = random(RotaFileProcessHistory.class);
         rotaFileProcessHistory.setExecutionId(UUID.randomUUID().toString());
@@ -40,13 +40,13 @@ class RotaFileProcessHistoryRepositoryTest extends uk.gov.moj.cpp.courtscheduler
         rotaFileProcessHistoryRepository.save(rotaFileProcessHistory);
 
         // then
-        RotaFileProcessHistory by = rotaFileProcessHistoryRepository.findById(rotaFileProcessHistory.getExecutionId()).orElse(null);
+        final RotaFileProcessHistory by = rotaFileProcessHistoryRepository.findById(rotaFileProcessHistory.getExecutionId()).orElse(null);
 
         assertThat(by, notNullValue());
     }
 
     @Test
-    public void shouldDeleteByFileNamePrefixAndFileDate() {
+    void shouldDeleteByFileNamePrefixAndFileDate() {
         final RotaFileProcessHistory rotaFileProcessHistory = random(RotaFileProcessHistory.class);
         rotaFileProcessHistory.setExecutionId(UUID.randomUUID().toString());
         rotaFileProcessHistory.setProcessedOn(Instant.now()); // Set required field
@@ -63,7 +63,7 @@ class RotaFileProcessHistoryRepositoryTest extends uk.gov.moj.cpp.courtscheduler
     }
 
     @Test
-    public void shouldFindByFileNamePrefixAndFileDateGreaterThan() {
+    void shouldFindByFileNamePrefixAndFileDateGreaterThan() {
         final RotaFileProcessHistory rotaFileProcessHistory = random(RotaFileProcessHistory.class);
         rotaFileProcessHistory.setExecutionId(UUID.randomUUID().toString());
         rotaFileProcessHistory.setProcessedOn(Instant.now()); // Set required field

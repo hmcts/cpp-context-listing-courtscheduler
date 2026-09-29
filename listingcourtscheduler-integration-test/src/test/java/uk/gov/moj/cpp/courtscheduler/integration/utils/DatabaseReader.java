@@ -15,13 +15,17 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Timestamp;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import org.apache.commons.lang3.tuple.Pair;
 
 public class DatabaseReader {
+    private static final String EXCEPTION_WHILE_QUERYING_THE_DB = "Exception while querying the DB";
+
 
     private static final String USERNAME = System.getProperty("db.user", "courtscheduler");
     private static final String PASSWORD = System.getProperty("db.password", "courtscheduler");
@@ -68,31 +72,33 @@ public class DatabaseReader {
     }
 
     public CourtSchedule courtScheduleById(final String courtScheduleId, final Connection connection) {
-        try (final PreparedStatement statement = connection.prepareStatement(COURT_SCHEDULE_BY_ID_SQL)) {
+        try (PreparedStatement statement = connection.prepareStatement(COURT_SCHEDULE_BY_ID_SQL)) {
             statement.setString(1, courtScheduleId);
-            final ResultSet resultSet = statement.executeQuery();
-            if (nonNull(resultSet) && resultSet.next()) {
-                return resultSetToCourtSchedule(resultSet);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                if (nonNull(resultSet) && resultSet.next()) {
+                    return resultSetToCourtSchedule(resultSet);
+                }
+                return null;
             }
-            return null;
         } catch (final SQLException exp) {
-            throw new RuntimeException("Exception while querying the DB", exp);
+            throw new RuntimeException(EXCEPTION_WHILE_QUERYING_THE_DB, exp);
         }
     }
 
     public Pair<LocalDateTime, LocalDateTime> getMaxCreatedOnForCourtSchedule() {
         LocalDateTime maxCreatedOn = null;
         LocalDateTime maxUpdatedOn = null;
-        try (final Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
-             final Statement statement = connection.createStatement()) {
-            final ResultSet resultSet = statement.executeQuery(COURT_SCHEDULE_MAX_UPDATED_ON_CREATED_ON_SQL);
-            while (resultSet.next()) {
-                maxCreatedOn = resultSet.getTimestamp("maxCreatedOn").toLocalDateTime();
-                maxUpdatedOn = resultSet.getTimestamp("maxUpdatedOn").toLocalDateTime();
+        try (Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
+             Statement statement = connection.createStatement()) {
+            try (ResultSet resultSet = statement.executeQuery(COURT_SCHEDULE_MAX_UPDATED_ON_CREATED_ON_SQL)) {
+                while (resultSet.next()) {
+                    maxCreatedOn = resultSet.getTimestamp("maxCreatedOn").toLocalDateTime();
+                    maxUpdatedOn = resultSet.getTimestamp("maxUpdatedOn").toLocalDateTime();
+                }
+                return Pair.of(maxCreatedOn, maxUpdatedOn);
             }
-            return Pair.of(maxCreatedOn, maxUpdatedOn);
         } catch (final SQLException exp) {
-            throw new RuntimeException("Exception while querying the DB", exp);
+            throw new RuntimeException(EXCEPTION_WHILE_QUERYING_THE_DB, exp);
         }
     }
 
@@ -100,118 +106,130 @@ public class DatabaseReader {
     public Pair<LocalDateTime, LocalDateTime> getMaxUpdatedAndCreatedOnForCourtScheduleJudiciary() {
         LocalDateTime maxCreatedOn = null;
         LocalDateTime maxUpdatedOn = null;
-        try (final Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
-             final Statement statement = connection.createStatement()) {
-            final ResultSet resultSet = statement.executeQuery(COURT_SCHEDULE_JUDICIARY_MAX_UPDATED_ON_CREATED_ON_SQL);
-            while (resultSet.next()) {
-                maxCreatedOn = resultSet.getTimestamp("maxCreatedOn").toLocalDateTime();
-                maxUpdatedOn = resultSet.getTimestamp("maxUpdatedOn").toLocalDateTime();
+        try (Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
+             Statement statement = connection.createStatement()) {
+            try (ResultSet resultSet = statement.executeQuery(COURT_SCHEDULE_JUDICIARY_MAX_UPDATED_ON_CREATED_ON_SQL)) {
+                while (resultSet.next()) {
+                    maxCreatedOn = resultSet.getTimestamp("maxCreatedOn").toLocalDateTime();
+                    maxUpdatedOn = resultSet.getTimestamp("maxUpdatedOn").toLocalDateTime();
+                }
+                return Pair.of(maxCreatedOn, maxUpdatedOn);
             }
-            return Pair.of(maxCreatedOn, maxUpdatedOn);
         } catch (final SQLException exp) {
-            throw new RuntimeException("Exception while querying the DB", exp);
+            throw new RuntimeException(EXCEPTION_WHILE_QUERYING_THE_DB, exp);
         }
     }
 
     private List<CourtSchedule> executeCourtScheduleCreatedAfterQuery(final LocalDateTime createdOn) {
-        try (final Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
-             final PreparedStatement statement = connection.prepareStatement(COURT_SCHEDULE_CREATED_AFTER_SQL)) {
+        try (Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
+             PreparedStatement statement = connection.prepareStatement(COURT_SCHEDULE_CREATED_AFTER_SQL)) {
             statement.setTimestamp(1, Timestamp.valueOf(createdOn));
-            final ResultSet resultSet = statement.executeQuery();
-            final List<CourtSchedule> rows = new ArrayList<>();
-            while (resultSet.next()) {
-                rows.add(resultSetToCourtSchedule(resultSet));
+            try (ResultSet resultSet = statement.executeQuery()) {
+                final List<CourtSchedule> rows = new ArrayList<>();
+                while (resultSet.next()) {
+                    rows.add(resultSetToCourtSchedule(resultSet));
+                }
+                return unmodifiableList(rows);
             }
-            return unmodifiableList(rows);
         } catch (final SQLException exp) {
-            throw new RuntimeException("Exception while querying the DB", exp);
+            throw new RuntimeException(EXCEPTION_WHILE_QUERYING_THE_DB, exp);
         }
     }
 
     private List<CourtScheduleJudiciary> executeCourtScheduleJudiciariesCreatedAfterQuery(final LocalDateTime createdOn) {
-        try (final Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
-             final PreparedStatement statement = connection.prepareStatement(COURT_SCHEDULE_JUDICIARY_CREATED_AFTER_SQL)) {
+        try (Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
+             PreparedStatement statement = connection.prepareStatement(COURT_SCHEDULE_JUDICIARY_CREATED_AFTER_SQL)) {
             statement.setTimestamp(1, Timestamp.valueOf(createdOn));
-            final ResultSet resultSet = statement.executeQuery();
-            final List<CourtScheduleJudiciary> rows = new ArrayList<>();
-            while (resultSet.next()) {
-                rows.add(resultSetToCourtScheduleJudiciary(resultSet));
+            try (ResultSet resultSet = statement.executeQuery()) {
+                final List<CourtScheduleJudiciary> rows = new ArrayList<>();
+                while (resultSet.next()) {
+                    rows.add(resultSetToCourtScheduleJudiciary(resultSet));
+                }
+                return unmodifiableList(rows);
             }
-            return unmodifiableList(rows);
         } catch (final SQLException exp) {
-            throw new RuntimeException("Exception while querying the DB", exp);
+            throw new RuntimeException(EXCEPTION_WHILE_QUERYING_THE_DB, exp);
         }
     }
 
     private CourtSchedule executeCourtScheduleById(final String courtScheduleId) {
-        try (final Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
-             final PreparedStatement statement = connection.prepareStatement(COURT_SCHEDULE_BY_ID_SQL)) {
+        try (Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
+             PreparedStatement statement = connection.prepareStatement(COURT_SCHEDULE_BY_ID_SQL)) {
             statement.setString(1, courtScheduleId);
-            final ResultSet resultSet = statement.executeQuery();
-            if (nonNull(resultSet) && resultSet.next()) {
-                return resultSetToCourtSchedule(resultSet);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                if (nonNull(resultSet) && resultSet.next()) {
+                    return resultSetToCourtSchedule(resultSet);
+                }
+                return null;
             }
-            return null;
         } catch (final SQLException exp) {
-            throw new RuntimeException("Exception while querying the DB", exp);
+            throw new RuntimeException(EXCEPTION_WHILE_QUERYING_THE_DB, exp);
         }
     }
 
     private List<CourtSchedule> executeCourtScheduleUpdatedAfterQuery(final LocalDateTime updatedOn) {
-        try (final Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
-             final PreparedStatement statement = connection.prepareStatement(COURT_SCHEDULE_UPDATED_AFTER_SQL)) {
+        try (Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
+             PreparedStatement statement = connection.prepareStatement(COURT_SCHEDULE_UPDATED_AFTER_SQL)) {
             statement.setTimestamp(1, Timestamp.valueOf(updatedOn));
-            final ResultSet resultSet = statement.executeQuery();
-            final List<CourtSchedule> rows = new ArrayList<>();
-            while (resultSet.next()) {
-                rows.add(resultSetToCourtSchedule(resultSet));
+            try (ResultSet resultSet = statement.executeQuery()) {
+                final List<CourtSchedule> rows = new ArrayList<>();
+                while (resultSet.next()) {
+                    rows.add(resultSetToCourtSchedule(resultSet));
+                }
+                return unmodifiableList(rows);
             }
-            return unmodifiableList(rows);
         } catch (final SQLException exp) {
-            throw new RuntimeException("Exception while querying the DB", exp);
+            throw new RuntimeException(EXCEPTION_WHILE_QUERYING_THE_DB, exp);
         }
     }
 
     private List<CourtSchedule> executeCourtScheduleQuery() {
-        try (final Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
-             final Statement statement = connection.createStatement()) {
-            final ResultSet resultSet = statement.executeQuery(COURT_SCHEDULE_GET_SQL);
-            final List<CourtSchedule> rows = new ArrayList<>();
-            while (resultSet.next()) {
-                rows.add(resultSetToCourtSchedule(resultSet));
+        try (Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
+             Statement statement = connection.createStatement()) {
+            try (ResultSet resultSet = statement.executeQuery(COURT_SCHEDULE_GET_SQL)) {
+                final List<CourtSchedule> rows = new ArrayList<>();
+                while (resultSet.next()) {
+                    rows.add(resultSetToCourtSchedule(resultSet));
+                }
+                return unmodifiableList(rows);
             }
-            return unmodifiableList(rows);
         } catch (final SQLException exp) {
-            throw new RuntimeException("Exception while querying the DB", exp);
+            throw new RuntimeException(EXCEPTION_WHILE_QUERYING_THE_DB, exp);
         }
     }
 
     private List<CourtScheduleJudiciary> executeCourtScheduleJudiciaryQuery() {
-        try (final Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
-             final Statement statement = connection.createStatement()) {
-            final ResultSet resultSet = statement.executeQuery(COURT_SCHEDULE_JUDICIARY_GET_SQL);
-            final List<CourtScheduleJudiciary> rows = new ArrayList<>();
-            while (resultSet.next()) {
-                rows.add(resultSetToCourtScheduleJudiciary(resultSet));
+        try (Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
+             Statement statement = connection.createStatement()) {
+            try (ResultSet resultSet = statement.executeQuery(COURT_SCHEDULE_JUDICIARY_GET_SQL)) {
+                final List<CourtScheduleJudiciary> rows = new ArrayList<>();
+                while (resultSet.next()) {
+                    rows.add(resultSetToCourtScheduleJudiciary(resultSet));
+                }
+                return unmodifiableList(rows);
             }
-            return unmodifiableList(rows);
         } catch (final SQLException exp) {
-            throw new RuntimeException("Exception while querying the DB", exp);
+            throw new RuntimeException(EXCEPTION_WHILE_QUERYING_THE_DB, exp);
         }
     }
 
     private List<AllocatedListing> executeAllocatedListingsQuery() {
-        try (final Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
-             final Statement statement = connection.createStatement()) {
-            final ResultSet resultSet = statement.executeQuery(ALLOCATED_LISTINGS_GET_SQL);
-            final List<AllocatedListing> rows = new ArrayList<>();
-            while (resultSet.next()) {
-                rows.add(resultSetToAllocatedListing(resultSet));
+        try (Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
+             Statement statement = connection.createStatement()) {
+            try (ResultSet resultSet = statement.executeQuery(ALLOCATED_LISTINGS_GET_SQL)) {
+                final List<AllocatedListing> rows = new ArrayList<>();
+                while (resultSet.next()) {
+                    rows.add(resultSetToAllocatedListing(resultSet));
+                }
+                return unmodifiableList(rows);
             }
-            return unmodifiableList(rows);
         } catch (final SQLException exp) {
-            throw new RuntimeException("Exception while querying the DB", exp);
+            throw new RuntimeException(EXCEPTION_WHILE_QUERYING_THE_DB, exp);
         }
+    }
+
+    private static Instant toInstant(final ResultSet resultSet, final String column) throws SQLException {
+        return Optional.ofNullable(resultSet.getTimestamp(column)).map(Timestamp::toInstant).orElse(null);
     }
 
     private CourtSchedule resultSetToCourtSchedule(final ResultSet resultSet) throws SQLException {
@@ -238,23 +256,23 @@ public class DatabaseReader {
         courtSchedule.setMaxAdMorningDuration(resultSet.getInt("max_ad_morning_duration"));
         courtSchedule.setMaxAdAfternoonDuration(resultSet.getInt("max_ad_afternoon_duration"));
         courtSchedule.setActive(resultSet.getBoolean("active"));
-        final Timestamp createdOnTimestamp = resultSet.getTimestamp("created_on");
+        final Instant createdOnTimestamp = toInstant(resultSet, "created_on");
         if (nonNull(createdOnTimestamp)) {
-            courtSchedule.setCreatedOn(createdOnTimestamp.toInstant());
+            courtSchedule.setCreatedOn(createdOnTimestamp);
         }
-        final Timestamp updatedOnTimestamp = resultSet.getTimestamp("updated_on");
+        final Instant updatedOnTimestamp = toInstant(resultSet, "updated_on");
         if (nonNull(updatedOnTimestamp)) {
-            courtSchedule.setUpdatedOn(updatedOnTimestamp.toInstant());
+            courtSchedule.setUpdatedOn(updatedOnTimestamp);
         }
 
-        final Timestamp sessionStartTime = resultSet.getTimestamp("session_start_time");
+        final Instant sessionStartTime = toInstant(resultSet, "session_start_time");
         if (nonNull(sessionStartTime)) {
-            courtSchedule.setSessionStartTime(sessionStartTime.toInstant());
+            courtSchedule.setSessionStartTime(sessionStartTime);
         }
 
-        final Timestamp sessionEndTime = resultSet.getTimestamp("session_end_time");
+        final Instant sessionEndTime = toInstant(resultSet, "session_end_time");
         if (nonNull(sessionEndTime)) {
-            courtSchedule.setSessionEndTime(sessionEndTime.toInstant());
+            courtSchedule.setSessionEndTime(sessionEndTime);
         }
 
         courtSchedule.setIsOverbookingAllowed(resultSet.getBoolean("is_overbooking_allowed"));

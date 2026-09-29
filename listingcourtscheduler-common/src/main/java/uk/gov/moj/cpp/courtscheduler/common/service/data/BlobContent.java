@@ -25,6 +25,8 @@ public class BlobContent {
         this.blobByteArray = copyOrNull(blobByteArray);
     }
 
+    // Deliberate: null means "no blob content"; an empty array would be processed as an empty rota file.
+    @SuppressWarnings("PMD.ReturnEmptyCollectionRatherThanNull")
     private static byte[] copyOrNull(final byte[] array) {
         return array == null ? null : Arrays.copyOf(array, array.length);
     }

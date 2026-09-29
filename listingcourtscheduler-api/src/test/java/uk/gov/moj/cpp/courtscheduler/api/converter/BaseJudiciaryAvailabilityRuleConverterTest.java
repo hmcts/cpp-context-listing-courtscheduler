@@ -22,6 +22,20 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class BaseJudiciaryAvailabilityRuleConverterTest {
+    private static final String DATE_2026_01_01 = "2026-01-01";
+    private static final String DATE_2026_01_10 = "2026-01-10";
+    private static final String DATE_2026_01_12 = "2026-01-12";
+    private static final String DATE_2026_01_31 = "2026-01-31";
+    private static final String MONDAY_2 = "Monday";
+    private static final String TUESDAY_2 = "Tuesday";
+    private static final String COURT_HOUSE_ID = "courtHouseId";
+    private static final String END_DATE = "endDate";
+    private static final String JUDICIARY_ID = "judiciaryId";
+    private static final String REASON = "reason";
+    private static final String REPEAT_DAYS = "repeatDays";
+    private static final String START_DATE = "startDate";
+    private static final String UNAVAILABILITIES = "unavailabilities";
+
 
     private final AddJudiciaryAvailabilityRuleConverter converter = new AddJudiciaryAvailabilityRuleConverter();
 
@@ -30,27 +44,27 @@ class BaseJudiciaryAvailabilityRuleConverterTest {
         final String judiciaryId = randomUUID().toString();
         final String courtHouseId = randomUUID().toString();
         
-        JsonObject jsonObject = Json.createObjectBuilder()
-                .add("judiciaryId", judiciaryId)
-                .add("courtHouseId", courtHouseId)
-                .add("startDate", "2026-01-01")
-                .add("endDate", "2026-01-31")
+        final JsonObject jsonObject = Json.createObjectBuilder()
+                .add(JUDICIARY_ID, judiciaryId)
+                .add(COURT_HOUSE_ID, courtHouseId)
+                .add(START_DATE, DATE_2026_01_01)
+                .add(END_DATE, DATE_2026_01_31)
                 .build();
 
-        AddJudiciaryAvailabilityRuleRequest result = converter.convert(jsonObject);
+        final AddJudiciaryAvailabilityRuleRequest result = converter.convert(jsonObject);
 
         assertNotNull(result);
         assertThat(result.getJudiciaryId(), is(judiciaryId));
         assertThat(result.getCourtHouseId(), is(courtHouseId));
-        assertThat(result.getStartDate().toString(), is("2026-01-01"));
-        assertThat(result.getEndDate().toString(), is("2026-01-31"));
+        assertThat(result.getStartDate().toString(), is(DATE_2026_01_01));
+        assertThat(result.getEndDate().toString(), is(DATE_2026_01_31));
     }
 
     @Test
     void shouldHandleNullBaseFields() {
-        JsonObject jsonObject = Json.createObjectBuilder().build();
+        final JsonObject jsonObject = Json.createObjectBuilder().build();
 
-        AddJudiciaryAvailabilityRuleRequest result = converter.convert(jsonObject);
+        final AddJudiciaryAvailabilityRuleRequest result = converter.convert(jsonObject);
 
         assertNotNull(result);
         assertThat(result.getJudiciaryId(), is(nullValue()));
@@ -64,23 +78,23 @@ class BaseJudiciaryAvailabilityRuleConverterTest {
         final String judiciaryId = randomUUID().toString();
         final String courtHouseId = randomUUID().toString();
         
-        JsonObject jsonObject = Json.createObjectBuilder()
-                .add("judiciaryId", judiciaryId)
-                .add("courtHouseId", courtHouseId)
-                .add("startDate", "2026-01-01")
-                .add("endDate", "2026-01-31")
+        final JsonObject jsonObject = Json.createObjectBuilder()
+                .add(JUDICIARY_ID, judiciaryId)
+                .add(COURT_HOUSE_ID, courtHouseId)
+                .add(START_DATE, DATE_2026_01_01)
+                .add(END_DATE, DATE_2026_01_31)
                 .add("sessionType", "AM")
-                .add("repeatDays", Json.createArrayBuilder()
-                        .add("Monday")
-                        .add("Tuesday"))
-                .add("unavailabilities", Json.createArrayBuilder()
+                .add(REPEAT_DAYS, Json.createArrayBuilder()
+                        .add(MONDAY_2)
+                        .add(TUESDAY_2))
+                .add(UNAVAILABILITIES, Json.createArrayBuilder()
                         .add(Json.createObjectBuilder()
-                                .add("startDate", "2026-01-10")
-                                .add("endDate", "2026-01-12")
-                                .add("reason", "ANNUAL_LEAVE")))
+                                .add(START_DATE, DATE_2026_01_10)
+                                .add(END_DATE, DATE_2026_01_12)
+                                .add(REASON, "ANNUAL_LEAVE")))
                 .build();
 
-        AddJudiciaryAvailabilityRuleRequest result = converter.convert(jsonObject);
+        final AddJudiciaryAvailabilityRuleRequest result = converter.convert(jsonObject);
 
         assertNotNull(result);
         assertThat(result.getSessionType(), is(SessionType.AM));
@@ -88,8 +102,8 @@ class BaseJudiciaryAvailabilityRuleConverterTest {
         assertThat(result.getRepeatDays().get(0), is(AvailabilityDayOfWeek.MONDAY));
         assertThat(result.getRepeatDays().get(1), is(AvailabilityDayOfWeek.TUESDAY));
         assertThat(result.getUnavailabilities().size(), is(1));
-        assertThat(result.getUnavailabilities().getFirst().getStartDate().toString(), is("2026-01-10"));
-        assertThat(result.getUnavailabilities().getFirst().getEndDate().toString(), is("2026-01-12"));
+        assertThat(result.getUnavailabilities().getFirst().getStartDate().toString(), is(DATE_2026_01_10));
+        assertThat(result.getUnavailabilities().getFirst().getEndDate().toString(), is(DATE_2026_01_12));
         assertThat(result.getUnavailabilities().getFirst().getReason(), is(UnavailabilityReason.ANNUAL_LEAVE));
     }
 
@@ -98,17 +112,17 @@ class BaseJudiciaryAvailabilityRuleConverterTest {
         final String judiciaryId = randomUUID().toString();
         final String courtHouseId = randomUUID().toString();
         
-        JsonObject jsonObject = Json.createObjectBuilder()
-                .add("judiciaryId", judiciaryId)
-                .add("courtHouseId", courtHouseId)
-                .add("startDate", "2026-01-01")
-                .add("endDate", "2026-01-31")
+        final JsonObject jsonObject = Json.createObjectBuilder()
+                .add(JUDICIARY_ID, judiciaryId)
+                .add(COURT_HOUSE_ID, courtHouseId)
+                .add(START_DATE, DATE_2026_01_01)
+                .add(END_DATE, DATE_2026_01_31)
                 .addNull("sessionType")
-                .addNull("repeatDays")
-                .addNull("unavailabilities")
+                .addNull(REPEAT_DAYS)
+                .addNull(UNAVAILABILITIES)
                 .build();
 
-        AddJudiciaryAvailabilityRuleRequest result = converter.convert(jsonObject);
+        final AddJudiciaryAvailabilityRuleRequest result = converter.convert(jsonObject);
 
         assertNotNull(result);
         assertThat(result.getSessionType(), is(nullValue()));
@@ -121,12 +135,12 @@ class BaseJudiciaryAvailabilityRuleConverterTest {
         final String judiciaryId = randomUUID().toString();
         final String courtHouseId = randomUUID().toString();
         
-        JsonObject jsonObject = Json.createObjectBuilder()
-                .add("judiciaryId", judiciaryId)
-                .add("courtHouseId", courtHouseId)
-                .add("startDate", "2026-01-01")
-                .add("endDate", "2026-01-31")
-                .add("repeatDays", Json.createArrayBuilder()
+        final JsonObject jsonObject = Json.createObjectBuilder()
+                .add(JUDICIARY_ID, judiciaryId)
+                .add(COURT_HOUSE_ID, courtHouseId)
+                .add(START_DATE, DATE_2026_01_01)
+                .add(END_DATE, DATE_2026_01_31)
+                .add(REPEAT_DAYS, Json.createArrayBuilder()
                         .add("monday")
                         .add("TUESDAY")
                         .add("Wednesday")
@@ -134,7 +148,7 @@ class BaseJudiciaryAvailabilityRuleConverterTest {
                         .add("FRIDAY"))
                 .build();
 
-        AddJudiciaryAvailabilityRuleRequest result = converter.convert(jsonObject);
+        final AddJudiciaryAvailabilityRuleRequest result = converter.convert(jsonObject);
 
         assertNotNull(result);
         assertThat(result.getRepeatDays().size(), is(5));
@@ -150,18 +164,18 @@ class BaseJudiciaryAvailabilityRuleConverterTest {
         final String judiciaryId = randomUUID().toString();
         final String courtHouseId = randomUUID().toString();
         
-        JsonObject jsonObject = Json.createObjectBuilder()
-                .add("judiciaryId", judiciaryId)
-                .add("courtHouseId", courtHouseId)
-                .add("startDate", "2026-01-01")
-                .add("endDate", "2026-01-31")
-                .add("repeatDays", Json.createArrayBuilder()
-                        .add("Monday")
+        final JsonObject jsonObject = Json.createObjectBuilder()
+                .add(JUDICIARY_ID, judiciaryId)
+                .add(COURT_HOUSE_ID, courtHouseId)
+                .add(START_DATE, DATE_2026_01_01)
+                .add(END_DATE, DATE_2026_01_31)
+                .add(REPEAT_DAYS, Json.createArrayBuilder()
+                        .add(MONDAY_2)
                         .add("InvalidDay")
-                        .add("Tuesday"))
+                        .add(TUESDAY_2))
                 .build();
 
-        AddJudiciaryAvailabilityRuleRequest result = converter.convert(jsonObject);
+        final AddJudiciaryAvailabilityRuleRequest result = converter.convert(jsonObject);
 
         assertNotNull(result);
         assertThat(result.getRepeatDays().size(), is(2));
@@ -174,19 +188,19 @@ class BaseJudiciaryAvailabilityRuleConverterTest {
         final String judiciaryId = randomUUID().toString();
         final String courtHouseId = randomUUID().toString();
         
-        JsonObject jsonObject = Json.createObjectBuilder()
-                .add("judiciaryId", judiciaryId)
-                .add("courtHouseId", courtHouseId)
-                .add("startDate", "2026-01-01")
-                .add("endDate", "2026-01-31")
-                .add("repeatDays", Json.createArrayBuilder()
-                        .add("Monday")
+        final JsonObject jsonObject = Json.createObjectBuilder()
+                .add(JUDICIARY_ID, judiciaryId)
+                .add(COURT_HOUSE_ID, courtHouseId)
+                .add(START_DATE, DATE_2026_01_01)
+                .add(END_DATE, DATE_2026_01_31)
+                .add(REPEAT_DAYS, Json.createArrayBuilder()
+                        .add(MONDAY_2)
                         .add(123)
                         .add(true)
-                        .add(Json.createObjectBuilder().add("day", "Tuesday")))
+                        .add(Json.createObjectBuilder().add("day", TUESDAY_2)))
                 .build();
 
-        AddJudiciaryAvailabilityRuleRequest result = converter.convert(jsonObject);
+        final AddJudiciaryAvailabilityRuleRequest result = converter.convert(jsonObject);
 
         assertNotNull(result);
         assertThat(result.getRepeatDays().size(), is(1));
@@ -198,15 +212,15 @@ class BaseJudiciaryAvailabilityRuleConverterTest {
         final String judiciaryId = randomUUID().toString();
         final String courtHouseId = randomUUID().toString();
         
-        JsonObject jsonObject = Json.createObjectBuilder()
-                .add("judiciaryId", judiciaryId)
-                .add("courtHouseId", courtHouseId)
-                .add("startDate", "2026-01-01")
-                .add("endDate", "2026-01-31")
-                .add("repeatDays", Json.createArrayBuilder())
+        final JsonObject jsonObject = Json.createObjectBuilder()
+                .add(JUDICIARY_ID, judiciaryId)
+                .add(COURT_HOUSE_ID, courtHouseId)
+                .add(START_DATE, DATE_2026_01_01)
+                .add(END_DATE, DATE_2026_01_31)
+                .add(REPEAT_DAYS, Json.createArrayBuilder())
                 .build();
 
-        AddJudiciaryAvailabilityRuleRequest result = converter.convert(jsonObject);
+        final AddJudiciaryAvailabilityRuleRequest result = converter.convert(jsonObject);
 
         assertNotNull(result);
         assertThat(result.getRepeatDays().size(), is(0));
@@ -217,23 +231,23 @@ class BaseJudiciaryAvailabilityRuleConverterTest {
         final String judiciaryId = randomUUID().toString();
         final String courtHouseId = randomUUID().toString();
         
-        JsonObject jsonObject = Json.createObjectBuilder()
-                .add("judiciaryId", judiciaryId)
-                .add("courtHouseId", courtHouseId)
-                .add("startDate", "2026-01-01")
-                .add("endDate", "2026-01-31")
-                .add("unavailabilities", Json.createArrayBuilder()
+        final JsonObject jsonObject = Json.createObjectBuilder()
+                .add(JUDICIARY_ID, judiciaryId)
+                .add(COURT_HOUSE_ID, courtHouseId)
+                .add(START_DATE, DATE_2026_01_01)
+                .add(END_DATE, DATE_2026_01_31)
+                .add(UNAVAILABILITIES, Json.createArrayBuilder()
                         .add(Json.createObjectBuilder()
-                                .add("startDate", "2026-01-10")
-                                .add("endDate", "2026-01-12")
-                                .add("reason", "TRAINING"))
+                                .add(START_DATE, DATE_2026_01_10)
+                                .add(END_DATE, DATE_2026_01_12)
+                                .add(REASON, "TRAINING"))
                         .add(Json.createObjectBuilder()
-                                .add("startDate", "2026-01-20")
-                                .add("endDate", "2026-01-22")
-                                .add("reason", "SICK_LEAVE")))
+                                .add(START_DATE, "2026-01-20")
+                                .add(END_DATE, "2026-01-22")
+                                .add(REASON, "SICK_LEAVE")))
                 .build();
 
-        AddJudiciaryAvailabilityRuleRequest result = converter.convert(jsonObject);
+        final AddJudiciaryAvailabilityRuleRequest result = converter.convert(jsonObject);
 
         assertNotNull(result);
         assertThat(result.getUnavailabilities().size(), is(2));
@@ -246,18 +260,18 @@ class BaseJudiciaryAvailabilityRuleConverterTest {
         final String judiciaryId = randomUUID().toString();
         final String courtHouseId = randomUUID().toString();
         
-        JsonObject jsonObject = Json.createObjectBuilder()
-                .add("judiciaryId", judiciaryId)
-                .add("courtHouseId", courtHouseId)
-                .add("startDate", "2026-01-01")
-                .add("endDate", "2026-01-31")
-                .add("unavailabilities", Json.createArrayBuilder()
+        final JsonObject jsonObject = Json.createObjectBuilder()
+                .add(JUDICIARY_ID, judiciaryId)
+                .add(COURT_HOUSE_ID, courtHouseId)
+                .add(START_DATE, DATE_2026_01_01)
+                .add(END_DATE, DATE_2026_01_31)
+                .add(UNAVAILABILITIES, Json.createArrayBuilder()
                         .add(Json.createObjectBuilder()
-                                .add("startDate", "2026-01-10")
-                                .add("endDate", "2026-01-12")))
+                                .add(START_DATE, DATE_2026_01_10)
+                                .add(END_DATE, DATE_2026_01_12)))
                 .build();
 
-        AddJudiciaryAvailabilityRuleRequest result = converter.convert(jsonObject);
+        final AddJudiciaryAvailabilityRuleRequest result = converter.convert(jsonObject);
 
         assertNotNull(result);
         assertThat(result.getUnavailabilities().size(), is(1));
@@ -269,21 +283,21 @@ class BaseJudiciaryAvailabilityRuleConverterTest {
         final String judiciaryId = randomUUID().toString();
         final String courtHouseId = randomUUID().toString();
         
-        JsonObject jsonObject = Json.createObjectBuilder()
-                .add("judiciaryId", judiciaryId)
-                .add("courtHouseId", courtHouseId)
-                .add("startDate", "2026-01-01")
-                .add("endDate", "2026-01-31")
-                .add("unavailabilities", Json.createArrayBuilder()
+        final JsonObject jsonObject = Json.createObjectBuilder()
+                .add(JUDICIARY_ID, judiciaryId)
+                .add(COURT_HOUSE_ID, courtHouseId)
+                .add(START_DATE, DATE_2026_01_01)
+                .add(END_DATE, DATE_2026_01_31)
+                .add(UNAVAILABILITIES, Json.createArrayBuilder()
                         .add(Json.createObjectBuilder()
-                                .add("startDate", "2026-01-10")
-                                .add("endDate", "2026-01-12"))
+                                .add(START_DATE, DATE_2026_01_10)
+                                .add(END_DATE, DATE_2026_01_12))
                         .add("not an object")
                         .add(123)
                         .add(true))
                 .build();
 
-        AddJudiciaryAvailabilityRuleRequest result = converter.convert(jsonObject);
+        final AddJudiciaryAvailabilityRuleRequest result = converter.convert(jsonObject);
 
         assertNotNull(result);
         assertThat(result.getUnavailabilities().size(), is(1));
@@ -294,15 +308,15 @@ class BaseJudiciaryAvailabilityRuleConverterTest {
         final String judiciaryId = randomUUID().toString();
         final String courtHouseId = randomUUID().toString();
         
-        JsonObject jsonObject = Json.createObjectBuilder()
-                .add("judiciaryId", judiciaryId)
-                .add("courtHouseId", courtHouseId)
-                .add("startDate", "2026-01-01")
-                .add("endDate", "2026-01-31")
-                .add("unavailabilities", Json.createArrayBuilder())
+        final JsonObject jsonObject = Json.createObjectBuilder()
+                .add(JUDICIARY_ID, judiciaryId)
+                .add(COURT_HOUSE_ID, courtHouseId)
+                .add(START_DATE, DATE_2026_01_01)
+                .add(END_DATE, DATE_2026_01_31)
+                .add(UNAVAILABILITIES, Json.createArrayBuilder())
                 .build();
 
-        AddJudiciaryAvailabilityRuleRequest result = converter.convert(jsonObject);
+        final AddJudiciaryAvailabilityRuleRequest result = converter.convert(jsonObject);
 
         assertNotNull(result);
         assertThat(result.getUnavailabilities().size(), is(0));
@@ -313,31 +327,31 @@ class BaseJudiciaryAvailabilityRuleConverterTest {
         final String judiciaryId = randomUUID().toString();
         final String courtHouseId = randomUUID().toString();
         
-        JsonObject jsonObject = Json.createObjectBuilder()
-                .add("judiciaryId", judiciaryId)
-                .add("courtHouseId", courtHouseId)
-                .add("startDate", "2026-01-01")
-                .add("endDate", "2026-01-31")
-                .add("unavailabilities", Json.createArrayBuilder()
+        final JsonObject jsonObject = Json.createObjectBuilder()
+                .add(JUDICIARY_ID, judiciaryId)
+                .add(COURT_HOUSE_ID, courtHouseId)
+                .add(START_DATE, DATE_2026_01_01)
+                .add(END_DATE, DATE_2026_01_31)
+                .add(UNAVAILABILITIES, Json.createArrayBuilder()
                         .add(Json.createObjectBuilder()
-                                .add("startDate", "2026-01-10")
-                                .add("endDate", "2026-01-12")
-                                .add("reason", "TRAINING"))
+                                .add(START_DATE, DATE_2026_01_10)
+                                .add(END_DATE, DATE_2026_01_12)
+                                .add(REASON, "TRAINING"))
                         .add(Json.createObjectBuilder()
-                                .add("startDate", "2026-01-13")
-                                .add("endDate", "2026-01-15")
-                                .add("reason", "ANNUAL_LEAVE"))
+                                .add(START_DATE, "2026-01-13")
+                                .add(END_DATE, "2026-01-15")
+                                .add(REASON, "ANNUAL_LEAVE"))
                         .add(Json.createObjectBuilder()
-                                .add("startDate", "2026-01-16")
-                                .add("endDate", "2026-01-18")
-                                .add("reason", "OFFICIAL_BUSINESS"))
+                                .add(START_DATE, "2026-01-16")
+                                .add(END_DATE, "2026-01-18")
+                                .add(REASON, "OFFICIAL_BUSINESS"))
                         .add(Json.createObjectBuilder()
-                                .add("startDate", "2026-01-19")
-                                .add("endDate", "2026-01-21")
-                                .add("reason", "SICK_LEAVE")))
+                                .add(START_DATE, "2026-01-19")
+                                .add(END_DATE, "2026-01-21")
+                                .add(REASON, "SICK_LEAVE")))
                 .build();
 
-        AddJudiciaryAvailabilityRuleRequest result = converter.convert(jsonObject);
+        final AddJudiciaryAvailabilityRuleRequest result = converter.convert(jsonObject);
 
         assertNotNull(result);
         assertThat(result.getUnavailabilities().size(), is(4));
@@ -352,16 +366,16 @@ class BaseJudiciaryAvailabilityRuleConverterTest {
         final String judiciaryId = randomUUID().toString();
         final String courtHouseId = randomUUID().toString();
         
-        for (SessionType sessionType : SessionType.values()) {
-            JsonObject jsonObject = Json.createObjectBuilder()
-                    .add("judiciaryId", judiciaryId)
-                    .add("courtHouseId", courtHouseId)
-                    .add("startDate", "2026-01-01")
-                    .add("endDate", "2026-01-31")
+        for (final SessionType sessionType : SessionType.values()) {
+            final JsonObject jsonObject = Json.createObjectBuilder()
+                    .add(JUDICIARY_ID, judiciaryId)
+                    .add(COURT_HOUSE_ID, courtHouseId)
+                    .add(START_DATE, DATE_2026_01_01)
+                    .add(END_DATE, DATE_2026_01_31)
                     .add("sessionType", sessionType.name())
                     .build();
 
-            AddJudiciaryAvailabilityRuleRequest result = converter.convert(jsonObject);
+            final AddJudiciaryAvailabilityRuleRequest result = converter.convert(jsonObject);
 
             assertNotNull(result);
             assertThat(result.getSessionType(), is(sessionType));
@@ -373,18 +387,18 @@ class BaseJudiciaryAvailabilityRuleConverterTest {
         final String judiciaryId = randomUUID().toString();
         final String courtHouseId = randomUUID().toString();
         
-        JsonObject jsonObject = Json.createObjectBuilder()
-                .add("judiciaryId", judiciaryId)
-                .add("courtHouseId", courtHouseId)
-                .add("startDate", "2026-01-01")
-                .add("endDate", "2026-01-31")
-                .add("repeatDays", Json.createArrayBuilder()
-                        .add("Monday")
+        final JsonObject jsonObject = Json.createObjectBuilder()
+                .add(JUDICIARY_ID, judiciaryId)
+                .add(COURT_HOUSE_ID, courtHouseId)
+                .add(START_DATE, DATE_2026_01_01)
+                .add(END_DATE, DATE_2026_01_31)
+                .add(REPEAT_DAYS, Json.createArrayBuilder()
+                        .add(MONDAY_2)
                         .add("")
-                        .add("Tuesday"))
+                        .add(TUESDAY_2))
                 .build();
 
-        AddJudiciaryAvailabilityRuleRequest result = converter.convert(jsonObject);
+        final AddJudiciaryAvailabilityRuleRequest result = converter.convert(jsonObject);
 
         assertNotNull(result);
         // Empty string should be skipped (converted to empty after titleCase, then fails valueOf)

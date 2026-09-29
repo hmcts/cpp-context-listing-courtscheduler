@@ -44,6 +44,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class RotaDataEnricherTest {
+    private static final String WEDPM_2 = "WEDPM";
+
 
     @InjectMocks
     private RotaDataEnricher rotaDataEnricher;
@@ -90,7 +92,7 @@ class RotaDataEnricherTest {
 
         when(referenceDataMapperService.findByOuCodeAndRoomIdAndListingSessionAndBusinessType(anyString(), anyInt(), anyString(), anyString())).thenReturn(of(sessionAllocation));
         when(courtScheduleEnricher.build(anyMap(), any(LocalDate.class), anyMap(), anyList(), anyString())).thenReturn(courtSchedule);
-        when(courtSession.getCourtSession(any(LocalDate.class), anyString())).thenReturn("WEDPM");
+        when(courtSession.getCourtSession(any(LocalDate.class), anyString())).thenReturn(WEDPM_2);
 
         final byte[] blobContent = givenBlobContent(file);
         final Map<RotaPayload, Map<String, Map<String, String>>> records = rotaFileParser.parse(file, blobContent);
@@ -99,10 +101,10 @@ class RotaDataEnricherTest {
 
         final Collection<CourtSchedule> schedules = courtSchedules.values();
         final Integer totalListings = records.get(COURT_LISTING).values().size();
-        final long allDay = schedules.stream().filter(ch -> ch.getCourtSession().equals(ALL_DAY_SESSION)).count();
-        final long amSessions = schedules.stream().filter(ch -> ch.getCourtSession().equals(AM_SESSION)).count();
-        final long pmSessions = schedules.stream().filter(ch -> ch.getCourtSession().equals(PM_SESSION)).count();
-        final CourtSchedule pmSession = schedules.stream().filter(ch -> ch.getCourtSession().equals(PM_SESSION)).findFirst().get();
+        final long allDay = schedules.stream().filter(ch -> ALL_DAY_SESSION.equals(ch.getCourtSession())).count();
+        final long amSessions = schedules.stream().filter(ch -> AM_SESSION.equals(ch.getCourtSession())).count();
+        final long pmSessions = schedules.stream().filter(ch -> PM_SESSION.equals(ch.getCourtSession())).count();
+        final CourtSchedule pmSession = schedules.stream().filter(ch -> PM_SESSION.equals(ch.getCourtSession())).findFirst().get();
 
         assertThat(totalListings, is(472));
         assertThat(allDay, is(0L));
@@ -136,7 +138,7 @@ class RotaDataEnricherTest {
 
         when(referenceDataMapperService.findByOuCodeAndRoomIdAndListingSessionAndBusinessType(anyString(), anyInt(), anyString(), anyString())).thenReturn(empty());
         when(courtScheduleEnricher.build(anyMap(), any(LocalDate.class), anyMap(), anyList(), anyString())).thenReturn(courtSchedule);
-        when(courtSession.getCourtSession(any(LocalDate.class), anyString())).thenReturn("WEDPM");
+        when(courtSession.getCourtSession(any(LocalDate.class), anyString())).thenReturn(WEDPM_2);
 
         final byte[] blobContent = givenBlobContent(file);
 
@@ -146,10 +148,10 @@ class RotaDataEnricherTest {
 
         final Collection<CourtSchedule> schedules = courtSchedules.values();
         final Integer totalListings = records.get(COURT_LISTING).values().size();
-        final long allDay = schedules.stream().filter(ch -> ch.getCourtSession().equals(ALL_DAY_SESSION)).count();
-        final long amSessions = schedules.stream().filter(ch -> ch.getCourtSession().equals(AM_SESSION)).count();
-        final long pmSessions = schedules.stream().filter(ch -> ch.getCourtSession().equals(PM_SESSION)).count();
-        final CourtSchedule pmSession = schedules.stream().filter(ch -> ch.getCourtSession().equals(PM_SESSION)).findFirst().get();
+        final long allDay = schedules.stream().filter(ch -> ALL_DAY_SESSION.equals(ch.getCourtSession())).count();
+        final long amSessions = schedules.stream().filter(ch -> AM_SESSION.equals(ch.getCourtSession())).count();
+        final long pmSessions = schedules.stream().filter(ch -> PM_SESSION.equals(ch.getCourtSession())).count();
+        final CourtSchedule pmSession = schedules.stream().filter(ch -> PM_SESSION.equals(ch.getCourtSession())).findFirst().get();
 
         assertThat(totalListings, is(472));
         assertThat(allDay, is(0L));
@@ -197,7 +199,7 @@ class RotaDataEnricherTest {
         when(courtScheduleEnricher.build(anyMap(), any(LocalDate.class), anyMap(), anyList(), anyString())).thenReturn(built);
 
         // Second row triggers refdata lookup; refdata supplies custom AD start/end times
-        when(courtSession.getCourtSession(any(LocalDate.class), anyString())).thenReturn("WEDPM");
+        when(courtSession.getCourtSession(any(LocalDate.class), anyString())).thenReturn(WEDPM_2);
         final CourtRoomSessionAllocation allocation = CourtRoomSessionAllocation.CourtRoomSessionAllocationBuilder.aCourtRoomSessionAllocation()
                 .withId("alloc-1")
                 .withCourtRoomId(courtRoomNumber)
@@ -205,7 +207,7 @@ class RotaDataEnricherTest {
                 .withMaxSlot(4)
                 .withMaxDurationMins(45)
                 .withRotaBusinessTypeCode(businessType)
-                .withCourtSession("WEDPM")
+                .withCourtSession(WEDPM_2)
                 .withSessionStartTime("09:15")
                 .withSessionEndTime("16:30")
                 .build();
@@ -256,7 +258,7 @@ class RotaDataEnricherTest {
                 .build();
         when(courtScheduleEnricher.build(anyMap(), any(LocalDate.class), anyMap(), anyList(), anyString())).thenReturn(built);
 
-        when(courtSession.getCourtSession(any(LocalDate.class), anyString())).thenReturn("WEDPM");
+        when(courtSession.getCourtSession(any(LocalDate.class), anyString())).thenReturn(WEDPM_2);
         // No allocation -> defaults must apply (ALL_DAY: 10:00 / 17:00)
         when(referenceDataMapperService.findByOuCodeAndRoomIdAndListingSessionAndBusinessType(anyString(), anyInt(), anyString(), anyString()))
                 .thenReturn(empty());
@@ -282,7 +284,7 @@ class RotaDataEnricherTest {
     }
 
     private byte[] givenBlobContent(final String file) throws IOException {
-        try (final InputStream inputStream = RotaDataEnricherTest.class.getClassLoader().getResourceAsStream(file)) {
+        try (InputStream inputStream = RotaDataEnricherTest.class.getResourceAsStream("/" + file)) {
             return toByteArray(inputStream);
         }
     }

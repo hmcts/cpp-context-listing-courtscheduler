@@ -129,7 +129,9 @@ class HearingSlotsMultidayCrownPerfIT extends AbstractIT {
                 if (isWeekend(d)) {
                     continue;
                 }
-                if (weekdayIx++ % 3 != 0) {
+                final int currentWeekdayIx = weekdayIx;
+                weekdayIx++;
+                if (currentWeekdayIx % 3 != 0) {
                     continue;
                 }
                 schedules.add(buildSchedule(roomId, NUM_CANDIDATE_ROOMS + roomIx + 1, "ADULT", d));

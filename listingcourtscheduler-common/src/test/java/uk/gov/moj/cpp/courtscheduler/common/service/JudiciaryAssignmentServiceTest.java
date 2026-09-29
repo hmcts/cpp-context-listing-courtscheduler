@@ -42,6 +42,12 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class JudiciaryAssignmentServiceTest {
+    private static final String UUID_3FA85F64 = "3fa85f64-5717-4562-b3fc-2c963f66afa6";
+    private static final String UUID_8A9F3E44 = "8a9f3e44-2d6a-4f4b-b7d1-9e6b9fbf1111";
+    private static final String MAGISTRATE_2 = "MAGISTRATE";
+    private static final String JUDICIARY_1 = "judiciary-1";
+    private static final String SESSION_1 = "session-1";
+
 
     private static final String EXECUTION_ID = "exec-id";
 
@@ -65,8 +71,8 @@ class JudiciaryAssignmentServiceTest {
 
     @Test
     void shouldAssignJudiciaryToSession() {
-        final String judiciaryId = "judiciary-1";
-        final String sessionId = "session-1";
+        final String judiciaryId = JUDICIARY_1;
+        final String sessionId = SESSION_1;
 
         when(referenceDataMapperService.findById(judiciaryId)).thenReturn(Optional.of(buildJudiciary(judiciaryId)));
         when(courtScheduleRepository.findByCourtScheduleIds(anyList())).thenReturn(of(buildCourtSchedule(sessionId)));
@@ -84,7 +90,7 @@ class JudiciaryAssignmentServiceTest {
     void shouldSkipAssignmentWhenJudiciaryMissing() {
         // When judiciary is missing, service should skip the assignment (validation happens in validator layer)
         final String judiciaryId = "missing-judiciary";
-        final String sessionId = "session-1";
+        final String sessionId = SESSION_1;
 
         when(referenceDataMapperService.findById(judiciaryId)).thenReturn(Optional.empty());
         when(courtScheduleRepository.findByCourtScheduleIds(anyList())).thenReturn(of(buildCourtSchedule(sessionId)));
@@ -103,9 +109,9 @@ class JudiciaryAssignmentServiceTest {
     @Test
     void shouldSkipAssignmentWhenSessionMissing() {
         // When session is missing, service should skip the assignment (validation happens in validator layer)
-        final String judiciaryId = "judiciary-1";
+        final String judiciaryId = JUDICIARY_1;
         when(referenceDataMapperService.findById(judiciaryId)).thenReturn(Optional.of(buildJudiciary(judiciaryId)));
-        when(courtScheduleRepository.findByCourtScheduleIds(anyList())).thenReturn(List.of());
+        when(courtScheduleRepository.findByCourtScheduleIds(anyList())).thenReturn(of());
 
         final AssignJudiciariesResponse response = judiciaryAssignmentService.assignJudiciaries(buildRequest(judiciaryId, "unknown-session"), EXECUTION_ID);
 
@@ -117,8 +123,8 @@ class JudiciaryAssignmentServiceTest {
 
     @Test
     void shouldHandleDuplicateAssignmentsGracefully() {
-        final String judiciaryId = "judiciary-1";
-        final String sessionId = "session-1";
+        final String judiciaryId = JUDICIARY_1;
+        final String sessionId = SESSION_1;
 
         when(referenceDataMapperService.findById(judiciaryId)).thenReturn(Optional.of(buildJudiciary(judiciaryId)));
         when(courtScheduleRepository.findByCourtScheduleIds(anyList())).thenReturn(of(buildCourtSchedule(sessionId)));
@@ -135,8 +141,8 @@ class JudiciaryAssignmentServiceTest {
 
     @Test
     void shouldHandleUnexpectedPersistenceErrors() {
-        final String judiciaryId = "judiciary-1";
-        final String sessionId = "session-1";
+        final String judiciaryId = JUDICIARY_1;
+        final String sessionId = SESSION_1;
 
         when(referenceDataMapperService.findById(judiciaryId)).thenReturn(Optional.of(buildJudiciary(judiciaryId)));
         when(courtScheduleRepository.findByCourtScheduleIds(anyList())).thenReturn(of(buildCourtSchedule(sessionId)));
@@ -199,21 +205,21 @@ class JudiciaryAssignmentServiceTest {
 
     @Test
     void assignJudiciaryToSessionsShouldReplaceAllWithCartesianProduct() {
-        final String s1 = "8a9f3e44-2d6a-4f4b-b7d1-9e6b9fbf1111";
+        final String s1 = UUID_8A9F3E44;
         final String s2 = "1b2c3d44-7e8f-4b9a-8c7d-2a3b4c5d6666";
-        final String jid = "3fa85f64-5717-4562-b3fc-2c963f66afa6";
+        final String jid = UUID_3FA85F64;
 
-        when(courtScheduleRepository.findByCourtScheduleIds(anyList())).thenReturn(List.of(
+        when(courtScheduleRepository.findByCourtScheduleIds(anyList())).thenReturn(of(
                 buildCourtScheduleWithHouse(s1, "H1"),
                 buildCourtScheduleWithHouse(s2, "H1")));
         when(referenceDataMapperService.findById(jid)).thenReturn(Optional.of(buildJudiciary(jid)));
         when(courtScheduleJudiciaryRepository.deleteAllAssignmentsForCourtScheduleIds(anyList())).thenReturn(2);
 
         final AssignJudiciaryToSessionsRequest req = AssignJudiciaryToSessionsRequest.builder()
-                .withCourtScheduleIds(List.of(s1, s2))
+                .withCourtScheduleIds(of(s1, s2))
                 .addSessionJudiciary(SessionJudiciary.builder()
                         .withJudicialId(jid)
-                        .withJudiciaryType("MAGISTRATE")
+                        .withJudiciaryType(MAGISTRATE_2)
                         .withIsBenchChairman(false)
                         .withIsDeputy(false)
                         .build())
@@ -221,26 +227,26 @@ class JudiciaryAssignmentServiceTest {
 
         judiciaryAssignmentService.assignJudiciaryToSessions(req, EXECUTION_ID);
 
-        verify(courtScheduleJudiciaryRepository).deleteAllAssignmentsForCourtScheduleIds(List.of(s1, s2));
+        verify(courtScheduleJudiciaryRepository).deleteAllAssignmentsForCourtScheduleIds(of(s1, s2));
         verify(entityManager, times(2)).merge(any());
         verify(entityManager).flush();
     }
 
     @Test
     void assignJudiciaryToSessionsShouldRejectMixedCourthouses() {
-        final String s1 = "8a9f3e44-2d6a-4f4b-b7d1-9e6b9fbf1111";
+        final String s1 = UUID_8A9F3E44;
         final String s2 = "1b2c3d44-7e8f-4b9a-8c7d-2a3b4c5d6666";
-        final String jid = "3fa85f64-5717-4562-b3fc-2c963f66afa6";
+        final String jid = UUID_3FA85F64;
 
-        when(courtScheduleRepository.findByCourtScheduleIds(anyList())).thenReturn(List.of(
+        when(courtScheduleRepository.findByCourtScheduleIds(anyList())).thenReturn(of(
                 buildCourtScheduleWithHouse(s1, "H1"),
                 buildCourtScheduleWithHouse(s2, "H2")));
 
         final AssignJudiciaryToSessionsRequest req = AssignJudiciaryToSessionsRequest.builder()
-                .withCourtScheduleIds(List.of(s1, s2))
+                .withCourtScheduleIds(of(s1, s2))
                 .addSessionJudiciary(SessionJudiciary.builder()
                         .withJudicialId(jid)
-                        .withJudiciaryType("MAGISTRATE")
+                        .withJudiciaryType(MAGISTRATE_2)
                         .build())
                 .build();
 
@@ -251,12 +257,12 @@ class JudiciaryAssignmentServiceTest {
 
     @Test
     void assignJudiciaryToSessionsShouldRejectTooManyMagistrates() {
-        final String s1 = "8a9f3e44-2d6a-4f4b-b7d1-9e6b9fbf1111";
+        final String s1 = UUID_8A9F3E44;
         final AssignJudiciaryToSessionsRequest req = AssignJudiciaryToSessionsRequest.builder()
-                .withCourtScheduleIds(List.of(s1))
-                .addSessionJudiciary(SessionJudiciary.builder().withJudicialId("11111111-1111-1111-1111-111111111111").withJudiciaryType("MAGISTRATE").build())
-                .addSessionJudiciary(SessionJudiciary.builder().withJudicialId("22222222-2222-2222-2222-222222222222").withJudiciaryType("MAGISTRATE").build())
-                .addSessionJudiciary(SessionJudiciary.builder().withJudicialId("33333333-3333-3333-3333-333333333333").withJudiciaryType("MAGISTRATE").build())
+                .withCourtScheduleIds(of(s1))
+                .addSessionJudiciary(SessionJudiciary.builder().withJudicialId("11111111-1111-1111-1111-111111111111").withJudiciaryType(MAGISTRATE_2).build())
+                .addSessionJudiciary(SessionJudiciary.builder().withJudicialId("22222222-2222-2222-2222-222222222222").withJudiciaryType(MAGISTRATE_2).build())
+                .addSessionJudiciary(SessionJudiciary.builder().withJudicialId("33333333-3333-3333-3333-333333333333").withJudiciaryType(MAGISTRATE_2).build())
                 .build();
 
         assertThrows(IllegalArgumentException.class,
@@ -266,33 +272,33 @@ class JudiciaryAssignmentServiceTest {
 
     @Test
     void assignJudiciaryToSessionsShouldClearBenchWhenJudiciaryListEmpty() {
-        final String s1 = "8a9f3e44-2d6a-4f4b-b7d1-9e6b9fbf1111";
-        when(courtScheduleRepository.findByCourtScheduleIds(anyList())).thenReturn(List.of(buildCourtScheduleWithHouse(s1, "H1")));
+        final String s1 = UUID_8A9F3E44;
+        when(courtScheduleRepository.findByCourtScheduleIds(anyList())).thenReturn(of(buildCourtScheduleWithHouse(s1, "H1")));
         when(courtScheduleJudiciaryRepository.deleteAllAssignmentsForCourtScheduleIds(anyList())).thenReturn(1);
 
         final AssignJudiciaryToSessionsRequest req = AssignJudiciaryToSessionsRequest.builder()
-                .withCourtScheduleIds(List.of(s1))
-                .withJudiciary(List.of())
+                .withCourtScheduleIds(of(s1))
+                .withJudiciary(of())
                 .build();
 
         judiciaryAssignmentService.assignJudiciaryToSessions(req, EXECUTION_ID);
 
-        verify(courtScheduleJudiciaryRepository).deleteAllAssignmentsForCourtScheduleIds(List.of(s1));
+        verify(courtScheduleJudiciaryRepository).deleteAllAssignmentsForCourtScheduleIds(of(s1));
         verify(entityManager, never()).merge(any());
         verify(entityManager, never()).flush();
     }
 
     @Test
     void assignJudiciaryToSessionsShouldRejectWhenCourtScheduleNotFound() {
-        final String s1 = "8a9f3e44-2d6a-4f4b-b7d1-9e6b9fbf1111";
+        final String s1 = UUID_8A9F3E44;
         final String s2 = "1b2c3d44-7e8f-4b9a-8c7d-2a3b4c5d6666";
-        final String jid = "3fa85f64-5717-4562-b3fc-2c963f66afa6";
+        final String jid = UUID_3FA85F64;
 
-        when(courtScheduleRepository.findByCourtScheduleIds(anyList())).thenReturn(List.of(buildCourtScheduleWithHouse(s1, "H1")));
+        when(courtScheduleRepository.findByCourtScheduleIds(anyList())).thenReturn(of(buildCourtScheduleWithHouse(s1, "H1")));
 
         final AssignJudiciaryToSessionsRequest req = AssignJudiciaryToSessionsRequest.builder()
-                .withCourtScheduleIds(List.of(s1, s2))
-                .addSessionJudiciary(SessionJudiciary.builder().withJudicialId(jid).withJudiciaryType("MAGISTRATE").build())
+                .withCourtScheduleIds(of(s1, s2))
+                .addSessionJudiciary(SessionJudiciary.builder().withJudicialId(jid).withJudiciaryType(MAGISTRATE_2).build())
                 .build();
 
         assertThrows(IllegalArgumentException.class,
@@ -302,9 +308,9 @@ class JudiciaryAssignmentServiceTest {
 
     @Test
     void assignJudiciaryToSessionsShouldRejectMoreThanOneJudgeOrRecorder() {
-        final String s1 = "8a9f3e44-2d6a-4f4b-b7d1-9e6b9fbf1111";
+        final String s1 = UUID_8A9F3E44;
         final AssignJudiciaryToSessionsRequest req = AssignJudiciaryToSessionsRequest.builder()
-                .withCourtScheduleIds(List.of(s1))
+                .withCourtScheduleIds(of(s1))
                 .addSessionJudiciary(SessionJudiciary.builder()
                         .withJudicialId("11111111-1111-1111-1111-111111111111").withJudiciaryType("CIRCUIT_JUDGE").build())
                 .addSessionJudiciary(SessionJudiciary.builder()
@@ -318,12 +324,12 @@ class JudiciaryAssignmentServiceTest {
 
     @Test
     void assignJudiciaryToSessionsShouldRejectDuplicateJudicialId() {
-        final String s1 = "8a9f3e44-2d6a-4f4b-b7d1-9e6b9fbf1111";
-        final String jid = "3fa85f64-5717-4562-b3fc-2c963f66afa6";
+        final String s1 = UUID_8A9F3E44;
+        final String jid = UUID_3FA85F64;
         final AssignJudiciaryToSessionsRequest req = AssignJudiciaryToSessionsRequest.builder()
-                .withCourtScheduleIds(List.of(s1))
-                .addSessionJudiciary(SessionJudiciary.builder().withJudicialId(jid).withJudiciaryType("MAGISTRATE").build())
-                .addSessionJudiciary(SessionJudiciary.builder().withJudicialId(jid).withJudiciaryType("MAGISTRATE").build())
+                .withCourtScheduleIds(of(s1))
+                .addSessionJudiciary(SessionJudiciary.builder().withJudicialId(jid).withJudiciaryType(MAGISTRATE_2).build())
+                .addSessionJudiciary(SessionJudiciary.builder().withJudicialId(jid).withJudiciaryType(MAGISTRATE_2).build())
                 .build();
 
         assertThrows(IllegalArgumentException.class,
@@ -333,15 +339,15 @@ class JudiciaryAssignmentServiceTest {
 
     @Test
     void assignJudiciaryToSessionsShouldRejectWhenJudiciaryMissingInRefdata() {
-        final String s1 = "8a9f3e44-2d6a-4f4b-b7d1-9e6b9fbf1111";
+        final String s1 = UUID_8A9F3E44;
         final String jid = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
-        when(courtScheduleRepository.findByCourtScheduleIds(anyList())).thenReturn(List.of(buildCourtScheduleWithHouse(s1, "H1")));
+        when(courtScheduleRepository.findByCourtScheduleIds(anyList())).thenReturn(of(buildCourtScheduleWithHouse(s1, "H1")));
         when(referenceDataMapperService.findById(jid)).thenReturn(Optional.empty());
         when(courtScheduleJudiciaryRepository.deleteAllAssignmentsForCourtScheduleIds(anyList())).thenReturn(0);
 
         final AssignJudiciaryToSessionsRequest req = AssignJudiciaryToSessionsRequest.builder()
-                .withCourtScheduleIds(List.of(s1))
-                .addSessionJudiciary(SessionJudiciary.builder().withJudicialId(jid).withJudiciaryType("MAGISTRATE").build())
+                .withCourtScheduleIds(of(s1))
+                .addSessionJudiciary(SessionJudiciary.builder().withJudicialId(jid).withJudiciaryType(MAGISTRATE_2).build())
                 .build();
 
         assertThrows(IllegalArgumentException.class,
@@ -351,11 +357,11 @@ class JudiciaryAssignmentServiceTest {
 
     @Test
     void assignJudiciaryToSessionsShouldRejectBlankJudiciaryType() {
-        final String s1 = "8a9f3e44-2d6a-4f4b-b7d1-9e6b9fbf1111";
+        final String s1 = UUID_8A9F3E44;
         final AssignJudiciaryToSessionsRequest req = AssignJudiciaryToSessionsRequest.builder()
-                .withCourtScheduleIds(List.of(s1))
+                .withCourtScheduleIds(of(s1))
                 .addSessionJudiciary(SessionJudiciary.builder()
-                        .withJudicialId("3fa85f64-5717-4562-b3fc-2c963f66afa6")
+                        .withJudicialId(UUID_3FA85F64)
                         .withJudiciaryType("   ")
                         .build())
                 .build();
@@ -367,9 +373,9 @@ class JudiciaryAssignmentServiceTest {
 
     @Test
     void assignJudiciaryToSessionsShouldRejectMoreThanFourJudiciaryLines() {
-        final String s1 = "8a9f3e44-2d6a-4f4b-b7d1-9e6b9fbf1111";
-        final AssignJudiciaryToSessionsRequest.Builder b = AssignJudiciaryToSessionsRequest.builder().withCourtScheduleIds(List.of(s1));
-        final List<String> fiveIds = List.of(
+        final String s1 = UUID_8A9F3E44;
+        final AssignJudiciaryToSessionsRequest.Builder b = AssignJudiciaryToSessionsRequest.builder().withCourtScheduleIds(of(s1));
+        final List<String> fiveIds = of(
                 "10000000-0000-4000-8000-000000000001",
                 "10000000-0000-4000-8000-000000000002",
                 "10000000-0000-4000-8000-000000000003",
@@ -378,7 +384,7 @@ class JudiciaryAssignmentServiceTest {
         for (final String judicialId : fiveIds) {
             b.addSessionJudiciary(SessionJudiciary.builder()
                     .withJudicialId(judicialId)
-                    .withJudiciaryType("MAGISTRATE")
+                    .withJudiciaryType(MAGISTRATE_2)
                     .build());
         }
 
@@ -389,17 +395,17 @@ class JudiciaryAssignmentServiceTest {
 
     @Test
     void assignJudiciaryToSessionsShouldPersistNullRotaAndPositionAndRequestJudiciaryType() {
-        final String s1 = "8a9f3e44-2d6a-4f4b-b7d1-9e6b9fbf1111";
-        final String jid = "3fa85f64-5717-4562-b3fc-2c963f66afa6";
-        when(courtScheduleRepository.findByCourtScheduleIds(anyList())).thenReturn(List.of(buildCourtScheduleWithHouse(s1, "H1")));
+        final String s1 = UUID_8A9F3E44;
+        final String jid = UUID_3FA85F64;
+        when(courtScheduleRepository.findByCourtScheduleIds(anyList())).thenReturn(of(buildCourtScheduleWithHouse(s1, "H1")));
         when(referenceDataMapperService.findById(jid)).thenReturn(Optional.of(buildJudiciary(jid)));
         when(courtScheduleJudiciaryRepository.deleteAllAssignmentsForCourtScheduleIds(anyList())).thenReturn(0);
 
         final AssignJudiciaryToSessionsRequest req = AssignJudiciaryToSessionsRequest.builder()
-                .withCourtScheduleIds(List.of(s1))
+                .withCourtScheduleIds(of(s1))
                 .addSessionJudiciary(SessionJudiciary.builder()
                         .withJudicialId(jid)
-                        .withJudiciaryType("MAGISTRATE")
+                        .withJudiciaryType(MAGISTRATE_2)
                         .withIsBenchChairman(true)
                         .withIsDeputy(false)
                         .build())
@@ -412,7 +418,7 @@ class JudiciaryAssignmentServiceTest {
         verify(entityManager).merge(captor.capture());
         assertNull(captor.getValue().getRotaJudiciaryId());
         assertNull(captor.getValue().getPosition());
-        assertEquals("MAGISTRATE", captor.getValue().getJudiciaryType());
+        assertEquals(MAGISTRATE_2, captor.getValue().getJudiciaryType());
         assertTrue(captor.getValue().isBenchChairman());
         assertFalse(captor.getValue().isDeputy());
     }
@@ -432,7 +438,7 @@ class JudiciaryAssignmentServiceTest {
                 .build();
 
         when(referenceDataMapperService.findById(judiciaryId)).thenReturn(Optional.empty());
-        when(courtScheduleRepository.findByCourtScheduleIds(anyList())).thenReturn(List.of());
+        when(courtScheduleRepository.findByCourtScheduleIds(anyList())).thenReturn(of());
 
         final AssignJudiciariesResponse response = judiciaryAssignmentService.assignJudiciaries(request, EXECUTION_ID);
 
@@ -447,8 +453,8 @@ class JudiciaryAssignmentServiceTest {
 
     @Test
     void shouldSkipValidationsAndStillAssignWhenJudiciaryAndSessionExist() {
-        final String judiciaryId = "judiciary-1";
-        final String sessionId = "session-1";
+        final String judiciaryId = JUDICIARY_1;
+        final String sessionId = SESSION_1;
 
         final AssignJudiciariesRequest request = AssignJudiciariesRequest.builder()
                 .addJudiciary(JudiciaryAssignment.builder()
@@ -472,8 +478,8 @@ class JudiciaryAssignmentServiceTest {
 
     @Test
     void shouldUseRotaJudiciaryIdFromAssignment_WhenProvided() {
-        final String judiciaryId = "judiciary-1";
-        final String sessionId = "session-1";
+        final String judiciaryId = JUDICIARY_1;
+        final String sessionId = SESSION_1;
         final String rotaJudiciaryId = "rota-judge-123";
 
         when(referenceDataMapperService.findById(judiciaryId)).thenReturn(Optional.of(buildJudiciary(judiciaryId)));
@@ -495,8 +501,8 @@ class JudiciaryAssignmentServiceTest {
 
     @Test
     void shouldFallbackToJudiciaryCpUserId_WhenRotaJudiciaryIdNotProvided() {
-        final String judiciaryId = "judiciary-1";
-        final String sessionId = "session-1";
+        final String judiciaryId = JUDICIARY_1;
+        final String sessionId = SESSION_1;
         final String cpUserId = "CP-" + judiciaryId;
 
         when(referenceDataMapperService.findById(judiciaryId)).thenReturn(Optional.of(buildJudiciary(judiciaryId)));
@@ -518,8 +524,8 @@ class JudiciaryAssignmentServiceTest {
 
     @Test
     void shouldFallbackToJudiciaryId_WhenRotaJudiciaryIdAndCpUserIdNotProvided() {
-        final String judiciaryId = "judiciary-1";
-        final String sessionId = "session-1";
+        final String judiciaryId = JUDICIARY_1;
+        final String sessionId = SESSION_1;
         final Judiciary judiciary = buildJudiciary(judiciaryId);
         judiciary.setCpUserId(null); // Clear cpUserId to test fallback to judiciaryId
 
@@ -543,9 +549,9 @@ class JudiciaryAssignmentServiceTest {
     @Test
     void shouldFlushOnceAtEnd_WhenMultipleAssignments() {
         // Verify that flush is called only once at the end, not per entity
-        final String judiciaryId1 = "judiciary-1";
+        final String judiciaryId1 = JUDICIARY_1;
         final String judiciaryId2 = "judiciary-2";
-        final String sessionId1 = "session-1";
+        final String sessionId1 = SESSION_1;
         final String sessionId2 = "session-2";
 
         when(referenceDataMapperService.findById(judiciaryId1)).thenReturn(Optional.of(buildJudiciary(judiciaryId1)));

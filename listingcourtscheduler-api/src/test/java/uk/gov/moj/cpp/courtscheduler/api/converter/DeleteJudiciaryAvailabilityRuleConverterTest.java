@@ -23,11 +23,11 @@ class DeleteJudiciaryAvailabilityRuleConverterTest {
     void shouldConvertJsonObjectWithRuleId() {
         final String ruleId = randomUUID().toString();
         
-        JsonObject jsonObject = Json.createObjectBuilder()
+        final JsonObject jsonObject = Json.createObjectBuilder()
                 .add("ruleId", ruleId)
                 .build();
 
-        DeleteJudiciaryAvailabilityRuleRequest result = converter.convert(jsonObject);
+        final DeleteJudiciaryAvailabilityRuleRequest result = converter.convert(jsonObject);
 
         assertNotNull(result);
         assertThat(result.getRuleId(), is(ruleId));
@@ -37,11 +37,11 @@ class DeleteJudiciaryAvailabilityRuleConverterTest {
     void shouldConvertJsonObjectWithValidUuid() {
         final String ruleId = "123e4567-e89b-12d3-a456-426614174000";
         
-        JsonObject jsonObject = Json.createObjectBuilder()
+        final JsonObject jsonObject = Json.createObjectBuilder()
                 .add("ruleId", ruleId)
                 .build();
 
-        DeleteJudiciaryAvailabilityRuleRequest result = converter.convert(jsonObject);
+        final DeleteJudiciaryAvailabilityRuleRequest result = converter.convert(jsonObject);
 
         assertNotNull(result);
         assertThat(result.getRuleId(), is(ruleId));

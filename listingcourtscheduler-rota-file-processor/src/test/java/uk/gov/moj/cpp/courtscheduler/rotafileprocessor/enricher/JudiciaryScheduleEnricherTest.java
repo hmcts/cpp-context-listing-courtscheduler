@@ -30,7 +30,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -41,6 +40,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class JudiciaryScheduleEnricherTest {
+    private static final String CABC90_2 = "CABC90";
+
 
     @InjectMocks
     private JudiciaryScheduleEnricher judiciaryScheduleEnricher;
@@ -130,13 +131,13 @@ class JudiciaryScheduleEnricherTest {
 
         // Verify that errors map is populated with missing judiciary information
         assertThat("Errors map should contain missing judiciary entries", errors.isEmpty(), is(false));
-        assertThat("Should have at least one error entry", errors.size() >= 1, is(true));
+        assertThat("Should have at least one error entry", !errors.isEmpty(), is(true));
 
         verifyNoMoreInteractions(referenceDataMapperService);
     }
 
     private byte[] givenBlobContent(final String file) throws IOException {
-        try (final InputStream inputStream = JudiciaryScheduleEnricherTest.class.getClassLoader().getResourceAsStream(file)) {
+        try (InputStream inputStream = JudiciaryScheduleEnricherTest.class.getResourceAsStream("/" + file)) {
             assert inputStream != null;
             return toByteArray(inputStream);
         }
@@ -148,10 +149,10 @@ class JudiciaryScheduleEnricherTest {
 
     private CourtSchedule courtSchedule() {
         return new CourtSchedule.CourtScheduleBuilder()
-                .withCourtScheduleId(UUID.randomUUID().toString())
+                .withCourtScheduleId(randomUUID().toString())
                 .withListingProfileId("LH2294283")
                 .withSessionDate(LocalDate.of(2024, 11, 24))
-                .withOuCode("CABC90")
+                .withOuCode(CABC90_2)
                 .withCourtRoomId("001c067d-eaca-4ce5-ad90-a366ef3e4bb6")
                 .withCourtRoomNumber(1234)
                 .withCourtHouseName("Liverpool Mags Court")
@@ -177,10 +178,10 @@ class JudiciaryScheduleEnricherTest {
         final Map<RotaPayload, Map<String, Map<String, String>>> records = rotaFileParser.parse(file, blobContent);
 
         final CourtSchedule courtSchedule = new CourtSchedule.CourtScheduleBuilder()
-                .withCourtScheduleId(UUID.randomUUID().toString())
+                .withCourtScheduleId(randomUUID().toString())
                 .withListingProfileId("LP-123")
                 .withSessionDate(LocalDate.of(2024, 12, 24))
-                .withOuCode("CABC90")
+                .withOuCode(CABC90_2)
                 .withCourtRoomId("room-1")
                 .withCourtRoomName("Courtroom 1")
                 .withCourtHouseName("Liverpool Mags Court")
@@ -194,8 +195,8 @@ class JudiciaryScheduleEnricherTest {
 
         final List<CourtSchedule> activeSchedules = List.of(
                 new CourtSchedule.CourtScheduleBuilder()
-                        .withCourtScheduleId(UUID.randomUUID().toString())
-                        .withOuCode("CABC90")
+                        .withCourtScheduleId(randomUUID().toString())
+                        .withOuCode(CABC90_2)
                         .withCourtRoomId("room-2")
                         .withSessionDate(LocalDate.of(2024, 12, 24))
                         .withBusinessType("OTHER")
@@ -209,7 +210,7 @@ class JudiciaryScheduleEnricherTest {
         judiciaryScheduleEnricher.enrichJudiciarySchedules(courtScheduleMap, records, true, activeSchedules, executionId, errors, missingSessionsByOuCode);
 
         // Verify that missing sessions were collected in the map
-        assertThat(missingSessionsByOuCode.containsKey("CABC90"), is(true));
-        assertThat(missingSessionsByOuCode.get("CABC90").isEmpty(), is(false));
+        assertThat(missingSessionsByOuCode.containsKey(CABC90_2), is(true));
+        assertThat(missingSessionsByOuCode.get(CABC90_2).isEmpty(), is(false));
     }
 }

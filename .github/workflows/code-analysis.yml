@@ -20,6 +20,8 @@ jobs:
         id: pmd
         continue-on-error: true
         with:
+          # Pinned to match build.gradle's pmd.toolVersion so local and CI results agree.
+          version: '7.28.0'
           rulesets: '.github/pmd-ruleset.xml'
           # Multi-module build — let PMD recurse from repo root and scan every
           # module's src/main/java. The ruleset filters to the rules we care about.

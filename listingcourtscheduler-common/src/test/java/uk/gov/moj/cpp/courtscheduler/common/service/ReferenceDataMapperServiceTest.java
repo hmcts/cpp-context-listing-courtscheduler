@@ -38,8 +38,8 @@ class ReferenceDataMapperServiceTest {
     private final ObjectMapper objectMapper = new com.fasterxml.jackson.databind.ObjectMapper().findAndRegisterModules();
 
     private static final Integer LOCATION_ID = 77;
-    private static final Integer VENUE_ID = 23917;
-    private static final Integer NOT_MATCHING_VENUE_ID = 29999;
+    private static final Integer VENUE_ID = 23_917;
+    private static final Integer NOT_MATCHING_VENUE_ID = 29_999;
     private static final String VENUE_NAME = "Court 8";
     private static final String NOT_MATCHING_VENUE_NAME = "Court 08";
     private static final String MULTIPLE_MATCH_VENUE_NAME = "Court 5";

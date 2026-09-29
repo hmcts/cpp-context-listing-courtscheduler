@@ -1547,6 +1547,8 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
         return processScheduleEntities(entities);
     }
 
+    // Deliberate: converts raw native-query column values, which JDBC may return as java.sql.Date.
+    @SuppressWarnings("PMD.ReplaceJavaUtilDate")
     private static LocalDate toLocalDate(final Object value) {
         if (value == null) {
             return null;
@@ -2494,6 +2496,8 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
      * driver return {@link java.time.Instant} — the legacy code path expected
      * {@link java.sql.Timestamp}. Accept both shapes.
      */
+    // Deliberate: feeds the Timestamp-based slot calculation; moving that to java.time is out of scope here.
+    @SuppressWarnings("PMD.ReplaceJavaUtilDate")
     private static Timestamp toTimestamp(final Object value) {
         if (value == null) {
             return null;

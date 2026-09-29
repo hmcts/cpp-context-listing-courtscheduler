@@ -91,7 +91,8 @@ subprojects {
 
     pmd {
         // Pinned so local, IDE and CI runs apply the same rules (Gradle's default PMD version varies).
-        toolVersion = '7.24.0'
+        // Keep in sync with the pmd/pmd-github-action `version` in .github/workflows/code-analysis.yml.
+        toolVersion = '7.28.0'
         ruleSets = []
         ruleSetFiles = rootProject.files('.github/pmd-ruleset.xml')
         ignoreFailures = false

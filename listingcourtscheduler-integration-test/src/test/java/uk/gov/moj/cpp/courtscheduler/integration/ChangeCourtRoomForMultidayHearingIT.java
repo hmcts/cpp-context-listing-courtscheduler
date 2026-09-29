@@ -45,6 +45,11 @@ import org.junit.jupiter.api.Test;
  * (date-scoped release semantics).
  */
 class ChangeCourtRoomForMultidayHearingIT extends AbstractIT {
+    private static final String CROWN_2 = "CROWN";
+    private static final String OU_CRN10 = "OU-CRN10";
+    private static final String OU_CRN12 = "OU-CRN12";
+    private static final String OU_CRN13 = "OU-CRN13";
+
 
     private static final String ACCEPT = "application/vnd.courtscheduler.change-court-room-for-multiday-hearing+json";
     private static final int DURATION_MINUTES = 360;
@@ -60,13 +65,13 @@ class ChangeCourtRoomForMultidayHearingIT extends AbstractIT {
         final LocalDate day3 = day1.plusDays(2);
 
         // room1: the hearing's current 3-day booking, day2/day3 shown as fully committed (0 available).
-        final String d1 = seedSession(day1, room1, "CR", centreId, "OU-CRN10", "CROWN", DURATION_MINUTES);
-        final String d2 = seedSession(day2, room1, "CR", centreId, "OU-CRN10", "CROWN", 0);
-        final String d3 = seedSession(day3, room1, "CR", centreId, "OU-CRN10", "CROWN", 0);
+        final String d1 = seedSession(day1, room1, "CR", centreId, OU_CRN10, CROWN_2, DURATION_MINUTES);
+        final String d2 = seedSession(day2, room1, "CR", centreId, OU_CRN10, CROWN_2, 0);
+        final String d3 = seedSession(day3, room1, "CR", centreId, OU_CRN10, CROWN_2, 0);
 
         // room2: the new target sessions for day2/day3, with capacity available.
-        final String d2b = seedSession(day2, room2, "CR", centreId, "OU-CRN10", "CROWN", DURATION_MINUTES);
-        final String d3b = seedSession(day3, room2, "CR", centreId, "OU-CRN10", "CROWN", DURATION_MINUTES);
+        final String d2b = seedSession(day2, room2, "CR", centreId, OU_CRN10, CROWN_2, DURATION_MINUTES);
+        final String d3b = seedSession(day3, room2, "CR", centreId, OU_CRN10, CROWN_2, DURATION_MINUTES);
 
         book(hearingId, d1, day1, DURATION_MINUTES);
         book(hearingId, d2, day2, DURATION_MINUTES);
@@ -99,8 +104,8 @@ class ChangeCourtRoomForMultidayHearingIT extends AbstractIT {
         final LocalDate day1 = LocalDate.now().plusDays(40);
         final LocalDate day2 = day1.plusDays(1);
 
-        final String d1 = seedSession(day1, room1, "CR", centreId, "OU-CRN11", "CROWN", DURATION_MINUTES);
-        final String d2b = seedSession(day2, room2, "CR", centreId, "OU-CRN11", "CROWN", DURATION_MINUTES);
+        final String d1 = seedSession(day1, room1, "CR", centreId, "OU-CRN11", CROWN_2, DURATION_MINUTES);
+        final String d2b = seedSession(day2, room2, "CR", centreId, "OU-CRN11", CROWN_2, DURATION_MINUTES);
 
         book(hearingId, d1, day1, DURATION_MINUTES);
 
@@ -122,10 +127,10 @@ class ChangeCourtRoomForMultidayHearingIT extends AbstractIT {
         final LocalDate day2 = day1.plusDays(1);
         final LocalDate day3 = day1.plusDays(2);
 
-        final String d1 = seedSession(day1, room1, "CR", centreId, "OU-CRN12", "CROWN", DURATION_MINUTES);
-        final String d2 = seedSession(day2, room1, "CR", centreId, "OU-CRN12", "CROWN", 0);
-        final String d3 = seedSession(day3, room1, "CR", centreId, "OU-CRN12", "CROWN", 0);
-        final String d3b = seedSession(day3, room2, "CR", centreId, "OU-CRN12", "CROWN", DURATION_MINUTES);
+        final String d1 = seedSession(day1, room1, "CR", centreId, OU_CRN12, CROWN_2, DURATION_MINUTES);
+        final String d2 = seedSession(day2, room1, "CR", centreId, OU_CRN12, CROWN_2, 0);
+        final String d3 = seedSession(day3, room1, "CR", centreId, OU_CRN12, CROWN_2, 0);
+        final String d3b = seedSession(day3, room2, "CR", centreId, OU_CRN12, CROWN_2, DURATION_MINUTES);
 
         book(hearingId, d1, day1, DURATION_MINUTES);
         book(hearingId, d2, day2, DURATION_MINUTES);
@@ -150,8 +155,8 @@ class ChangeCourtRoomForMultidayHearingIT extends AbstractIT {
         final LocalDate day1 = LocalDate.now().plusDays(60);
         final LocalDate day2 = day1.plusDays(1);
 
-        final String d1 = seedSession(day1, room1, "CR", centreId, "OU-CRN13", "CROWN", DURATION_MINUTES);
-        final String d2 = seedSession(day2, room1, "CR", centreId, "OU-CRN13", "CROWN", DURATION_MINUTES);
+        final String d1 = seedSession(day1, room1, "CR", centreId, OU_CRN13, CROWN_2, DURATION_MINUTES);
+        final String d2 = seedSession(day2, room1, "CR", centreId, OU_CRN13, CROWN_2, DURATION_MINUTES);
 
         book(hearingId, d1, day1, DURATION_MINUTES);
         book(hearingId, d2, day2, DURATION_MINUTES);
@@ -178,10 +183,10 @@ class ChangeCourtRoomForMultidayHearingIT extends AbstractIT {
         final LocalDate day1 = LocalDate.now().plusDays(60);
         final LocalDate day2 = day1.plusDays(1);
 
-        final String d1 = seedSession(day1, room1, "CR", centreId, "OU-CRN13", "CROWN", DURATION_MINUTES);
-        final String d2 = seedSession(day2, room1, "CR", centreId, "OU-CRN13", "CROWN", DURATION_MINUTES);
+        final String d1 = seedSession(day1, room1, "CR", centreId, OU_CRN13, CROWN_2, DURATION_MINUTES);
+        final String d2 = seedSession(day2, room1, "CR", centreId, OU_CRN13, CROWN_2, DURATION_MINUTES);
         // room2 day2 target is fully committed (0 available) and non-overbookable - previously rejected with 422.
-        final String d2b = seedSession(day2, room2, "CR", centreId, "OU-CRN13", "CROWN", 0);
+        final String d2b = seedSession(day2, room2, "CR", centreId, OU_CRN13, CROWN_2, 0);
 
         book(hearingId, d1, day1, DURATION_MINUTES);
         book(hearingId, d2, day2, DURATION_MINUTES);
@@ -224,7 +229,7 @@ class ChangeCourtRoomForMultidayHearingIT extends AbstractIT {
         allocatedListing.setBookingId(UUID.randomUUID().toString());
         allocatedListing.setCourtScheduleId(courtScheduleId);
         allocatedListing.setHearingId(hearingId);
-        allocatedListing.setOucode("OU-CRN10");
+        allocatedListing.setOucode(OU_CRN10);
         allocatedListing.setCourtRoomId(1);
         allocatedListing.setRotaBusinessType("CR");
         allocatedListing.setDuration(durationMinutes);

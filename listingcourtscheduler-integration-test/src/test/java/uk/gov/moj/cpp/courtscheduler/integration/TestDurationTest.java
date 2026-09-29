@@ -4,22 +4,26 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-@ExtendWith(TestDurationExtension.class)
-public class TestDurationTest {
+@ExtendWith(DurationTrackingExtension.class)
+class TestDurationTest {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(TestDurationTest.class);
 
     @Test
-    public void testDurationTracking() {
-        long startTime = System.currentTimeMillis();
-        System.out.println("Running test to verify duration tracking");
+    void testDurationTracking() {
+        final long startTime = System.currentTimeMillis();
+        LOGGER.info("Running test to verify duration tracking");
         try {
             // Simulate some work
             Thread.sleep(1000);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
-        long endTime = System.currentTimeMillis();
-        long duration = endTime - startTime;
+        final long endTime = System.currentTimeMillis();
+        final long duration = endTime - startTime;
         assertTrue(duration >= 1000, "Test execution time should be at least 1000ms");
     }
 } 

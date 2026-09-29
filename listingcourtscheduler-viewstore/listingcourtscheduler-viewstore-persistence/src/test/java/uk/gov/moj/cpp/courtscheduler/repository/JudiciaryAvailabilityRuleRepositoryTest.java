@@ -3,6 +3,7 @@ package uk.gov.moj.cpp.courtscheduler.repository;
 import static java.util.UUID.randomUUID;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -49,11 +50,11 @@ class JudiciaryAvailabilityRuleRepositoryTest extends uk.gov.moj.cpp.courtschedu
     // also conflicts with the Spring-managed transaction context.
 
     @Test
-    public void shouldFindRulesByDateRange() {
-        LocalDate startDate = LocalDate.of(2026, 1, 1);
-        LocalDate endDate = LocalDate.of(2026, 1, 31);
+    void shouldFindRulesByDateRange() {
+        final LocalDate startDate = LocalDate.of(2026, 1, 1);
+        final LocalDate endDate = LocalDate.of(2026, 1, 31);
 
-        JudiciaryAvailabilityRule rule = createAndSaveRule(
+        final JudiciaryAvailabilityRule rule = createAndSaveRule(
                 randomUUID().toString(),
                 randomUUID().toString(),
                 randomUUID().toString(),
@@ -62,17 +63,17 @@ class JudiciaryAvailabilityRuleRepositoryTest extends uk.gov.moj.cpp.courtschedu
                 Arrays.asList(AvailabilityDayOfWeek.MONDAY, AvailabilityDayOfWeek.TUESDAY)
         );
 
-        List<JudiciaryAvailabilityRule> result = repository.findRulesByDateRange(
+        final List<JudiciaryAvailabilityRule> result = repository.findRulesByDateRange(
                 startDate, endDate, null, null);
 
         assertNotNull(result);
-        assertTrue(result.size() >= 1);
+        assertFalse(result.isEmpty());
         assertTrue(result.stream().anyMatch(r -> r.getId().equals(rule.getId())));
     }
 
     @Test
-    public void shouldReturnEmptyForFindRulesByDateRangeAndJudiciaryIdsWhenIdListEmpty() {
-        List<JudiciaryAvailabilityRule> result = repository.findRulesByDateRangeAndJudiciaryIds(
+    void shouldReturnEmptyForFindRulesByDateRangeAndJudiciaryIdsWhenIdListEmpty() {
+        final List<JudiciaryAvailabilityRule> result = repository.findRulesByDateRangeAndJudiciaryIds(
                 LocalDate.of(2026, 1, 1),
                 LocalDate.of(2026, 1, 31),
                 null,
@@ -81,8 +82,8 @@ class JudiciaryAvailabilityRuleRepositoryTest extends uk.gov.moj.cpp.courtschedu
     }
 
     @Test
-    public void shouldReturnEmptyForFindRulesByDateRangeAndJudiciaryIdsWhenIdListNull() {
-        List<JudiciaryAvailabilityRule> result = repository.findRulesByDateRangeAndJudiciaryIds(
+    void shouldReturnEmptyForFindRulesByDateRangeAndJudiciaryIdsWhenIdListNull() {
+        final List<JudiciaryAvailabilityRule> result = repository.findRulesByDateRangeAndJudiciaryIds(
                 LocalDate.of(2026, 1, 1),
                 LocalDate.of(2026, 1, 31),
                 null,
@@ -91,13 +92,13 @@ class JudiciaryAvailabilityRuleRepositoryTest extends uk.gov.moj.cpp.courtschedu
     }
 
     @Test
-    public void shouldFindRulesByDateRangeAndJudiciaryIds() {
-        LocalDate startDate = LocalDate.of(2026, 2, 1);
-        LocalDate endDate = LocalDate.of(2026, 2, 28);
-        String jMatch = randomUUID().toString();
-        String jOther = randomUUID().toString();
+    void shouldFindRulesByDateRangeAndJudiciaryIds() {
+        final LocalDate startDate = LocalDate.of(2026, 2, 1);
+        final LocalDate endDate = LocalDate.of(2026, 2, 28);
+        final String jMatch = randomUUID().toString();
+        final String jOther = randomUUID().toString();
 
-        JudiciaryAvailabilityRule ruleMatch = createAndSaveRule(
+        final JudiciaryAvailabilityRule ruleMatch = createAndSaveRule(
                 randomUUID().toString(),
                 jMatch,
                 randomUUID().toString(),
@@ -114,7 +115,7 @@ class JudiciaryAvailabilityRuleRepositoryTest extends uk.gov.moj.cpp.courtschedu
                 List.of(AvailabilityDayOfWeek.TUESDAY)
         );
 
-        List<JudiciaryAvailabilityRule> result = repository.findRulesByDateRangeAndJudiciaryIds(
+        final List<JudiciaryAvailabilityRule> result = repository.findRulesByDateRangeAndJudiciaryIds(
                 startDate, endDate, null, Collections.singletonList(jMatch));
 
         assertNotNull(result);
@@ -123,13 +124,13 @@ class JudiciaryAvailabilityRuleRepositoryTest extends uk.gov.moj.cpp.courtschedu
     }
 
     @Test
-    public void shouldFindRulesByDateRangeAndJudiciaryIdsWithCourtHouseFilter() {
-        LocalDate startDate = LocalDate.of(2026, 2, 1);
-        LocalDate endDate = LocalDate.of(2026, 2, 28);
-        String judiciaryId = randomUUID().toString();
-        String courtHouseId = randomUUID().toString();
+    void shouldFindRulesByDateRangeAndJudiciaryIdsWithCourtHouseFilter() {
+        final LocalDate startDate = LocalDate.of(2026, 2, 1);
+        final LocalDate endDate = LocalDate.of(2026, 2, 28);
+        final String judiciaryId = randomUUID().toString();
+        final String courtHouseId = randomUUID().toString();
 
-        JudiciaryAvailabilityRule included = createAndSaveRule(
+        final JudiciaryAvailabilityRule included = createAndSaveRule(
                 randomUUID().toString(),
                 judiciaryId,
                 courtHouseId,
@@ -147,7 +148,7 @@ class JudiciaryAvailabilityRuleRepositoryTest extends uk.gov.moj.cpp.courtschedu
                 List.of(AvailabilityDayOfWeek.TUESDAY)
         );
 
-        List<JudiciaryAvailabilityRule> result = repository.findRulesByDateRangeAndJudiciaryIds(
+        final List<JudiciaryAvailabilityRule> result = repository.findRulesByDateRangeAndJudiciaryIds(
                 startDate, endDate, courtHouseId, Collections.singletonList(judiciaryId));
 
         assertNotNull(result);
@@ -156,7 +157,7 @@ class JudiciaryAvailabilityRuleRepositoryTest extends uk.gov.moj.cpp.courtschedu
     }
 
     @Test
-    public void shouldIgnoreBlankCourtHouseIdWhenFindingByJudiciaryIds() {
+    void shouldIgnoreBlankCourtHouseIdWhenFindingByJudiciaryIds() {
         final LocalDate startDate = LocalDate.of(2026, 3, 1);
         final LocalDate endDate = LocalDate.of(2026, 3, 31);
         final String judiciaryId = randomUUID().toString();
@@ -189,12 +190,12 @@ class JudiciaryAvailabilityRuleRepositoryTest extends uk.gov.moj.cpp.courtschedu
     }
 
     @Test
-    public void shouldFindRulesByDateRangeWithCourtHouseIdFilter() {
-        LocalDate startDate = LocalDate.of(2026, 1, 1);
-        LocalDate endDate = LocalDate.of(2026, 1, 31);
-        String courtHouseId = randomUUID().toString();
+    void shouldFindRulesByDateRangeWithCourtHouseIdFilter() {
+        final LocalDate startDate = LocalDate.of(2026, 1, 1);
+        final LocalDate endDate = LocalDate.of(2026, 1, 31);
+        final String courtHouseId = randomUUID().toString();
 
-        JudiciaryAvailabilityRule rule = createAndSaveRule(
+        final JudiciaryAvailabilityRule rule = createAndSaveRule(
                 randomUUID().toString(),
                 randomUUID().toString(),
                 courtHouseId,
@@ -203,7 +204,7 @@ class JudiciaryAvailabilityRuleRepositoryTest extends uk.gov.moj.cpp.courtschedu
                 Arrays.asList(AvailabilityDayOfWeek.MONDAY)
         );
 
-        List<JudiciaryAvailabilityRule> result = repository.findRulesByDateRange(
+        final List<JudiciaryAvailabilityRule> result = repository.findRulesByDateRange(
                 startDate, endDate, courtHouseId, null);
 
         assertNotNull(result);
@@ -211,12 +212,12 @@ class JudiciaryAvailabilityRuleRepositoryTest extends uk.gov.moj.cpp.courtschedu
     }
 
     @Test
-    public void shouldFindRulesByDateRangeWithJudiciaryIdFilter() {
-        LocalDate startDate = LocalDate.of(2026, 1, 1);
-        LocalDate endDate = LocalDate.of(2026, 1, 31);
-        String judiciaryId = randomUUID().toString();
+    void shouldFindRulesByDateRangeWithJudiciaryIdFilter() {
+        final LocalDate startDate = LocalDate.of(2026, 1, 1);
+        final LocalDate endDate = LocalDate.of(2026, 1, 31);
+        final String judiciaryId = randomUUID().toString();
 
-        JudiciaryAvailabilityRule rule = createAndSaveRule(
+        final JudiciaryAvailabilityRule rule = createAndSaveRule(
                 randomUUID().toString(),
                 judiciaryId,
                 randomUUID().toString(),
@@ -225,7 +226,7 @@ class JudiciaryAvailabilityRuleRepositoryTest extends uk.gov.moj.cpp.courtschedu
                 Arrays.asList(AvailabilityDayOfWeek.MONDAY)
         );
 
-        List<JudiciaryAvailabilityRule> result = repository.findRulesByDateRange(
+        final List<JudiciaryAvailabilityRule> result = repository.findRulesByDateRange(
                 startDate, endDate, null, judiciaryId);
 
         assertNotNull(result);
@@ -233,7 +234,7 @@ class JudiciaryAvailabilityRuleRepositoryTest extends uk.gov.moj.cpp.courtschedu
     }
 
     @Test
-    public void shouldFindRulesByDateRangeIgnoringWhitespaceCourtHouseId() {
+    void shouldFindRulesByDateRangeIgnoringWhitespaceCourtHouseId() {
         final LocalDate startDate = LocalDate.of(2026, 4, 1);
         final LocalDate endDate = LocalDate.of(2026, 4, 30);
         final String judiciaryId = randomUUID().toString();
@@ -266,7 +267,7 @@ class JudiciaryAvailabilityRuleRepositoryTest extends uk.gov.moj.cpp.courtschedu
     }
 
     @Test
-    public void shouldFindRulesByDateRangeWithPaginationAndCourtHouseAndJudiciaryFilters() {
+    void shouldFindRulesByDateRangeWithPaginationAndCourtHouseAndJudiciaryFilters() {
         final LocalDate startDate = LocalDate.of(2026, 5, 1);
         final LocalDate endDate = LocalDate.of(2026, 5, 31);
         final String judiciaryId = randomUUID().toString();
@@ -301,9 +302,9 @@ class JudiciaryAvailabilityRuleRepositoryTest extends uk.gov.moj.cpp.courtschedu
     }
 
     @Test
-    public void shouldFindRulesByDateRangeWithPagination() {
-        LocalDate startDate = LocalDate.of(2026, 1, 1);
-        LocalDate endDate = LocalDate.of(2026, 1, 31);
+    void shouldFindRulesByDateRangeWithPagination() {
+        final LocalDate startDate = LocalDate.of(2026, 1, 1);
+        final LocalDate endDate = LocalDate.of(2026, 1, 31);
 
         createAndSaveRule(
                 randomUUID().toString(),
@@ -323,7 +324,7 @@ class JudiciaryAvailabilityRuleRepositoryTest extends uk.gov.moj.cpp.courtschedu
                 Arrays.asList(AvailabilityDayOfWeek.TUESDAY)
         );
 
-        Map.Entry<Integer, List<JudiciaryAvailabilityRule>> result = 
+        final Map.Entry<Integer, List<JudiciaryAvailabilityRule>> result = 
                 repository.findRulesByDateRangeWithPagination(startDate, endDate, null, null, 10, 1);
 
         assertNotNull(result);
@@ -332,11 +333,11 @@ class JudiciaryAvailabilityRuleRepositoryTest extends uk.gov.moj.cpp.courtschedu
     }
 
     @Test
-    public void shouldFindRulesByDateRangeWithPaginationEmptyResult() {
-        LocalDate startDate = LocalDate.of(2099, 1, 1);
-        LocalDate endDate = LocalDate.of(2099, 1, 31);
+    void shouldFindRulesByDateRangeWithPaginationEmptyResult() {
+        final LocalDate startDate = LocalDate.of(2099, 1, 1);
+        final LocalDate endDate = LocalDate.of(2099, 1, 31);
 
-        Map.Entry<Integer, List<JudiciaryAvailabilityRule>> result = 
+        final Map.Entry<Integer, List<JudiciaryAvailabilityRule>> result = 
                 repository.findRulesByDateRangeWithPagination(startDate, endDate, null, null, 10, 1);
 
         assertNotNull(result);
@@ -345,11 +346,11 @@ class JudiciaryAvailabilityRuleRepositoryTest extends uk.gov.moj.cpp.courtschedu
     }
 
     @Test
-    public void shouldFindRulesByDateRangeWithPaginationWithRepeatDays() {
-        LocalDate startDate = LocalDate.of(2026, 1, 1);
-        LocalDate endDate = LocalDate.of(2026, 1, 31);
+    void shouldFindRulesByDateRangeWithPaginationWithRepeatDays() {
+        final LocalDate startDate = LocalDate.of(2026, 1, 1);
+        final LocalDate endDate = LocalDate.of(2026, 1, 31);
 
-        JudiciaryAvailabilityRule rule = createAndSaveRule(
+        final JudiciaryAvailabilityRule rule = createAndSaveRule(
                 randomUUID().toString(),
                 randomUUID().toString(),
                 randomUUID().toString(),
@@ -358,14 +359,14 @@ class JudiciaryAvailabilityRuleRepositoryTest extends uk.gov.moj.cpp.courtschedu
                 Arrays.asList(AvailabilityDayOfWeek.MONDAY, AvailabilityDayOfWeek.TUESDAY, AvailabilityDayOfWeek.WEDNESDAY)
         );
 
-        Map.Entry<Integer, List<JudiciaryAvailabilityRule>> result = 
+        final Map.Entry<Integer, List<JudiciaryAvailabilityRule>> result = 
                 repository.findRulesByDateRangeWithPagination(startDate, endDate, null, null, 10, 1);
 
         assertNotNull(result);
         assertThat(result.getValue().size(), is(org.hamcrest.Matchers.greaterThanOrEqualTo(1)));
         
         // Find the rule we created
-        JudiciaryAvailabilityRule foundRule = result.getValue().stream()
+        final JudiciaryAvailabilityRule foundRule = result.getValue().stream()
                 .filter(r -> r.getId().equals(rule.getId()))
                 .findFirst()
                 .orElse(null);
@@ -374,36 +375,30 @@ class JudiciaryAvailabilityRuleRepositoryTest extends uk.gov.moj.cpp.courtschedu
         assertThat(foundRule.getRepeatDays().size(), is(3));
     }
 
-    private JudiciaryAvailabilityRule createAndSaveRule(String ruleId, String judiciaryId,
-                                                         String courtHouseId, LocalDate fromDate,
-                                                         LocalDate toDate, List<AvailabilityDayOfWeek> repeatDays) {
+    private JudiciaryAvailabilityRule createAndSaveRule(final String ruleId, final String judiciaryId,
+                                                         final String courtHouseId, final LocalDate fromDate,
+                                                         final LocalDate toDate, final List<AvailabilityDayOfWeek> repeatDays) {
         // Spring's @DataJpaTest provides the transaction; the legacy explicit
         // EntityTransaction.begin()/commit() conflicted with that.
-        try {
-            JudiciaryAvailabilityRule rule = new JudiciaryAvailabilityRule();
-            rule.setId(ruleId);
-            rule.setJudiciaryId(judiciaryId);
-            rule.setCourtHouseId(courtHouseId);
-            rule.setFromDate(fromDate);
-            rule.setToDate(toDate);
-            // session_type was added with NOT NULL + default 'AD' in changeset 049 — set
-            // it explicitly here because the JPA mapping doesn't respect the SQL default.
-            rule.setSessionType(uk.gov.moj.cpp.courtscheduler.domain.SessionType.AD);
-            rule.setRepeatDays(new ArrayList<>());
-            rule.setUnavailabilities(new ArrayList<>());
+        JudiciaryAvailabilityRule rule = new JudiciaryAvailabilityRule();
+        rule.setId(ruleId);
+        rule.setJudiciaryId(judiciaryId);
+        rule.setCourtHouseId(courtHouseId);
+        rule.setFromDate(fromDate);
+        rule.setToDate(toDate);
+        // session_type was added with NOT NULL + default 'AD' in changeset 049 — set
+        // it explicitly here because the JPA mapping doesn't respect the SQL default.
+        rule.setSessionType(uk.gov.moj.cpp.courtscheduler.domain.SessionType.AD);
+        rule.setRepeatDays(new ArrayList<>());
+        rule.setUnavailabilities(new ArrayList<>());
 
-            for (AvailabilityDayOfWeek day : repeatDays) {
-                JudiciaryAvailabilityRuleRepeatDay repeatDay =
-                        new JudiciaryAvailabilityRuleRepeatDay(day);
-                rule.getRepeatDays().add(repeatDay);
-            }
+        repeatDays.stream()
+                .map(JudiciaryAvailabilityRuleRepeatDay::new)
+                .forEach(rule.getRepeatDays()::add);
 
-            rule = repository.save(rule);
-            createdRuleIds.add(ruleId);
-            entityManager.flush();
-            return rule;
-        } catch (Exception e) {
-            throw e;
-        }
+        rule = repository.save(rule);
+        createdRuleIds.add(ruleId);
+        entityManager.flush();
+        return rule;
     }
 }

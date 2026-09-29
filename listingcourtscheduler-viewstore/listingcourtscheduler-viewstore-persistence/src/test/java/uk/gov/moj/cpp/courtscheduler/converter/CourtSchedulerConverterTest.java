@@ -17,7 +17,7 @@ class CourtSchedulerConverterTest {
 
     @Test
     void shouldConvert() {
-        CourtSchedule courtScheduleEnt = EnhancedRandom.random(CourtSchedule.class);
+        final CourtSchedule courtScheduleEnt = EnhancedRandom.random(CourtSchedule.class);
         courtScheduleEnt.setSupportAdSplit(null);
 
         final uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule converted = CourtSchedulerConverter.convert(courtScheduleEnt);
@@ -45,7 +45,7 @@ class CourtSchedulerConverterTest {
 
     @Test
     void shouldConvertWithAllocatedListingBooked() {
-        CourtSchedule courtScheduleEnt = EnhancedRandom.random(CourtSchedule.class);
+        final CourtSchedule courtScheduleEnt = EnhancedRandom.random(CourtSchedule.class);
         courtScheduleEnt.setSupportAdSplit(null);
 
         final List<AllocatedListingEachBooked> allocatedListingEachBookedList = List.of(new AllocatedListingEachBooked(
@@ -73,7 +73,7 @@ class CourtSchedulerConverterTest {
 
     @Test
     void shouldConvertToMi() {
-        CourtSchedule courtScheduleEnt = EnhancedRandom.random(CourtSchedule.class);
+        final CourtSchedule courtScheduleEnt = EnhancedRandom.random(CourtSchedule.class);
 
         final uk.gov.moj.cpp.courtscheduler.domain.mi.CourtSchedule converted = CourtSchedulerConverter.convertToMi(courtScheduleEnt);
 

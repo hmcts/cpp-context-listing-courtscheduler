@@ -46,36 +46,41 @@ public final class JakartaJsonModule extends SimpleModule {
                 gen.writeNull();
                 return;
             }
-            switch (value.getValueType()) {
-                case TRUE -> gen.writeBoolean(true);
-                case FALSE -> gen.writeBoolean(false);
-                case NULL -> gen.writeNull();
-                case STRING -> gen.writeString(((JsonString) value).getString());
-                case NUMBER -> {
-                    final JsonNumber num = (JsonNumber) value;
-                    if (num.isIntegral()) {
-                        gen.writeNumber(num.bigIntegerValue());
-                    } else {
-                        gen.writeNumber(num.bigDecimalValue());
-                    }
+            // if/else rather than a switch statement: PMD's NonExhaustiveSwitch (no classpath, as in
+            // the Code analysis workflow) and ExhaustiveSwitchHasDefault (with classpath, as in Gradle)
+            // disagree on whether an enum switch over JsonValue.ValueType needs a default.
+            final JsonValue.ValueType type = value.getValueType();
+            if (type == JsonValue.ValueType.TRUE) {
+                gen.writeBoolean(true);
+            } else if (type == JsonValue.ValueType.FALSE) {
+                gen.writeBoolean(false);
+            } else if (type == JsonValue.ValueType.STRING) {
+                gen.writeString(((JsonString) value).getString());
+            } else if (type == JsonValue.ValueType.NUMBER) {
+                final JsonNumber num = (JsonNumber) value;
+                if (num.isIntegral()) {
+                    gen.writeNumber(num.bigIntegerValue());
+                } else {
+                    gen.writeNumber(num.bigDecimalValue());
                 }
-                case OBJECT -> {
-                    gen.writeStartObject();
-                    final JsonObject obj = (JsonObject) value;
-                    for (final Map.Entry<String, JsonValue> entry : obj.entrySet()) {
-                        gen.writeFieldName(entry.getKey());
-                        serialize(entry.getValue(), gen, serializers);
-                    }
-                    gen.writeEndObject();
+            } else if (type == JsonValue.ValueType.OBJECT) {
+                gen.writeStartObject();
+                final JsonObject obj = (JsonObject) value;
+                for (final Map.Entry<String, JsonValue> entry : obj.entrySet()) {
+                    gen.writeFieldName(entry.getKey());
+                    serialize(entry.getValue(), gen, serializers);
                 }
-                case ARRAY -> {
-                    gen.writeStartArray();
-                    final JsonArray arr = (JsonArray) value;
-                    for (final JsonValue v : arr) {
-                        serialize(v, gen, serializers);
-                    }
-                    gen.writeEndArray();
+                gen.writeEndObject();
+            } else if (type == JsonValue.ValueType.ARRAY) {
+                gen.writeStartArray();
+                final JsonArray arr = (JsonArray) value;
+                for (final JsonValue v : arr) {
+                    serialize(v, gen, serializers);
                 }
+                gen.writeEndArray();
+            } else {
+                // NULL is handled above; anything else is a JSON value type this serializer doesn't know.
+                throw new IllegalStateException("Unsupported JSON value type: " + type);
             }
         }
     }

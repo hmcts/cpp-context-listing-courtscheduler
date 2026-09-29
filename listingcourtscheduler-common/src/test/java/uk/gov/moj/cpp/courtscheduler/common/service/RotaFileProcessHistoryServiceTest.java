@@ -14,9 +14,9 @@ import static org.mockito.Mockito.when;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.RotaFileProcessHistory;
 import uk.gov.moj.cpp.courtscheduler.repository.RotaFileProcessHistoryRepository;
 
+import java.nio.charset.StandardCharsets;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
-import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -27,6 +27,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class RotaFileProcessHistoryServiceTest {
+    private static final String TEST_CONTENT = "test content";
+    private static final String TEST_PREFIX = "test_prefix";
+
 
     @Mock
     private RotaFileProcessHistoryRepository rotaFileProcessHistoryRepository;
@@ -44,18 +47,18 @@ class RotaFileProcessHistoryServiceTest {
         testRotaFileProcessHistory = new RotaFileProcessHistory();
         testRotaFileProcessHistory.setExecutionId(randomUUID().toString());
         testRotaFileProcessHistory.setFileName("test_file.xml");
-        testRotaFileProcessHistory.setFileNamePrefix("test_prefix");
+        testRotaFileProcessHistory.setFileNamePrefix(TEST_PREFIX);
     }
 
     @Test
     void shouldSaveRotaFileProcessHistory() {
         final String fileNamePrefix = "lja_merseyside_snapshot_";
         final OffsetDateTime fileDate = OffsetDateTime.of(2024, 4, 2, 18, 0, 39, 0, ZoneOffset.UTC);
-        final byte[] content = "test content".getBytes();
+        final byte[] content = TEST_CONTENT.getBytes(StandardCharsets.UTF_8);
 
         when(rotaFileProcessHistoryRepository.save(any(RotaFileProcessHistory.class))).thenReturn(testRotaFileProcessHistory);
 
-        RotaFileProcessHistory result = rotaFileProcessHistoryService.save(fileNamePrefix, fileDate, content, UUID.randomUUID().toString());
+        final RotaFileProcessHistory result = rotaFileProcessHistoryService.save(fileNamePrefix, fileDate, content, randomUUID().toString());
 
         assertNotNull(result);
         verify(rotaFileProcessHistoryRepository, atLeastOnce()).save(any(RotaFileProcessHistory.class));
@@ -65,10 +68,10 @@ class RotaFileProcessHistoryServiceTest {
     void shouldSaveRotaFileProcessHistoryWithCorrectFileName() {
         final String fileNamePrefix = "lja_merseyside_snapshot_";
         final OffsetDateTime fileDate = OffsetDateTime.of(2024, 4, 2, 18, 0, 39, 0, ZoneOffset.UTC);
-        final byte[] content = "test content".getBytes();
+        final byte[] content = TEST_CONTENT.getBytes(StandardCharsets.UTF_8);
 
         when(rotaFileProcessHistoryRepository.save(any(RotaFileProcessHistory.class))).thenAnswer(invocation -> {
-            RotaFileProcessHistory history = invocation.getArgument(0);
+            final RotaFileProcessHistory history = invocation.getArgument(0);
             assertEquals("lja_merseyside_snapshot_20240402.xml", history.getFileName());
             assertEquals(fileNamePrefix, history.getFileNamePrefix());
             assertNotNull(history.getFileHash());
@@ -77,7 +80,7 @@ class RotaFileProcessHistoryServiceTest {
             return testRotaFileProcessHistory;
         });
 
-        rotaFileProcessHistoryService.save(fileNamePrefix, fileDate, content, UUID.randomUUID().toString());
+        rotaFileProcessHistoryService.save(fileNamePrefix, fileDate, content, randomUUID().toString());
 
         verify(rotaFileProcessHistoryRepository, atLeastOnce()).save(any(RotaFileProcessHistory.class));
     }
@@ -86,7 +89,7 @@ class RotaFileProcessHistoryServiceTest {
     void shouldUpdateRotaFileProcessHistory() {
         when(rotaFileProcessHistoryRepository.save(any(RotaFileProcessHistory.class))).thenReturn(testRotaFileProcessHistory);
 
-        RotaFileProcessHistory result = rotaFileProcessHistoryService.update(testRotaFileProcessHistory);
+        final RotaFileProcessHistory result = rotaFileProcessHistoryService.update(testRotaFileProcessHistory);
 
         assertNotNull(result);
         assertNotNull(testRotaFileProcessHistory.getProcessEndDate());
@@ -96,7 +99,7 @@ class RotaFileProcessHistoryServiceTest {
     @Test
     void shouldUpdateRotaFileProcessHistoryWithProcessEndDate() {
         when(rotaFileProcessHistoryRepository.save(any(RotaFileProcessHistory.class))).thenAnswer(invocation -> {
-            RotaFileProcessHistory history = invocation.getArgument(0);
+            final RotaFileProcessHistory history = invocation.getArgument(0);
             assertNotNull(history.getProcessEndDate());
             return history;
         });
@@ -108,36 +111,33 @@ class RotaFileProcessHistoryServiceTest {
 
     @Test
     void shouldComputeFileHashCorrectly() {
-        final String fileNamePrefix = "test_prefix";
+        final String fileNamePrefix = TEST_PREFIX;
         final OffsetDateTime fileDate = OffsetDateTime.now();
-        final byte[] content = "test content for hashing".getBytes();
+        final byte[] content = "test content for hashing".getBytes(StandardCharsets.UTF_8);
 
         when(rotaFileProcessHistoryRepository.save(any(RotaFileProcessHistory.class))).thenAnswer(invocation -> {
-            RotaFileProcessHistory history = invocation.getArgument(0);
+            final RotaFileProcessHistory history = invocation.getArgument(0);
             // Verify that a hash was computed (not null and not empty)
             assertNotNull(history.getFileHash());
             assertNotNull(history.getFileHash().length() > 0);
             return history;
         });
 
-        rotaFileProcessHistoryService.save(fileNamePrefix, fileDate, content, UUID.randomUUID().toString());
+        rotaFileProcessHistoryService.save(fileNamePrefix, fileDate, content, randomUUID().toString());
 
         verify(rotaFileProcessHistoryRepository, atLeastOnce()).save(any(RotaFileProcessHistory.class));
     }
 
     @Test
     void shouldComputeFileHashConsistently() {
-        final String fileNamePrefix = "test_prefix";
+        final String fileNamePrefix = TEST_PREFIX;
         final OffsetDateTime fileDate = OffsetDateTime.now();
-        final byte[] content = "consistent test content".getBytes();
+        final byte[] content = "consistent test content".getBytes(StandardCharsets.UTF_8);
 
-        when(rotaFileProcessHistoryRepository.save(any(RotaFileProcessHistory.class))).thenAnswer(invocation -> {
-            RotaFileProcessHistory history = invocation.getArgument(0);
-            return history;
-        });
+        when(rotaFileProcessHistoryRepository.save(any(RotaFileProcessHistory.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        RotaFileProcessHistory result1 = rotaFileProcessHistoryService.save(fileNamePrefix, fileDate, content, UUID.randomUUID().toString());
-        RotaFileProcessHistory result2 = rotaFileProcessHistoryService.save(fileNamePrefix, fileDate, content, UUID.randomUUID().toString());
+        final RotaFileProcessHistory result1 = rotaFileProcessHistoryService.save(fileNamePrefix, fileDate, content, randomUUID().toString());
+        final RotaFileProcessHistory result2 = rotaFileProcessHistoryService.save(fileNamePrefix, fileDate, content, randomUUID().toString());
 
         // Same content should produce same hash
         assertEquals(result1.getFileHash(), result2.getFileHash());
@@ -145,13 +145,13 @@ class RotaFileProcessHistoryServiceTest {
 
     @Test
     void shouldHandleEmptyContent() {
-        final String fileNamePrefix = "test_prefix";
+        final String fileNamePrefix = TEST_PREFIX;
         final OffsetDateTime fileDate = OffsetDateTime.now();
         final byte[] content = new byte[0];
 
         when(rotaFileProcessHistoryRepository.save(any(RotaFileProcessHistory.class))).thenReturn(testRotaFileProcessHistory);
 
-        RotaFileProcessHistory result = rotaFileProcessHistoryService.save(fileNamePrefix, fileDate, content, UUID.randomUUID().toString());
+        final RotaFileProcessHistory result = rotaFileProcessHistoryService.save(fileNamePrefix, fileDate, content, randomUUID().toString());
 
         assertNotNull(result);
         verify(rotaFileProcessHistoryRepository, atLeastOnce()).save(any(RotaFileProcessHistory.class));
@@ -159,27 +159,27 @@ class RotaFileProcessHistoryServiceTest {
 
     @Test
     void shouldHandleNullContent() {
-        final String fileNamePrefix = "test_prefix";
+        final String fileNamePrefix = TEST_PREFIX;
         final OffsetDateTime fileDate = OffsetDateTime.now();
         final byte[] content = null;
 
         assertThrows(NullPointerException.class, () -> {
-            rotaFileProcessHistoryService.save(fileNamePrefix, fileDate, content, UUID.randomUUID().toString());
+            rotaFileProcessHistoryService.save(fileNamePrefix, fileDate, content, randomUUID().toString());
         });
     }
 
     @Test
     void shouldHandleLargeContent() {
-        final String fileNamePrefix = "test_prefix";
+        final String fileNamePrefix = TEST_PREFIX;
         final OffsetDateTime fileDate = OffsetDateTime.now();
-        final byte[] content = new byte[10000]; // 10KB of data
+        final byte[] content = new byte[10_000]; // 10KB of data
         for (int i = 0; i < content.length; i++) {
             content[i] = (byte) (i % 256);
         }
 
         when(rotaFileProcessHistoryRepository.save(any(RotaFileProcessHistory.class))).thenReturn(testRotaFileProcessHistory);
 
-        RotaFileProcessHistory result = rotaFileProcessHistoryService.save(fileNamePrefix, fileDate, content, UUID.randomUUID().toString());
+        final RotaFileProcessHistory result = rotaFileProcessHistoryService.save(fileNamePrefix, fileDate, content, randomUUID().toString());
 
         assertNotNull(result);
         verify(rotaFileProcessHistoryRepository, atLeastOnce()).save(any(RotaFileProcessHistory.class));
@@ -187,40 +187,40 @@ class RotaFileProcessHistoryServiceTest {
 
     @Test
     void shouldSetCorrectProcessedOnTimestamp() {
-        final String fileNamePrefix = "test_prefix";
+        final String fileNamePrefix = TEST_PREFIX;
         final OffsetDateTime fileDate = OffsetDateTime.now();
-        final byte[] content = "test content".getBytes();
+        final byte[] content = TEST_CONTENT.getBytes(StandardCharsets.UTF_8);
 
         when(rotaFileProcessHistoryRepository.save(any(RotaFileProcessHistory.class))).thenAnswer(invocation -> {
-            RotaFileProcessHistory history = invocation.getArgument(0);
+            final RotaFileProcessHistory history = invocation.getArgument(0);
             assertNotNull(history.getProcessedOn());
             // Verify it's set to current time (within reasonable bounds)
-            long timeDiff = Math.abs(System.currentTimeMillis() - history.getProcessedOn().toEpochMilli());
+            final long timeDiff = Math.abs(System.currentTimeMillis() - history.getProcessedOn().toEpochMilli());
             assertTrue(timeDiff < 5000); // Within 5 seconds
             return history;
         });
 
-        rotaFileProcessHistoryService.save(fileNamePrefix, fileDate, content, UUID.randomUUID().toString());
+        rotaFileProcessHistoryService.save(fileNamePrefix, fileDate, content, randomUUID().toString());
 
         verify(rotaFileProcessHistoryRepository, atLeastOnce()).save(any(RotaFileProcessHistory.class));
     }
 
     @Test
     void shouldSetCorrectProcessStartDate() {
-        final String fileNamePrefix = "test_prefix";
+        final String fileNamePrefix = TEST_PREFIX;
         final OffsetDateTime fileDate = OffsetDateTime.now();
-        final byte[] content = "test content".getBytes();
+        final byte[] content = TEST_CONTENT.getBytes(StandardCharsets.UTF_8);
 
         when(rotaFileProcessHistoryRepository.save(any(RotaFileProcessHistory.class))).thenAnswer(invocation -> {
-            RotaFileProcessHistory history = invocation.getArgument(0);
+            final RotaFileProcessHistory history = invocation.getArgument(0);
             assertNotNull(history.getProcessStartDate());
             // Verify it's set to current time (within reasonable bounds)
-            long timeDiff = Math.abs(System.currentTimeMillis() - history.getProcessStartDate().toEpochMilli());
+            final long timeDiff = Math.abs(System.currentTimeMillis() - history.getProcessStartDate().toEpochMilli());
             assertTrue(timeDiff < 5000); // Within 5 seconds
             return history;
         });
 
-        rotaFileProcessHistoryService.save(fileNamePrefix, fileDate, content, UUID.randomUUID().toString());
+        rotaFileProcessHistoryService.save(fileNamePrefix, fileDate, content, randomUUID().toString());
 
         verify(rotaFileProcessHistoryRepository, atLeastOnce()).save(any(RotaFileProcessHistory.class));
     }
@@ -228,10 +228,10 @@ class RotaFileProcessHistoryServiceTest {
     @Test
     void shouldSetCorrectProcessEndDateOnUpdate() {
         when(rotaFileProcessHistoryRepository.save(any(RotaFileProcessHistory.class))).thenAnswer(invocation -> {
-            RotaFileProcessHistory history = invocation.getArgument(0);
+            final RotaFileProcessHistory history = invocation.getArgument(0);
             assertNotNull(history.getProcessEndDate());
             // Verify it's set to current time (within reasonable bounds)
-            long timeDiff = Math.abs(System.currentTimeMillis() - history.getProcessEndDate().toEpochMilli());
+            final long timeDiff = Math.abs(System.currentTimeMillis() - history.getProcessEndDate().toEpochMilli());
             assertTrue(timeDiff < 5000); // Within 5 seconds
             return history;
         });

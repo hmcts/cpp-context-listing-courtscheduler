@@ -6,72 +6,79 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
 
 class VenueNameComparatorTest {
+    private static final String COURT_1 = "Court 1";
+    private static final String COURT_8 = "Court 8";
+    private static final String COURT_ROOM_0 = "Court Room 0";
+    private static final String COURT_ROOM_001 = "Court Room 001";
+    private static final String COURT_ROOM_1 = "Court Room 1";
+    private static final String MAIN_COURT_ROOM_1 = "Main Court Room 1";
+
 
     @Test
     void shouldMatchWhenStringsAreIdentical() {
-        assertTrue(VenueNameComparator.matches("Court Room 1", "Court Room 1"));
-        assertTrue(VenueNameComparator.matches("Court 8", "Court 8"));
+        assertTrue(VenueNameComparator.matches(COURT_ROOM_1, COURT_ROOM_1));
+        assertTrue(VenueNameComparator.matches(COURT_8, COURT_8));
     }
 
     @Test
     void shouldMatchWhenStringsDifferOnlyByCase() {
-        assertTrue(VenueNameComparator.matches("Court Room 1", "COURT ROOM 1"));
-        assertTrue(VenueNameComparator.matches("court room 1", "Court Room 1"));
+        assertTrue(VenueNameComparator.matches(COURT_ROOM_1, "COURT ROOM 1"));
+        assertTrue(VenueNameComparator.matches("court room 1", COURT_ROOM_1));
     }
 
     @Test
     void shouldMatchWhenStringsDifferOnlyByWhitespace() {
-        assertTrue(VenueNameComparator.matches("Court Room 1", "  Court Room 1  "));
-        assertTrue(VenueNameComparator.matches("  Court Room 1  ", "Court Room 1"));
+        assertTrue(VenueNameComparator.matches(COURT_ROOM_1, "  Court Room 1  "));
+        assertTrue(VenueNameComparator.matches("  Court Room 1  ", COURT_ROOM_1));
     }
 
     @Test
     void shouldMatchWhenNumericPartsHaveLeadingZeros() {
-        assertTrue(VenueNameComparator.matches("Court Room 001", "Court Room 1"));
-        assertTrue(VenueNameComparator.matches("Court Room 1", "Court Room 001"));
-        assertTrue(VenueNameComparator.matches("Court 08", "Court 8"));
+        assertTrue(VenueNameComparator.matches(COURT_ROOM_001, COURT_ROOM_1));
+        assertTrue(VenueNameComparator.matches(COURT_ROOM_1, COURT_ROOM_001));
+        assertTrue(VenueNameComparator.matches("Court 08", COURT_8));
         assertTrue(VenueNameComparator.matches("Court 000123", "Court 123"));
     }
 
     @Test
     void shouldMatchWhenNumericPartsAreZero() {
-        assertTrue(VenueNameComparator.matches("Court Room 0", "Court Room 0"));
-        assertTrue(VenueNameComparator.matches("Court Room 00", "Court Room 0"));
-        assertTrue(VenueNameComparator.matches("Court Room 000", "Court Room 0"));
+        assertTrue(VenueNameComparator.matches(COURT_ROOM_0, COURT_ROOM_0));
+        assertTrue(VenueNameComparator.matches("Court Room 00", COURT_ROOM_0));
+        assertTrue(VenueNameComparator.matches("Court Room 000", COURT_ROOM_0));
     }
 
     @Test
     void shouldMatchWhenAlphabeticPartsHavePartialMatch() {
-        assertTrue(VenueNameComparator.matches("Court Room 1", "Court 1"));
-        assertTrue(VenueNameComparator.matches("Court 1", "Court Room 1"));
-        assertTrue(VenueNameComparator.matches("Main Court Room 1", "Court Room 1"));
-        assertTrue(VenueNameComparator.matches("Court Room 1", "Main Court Room 1"));
+        assertTrue(VenueNameComparator.matches(COURT_ROOM_1, COURT_1));
+        assertTrue(VenueNameComparator.matches(COURT_1, COURT_ROOM_1));
+        assertTrue(VenueNameComparator.matches(MAIN_COURT_ROOM_1, COURT_ROOM_1));
+        assertTrue(VenueNameComparator.matches(COURT_ROOM_1, MAIN_COURT_ROOM_1));
     }
 
     @Test
     void shouldMatchWhenBothAlphabeticAndNumericPartsMatch() {
-        assertTrue(VenueNameComparator.matches("Court Room 001", "Court Room 1"));
-        assertTrue(VenueNameComparator.matches("Main Court 08", "Court 8"));
+        assertTrue(VenueNameComparator.matches(COURT_ROOM_001, COURT_ROOM_1));
+        assertTrue(VenueNameComparator.matches("Main Court 08", COURT_8));
         assertTrue(VenueNameComparator.matches("Court 0005", "Court Room 5"));
     }
 
     @Test
     void shouldNotMatchWhenNumericPartsDiffer() {
-        assertFalse(VenueNameComparator.matches("Court Room 1", "Court Room 2"));
-        assertFalse(VenueNameComparator.matches("Court Room 001", "Court Room 10"));
-        assertFalse(VenueNameComparator.matches("Court 8", "Court 9"));
+        assertFalse(VenueNameComparator.matches(COURT_ROOM_1, "Court Room 2"));
+        assertFalse(VenueNameComparator.matches(COURT_ROOM_001, "Court Room 10"));
+        assertFalse(VenueNameComparator.matches(COURT_8, "Court 9"));
     }
 
     @Test
     void shouldNotMatchWhenNumericPartsCountDiffer() {
-        assertFalse(VenueNameComparator.matches("Court Room 1", "Court Room 1 2"));
-        assertFalse(VenueNameComparator.matches("Court 1 2", "Court 1"));
+        assertFalse(VenueNameComparator.matches(COURT_ROOM_1, "Court Room 1 2"));
+        assertFalse(VenueNameComparator.matches("Court 1 2", COURT_1));
     }
 
     @Test
     void shouldNotMatchWhenAlphabeticPartsDoNotHavePartialMatch() {
-        assertFalse(VenueNameComparator.matches("Court Room 1", "Hall 1"));
-        assertFalse(VenueNameComparator.matches("Court 1", "Room 1"));
+        assertFalse(VenueNameComparator.matches(COURT_ROOM_1, "Hall 1"));
+        assertFalse(VenueNameComparator.matches(COURT_1, "Room 1"));
     }
 
     @Test
@@ -101,19 +108,19 @@ class VenueNameComparatorTest {
 
     @Test
     void shouldNotMatchWhenOneStringIsNull() {
-        assertFalse(VenueNameComparator.matches(null, "Court Room 1"));
-        assertFalse(VenueNameComparator.matches("Court Room 1", null));
+        assertFalse(VenueNameComparator.matches(null, COURT_ROOM_1));
+        assertFalse(VenueNameComparator.matches(COURT_ROOM_1, null));
     }
 
     @Test
     void shouldNotMatchWhenOneStringIsEmpty() {
-        assertFalse(VenueNameComparator.matches("", "Court Room 1"));
-        assertFalse(VenueNameComparator.matches("Court Room 1", ""));
+        assertFalse(VenueNameComparator.matches("", COURT_ROOM_1));
+        assertFalse(VenueNameComparator.matches(COURT_ROOM_1, ""));
     }
 
     @Test
     void shouldMatchComplexVenueNames() {
-        assertTrue(VenueNameComparator.matches("Main Court Room 001", "Main Court Room 1"));
+        assertTrue(VenueNameComparator.matches("Main Court Room 001", MAIN_COURT_ROOM_1));
         assertTrue(VenueNameComparator.matches("Court Building A Room 005", "Court Building A Room 5"));
         assertTrue(VenueNameComparator.matches("Family Court Room 012", "Family Court Room 12"));
     }
@@ -121,8 +128,8 @@ class VenueNameComparatorTest {
     @Test
     void shouldMatchWhenAlphabeticPartsAreSubset() {
         // Partial match when one string has additional alphabetic parts
-        assertTrue(VenueNameComparator.matches("Main Court Room 1", "Court Room 1"));
-        assertTrue(VenueNameComparator.matches("Court Room 1", "Main Court Room 1"));
+        assertTrue(VenueNameComparator.matches(MAIN_COURT_ROOM_1, COURT_ROOM_1));
+        assertTrue(VenueNameComparator.matches(COURT_ROOM_1, MAIN_COURT_ROOM_1));
     }
 
     @Test
@@ -152,8 +159,8 @@ class VenueNameComparatorTest {
     @Test
     void shouldMatchRealWorldExamples() {
         // Examples that might occur in practice
-        assertTrue(VenueNameComparator.matches("Court 8", "Court 08"));
-        assertTrue(VenueNameComparator.matches("Court Room 1", "Court Room 001"));
+        assertTrue(VenueNameComparator.matches(COURT_8, "Court 08"));
+        assertTrue(VenueNameComparator.matches(COURT_ROOM_1, COURT_ROOM_001));
         assertTrue(VenueNameComparator.matches("Main Court 12", "Main Court 012"));
     }
 }

@@ -15,16 +15,18 @@ import org.junit.jupiter.api.Test;
 
 
 class FileUtilTest {
+    private static final String LJA_SOUTHESSEX_SNAPSHOT_20210122_T120000_Z_XML = "lja_southessex_snapshot_20210122T120000Z.xml";
+
 
     @Test
     void shouldGetLJASnapshotFileTimeStampAsString() {
-        final String actual = FileUtil.getLJASnapshotFileTimeStampAsString("lja_southessex_snapshot_20210122T120000Z.xml");
+        final String actual = FileUtil.getLJASnapshotFileTimeStampAsString(LJA_SOUTHESSEX_SNAPSHOT_20210122_T120000_Z_XML);
         assertThat(actual, is("20210122T120000Z"));
     }
 
     @Test
     void shouldGetLJASnapshotFileTimeStampAsOffsetDateTime() {
-        final OffsetDateTime actual = FileUtil.getLJASnapshotFileTimeStampAsOffsetDateTime("lja_southessex_snapshot_20210122T120000Z.xml");
+        final OffsetDateTime actual = FileUtil.getLJASnapshotFileTimeStampAsOffsetDateTime(LJA_SOUTHESSEX_SNAPSHOT_20210122_T120000_Z_XML);
         assertThat(actual.toString(), is("2021-01-22T12:00Z"));
     }
 
@@ -36,7 +38,7 @@ class FileUtilTest {
 
     @Test
     void shouldGetLJASnapshotFileNamePrefix() {
-        final String actual = FileUtil.getLJASnapshotFileNamePrefix("lja_southessex_snapshot_20210122T120000Z.xml");
+        final String actual = FileUtil.getLJASnapshotFileNamePrefix(LJA_SOUTHESSEX_SNAPSHOT_20210122_T120000_Z_XML);
         assertThat(actual, is("lja_southessex_snapshot_"));
     }
 
@@ -46,7 +48,7 @@ class FileUtilTest {
 
     @Test
     void shouldGetLJAFileTimeStampAsString_FromSnapshotFile() {
-        final String actual = FileUtil.getLJAFileTimeStampAsString("lja_southessex_snapshot_20210122T120000Z.xml");
+        final String actual = FileUtil.getLJAFileTimeStampAsString(LJA_SOUTHESSEX_SNAPSHOT_20210122_T120000_Z_XML);
         assertThat(actual, is("20210122T120000Z"));
     }
 
@@ -128,7 +130,7 @@ class FileUtilTest {
 
     @Test
     void shouldGetLJAFileTimeStampAsOffsetDateTime_FromSnapshotFile() {
-        final OffsetDateTime actual = FileUtil.getLJAFileTimeStampAsOffsetDateTime("lja_southessex_snapshot_20210122T120000Z.xml");
+        final OffsetDateTime actual = FileUtil.getLJAFileTimeStampAsOffsetDateTime(LJA_SOUTHESSEX_SNAPSHOT_20210122_T120000_Z_XML);
         assertThat(actual.toString(), is("2021-01-22T12:00Z"));
     }
 
@@ -195,7 +197,7 @@ class FileUtilTest {
 
     @Test
     void shouldGetLJAFileNamePrefix_FromSnapshotFile() {
-        final String actual = FileUtil.getLJAFileNamePrefix("lja_southessex_snapshot_20210122T120000Z.xml");
+        final String actual = FileUtil.getLJAFileNamePrefix(LJA_SOUTHESSEX_SNAPSHOT_20210122_T120000_Z_XML);
         assertThat(actual, is("lja_southessex_snapshot_"));
     }
 

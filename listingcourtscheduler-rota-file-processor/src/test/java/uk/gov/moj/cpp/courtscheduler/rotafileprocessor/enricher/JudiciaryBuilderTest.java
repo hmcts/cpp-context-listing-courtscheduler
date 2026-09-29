@@ -55,7 +55,7 @@ class JudiciaryBuilderTest {
     }
 
     private byte[] givenBlobContent(final String file) throws IOException {
-        try (final InputStream inputStream = JudiciaryBuilderTest.class.getClassLoader().getResourceAsStream(file)) {
+        try (InputStream inputStream = JudiciaryBuilderTest.class.getResourceAsStream("/" + file)) {
 
             return toByteArray(inputStream);
         }

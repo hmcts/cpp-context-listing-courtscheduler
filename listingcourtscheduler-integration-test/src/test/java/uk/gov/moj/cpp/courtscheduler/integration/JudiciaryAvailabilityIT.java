@@ -39,6 +39,32 @@ import jakarta.ws.rs.core.Response;
 import org.junit.jupiter.api.Test;
 
 class JudiciaryAvailabilityIT extends AbstractIT {
+    private static final String RECORDER = "Recorder";
+    private static final String SHOULD_FIND_AT_LEAST_ONE_RULE = "Should find at least one rule";
+    private static final String TRAINING_2 = "TRAINING";
+    private static final String AIN = "ain";
+    private static final String AVAILABLE_JUDICIARIES = "availableJudiciaries";
+    private static final String COURT_HOUSE_ID = "courtHouseId";
+    private static final String END_DATE = "endDate";
+    private static final String JUDICIARIES = "judiciaries";
+    private static final String JUDICIARY_GROUP = "judiciaryGroup";
+    private static final String JUDICIARY_ID = "judiciaryId";
+    private static final String PAGE_NUMBER = "pageNumber";
+    private static final String PAGE_SIZE = "pageSize";
+    private static final String REASON = "reason";
+    private static final String REPEAT_DAYS = "repeatDays";
+    private static final String RULE = "rule";
+    private static final String RULE_ID = "ruleId";
+    private static final String RULES = "rules";
+    private static final String SEARCH = "search";
+    private static final String SESSION_TYPE = "sessionType";
+    private static final String START_DATE = "startDate";
+    private static final String STATUS = "status";
+    private static final String UNAVAILABILITIES = "unavailabilities";
+    private static final String VALIDATION_ERROR = "validationError";
+    private static final String VALIDATION_RESULT = "validationResult";
+    private static final String WITH_JUDICIARY = "withJudiciary";
+
 
     private static final String AVAILABILITY_RULES_ADD = "/judiciaries/availability-rules/add";
     private static final String AVAILABILITY_RULES_UPDATE = "/judiciaries/availability-rules/update";
@@ -60,7 +86,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
      * Helper method to get a future date (tomorrow by default).
      * Ensures dates are always in the future for validation.
      */
-    private LocalDate futureDate(int daysFromNow) {
+    private LocalDate futureDate(final int daysFromNow) {
         return LocalDate.now().plusDays(daysFromNow);
     }
 
@@ -68,8 +94,8 @@ class JudiciaryAvailabilityIT extends AbstractIT {
      * Helper method to get a future date that falls on a specific day of week.
      * Finds the next occurrence of the specified day from today.
      */
-    private LocalDate futureDateOnDayOfWeek(java.time.DayOfWeek dayOfWeek, int weeksFromNow) {
-        LocalDate baseDate = LocalDate.now().plusWeeks(weeksFromNow);
+    private LocalDate futureDateOnDayOfWeek(final java.time.DayOfWeek dayOfWeek, final int weeksFromNow) {
+        final LocalDate baseDate = LocalDate.now().plusWeeks(weeksFromNow);
         int daysUntilTarget = (dayOfWeek.getValue() - baseDate.getDayOfWeek().getValue() + 7) % 7;
         if (daysUntilTarget == 0 && weeksFromNow == 0) {
             // If today is the target day, move to next week
@@ -124,8 +150,8 @@ class JudiciaryAvailabilityIT extends AbstractIT {
             databaseSeeder.insertCourtSchedule(schedule);
 
             final Map<String, Object> queryParams = new HashMap<>();
-            queryParams.put("search", "ain");
-            queryParams.put("judiciaryGroup", "Recorder");
+            queryParams.put(SEARCH, AIN);
+            queryParams.put(JUDICIARY_GROUP, RECORDER);
             queryParams.put("courtScheduleIds", courtScheduleId);
 
             final RequestParams requestParams = getRequestParams(JUDICIARIES_SEARCH_AVAILABLE, SEARCH_AVAILABLE_RESPONSE_TYPE, SYSTEM_USER_ID, queryParams);
@@ -138,7 +164,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
 
             assertThat(responseData.getStatus().getStatusCode(), is(OK.getStatusCode()));
             final JsonObject jsonObject = stringToJsonObjectConverter.convert(responseData.getPayload());
-            final JsonArray judiciaries = jsonObject.getJsonArray("judiciaries");
+            final JsonArray judiciaries = jsonObject.getJsonArray(JUDICIARIES);
             assertNotNull(judiciaries);
             assertFalse(judiciaries.isEmpty());
             assertTrue(containsJudiciaryObject(judiciaries, judiciaryIdAvailable));
@@ -156,8 +182,8 @@ class JudiciaryAvailabilityIT extends AbstractIT {
 
         try {
             final Map<String, Object> queryParams = new HashMap<>();
-            queryParams.put("search", "ain");
-            queryParams.put("judiciaryGroup", "Recorder");
+            queryParams.put(SEARCH, AIN);
+            queryParams.put(JUDICIARY_GROUP, RECORDER);
             queryParams.put("ignoreAvailability", true);
 
             final RequestParams requestParams = getRequestParams(JUDICIARIES_SEARCH_AVAILABLE, SEARCH_AVAILABLE_RESPONSE_TYPE, SYSTEM_USER_ID, queryParams);
@@ -170,7 +196,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
 
             assertThat(responseData.getStatus().getStatusCode(), is(OK.getStatusCode()));
             final JsonObject jsonObject = stringToJsonObjectConverter.convert(responseData.getPayload());
-            final JsonArray judiciaries = jsonObject.getJsonArray("judiciaries");
+            final JsonArray judiciaries = jsonObject.getJsonArray(JUDICIARIES);
             assertNotNull(judiciaries);
             assertTrue(containsJudiciaryObject(judiciaries, "11111111-1111-1111-1111-111111111111"));
             assertTrue(containsJudiciaryObject(judiciaries, "22222222-2222-2222-2222-222222222222"));
@@ -183,10 +209,10 @@ class JudiciaryAvailabilityIT extends AbstractIT {
     @Test
     void shouldReturnBadRequestWhenDatesAndCourtScheduleIdsProvided() {
         final Map<String, Object> queryParams = new HashMap<>();
-        queryParams.put("search", "ain");
-        queryParams.put("judiciaryGroup", "Recorder");
+        queryParams.put(SEARCH, AIN);
+        queryParams.put(JUDICIARY_GROUP, RECORDER);
         queryParams.put("dates", LocalDate.now().plusDays(1).format(DATE_FORMATTER));
-        queryParams.put("courtHouseId", randomUUID().toString());
+        queryParams.put(COURT_HOUSE_ID, randomUUID().toString());
         queryParams.put("courtScheduleIds", randomUUID().toString());
 
         final RequestParams requestParams = getRequestParams(JUDICIARIES_SEARCH_AVAILABLE, SEARCH_AVAILABLE_RESPONSE_TYPE, SYSTEM_USER_ID, queryParams);
@@ -222,8 +248,8 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         databaseSeeder.insertCourtSchedule(schedule2);
 
         final Map<String, Object> queryParams = new HashMap<>();
-        queryParams.put("search", "ain");
-        queryParams.put("judiciaryGroup", "Recorder");
+        queryParams.put(SEARCH, AIN);
+        queryParams.put(JUDICIARY_GROUP, RECORDER);
         queryParams.put("courtScheduleIds", id1 + "," + id2);
 
         final RequestParams requestParams = getRequestParams(JUDICIARIES_SEARCH_AVAILABLE, SEARCH_AVAILABLE_RESPONSE_TYPE, SYSTEM_USER_ID, queryParams);
@@ -246,11 +272,11 @@ class JudiciaryAvailabilityIT extends AbstractIT {
 
         // Add availability rule: Weekly on all weekdays (Monday-Friday)
         final String requestPayload = Json.createObjectBuilder()
-                .add("judiciaryId", judiciaryId)
-                .add("courtHouseId", courtHouseId)
-                .add("startDate", startDate.format(DATE_FORMATTER))
-                .add("endDate", endDate.format(DATE_FORMATTER))
-                .add("repeatDays", Json.createArrayBuilder()
+                .add(JUDICIARY_ID, judiciaryId)
+                .add(COURT_HOUSE_ID, courtHouseId)
+                .add(START_DATE, startDate.format(DATE_FORMATTER))
+                .add(END_DATE, endDate.format(DATE_FORMATTER))
+                .add(REPEAT_DAYS, Json.createArrayBuilder()
                         .add(AvailabilityDayOfWeek.MONDAY.getWireValue())
                         .add(AvailabilityDayOfWeek.TUESDAY.getWireValue())
                         .add(AvailabilityDayOfWeek.WEDNESDAY.getWireValue())
@@ -279,10 +305,10 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         }
 
         final Map<String, Object> queryParams = new HashMap<>();
-        queryParams.put("startDate", queryStartDate.format(DATE_FORMATTER));
-        queryParams.put("endDate", queryEndDate.format(DATE_FORMATTER));
-        queryParams.put("courtHouseId", courtHouseId);
-        queryParams.put("judiciaryId", judiciaryId);
+        queryParams.put(START_DATE, queryStartDate.format(DATE_FORMATTER));
+        queryParams.put(END_DATE, queryEndDate.format(DATE_FORMATTER));
+        queryParams.put(COURT_HOUSE_ID, courtHouseId);
+        queryParams.put(JUDICIARY_ID, judiciaryId);
 
         final RequestParams requestParams = getRequestParams(JUDICIARIES_AVAILABILITY, RESPONSE_TYPE, SYSTEM_USER_ID, queryParams);
         final ResponseData responseData = poll(requestParams)
@@ -295,7 +321,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         assertThat(responseData.getStatus().getStatusCode(), is(OK.getStatusCode()));
 
         final JsonObject jsonObject = stringToJsonObjectConverter.convert(responseData.getPayload());
-        final JsonArray availableJudiciaries = jsonObject.getJsonArray("availableJudiciaries");
+        final JsonArray availableJudiciaries = jsonObject.getJsonArray(AVAILABLE_JUDICIARIES);
         assertTrue(availableJudiciaries.size() > 0, "Should find at least one available judiciary");
         assertTrue(containsJudiciary(availableJudiciaries, judiciaryId), "Should contain the judiciary ID");
     }
@@ -309,11 +335,11 @@ class JudiciaryAvailabilityIT extends AbstractIT {
 
         // Add availability rule: Weekly on Tuesdays and Thursdays
         final String requestPayload = Json.createObjectBuilder()
-                .add("judiciaryId", judiciaryId)
-                .add("courtHouseId", courtHouseId)
-                .add("startDate", startDate.format(DATE_FORMATTER))
-                .add("endDate", endDate.format(DATE_FORMATTER))
-                .add("repeatDays", Json.createArrayBuilder()
+                .add(JUDICIARY_ID, judiciaryId)
+                .add(COURT_HOUSE_ID, courtHouseId)
+                .add(START_DATE, startDate.format(DATE_FORMATTER))
+                .add(END_DATE, endDate.format(DATE_FORMATTER))
+                .add(REPEAT_DAYS, Json.createArrayBuilder()
                         .add(AvailabilityDayOfWeek.TUESDAY.getWireValue())
                         .add(AvailabilityDayOfWeek.THURSDAY.getWireValue()))
                 .build()
@@ -339,10 +365,10 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         }
 
         final Map<String, Object> queryParams = new HashMap<>();
-        queryParams.put("startDate", queryStartDate.format(DATE_FORMATTER));
-        queryParams.put("endDate", queryEndDate.format(DATE_FORMATTER));
-        queryParams.put("courtHouseId", courtHouseId);
-        queryParams.put("judiciaryId", judiciaryId);
+        queryParams.put(START_DATE, queryStartDate.format(DATE_FORMATTER));
+        queryParams.put(END_DATE, queryEndDate.format(DATE_FORMATTER));
+        queryParams.put(COURT_HOUSE_ID, courtHouseId);
+        queryParams.put(JUDICIARY_ID, judiciaryId);
 
         final RequestParams requestParams = getRequestParams(JUDICIARIES_AVAILABILITY, RESPONSE_TYPE, SYSTEM_USER_ID, queryParams);
         final ResponseData responseData = poll(requestParams)
@@ -355,7 +381,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         assertThat(responseData.getStatus().getStatusCode(), is(OK.getStatusCode()));
 
         final JsonObject jsonObject = stringToJsonObjectConverter.convert(responseData.getPayload());
-        final JsonArray availableJudiciaries = jsonObject.getJsonArray("availableJudiciaries");
+        final JsonArray availableJudiciaries = jsonObject.getJsonArray(AVAILABLE_JUDICIARIES);
         assertTrue(availableJudiciaries.size() > 0, "Should find at least one available judiciary");
         assertTrue(containsJudiciary(availableJudiciaries, judiciaryId), "Should contain the judiciary ID");
     }
@@ -372,33 +398,33 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         final LocalDate unavailabilityEndDate = futureDate(15);
 
         final String payload = Json.createObjectBuilder()
-                .add("judiciaryId", judiciaryId)
-                .add("courtHouseId", courtHouseId)
-                .add("startDate", startDate.format(DATE_FORMATTER))
-                .add("endDate", endDate.format(DATE_FORMATTER))
-                .add("repeatDays", Json.createArrayBuilder()
+                .add(JUDICIARY_ID, judiciaryId)
+                .add(COURT_HOUSE_ID, courtHouseId)
+                .add(START_DATE, startDate.format(DATE_FORMATTER))
+                .add(END_DATE, endDate.format(DATE_FORMATTER))
+                .add(REPEAT_DAYS, Json.createArrayBuilder()
                         .add(AvailabilityDayOfWeek.MONDAY.getWireValue())
                         .add(AvailabilityDayOfWeek.TUESDAY.getWireValue())
                         .add(AvailabilityDayOfWeek.WEDNESDAY.getWireValue())
                         .add(AvailabilityDayOfWeek.THURSDAY.getWireValue())
                         .add(AvailabilityDayOfWeek.FRIDAY.getWireValue()))
-                .add("unavailabilities", Json.createArrayBuilder()
+                .add(UNAVAILABILITIES, Json.createArrayBuilder()
                         .add(Json.createObjectBuilder()
-                                .add("startDate", unavailabilityStartDate.format(DATE_FORMATTER))
-                                .add("endDate", unavailabilityEndDate.format(DATE_FORMATTER))
-                                .add("reason", "ANNUAL_LEAVE")))
+                                .add(START_DATE, unavailabilityStartDate.format(DATE_FORMATTER))
+                                .add(END_DATE, unavailabilityEndDate.format(DATE_FORMATTER))
+                                .add(REASON, "ANNUAL_LEAVE")))
                 .build()
                 .toString();
 
-        Response response = postCommand(AVAILABILITY_RULES_ADD, RESPONSE_TYPE, SYSTEM_USER_ID, payload);
+        final Response response = postCommand(AVAILABILITY_RULES_ADD, RESPONSE_TYPE, SYSTEM_USER_ID, payload);
         assertThat(response.getStatus(), is(OK.getStatusCode()));
 
         // Verify: Query during unavailable period should not return this judiciary
         final Map<String, Object> queryParams = new HashMap<>();
-        queryParams.put("startDate", unavailabilityStartDate.format(DATE_FORMATTER));
-        queryParams.put("endDate", unavailabilityEndDate.format(DATE_FORMATTER));
-        queryParams.put("courtHouseId", courtHouseId);
-        queryParams.put("judiciaryId", judiciaryId);
+        queryParams.put(START_DATE, unavailabilityStartDate.format(DATE_FORMATTER));
+        queryParams.put(END_DATE, unavailabilityEndDate.format(DATE_FORMATTER));
+        queryParams.put(COURT_HOUSE_ID, courtHouseId);
+        queryParams.put(JUDICIARY_ID, judiciaryId);
 
         final RequestParams requestParams = getRequestParams(JUDICIARIES_AVAILABILITY, RESPONSE_TYPE, SYSTEM_USER_ID, queryParams);
         final ResponseData responseData = poll(requestParams)
@@ -411,15 +437,15 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         assertThat(responseData.getStatus().getStatusCode(), is(OK.getStatusCode()));
 
         final JsonObject jsonObject = stringToJsonObjectConverter.convert(responseData.getPayload());
-        final JsonArray availableJudiciaries = jsonObject.getJsonArray("availableJudiciaries");
+        final JsonArray availableJudiciaries = jsonObject.getJsonArray(AVAILABLE_JUDICIARIES);
         // Should not contain the judiciary during unavailable period
         assertTrue(!containsJudiciary(availableJudiciaries, judiciaryId), "Should not contain the judiciary during unavailable period");
 
         // Verify: Query for the rule and verify unavailabilities are returned in the response
         final Map<String, Object> ruleQueryParams = new HashMap<>();
-        ruleQueryParams.put("startDate", startDate.format(DATE_FORMATTER));
-        ruleQueryParams.put("endDate", endDate.format(DATE_FORMATTER));
-        ruleQueryParams.put("courtHouseId", courtHouseId);
+        ruleQueryParams.put(START_DATE, startDate.format(DATE_FORMATTER));
+        ruleQueryParams.put(END_DATE, endDate.format(DATE_FORMATTER));
+        ruleQueryParams.put(COURT_HOUSE_ID, courtHouseId);
 
         final RequestParams ruleRequestParams = getRequestParams(AVAILABILITY_RULES, RESPONSE_TYPE, SYSTEM_USER_ID, ruleQueryParams);
         final ResponseData ruleResponseData = poll(ruleRequestParams)
@@ -432,25 +458,25 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         assertThat(ruleResponseData.getStatus().getStatusCode(), is(OK.getStatusCode()));
 
         final JsonObject ruleJsonObject = stringToJsonObjectConverter.convert(ruleResponseData.getPayload());
-        final JsonArray rules = ruleJsonObject.getJsonArray("rules");
-        assertTrue(rules.size() > 0, "Should find at least one rule");
+        final JsonArray rules = ruleJsonObject.getJsonArray(RULES);
+        assertTrue(rules.size() > 0, SHOULD_FIND_AT_LEAST_ONE_RULE);
         
         final JsonObject rule = rules.getJsonObject(0);
-        assertThat(rule.getString("judiciaryId"), is(judiciaryId));
+        assertThat(rule.getString(JUDICIARY_ID), is(judiciaryId));
         
         // Verify unavailabilities are present in the response
-        assertTrue(rule.containsKey("unavailabilities"), "Rule should contain unavailabilities array");
-        final JsonArray unavailabilities = rule.getJsonArray("unavailabilities");
+        assertTrue(rule.containsKey(UNAVAILABILITIES), "Rule should contain unavailabilities array");
+        final JsonArray unavailabilities = rule.getJsonArray(UNAVAILABILITIES);
         assertTrue(unavailabilities.size() > 0, "Should contain at least one unavailability");
         
         // Verify the unavailability structure and content
         final JsonObject unavailability = unavailabilities.getJsonObject(0);
-        assertTrue(unavailability.containsKey("startDate"), "Unavailability should have startDate");
-        assertTrue(unavailability.containsKey("endDate"), "Unavailability should have endDate");
-        assertTrue(unavailability.containsKey("reason"), "Unavailability should have reason");
-        assertThat(unavailability.getString("startDate"), is(unavailabilityStartDate.format(DATE_FORMATTER)));
-        assertThat(unavailability.getString("endDate"), is(unavailabilityEndDate.format(DATE_FORMATTER)));
-        assertThat(unavailability.getString("reason"), is("ANNUAL_LEAVE"));
+        assertTrue(unavailability.containsKey(START_DATE), "Unavailability should have startDate");
+        assertTrue(unavailability.containsKey(END_DATE), "Unavailability should have endDate");
+        assertTrue(unavailability.containsKey(REASON), "Unavailability should have reason");
+        assertThat(unavailability.getString(START_DATE), is(unavailabilityStartDate.format(DATE_FORMATTER)));
+        assertThat(unavailability.getString(END_DATE), is(unavailabilityEndDate.format(DATE_FORMATTER)));
+        assertThat(unavailability.getString(REASON), is("ANNUAL_LEAVE"));
     }
 
     @Test
@@ -462,43 +488,43 @@ class JudiciaryAvailabilityIT extends AbstractIT {
 
         // Add availability for all weekdays with unavailability for weekly Tuesdays in a single call
         final JsonArrayBuilder unavailabilitiesBuilder = Json.createArrayBuilder();
-        LocalDate firstTuesday = futureDateOnDayOfWeek(java.time.DayOfWeek.TUESDAY, 0);
+        final LocalDate firstTuesday = futureDateOnDayOfWeek(java.time.DayOfWeek.TUESDAY, 0);
         unavailabilitiesBuilder.add(Json.createObjectBuilder()
-                .add("startDate", firstTuesday.format(DATE_FORMATTER))
-                .add("endDate", firstTuesday.format(DATE_FORMATTER))
-                .add("reason", "TRAINING"));
-        LocalDate secondTuesday = firstTuesday.plusWeeks(1);
+                .add(START_DATE, firstTuesday.format(DATE_FORMATTER))
+                .add(END_DATE, firstTuesday.format(DATE_FORMATTER))
+                .add(REASON, TRAINING_2));
+        final LocalDate secondTuesday = firstTuesday.plusWeeks(1);
         unavailabilitiesBuilder.add(Json.createObjectBuilder()
-                .add("startDate", secondTuesday.format(DATE_FORMATTER))
-                .add("endDate", secondTuesday.format(DATE_FORMATTER))
-                .add("reason", "TRAINING"));
-        LocalDate thirdTuesday = firstTuesday.plusWeeks(2);
+                .add(START_DATE, secondTuesday.format(DATE_FORMATTER))
+                .add(END_DATE, secondTuesday.format(DATE_FORMATTER))
+                .add(REASON, TRAINING_2));
+        final LocalDate thirdTuesday = firstTuesday.plusWeeks(2);
         unavailabilitiesBuilder.add(Json.createObjectBuilder()
-                .add("startDate", thirdTuesday.format(DATE_FORMATTER))
-                .add("endDate", thirdTuesday.format(DATE_FORMATTER))
-                .add("reason", "TRAINING"));
-        LocalDate fourthTuesday = firstTuesday.plusWeeks(3);
+                .add(START_DATE, thirdTuesday.format(DATE_FORMATTER))
+                .add(END_DATE, thirdTuesday.format(DATE_FORMATTER))
+                .add(REASON, TRAINING_2));
+        final LocalDate fourthTuesday = firstTuesday.plusWeeks(3);
         unavailabilitiesBuilder.add(Json.createObjectBuilder()
-                .add("startDate", fourthTuesday.format(DATE_FORMATTER))
-                .add("endDate", fourthTuesday.format(DATE_FORMATTER))
-                .add("reason", "TRAINING"));
+                .add(START_DATE, fourthTuesday.format(DATE_FORMATTER))
+                .add(END_DATE, fourthTuesday.format(DATE_FORMATTER))
+                .add(REASON, TRAINING_2));
 
         final String payload = Json.createObjectBuilder()
-                .add("judiciaryId", judiciaryId)
-                .add("courtHouseId", courtHouseId)
-                .add("startDate", startDate.format(DATE_FORMATTER))
-                .add("endDate", endDate.format(DATE_FORMATTER))
-                .add("repeatDays", Json.createArrayBuilder()
+                .add(JUDICIARY_ID, judiciaryId)
+                .add(COURT_HOUSE_ID, courtHouseId)
+                .add(START_DATE, startDate.format(DATE_FORMATTER))
+                .add(END_DATE, endDate.format(DATE_FORMATTER))
+                .add(REPEAT_DAYS, Json.createArrayBuilder()
                         .add(AvailabilityDayOfWeek.MONDAY.getWireValue())
                         .add(AvailabilityDayOfWeek.TUESDAY.getWireValue())
                         .add(AvailabilityDayOfWeek.WEDNESDAY.getWireValue())
                         .add(AvailabilityDayOfWeek.THURSDAY.getWireValue())
                         .add(AvailabilityDayOfWeek.FRIDAY.getWireValue()))
-                .add("unavailabilities", unavailabilitiesBuilder)
+                .add(UNAVAILABILITIES, unavailabilitiesBuilder)
                 .build()
                 .toString();
 
-        Response response = postCommand(AVAILABILITY_RULES_ADD, RESPONSE_TYPE, SYSTEM_USER_ID, payload);
+        final Response response = postCommand(AVAILABILITY_RULES_ADD, RESPONSE_TYPE, SYSTEM_USER_ID, payload);
         assertThat(response.getStatus(), is(OK.getStatusCode()));
 
         // Verify: Query for a Tuesday should not return this judiciary
@@ -506,10 +532,10 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         final LocalDate queryEndDate = firstTuesday; // Same Tuesday
 
         final Map<String, Object> queryParams = new HashMap<>();
-        queryParams.put("startDate", queryStartDate.format(DATE_FORMATTER));
-        queryParams.put("endDate", queryEndDate.format(DATE_FORMATTER));
-        queryParams.put("courtHouseId", courtHouseId);
-        queryParams.put("judiciaryId", judiciaryId);
+        queryParams.put(START_DATE, queryStartDate.format(DATE_FORMATTER));
+        queryParams.put(END_DATE, queryEndDate.format(DATE_FORMATTER));
+        queryParams.put(COURT_HOUSE_ID, courtHouseId);
+        queryParams.put(JUDICIARY_ID, judiciaryId);
 
         final RequestParams requestParams = getRequestParams(JUDICIARIES_AVAILABILITY, RESPONSE_TYPE, SYSTEM_USER_ID, queryParams);
         final ResponseData responseData = poll(requestParams)
@@ -522,14 +548,14 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         assertThat(responseData.getStatus().getStatusCode(), is(OK.getStatusCode()));
 
         final JsonObject jsonObject = stringToJsonObjectConverter.convert(responseData.getPayload());
-        final JsonArray availableJudiciaries = jsonObject.getJsonArray("availableJudiciaries");
+        final JsonArray availableJudiciaries = jsonObject.getJsonArray(AVAILABLE_JUDICIARIES);
         // Should not contain the judiciary on Tuesday
         assertTrue(!containsJudiciary(availableJudiciaries, judiciaryId), "Should not contain the judiciary on Tuesday");
 
         // But should be available on other days (e.g., Monday)
         final LocalDate mondayDate = futureDateOnDayOfWeek(java.time.DayOfWeek.MONDAY, 0);
-        queryParams.put("startDate", mondayDate.format(DATE_FORMATTER));
-        queryParams.put("endDate", mondayDate.format(DATE_FORMATTER));
+        queryParams.put(START_DATE, mondayDate.format(DATE_FORMATTER));
+        queryParams.put(END_DATE, mondayDate.format(DATE_FORMATTER));
 
         final RequestParams mondayRequestParams = getRequestParams(JUDICIARIES_AVAILABILITY, RESPONSE_TYPE, SYSTEM_USER_ID, queryParams);
         final ResponseData mondayResponseData = poll(mondayRequestParams)
@@ -542,14 +568,14 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         assertThat(mondayResponseData.getStatus().getStatusCode(), is(OK.getStatusCode()));
 
         final JsonObject mondayJsonObject = stringToJsonObjectConverter.convert(mondayResponseData.getPayload());
-        final JsonArray mondayAvailableJudiciaries = mondayJsonObject.getJsonArray("availableJudiciaries");
+        final JsonArray mondayAvailableJudiciaries = mondayJsonObject.getJsonArray(AVAILABLE_JUDICIARIES);
         assertTrue(containsJudiciary(mondayAvailableJudiciaries, judiciaryId), "Should contain the judiciary on Monday");
 
         // Verify: Query for the rule and verify unavailabilities with reasons are returned
         final Map<String, Object> ruleQueryParams = new HashMap<>();
-        ruleQueryParams.put("startDate", startDate.format(DATE_FORMATTER));
-        ruleQueryParams.put("endDate", endDate.format(DATE_FORMATTER));
-        ruleQueryParams.put("courtHouseId", courtHouseId);
+        ruleQueryParams.put(START_DATE, startDate.format(DATE_FORMATTER));
+        ruleQueryParams.put(END_DATE, endDate.format(DATE_FORMATTER));
+        ruleQueryParams.put(COURT_HOUSE_ID, courtHouseId);
 
         final RequestParams ruleRequestParams = getRequestParams(AVAILABILITY_RULES, RESPONSE_TYPE, SYSTEM_USER_ID, ruleQueryParams);
         final ResponseData ruleResponseData = poll(ruleRequestParams)
@@ -562,22 +588,22 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         assertThat(ruleResponseData.getStatus().getStatusCode(), is(OK.getStatusCode()));
 
         final JsonObject ruleJsonObject = stringToJsonObjectConverter.convert(ruleResponseData.getPayload());
-        final JsonArray rules = ruleJsonObject.getJsonArray("rules");
-        assertTrue(rules.size() > 0, "Should find at least one rule");
+        final JsonArray rules = ruleJsonObject.getJsonArray(RULES);
+        assertTrue(rules.size() > 0, SHOULD_FIND_AT_LEAST_ONE_RULE);
         
         final JsonObject rule = rules.getJsonObject(0);
-        assertThat(rule.getString("judiciaryId"), is(judiciaryId));
+        assertThat(rule.getString(JUDICIARY_ID), is(judiciaryId));
         
         // Verify unavailabilities are present with correct reasons
-        assertTrue(rule.containsKey("unavailabilities"), "Rule should contain unavailabilities array");
-        final JsonArray unavailabilities = rule.getJsonArray("unavailabilities");
+        assertTrue(rule.containsKey(UNAVAILABILITIES), "Rule should contain unavailabilities array");
+        final JsonArray unavailabilities = rule.getJsonArray(UNAVAILABILITIES);
         assertTrue(unavailabilities.size() >= 4, "Should contain at least 4 unavailabilities (one for each Tuesday)");
         
         // Verify all unavailabilities have TRAINING as the reason
         for (int i = 0; i < unavailabilities.size(); i++) {
             final JsonObject unavailability = unavailabilities.getJsonObject(i);
-            assertTrue(unavailability.containsKey("reason"), "Unavailability should have reason");
-            assertThat(unavailability.getString("reason"), is("TRAINING"));
+            assertTrue(unavailability.containsKey(REASON), "Unavailability should have reason");
+            assertThat(unavailability.getString(REASON), is(TRAINING_2));
         }
     }
 
@@ -616,11 +642,11 @@ class JudiciaryAvailabilityIT extends AbstractIT {
             queryEndDate = endDate;
         }
 
-        Map<String, Object> queryParams = new HashMap<>();
-        queryParams.put("startDate", queryStartDate.format(DATE_FORMATTER));
-        queryParams.put("endDate", queryEndDate.format(DATE_FORMATTER));
-        queryParams.put("courtHouseId", courtHouseId);
-        queryParams.put("judiciaryId", judiciaryId);
+        final Map<String, Object> queryParams = new HashMap<>();
+        queryParams.put(START_DATE, queryStartDate.format(DATE_FORMATTER));
+        queryParams.put(END_DATE, queryEndDate.format(DATE_FORMATTER));
+        queryParams.put(COURT_HOUSE_ID, courtHouseId);
+        queryParams.put(JUDICIARY_ID, judiciaryId);
 
         RequestParams requestParams = getRequestParams(JUDICIARIES_AVAILABILITY, RESPONSE_TYPE, SYSTEM_USER_ID, queryParams);
         ResponseData responseData = poll(requestParams)
@@ -633,13 +659,13 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         assertThat(responseData.getStatus().getStatusCode(), is(OK.getStatusCode()));
 
         JsonObject jsonObject = stringToJsonObjectConverter.convert(responseData.getPayload());
-        JsonArray availableJudiciaries = jsonObject.getJsonArray("availableJudiciaries");
+        JsonArray availableJudiciaries = jsonObject.getJsonArray(AVAILABLE_JUDICIARIES);
         assertTrue(containsJudiciary(availableJudiciaries, judiciaryId), "Judiciary should be available before deletion");
 
         // Delete the rule
         final String deletePayload = Json.createObjectBuilder()
-                .add("judiciaryId", judiciaryId)
-                .add("ruleId", ruleId)
+                .add(JUDICIARY_ID, judiciaryId)
+                .add(RULE_ID, ruleId)
                 .build()
                 .toString();
 
@@ -657,7 +683,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         assertThat(responseData.getStatus().getStatusCode(), is(OK.getStatusCode()));
 
         jsonObject = stringToJsonObjectConverter.convert(responseData.getPayload());
-        availableJudiciaries = jsonObject.getJsonArray("availableJudiciaries");
+        availableJudiciaries = jsonObject.getJsonArray(AVAILABLE_JUDICIARIES);
         assertTrue(!containsJudiciary(availableJudiciaries, judiciaryId), "Judiciary should not be available after deletion");
     }
 
@@ -714,11 +740,11 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         final LocalDate queryEndDate = futureDate(30);
 
         final Map<String, Object> queryParams = new HashMap<>();
-        queryParams.put("startDate", queryStartDate.format(DATE_FORMATTER));
-        queryParams.put("endDate", queryEndDate.format(DATE_FORMATTER));
-        queryParams.put("courtHouseId", courtHouseId);
-        queryParams.put("pageSize", 10);
-        queryParams.put("pageNumber", 1);
+        queryParams.put(START_DATE, queryStartDate.format(DATE_FORMATTER));
+        queryParams.put(END_DATE, queryEndDate.format(DATE_FORMATTER));
+        queryParams.put(COURT_HOUSE_ID, courtHouseId);
+        queryParams.put(PAGE_SIZE, 10);
+        queryParams.put(PAGE_NUMBER, 1);
 
         final RequestParams requestParams = getRequestParams(AVAILABILITY_RULES, RESPONSE_TYPE, SYSTEM_USER_ID, queryParams);
         final ResponseData responseData = poll(requestParams)
@@ -731,13 +757,13 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         assertThat(responseData.getStatus().getStatusCode(), is(OK.getStatusCode()));
 
         final JsonObject jsonObject = stringToJsonObjectConverter.convert(responseData.getPayload());
-        final JsonArray rules = jsonObject.getJsonArray("rules");
+        final JsonArray rules = jsonObject.getJsonArray(RULES);
         assertTrue(rules.size() >= 2, "Should find at least 2 rules");
         assertThat(jsonObject.getInt("totalCount"), is(org.hamcrest.Matchers.greaterThanOrEqualTo(2)));
-        assertThat(jsonObject.getInt("pageNumber"), is(1));
-        assertThat(jsonObject.getInt("pageSize"), is(10));
-        assertTrue(jsonObject.containsKey("judiciaries"), "Should contain judiciaries node");
-        final JsonArray judiciaries = jsonObject.getJsonArray("judiciaries");
+        assertThat(jsonObject.getInt(PAGE_NUMBER), is(1));
+        assertThat(jsonObject.getInt(PAGE_SIZE), is(10));
+        assertTrue(jsonObject.containsKey(JUDICIARIES), "Should contain judiciaries node");
+        final JsonArray judiciaries = jsonObject.getJsonArray(JUDICIARIES);
         assertThat(judiciaries.size(), greaterThan(0));
     }
 
@@ -763,9 +789,9 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         final LocalDate queryEndDate = futureDate(30);
 
         final Map<String, Object> queryParams = new HashMap<>();
-        queryParams.put("startDate", queryStartDate.format(DATE_FORMATTER));
-        queryParams.put("endDate", queryEndDate.format(DATE_FORMATTER));
-        queryParams.put("courtHouseId", courtHouseId);
+        queryParams.put(START_DATE, queryStartDate.format(DATE_FORMATTER));
+        queryParams.put(END_DATE, queryEndDate.format(DATE_FORMATTER));
+        queryParams.put(COURT_HOUSE_ID, courtHouseId);
 
         final RequestParams requestParams = getRequestParams(AVAILABILITY_RULES, RESPONSE_TYPE, SYSTEM_USER_ID, queryParams);
         final ResponseData responseData = poll(requestParams)
@@ -778,8 +804,8 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         assertThat(responseData.getStatus().getStatusCode(), is(OK.getStatusCode()));
 
         final JsonObject jsonObject = stringToJsonObjectConverter.convert(responseData.getPayload());
-        assertThat(jsonObject.getInt("pageNumber"), is(1));
-        assertThat(jsonObject.getInt("pageSize"), is(20));
+        assertThat(jsonObject.getInt(PAGE_NUMBER), is(1));
+        assertThat(jsonObject.getInt(PAGE_SIZE), is(20));
     }
 
     @Test
@@ -804,10 +830,10 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         final LocalDate queryEndDate = futureDate(30);
 
         final Map<String, Object> queryParams = new HashMap<>();
-        queryParams.put("startDate", queryStartDate.format(DATE_FORMATTER));
-        queryParams.put("endDate", queryEndDate.format(DATE_FORMATTER));
-        queryParams.put("withJudiciary", true);
-        queryParams.put("courtHouseId", courtHouseId);
+        queryParams.put(START_DATE, queryStartDate.format(DATE_FORMATTER));
+        queryParams.put(END_DATE, queryEndDate.format(DATE_FORMATTER));
+        queryParams.put(WITH_JUDICIARY, true);
+        queryParams.put(COURT_HOUSE_ID, courtHouseId);
 
         final RequestParams requestParams = getRequestParams(AVAILABILITY_RULES, RESPONSE_TYPE, SYSTEM_USER_ID, queryParams);
         final ResponseData responseData = poll(requestParams)
@@ -820,10 +846,10 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         assertThat(responseData.getStatus().getStatusCode(), is(OK.getStatusCode()));
 
         final JsonObject jsonObject = stringToJsonObjectConverter.convert(responseData.getPayload());
-        final JsonArray rules = jsonObject.getJsonArray("rules");
-        assertTrue(rules.size() > 0, "Should find at least one rule");
-        assertTrue(jsonObject.containsKey("judiciaries"), "Should contain judiciaries node");
-        final JsonArray judiciaries = jsonObject.getJsonArray("judiciaries");
+        final JsonArray rules = jsonObject.getJsonArray(RULES);
+        assertTrue(rules.size() > 0, SHOULD_FIND_AT_LEAST_ONE_RULE);
+        assertTrue(jsonObject.containsKey(JUDICIARIES), "Should contain judiciaries node");
+        final JsonArray judiciaries = jsonObject.getJsonArray(JUDICIARIES);
         assertTrue(judiciaries.size() > 0, "Should contain judiciaries when withJudiciary is true");
         
         // Verify judiciary structure
@@ -856,10 +882,10 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         final LocalDate queryEndDate = futureDate(30);
 
         final Map<String, Object> queryParams = new HashMap<>();
-        queryParams.put("startDate", queryStartDate.format(DATE_FORMATTER));
-        queryParams.put("endDate", queryEndDate.format(DATE_FORMATTER));
-        queryParams.put("courtHouseId", courtHouseId);
-        queryParams.put("withJudiciary", false);
+        queryParams.put(START_DATE, queryStartDate.format(DATE_FORMATTER));
+        queryParams.put(END_DATE, queryEndDate.format(DATE_FORMATTER));
+        queryParams.put(COURT_HOUSE_ID, courtHouseId);
+        queryParams.put(WITH_JUDICIARY, false);
 
         final RequestParams requestParams = getRequestParams(AVAILABILITY_RULES, RESPONSE_TYPE, SYSTEM_USER_ID, queryParams);
         final ResponseData responseData = poll(requestParams)
@@ -872,8 +898,8 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         assertThat(responseData.getStatus().getStatusCode(), is(OK.getStatusCode()));
 
         final JsonObject jsonObject = stringToJsonObjectConverter.convert(responseData.getPayload());
-        assertTrue(jsonObject.containsKey("judiciaries"), "Should always contain judiciaries node");
-        final JsonArray judiciaries = jsonObject.getJsonArray("judiciaries");
+        assertTrue(jsonObject.containsKey(JUDICIARIES), "Should always contain judiciaries node");
+        final JsonArray judiciaries = jsonObject.getJsonArray(JUDICIARIES);
         assertThat(judiciaries.size(), is(0));
     }
 
@@ -899,9 +925,9 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         final LocalDate queryEndDate = futureDate(30);
 
         final Map<String, Object> queryParams = new HashMap<>();
-        queryParams.put("startDate", queryStartDate.format(DATE_FORMATTER));
-        queryParams.put("endDate", queryEndDate.format(DATE_FORMATTER));
-        queryParams.put("courtHouseId", courtHouseId);
+        queryParams.put(START_DATE, queryStartDate.format(DATE_FORMATTER));
+        queryParams.put(END_DATE, queryEndDate.format(DATE_FORMATTER));
+        queryParams.put(COURT_HOUSE_ID, courtHouseId);
 
         final RequestParams requestParams = getRequestParams(AVAILABILITY_RULES, RESPONSE_TYPE, SYSTEM_USER_ID, queryParams);
         final ResponseData responseData = poll(requestParams)
@@ -914,13 +940,13 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         assertThat(responseData.getStatus().getStatusCode(), is(OK.getStatusCode()));
 
         final JsonObject jsonObject = stringToJsonObjectConverter.convert(responseData.getPayload());
-        final JsonArray rules = jsonObject.getJsonArray("rules");
-        assertTrue(rules.size() > 0, "Should find at least one rule");
+        final JsonArray rules = jsonObject.getJsonArray(RULES);
+        assertTrue(rules.size() > 0, SHOULD_FIND_AT_LEAST_ONE_RULE);
         
         // Verify all rules match the courtHouseId filter
         for (int i = 0; i < rules.size(); i++) {
             final JsonObject rule = rules.getJsonObject(i);
-            assertThat(rule.getString("courtHouseId"), is(courtHouseId));
+            assertThat(rule.getString(COURT_HOUSE_ID), is(courtHouseId));
         }
     }
 
@@ -946,10 +972,10 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         final LocalDate queryEndDate = futureDate(30);
 
         final Map<String, Object> queryParams = new HashMap<>();
-        queryParams.put("startDate", queryStartDate.format(DATE_FORMATTER));
-        queryParams.put("endDate", queryEndDate.format(DATE_FORMATTER));
-        queryParams.put("courtHouseId", courtHouseId);
-        queryParams.put("judiciaryId", judiciaryId);
+        queryParams.put(START_DATE, queryStartDate.format(DATE_FORMATTER));
+        queryParams.put(END_DATE, queryEndDate.format(DATE_FORMATTER));
+        queryParams.put(COURT_HOUSE_ID, courtHouseId);
+        queryParams.put(JUDICIARY_ID, judiciaryId);
 
         final RequestParams requestParams = getRequestParams(AVAILABILITY_RULES, RESPONSE_TYPE, SYSTEM_USER_ID, queryParams);
         final ResponseData responseData = poll(requestParams)
@@ -962,13 +988,13 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         assertThat(responseData.getStatus().getStatusCode(), is(OK.getStatusCode()));
 
         final JsonObject jsonObject = stringToJsonObjectConverter.convert(responseData.getPayload());
-        final JsonArray rules = jsonObject.getJsonArray("rules");
-        assertTrue(rules.size() > 0, "Should find at least one rule");
+        final JsonArray rules = jsonObject.getJsonArray(RULES);
+        assertTrue(rules.size() > 0, SHOULD_FIND_AT_LEAST_ONE_RULE);
         
         // Verify all rules match the judiciaryId filter
         for (int i = 0; i < rules.size(); i++) {
             final JsonObject rule = rules.getJsonObject(i);
-            assertThat(rule.getString("judiciaryId"), is(judiciaryId));
+            assertThat(rule.getString(JUDICIARY_ID), is(judiciaryId));
         }
     }
 
@@ -1017,11 +1043,11 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         final LocalDate queryEndDate = futureDate(30);
 
         final Map<String, Object> queryParams = new HashMap<>();
-        queryParams.put("startDate", queryStartDate.format(DATE_FORMATTER));
-        queryParams.put("endDate", queryEndDate.format(DATE_FORMATTER));
-        queryParams.put("courtHouseId", courtHouseId);
-        queryParams.put("pageSize", 2);
-        queryParams.put("pageNumber", 2);
+        queryParams.put(START_DATE, queryStartDate.format(DATE_FORMATTER));
+        queryParams.put(END_DATE, queryEndDate.format(DATE_FORMATTER));
+        queryParams.put(COURT_HOUSE_ID, courtHouseId);
+        queryParams.put(PAGE_SIZE, 2);
+        queryParams.put(PAGE_NUMBER, 2);
 
         final RequestParams requestParams = getRequestParams(AVAILABILITY_RULES, RESPONSE_TYPE, SYSTEM_USER_ID, queryParams);
         final ResponseData responseData = poll(requestParams)
@@ -1034,10 +1060,10 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         assertThat(responseData.getStatus().getStatusCode(), is(OK.getStatusCode()));
 
         final JsonObject jsonObject = stringToJsonObjectConverter.convert(responseData.getPayload());
-        final JsonArray rules = jsonObject.getJsonArray("rules");
+        final JsonArray rules = jsonObject.getJsonArray(RULES);
         assertThat(jsonObject.getInt("totalCount"), is(org.hamcrest.Matchers.greaterThanOrEqualTo(3)));
-        assertThat(jsonObject.getInt("pageNumber"), is(2));
-        assertThat(jsonObject.getInt("pageSize"), is(2));
+        assertThat(jsonObject.getInt(PAGE_NUMBER), is(2));
+        assertThat(jsonObject.getInt(PAGE_SIZE), is(2));
         // Page 2 with pageSize 2 should have at least 1 rule (if totalCount >= 3)
         assertTrue(rules.size() > 0, "Should find at least one rule on page 2");
     }
@@ -1067,9 +1093,9 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         final LocalDate queryEndDate = futureDate(30);
 
         final Map<String, Object> queryParams = new HashMap<>();
-        queryParams.put("startDate", queryStartDate.format(DATE_FORMATTER));
-        queryParams.put("endDate", queryEndDate.format(DATE_FORMATTER));
-        queryParams.put("courtHouseId", courtHouseId);
+        queryParams.put(START_DATE, queryStartDate.format(DATE_FORMATTER));
+        queryParams.put(END_DATE, queryEndDate.format(DATE_FORMATTER));
+        queryParams.put(COURT_HOUSE_ID, courtHouseId);
 
         final RequestParams requestParams = getRequestParams(AVAILABILITY_RULES, RESPONSE_TYPE, SYSTEM_USER_ID, queryParams);
         final ResponseData responseData = poll(requestParams)
@@ -1082,8 +1108,8 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         assertThat(responseData.getStatus().getStatusCode(), is(OK.getStatusCode()));
 
         final JsonObject jsonObject = stringToJsonObjectConverter.convert(responseData.getPayload());
-        final JsonArray rules = jsonObject.getJsonArray("rules");
-        assertTrue(rules.size() > 0, "Should find at least one rule");
+        final JsonArray rules = jsonObject.getJsonArray(RULES);
+        assertTrue(rules.size() > 0, SHOULD_FIND_AT_LEAST_ONE_RULE);
 
     }
 
@@ -1112,11 +1138,11 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         final LocalDate queryEndDate = futureDate(30);
 
         final Map<String, Object> queryParams = new HashMap<>();
-        queryParams.put("startDate", queryStartDate.format(DATE_FORMATTER));
-        queryParams.put("endDate", queryEndDate.format(DATE_FORMATTER));
-        queryParams.put("withJudiciary", true);
-        queryParams.put("courtHouseId", courtHouseId);
-        queryParams.put("judiciaryId", judiciaryId);
+        queryParams.put(START_DATE, queryStartDate.format(DATE_FORMATTER));
+        queryParams.put(END_DATE, queryEndDate.format(DATE_FORMATTER));
+        queryParams.put(WITH_JUDICIARY, true);
+        queryParams.put(COURT_HOUSE_ID, courtHouseId);
+        queryParams.put(JUDICIARY_ID, judiciaryId);
 
         final RequestParams requestParams = getRequestParams(AVAILABILITY_RULES, RESPONSE_TYPE, SYSTEM_USER_ID, queryParams);
         final ResponseData responseData = poll(requestParams)
@@ -1129,16 +1155,16 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         assertThat(responseData.getStatus().getStatusCode(), is(OK.getStatusCode()));
 
         final JsonObject jsonObject = stringToJsonObjectConverter.convert(responseData.getPayload());
-        final JsonArray rules = jsonObject.getJsonArray("rules");
-        assertTrue(rules.size() > 0, "Should find at least one rule");
+        final JsonArray rules = jsonObject.getJsonArray(RULES);
+        assertTrue(rules.size() > 0, SHOULD_FIND_AT_LEAST_ONE_RULE);
 
         // Verify the rule contains the expected judiciary ID
         final JsonObject rule = rules.getJsonObject(0);
-        assertThat(rule.getString("judiciaryId"), is(judiciaryId));
+        assertThat(rule.getString(JUDICIARY_ID), is(judiciaryId));
 
-        assertTrue(jsonObject.containsKey("judiciaries"), "Should contain judiciaries node");
+        assertTrue(jsonObject.containsKey(JUDICIARIES), "Should contain judiciaries node");
 
-        final JsonArray judiciaries = jsonObject.getJsonArray("judiciaries");
+        final JsonArray judiciaries = jsonObject.getJsonArray(JUDICIARIES);
 
         // Verify judiciaries structure and content
         assertTrue(judiciaries.size() > 0, "Should contain judiciaries when withJudiciary is true");
@@ -1182,13 +1208,13 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         while (queryStartDate.getDayOfWeek() != java.time.DayOfWeek.MONDAY) {
             queryStartDate = queryStartDate.plusDays(1);
         }
-        LocalDate queryEndDate = queryStartDate.plusDays(4); // Monday → Friday
+        final LocalDate queryEndDate = queryStartDate.plusDays(4); // Monday → Friday
 
         Map<String, Object> queryParams = new HashMap<>();
-        queryParams.put("startDate", queryStartDate.format(DATE_FORMATTER));
-        queryParams.put("endDate", queryEndDate.format(DATE_FORMATTER));
-        queryParams.put("courtHouseId", courtHouseId);
-        queryParams.put("judiciaryId", judiciaryId);
+        queryParams.put(START_DATE, queryStartDate.format(DATE_FORMATTER));
+        queryParams.put(END_DATE, queryEndDate.format(DATE_FORMATTER));
+        queryParams.put(COURT_HOUSE_ID, courtHouseId);
+        queryParams.put(JUDICIARY_ID, judiciaryId);
 
         RequestParams requestParams = getRequestParams(JUDICIARIES_AVAILABILITY, RESPONSE_TYPE, SYSTEM_USER_ID, queryParams);
         ResponseData responseData = poll(requestParams)
@@ -1201,7 +1227,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         assertThat(responseData.getStatus().getStatusCode(), is(OK.getStatusCode()));
 
         JsonObject jsonObject = stringToJsonObjectConverter.convert(responseData.getPayload());
-        JsonArray availableJudiciaries = jsonObject.getJsonArray("availableJudiciaries");
+        JsonArray availableJudiciaries = jsonObject.getJsonArray(AVAILABLE_JUDICIARIES);
         assertTrue(containsJudiciary(availableJudiciaries, judiciaryId), "Judiciary should be available before update");
 
         // Update the rule with new dates, repeat days and unavailabilities
@@ -1211,21 +1237,21 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         final LocalDate unavailabilityEndDate = futureDate(15);
 
         final String updatePayload = Json.createObjectBuilder()
-                .add("ruleId", ruleId)
-                .add("judiciaryId", judiciaryId)
-                .add("courtHouseId", courtHouseId)
-                .add("startDate", updatedStartDate.format(DATE_FORMATTER))
-                .add("endDate", updatedEndDate.format(DATE_FORMATTER))
-                .add("sessionType", SessionType.AM.name())
-                .add("repeatDays", Json.createArrayBuilder()
+                .add(RULE_ID, ruleId)
+                .add(JUDICIARY_ID, judiciaryId)
+                .add(COURT_HOUSE_ID, courtHouseId)
+                .add(START_DATE, updatedStartDate.format(DATE_FORMATTER))
+                .add(END_DATE, updatedEndDate.format(DATE_FORMATTER))
+                .add(SESSION_TYPE, SessionType.AM.name())
+                .add(REPEAT_DAYS, Json.createArrayBuilder()
                         .add(AvailabilityDayOfWeek.WEDNESDAY.getWireValue())
                         .add(AvailabilityDayOfWeek.THURSDAY.getWireValue())
                         .build())
-                .add("unavailabilities", Json.createArrayBuilder()
+                .add(UNAVAILABILITIES, Json.createArrayBuilder()
                         .add(Json.createObjectBuilder()
-                                .add("startDate", unavailabilityStartDate.format(DATE_FORMATTER))
-                                .add("endDate", unavailabilityEndDate.format(DATE_FORMATTER))
-                                .add("reason", "ANNUAL_LEAVE")
+                                .add(START_DATE, unavailabilityStartDate.format(DATE_FORMATTER))
+                                .add(END_DATE, unavailabilityEndDate.format(DATE_FORMATTER))
+                                .add(REASON, "ANNUAL_LEAVE")
                                 .build())
                         .build())
                 .build()
@@ -1265,9 +1291,9 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         }
         
         queryParams = new HashMap<>();
-        queryParams.put("startDate", queryDate.format(DATE_FORMATTER));
-        queryParams.put("endDate", queryDate.format(DATE_FORMATTER));
-        queryParams.put("courtHouseId", courtHouseId);
+        queryParams.put(START_DATE, queryDate.format(DATE_FORMATTER));
+        queryParams.put(END_DATE, queryDate.format(DATE_FORMATTER));
+        queryParams.put(COURT_HOUSE_ID, courtHouseId);
 
         requestParams = getRequestParams(JUDICIARIES_AVAILABILITY, RESPONSE_TYPE, SYSTEM_USER_ID, queryParams);
         responseData = poll(requestParams)
@@ -1280,15 +1306,15 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         assertThat(responseData.getStatus().getStatusCode(), is(OK.getStatusCode()));
 
         jsonObject = stringToJsonObjectConverter.convert(responseData.getPayload());
-        availableJudiciaries = jsonObject.getJsonArray("availableJudiciaries");
+        availableJudiciaries = jsonObject.getJsonArray(AVAILABLE_JUDICIARIES);
         assertTrue(containsJudiciary(availableJudiciaries, judiciaryId), "Judiciary should be available in updated date range (3rd Thursday)");
 
         // Verify unavailabilities are working - judiciary should NOT be available during unavailability period
         // Feb 10-15 is marked as unavailable, and Feb 11 is the 2nd Wednesday (which would normally be available)
         queryParams = new HashMap<>();
-        queryParams.put("startDate", unavailabilityStartDate.format(DATE_FORMATTER));
-        queryParams.put("endDate", unavailabilityEndDate.format(DATE_FORMATTER));
-        queryParams.put("courtHouseId", courtHouseId);
+        queryParams.put(START_DATE, unavailabilityStartDate.format(DATE_FORMATTER));
+        queryParams.put(END_DATE, unavailabilityEndDate.format(DATE_FORMATTER));
+        queryParams.put(COURT_HOUSE_ID, courtHouseId);
 
         requestParams = getRequestParams(JUDICIARIES_AVAILABILITY, RESPONSE_TYPE, SYSTEM_USER_ID, queryParams);
         responseData = poll(requestParams)
@@ -1301,15 +1327,15 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         assertThat(responseData.getStatus().getStatusCode(), is(OK.getStatusCode()));
 
         jsonObject = stringToJsonObjectConverter.convert(responseData.getPayload());
-        availableJudiciaries = jsonObject.getJsonArray("availableJudiciaries");
+        availableJudiciaries = jsonObject.getJsonArray(AVAILABLE_JUDICIARIES);
         assertTrue(!containsJudiciary(availableJudiciaries, judiciaryId), "Judiciary should not be available during unavailability period (Feb 10-15)");
 
         // Verify Mon/Tue availability is gone after updating the rule to Wed/Thu.
         // Use a Mon-Tue-only window to avoid overlap with the new rule's Wed/Thu repeat days.
         queryParams = new HashMap<>();
-        queryParams.put("startDate", queryStartDate.format(DATE_FORMATTER));           // Monday
-        queryParams.put("endDate", queryStartDate.plusDays(1).format(DATE_FORMATTER)); // Tuesday
-        queryParams.put("courtHouseId", courtHouseId);
+        queryParams.put(START_DATE, queryStartDate.format(DATE_FORMATTER));           // Monday
+        queryParams.put(END_DATE, queryStartDate.plusDays(1).format(DATE_FORMATTER)); // Tuesday
+        queryParams.put(COURT_HOUSE_ID, courtHouseId);
 
         requestParams = getRequestParams(JUDICIARIES_AVAILABILITY, RESPONSE_TYPE, SYSTEM_USER_ID, queryParams);
         responseData = poll(requestParams)
@@ -1322,7 +1348,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         assertThat(responseData.getStatus().getStatusCode(), is(OK.getStatusCode()));
 
         jsonObject = stringToJsonObjectConverter.convert(responseData.getPayload());
-        availableJudiciaries = jsonObject.getJsonArray("availableJudiciaries");
+        availableJudiciaries = jsonObject.getJsonArray(AVAILABLE_JUDICIARIES);
         assertTrue(!containsJudiciary(availableJudiciaries, judiciaryId), "Judiciary should not be available in old date range after update");
     }
 
@@ -1347,7 +1373,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
 
         // Get the rule
         final Map<String, Object> queryParams = new HashMap<>();
-        queryParams.put("withJudiciary", false);
+        queryParams.put(WITH_JUDICIARY, false);
 
         final String getUrl = RULE_ID_AVAILABILITY_RULES
                 .replace("{ruleId}", ruleId);
@@ -1362,13 +1388,13 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         assertThat(responseData.getStatus().getStatusCode(), is(OK.getStatusCode()));
 
         final JsonObject jsonObject = stringToJsonObjectConverter.convert(responseData.getPayload());
-        assertNotNull(jsonObject.getJsonObject("rule"), "Response should contain rule");
-        final JsonObject rule = jsonObject.getJsonObject("rule");
+        assertNotNull(jsonObject.getJsonObject(RULE), "Response should contain rule");
+        final JsonObject rule = jsonObject.getJsonObject(RULE);
         assertThat(rule.getString("id"), is(ruleId));
-        assertThat(rule.getString("judiciaryId"), is(judiciaryId));
-        assertThat(rule.getString("courtHouseId"), is(courtHouseId));
-        assertThat(rule.getString("startDate"), is(startDate.format(DATE_FORMATTER)));
-        assertThat(rule.getString("endDate"), is(endDate.format(DATE_FORMATTER)));
+        assertThat(rule.getString(JUDICIARY_ID), is(judiciaryId));
+        assertThat(rule.getString(COURT_HOUSE_ID), is(courtHouseId));
+        assertThat(rule.getString(START_DATE), is(startDate.format(DATE_FORMATTER)));
+        assertThat(rule.getString(END_DATE), is(endDate.format(DATE_FORMATTER)));
     }
 
     @Test
@@ -1392,7 +1418,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
 
         // Get the rule with judiciary
         final Map<String, Object> queryParams = new HashMap<>();
-        queryParams.put("withJudiciary", true);
+        queryParams.put(WITH_JUDICIARY, true);
 
         final String getUrl = RULE_ID_AVAILABILITY_RULES
                 .replace("{ruleId}", ruleId);
@@ -1407,8 +1433,8 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         assertThat(responseData.getStatus().getStatusCode(), is(OK.getStatusCode()));
 
         final JsonObject jsonObject = stringToJsonObjectConverter.convert(responseData.getPayload());
-        assertNotNull(jsonObject.getJsonObject("rule"), "Response should contain rule");
-        final JsonObject rule = jsonObject.getJsonObject("rule");
+        assertNotNull(jsonObject.getJsonObject(RULE), "Response should contain rule");
+        final JsonObject rule = jsonObject.getJsonObject(RULE);
         assertThat(rule.getString("id"), is(ruleId));
 
         // Judiciary may be null if not found in reference data service, but structure should be present
@@ -1448,8 +1474,8 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         assertThat(responseData.getStatus().getStatusCode(), is(OK.getStatusCode()));
 
         final JsonObject jsonObject = stringToJsonObjectConverter.convert(responseData.getPayload());
-        assertNotNull(jsonObject.getJsonObject("rule"), "Response should contain rule");
-        final JsonObject rule = jsonObject.getJsonObject("rule");
+        assertNotNull(jsonObject.getJsonObject(RULE), "Response should contain rule");
+        final JsonObject rule = jsonObject.getJsonObject(RULE);
         assertThat(rule.getString("id"), is(ruleId));
         assertTrue(jsonObject.containsKey("judiciary"), "Response should contain judiciary field (default withJudiciary=true)");
     }
@@ -1465,12 +1491,12 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         repeatDaysBuilder.add(AvailabilityDayOfWeek.MONDAY.getWireValue());
 
         final String requestPayload = Json.createObjectBuilder()
-                .add("judiciaryId", judiciaryId)
-                .add("courtHouseId", courtHouseId)
-                .add("startDate", startDate.format(DATE_FORMATTER))
-                .add("endDate", endDate.format(DATE_FORMATTER))
-                .add("repeatDays", repeatDaysBuilder)
-                .add("sessionType", SessionType.AD.name())
+                .add(JUDICIARY_ID, judiciaryId)
+                .add(COURT_HOUSE_ID, courtHouseId)
+                .add(START_DATE, startDate.format(DATE_FORMATTER))
+                .add(END_DATE, endDate.format(DATE_FORMATTER))
+                .add(REPEAT_DAYS, repeatDaysBuilder)
+                .add(SESSION_TYPE, SessionType.AD.name())
                 .build()
                 .toString();
 
@@ -1479,8 +1505,8 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         assertThat(response.getStatus(), is(OK.getStatusCode()));
         final String responseString = response.readEntity(String.class);
         final JsonObject responseJson = stringToJsonObjectConverter.convert(responseString);
-        final JsonObject validationResult = responseJson.getJsonObject("validationResult");
-        assertThat(validationResult.getString("status"), is("SUCCESS"));
+        final JsonObject validationResult = responseJson.getJsonObject(VALIDATION_RESULT);
+        assertThat(validationResult.getString(STATUS), is("SUCCESS"));
     }
 
     @Test
@@ -1494,12 +1520,12 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         repeatDaysBuilder.add(AvailabilityDayOfWeek.MONDAY.getWireValue());
 
         final String requestPayload = Json.createObjectBuilder()
-                .add("judiciaryId", judiciaryId)
-                .add("courtHouseId", courtHouseId)
-                .add("startDate", startDate.format(DATE_FORMATTER))
-                .add("endDate", endDate.format(DATE_FORMATTER))
-                .add("repeatDays", repeatDaysBuilder)
-                .add("sessionType", SessionType.AD.name())
+                .add(JUDICIARY_ID, judiciaryId)
+                .add(COURT_HOUSE_ID, courtHouseId)
+                .add(START_DATE, startDate.format(DATE_FORMATTER))
+                .add(END_DATE, endDate.format(DATE_FORMATTER))
+                .add(REPEAT_DAYS, repeatDaysBuilder)
+                .add(SESSION_TYPE, SessionType.AD.name())
                 .build()
                 .toString();
 
@@ -1507,7 +1533,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
 
         assertThat(response.getStatus(), is(422));
         final String responseString = response.readEntity(String.class);
-        assertTrue(responseString.contains("future") || responseString.contains("validationError"));
+        assertTrue(responseString.contains("future") || responseString.contains(VALIDATION_ERROR));
     }
 
     @Test
@@ -1534,13 +1560,13 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         repeatDaysBuilder.add(AvailabilityDayOfWeek.MONDAY.getWireValue());
 
         final String requestPayload = Json.createObjectBuilder()
-                .add("ruleId", ruleId)
-                .add("judiciaryId", judiciaryId)
-                .add("courtHouseId", courtHouseId)
-                .add("startDate", startDate.format(DATE_FORMATTER))
-                .add("endDate", endDate.format(DATE_FORMATTER))
-                .add("repeatDays", repeatDaysBuilder)
-                .add("sessionType", SessionType.AD.name())
+                .add(RULE_ID, ruleId)
+                .add(JUDICIARY_ID, judiciaryId)
+                .add(COURT_HOUSE_ID, courtHouseId)
+                .add(START_DATE, startDate.format(DATE_FORMATTER))
+                .add(END_DATE, endDate.format(DATE_FORMATTER))
+                .add(REPEAT_DAYS, repeatDaysBuilder)
+                .add(SESSION_TYPE, SessionType.AD.name())
                 .build()
                 .toString();
 
@@ -1549,8 +1575,8 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         assertThat(response.getStatus(), is(OK.getStatusCode()));
         final String responseString = response.readEntity(String.class);
         final JsonObject responseJson = stringToJsonObjectConverter.convert(responseString);
-        final JsonObject validationResult = responseJson.getJsonObject("validationResult");
-        assertThat(validationResult.getString("status"), is("SUCCESS"));
+        final JsonObject validationResult = responseJson.getJsonObject(VALIDATION_RESULT);
+        assertThat(validationResult.getString(STATUS), is("SUCCESS"));
     }
 
     @Test
@@ -1578,13 +1604,13 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         repeatDaysBuilder.add(AvailabilityDayOfWeek.MONDAY.getWireValue());
 
         final String requestPayload = Json.createObjectBuilder()
-                .add("ruleId", ruleId)
-                .add("judiciaryId", judiciaryId)
-                .add("courtHouseId", courtHouseId)
-                .add("startDate", newStartDate.format(DATE_FORMATTER))
-                .add("endDate", endDate.format(DATE_FORMATTER))
-                .add("repeatDays", repeatDaysBuilder)
-                .add("sessionType", SessionType.AD.name())
+                .add(RULE_ID, ruleId)
+                .add(JUDICIARY_ID, judiciaryId)
+                .add(COURT_HOUSE_ID, courtHouseId)
+                .add(START_DATE, newStartDate.format(DATE_FORMATTER))
+                .add(END_DATE, endDate.format(DATE_FORMATTER))
+                .add(REPEAT_DAYS, repeatDaysBuilder)
+                .add(SESSION_TYPE, SessionType.AD.name())
                 .build()
                 .toString();
 
@@ -1592,7 +1618,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
 
         assertThat(response.getStatus(), is(422));
         final String responseString = response.readEntity(String.class);
-        assertTrue(responseString.contains("future") || responseString.contains("validationError"));
+        assertTrue(responseString.contains("future") || responseString.contains(VALIDATION_ERROR));
     }
 
     @Test
@@ -1616,8 +1642,8 @@ class JudiciaryAvailabilityIT extends AbstractIT {
 
         // Now validate delete - should succeed as no sessions are assigned
         final String requestPayload = Json.createObjectBuilder()
-                .add("ruleId", ruleId)
-                .add("judiciaryId", judiciaryId)
+                .add(RULE_ID, ruleId)
+                .add(JUDICIARY_ID, judiciaryId)
                 .build()
                 .toString();
 
@@ -1626,8 +1652,8 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         assertThat(response.getStatus(), is(OK.getStatusCode()));
         final String responseString = response.readEntity(String.class);
         final JsonObject responseJson = stringToJsonObjectConverter.convert(responseString);
-        final JsonObject validationResult = responseJson.getJsonObject("validationResult");
-        assertThat(validationResult.getString("status"), is("SUCCESS"));
+        final JsonObject validationResult = responseJson.getJsonObject(VALIDATION_RESULT);
+        assertThat(validationResult.getString(STATUS), is("SUCCESS"));
     }
 
     @Test
@@ -1673,8 +1699,8 @@ class JudiciaryAvailabilityIT extends AbstractIT {
 
         // Now validate delete - should fail as rule is applied to a session
         final String requestPayload = Json.createObjectBuilder()
-                .add("ruleId", ruleId)
-                .add("judiciaryId", judiciaryId)
+                .add(RULE_ID, ruleId)
+                .add(JUDICIARY_ID, judiciaryId)
                 .build()
                 .toString();
 
@@ -1683,9 +1709,9 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         assertThat(response.getStatus(), is(422));
         final String responseString = response.readEntity(String.class);
         final JsonObject responseJson = stringToJsonObjectConverter.convert(responseString);
-        final JsonObject validationResult = responseJson.getJsonObject("validationResult");
-        assertThat(validationResult.getString("status"), is("FAILURE"));
-        assertThat(validationResult.getString("validationError"), is("You cannot delete this itinerary because it is being used in a session. You must remove the session before you can delete it."));
+        final JsonObject validationResult = responseJson.getJsonObject(VALIDATION_RESULT);
+        assertThat(validationResult.getString(STATUS), is("FAILURE"));
+        assertThat(validationResult.getString(VALIDATION_ERROR), is("You cannot delete this itinerary because it is being used in a session. You must remove the session before you can delete it."));
     }
 
     @Test
@@ -1695,8 +1721,8 @@ class JudiciaryAvailabilityIT extends AbstractIT {
 
         // Validate delete for non-existent rule
         final String requestPayload = Json.createObjectBuilder()
-                .add("ruleId", ruleId)
-                .add("judiciaryId", judiciaryId)
+                .add(RULE_ID, ruleId)
+                .add(JUDICIARY_ID, judiciaryId)
                 .build()
                 .toString();
 
@@ -1704,7 +1730,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
 
         assertThat(response.getStatus(), is(422));
         final String responseString = response.readEntity(String.class);
-        assertTrue(responseString.contains("not found") || responseString.contains("validationError"));
+        assertTrue(responseString.contains("not found") || responseString.contains(VALIDATION_ERROR));
     }
 
 }

@@ -17,6 +17,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class FindJudiciaryAvailabilityConverterTest {
+    private static final String DATE_2026_01_01 = "2026-01-01";
+    private static final String DATE_2026_01_31 = "2026-01-31";
+    private static final String END_DATE = "endDate";
+    private static final String START_DATE = "startDate";
+
 
     private final FindJudiciaryAvailabilityConverter converter = new FindJudiciaryAvailabilityConverter();
 
@@ -25,34 +30,34 @@ class FindJudiciaryAvailabilityConverterTest {
         final String courtCentreId = randomUUID().toString();
         final String judiciaryId = randomUUID().toString();
         
-        JsonObject jsonObject = Json.createObjectBuilder()
-                .add("startDate", "2026-01-01")
-                .add("endDate", "2026-01-31")
+        final JsonObject jsonObject = Json.createObjectBuilder()
+                .add(START_DATE, DATE_2026_01_01)
+                .add(END_DATE, DATE_2026_01_31)
                 .add("courtCentreId", courtCentreId)
                 .add("judiciaryId", judiciaryId)
                 .build();
 
-        FindJudiciaryAvailabilityRequest result = converter.convert(jsonObject);
+        final FindJudiciaryAvailabilityRequest result = converter.convert(jsonObject);
 
         assertNotNull(result);
-        assertThat(result.getStartDate().toString(), is("2026-01-01"));
-        assertThat(result.getEndDate().toString(), is("2026-01-31"));
+        assertThat(result.getStartDate().toString(), is(DATE_2026_01_01));
+        assertThat(result.getEndDate().toString(), is(DATE_2026_01_31));
         assertThat(result.getCourtHouseId(), is(courtCentreId));
         assertThat(result.getJudiciaryId(), is(judiciaryId));
     }
 
     @Test
     void shouldConvertJsonObjectWithOnlyRequiredParameters() {
-        JsonObject jsonObject = Json.createObjectBuilder()
-                .add("startDate", "2026-01-01")
-                .add("endDate", "2026-01-31")
+        final JsonObject jsonObject = Json.createObjectBuilder()
+                .add(START_DATE, DATE_2026_01_01)
+                .add(END_DATE, DATE_2026_01_31)
                 .build();
 
-        FindJudiciaryAvailabilityRequest result = converter.convert(jsonObject);
+        final FindJudiciaryAvailabilityRequest result = converter.convert(jsonObject);
 
         assertNotNull(result);
-        assertThat(result.getStartDate().toString(), is("2026-01-01"));
-        assertThat(result.getEndDate().toString(), is("2026-01-31"));
+        assertThat(result.getStartDate().toString(), is(DATE_2026_01_01));
+        assertThat(result.getEndDate().toString(), is(DATE_2026_01_31));
         assertThat(result.getCourtHouseId(), is(nullValue()));
         assertThat(result.getJudiciaryId(), is(nullValue()));
     }
@@ -61,13 +66,13 @@ class FindJudiciaryAvailabilityConverterTest {
     void shouldConvertJsonObjectWithOnlyCourtCentreId() {
         final String courtCentreId = randomUUID().toString();
         
-        JsonObject jsonObject = Json.createObjectBuilder()
-                .add("startDate", "2026-01-01")
-                .add("endDate", "2026-01-31")
+        final JsonObject jsonObject = Json.createObjectBuilder()
+                .add(START_DATE, DATE_2026_01_01)
+                .add(END_DATE, DATE_2026_01_31)
                 .add("courtCentreId", courtCentreId)
                 .build();
 
-        FindJudiciaryAvailabilityRequest result = converter.convert(jsonObject);
+        final FindJudiciaryAvailabilityRequest result = converter.convert(jsonObject);
 
         assertNotNull(result);
         assertThat(result.getCourtHouseId(), is(courtCentreId));
@@ -78,13 +83,13 @@ class FindJudiciaryAvailabilityConverterTest {
     void shouldConvertJsonObjectWithOnlyJudiciaryId() {
         final String judiciaryId = randomUUID().toString();
         
-        JsonObject jsonObject = Json.createObjectBuilder()
-                .add("startDate", "2026-01-01")
-                .add("endDate", "2026-01-31")
+        final JsonObject jsonObject = Json.createObjectBuilder()
+                .add(START_DATE, DATE_2026_01_01)
+                .add(END_DATE, DATE_2026_01_31)
                 .add("judiciaryId", judiciaryId)
                 .build();
 
-        FindJudiciaryAvailabilityRequest result = converter.convert(jsonObject);
+        final FindJudiciaryAvailabilityRequest result = converter.convert(jsonObject);
 
         assertNotNull(result);
         assertThat(result.getCourtHouseId(), is(nullValue()));

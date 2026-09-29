@@ -22,7 +22,10 @@ import org.springframework.http.ResponseEntity;
  *   <li>each endpoint exists and respects its method + path contract.</li>
  * </ul>
  */
-class JudiciaryAvailabilityIntegrationTest extends AbstractIntegrationTest {
+class JudiciaryAvailabilityIntegrationTest extends IntegrationTestBase {
+    private static final String JUDICIARIES_AVAILABILITY_RULES = "/judiciaries/availability-rules";
+    private static final String APPLICATION_JSON = "application/json";
+
 
     private static final String QUERY = "?startDate=2026-01-01&endDate=2026-12-31";
 
@@ -31,18 +34,18 @@ class JudiciaryAvailabilityIntegrationTest extends AbstractIntegrationTest {
     @Test
     void noAuthHeaderReturns401_onJudiciaryFind() {
         final ResponseEntity<String> response = get(
-                "/judiciaries/availability-rules" + QUERY,
+                JUDICIARIES_AVAILABILITY_RULES + QUERY,
                 null,
-                "application/json");
+                APPLICATION_JSON);
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
     }
 
     @Test
     void deniedUser_cannotFindRules() {
         final ResponseEntity<String> response = get(
-                "/judiciaries/availability-rules" + QUERY,
+                JUDICIARIES_AVAILABILITY_RULES + QUERY,
                 DENIED_USER_ID,
-                "application/json");
+                APPLICATION_JSON);
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
     }
 
@@ -50,9 +53,9 @@ class JudiciaryAvailabilityIntegrationTest extends AbstractIntegrationTest {
     void courtScheduleUser_canFindRules() {
         // Drools rule: courtscheduler.judiciary.find.availability.rule needs getCourtSchedulePermission
         final ResponseEntity<String> response = get(
-                "/judiciaries/availability-rules" + QUERY,
+                JUDICIARIES_AVAILABILITY_RULES + QUERY,
                 COURT_SCHEDULE_USER_ID,
-                "application/json");
+                APPLICATION_JSON);
         assertThat(response.getStatusCode().is5xxServerError()).isFalse();
         assertThat(response.getStatusCode()).isNotEqualTo(HttpStatus.FORBIDDEN);
         assertThat(response.getStatusCode()).isNotEqualTo(HttpStatus.UNAUTHORIZED);
@@ -63,7 +66,7 @@ class JudiciaryAvailabilityIntegrationTest extends AbstractIntegrationTest {
         final ResponseEntity<String> response = post(
                 "/judiciaries/availability-rules/add",
                 DENIED_USER_ID,
-                "application/json",
+                APPLICATION_JSON,
                 "{}");
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
     }
@@ -74,7 +77,7 @@ class JudiciaryAvailabilityIntegrationTest extends AbstractIntegrationTest {
         final ResponseEntity<String> response = post(
                 "/judiciaries/availability-rules/add",
                 COURT_SCHEDULE_USER_ID,
-                "application/json",
+                APPLICATION_JSON,
                 "{}");
         assertThat(response.getStatusCode()).isNotEqualTo(HttpStatus.FORBIDDEN);
         assertThat(response.getStatusCode()).isNotEqualTo(HttpStatus.UNAUTHORIZED);
@@ -85,9 +88,9 @@ class JudiciaryAvailabilityIntegrationTest extends AbstractIntegrationTest {
     @Test
     void findJudiciaryAvailabilityRules_doesNotBlowUp() {
         final ResponseEntity<String> response = get(
-                "/judiciaries/availability-rules" + QUERY,
+                JUDICIARIES_AVAILABILITY_RULES + QUERY,
                 COURT_SCHEDULE_USER_ID,
-                "application/json");
+                APPLICATION_JSON);
         assertThat(response.getStatusCode().is5xxServerError()).isFalse();
     }
 
@@ -96,16 +99,16 @@ class JudiciaryAvailabilityIntegrationTest extends AbstractIntegrationTest {
         final ResponseEntity<String> response = get(
                 "/judiciaries/availability" + QUERY,
                 COURT_SCHEDULE_USER_ID,
-                "application/json");
+                APPLICATION_JSON);
         assertThat(response.getStatusCode().is5xxServerError()).isFalse();
     }
 
     @Test
-    void getJudiciaryAvailabilityRule_doesNotBlowUp() {
+    void fetchJudiciaryAvailabilityRule_doesNotBlowUp() {
         final ResponseEntity<String> response = get(
                 "/judiciaries/availability-rules/" + UUID.randomUUID(),
                 COURT_SCHEDULE_USER_ID,
-                "application/json");
+                APPLICATION_JSON);
         assertThat(response.getStatusCode().is5xxServerError()).isFalse();
     }
 
@@ -114,7 +117,7 @@ class JudiciaryAvailabilityIntegrationTest extends AbstractIntegrationTest {
         final ResponseEntity<String> response = post(
                 "/judiciaries/availability-rules/add",
                 COURT_SCHEDULE_USER_ID,
-                "application/json",
+                APPLICATION_JSON,
                 "{}");
         assertThat(response.getStatusCode().is5xxServerError()).isFalse();
     }
@@ -124,7 +127,7 @@ class JudiciaryAvailabilityIntegrationTest extends AbstractIntegrationTest {
         final ResponseEntity<String> response = post(
                 "/judiciaries/availability-rules/update",
                 COURT_SCHEDULE_USER_ID,
-                "application/json",
+                APPLICATION_JSON,
                 "{}");
         assertThat(response.getStatusCode().is5xxServerError()).isFalse();
     }
@@ -134,7 +137,7 @@ class JudiciaryAvailabilityIntegrationTest extends AbstractIntegrationTest {
         final ResponseEntity<String> response = post(
                 "/judiciaries/availability-rules/delete",
                 COURT_SCHEDULE_USER_ID,
-                "application/json",
+                APPLICATION_JSON,
                 "{\"ruleId\":\"" + UUID.randomUUID() + "\"}");
         assertThat(response.getStatusCode().is5xxServerError()).isFalse();
     }
@@ -144,7 +147,7 @@ class JudiciaryAvailabilityIntegrationTest extends AbstractIntegrationTest {
         final ResponseEntity<String> response = post(
                 "/judiciaries/availability-rules/validate-add",
                 COURT_SCHEDULE_USER_ID,
-                "application/json",
+                APPLICATION_JSON,
                 "{}");
         assertThat(response.getStatusCode().is5xxServerError()).isFalse();
     }
@@ -154,7 +157,7 @@ class JudiciaryAvailabilityIntegrationTest extends AbstractIntegrationTest {
         final ResponseEntity<String> response = post(
                 "/judiciaries/availability-rules/validate-update",
                 COURT_SCHEDULE_USER_ID,
-                "application/json",
+                APPLICATION_JSON,
                 "{}");
         assertThat(response.getStatusCode().is5xxServerError()).isFalse();
     }
@@ -164,7 +167,7 @@ class JudiciaryAvailabilityIntegrationTest extends AbstractIntegrationTest {
         final ResponseEntity<String> response = post(
                 "/judiciaries/availability-rules/validate-delete",
                 COURT_SCHEDULE_USER_ID,
-                "application/json",
+                APPLICATION_JSON,
                 "{\"ruleId\":\"" + UUID.randomUUID() + "\"}");
         assertThat(response.getStatusCode().is5xxServerError()).isFalse();
     }

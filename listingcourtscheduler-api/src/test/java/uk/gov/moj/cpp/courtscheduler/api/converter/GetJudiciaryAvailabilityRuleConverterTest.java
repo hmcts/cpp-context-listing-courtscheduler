@@ -17,6 +17,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class GetJudiciaryAvailabilityRuleConverterTest {
+    private static final String RULE_ID = "ruleId";
+    private static final String WITH_JUDICIARY = "withJudiciary";
+
 
     private final GetJudiciaryAvailabilityRuleConverter converter = new GetJudiciaryAvailabilityRuleConverter();
 
@@ -24,12 +27,12 @@ class GetJudiciaryAvailabilityRuleConverterTest {
     void shouldConvertJsonObjectWithRuleIdAndWithJudiciary() {
         final String ruleId = randomUUID().toString();
         
-        JsonObject jsonObject = Json.createObjectBuilder()
-                .add("ruleId", ruleId)
-                .add("withJudiciary", true)
+        final JsonObject jsonObject = Json.createObjectBuilder()
+                .add(RULE_ID, ruleId)
+                .add(WITH_JUDICIARY, true)
                 .build();
 
-        GetJudiciaryAvailabilityRuleRequest result = converter.convert(jsonObject);
+        final GetJudiciaryAvailabilityRuleRequest result = converter.convert(jsonObject);
 
         assertNotNull(result);
         assertThat(result.getRuleId(), is(ruleId));
@@ -40,11 +43,11 @@ class GetJudiciaryAvailabilityRuleConverterTest {
     void shouldConvertJsonObjectWithOnlyRuleId() {
         final String ruleId = randomUUID().toString();
         
-        JsonObject jsonObject = Json.createObjectBuilder()
-                .add("ruleId", ruleId)
+        final JsonObject jsonObject = Json.createObjectBuilder()
+                .add(RULE_ID, ruleId)
                 .build();
 
-        GetJudiciaryAvailabilityRuleRequest result = converter.convert(jsonObject);
+        final GetJudiciaryAvailabilityRuleRequest result = converter.convert(jsonObject);
 
         assertNotNull(result);
         assertThat(result.getRuleId(), is(ruleId));
@@ -55,11 +58,11 @@ class GetJudiciaryAvailabilityRuleConverterTest {
     void shouldUseDefaultWithJudiciaryWhenNotProvided() {
         final String ruleId = randomUUID().toString();
         
-        JsonObject jsonObject = Json.createObjectBuilder()
-                .add("ruleId", ruleId)
+        final JsonObject jsonObject = Json.createObjectBuilder()
+                .add(RULE_ID, ruleId)
                 .build();
 
-        GetJudiciaryAvailabilityRuleRequest result = converter.convert(jsonObject);
+        final GetJudiciaryAvailabilityRuleRequest result = converter.convert(jsonObject);
 
         assertNotNull(result);
         assertThat(result.isWithJudiciary(), is(true));
@@ -69,12 +72,12 @@ class GetJudiciaryAvailabilityRuleConverterTest {
     void shouldHandleNullWithJudiciary() {
         final String ruleId = randomUUID().toString();
         
-        JsonObject jsonObject = Json.createObjectBuilder()
-                .add("ruleId", ruleId)
-                .addNull("withJudiciary")
+        final JsonObject jsonObject = Json.createObjectBuilder()
+                .add(RULE_ID, ruleId)
+                .addNull(WITH_JUDICIARY)
                 .build();
 
-        GetJudiciaryAvailabilityRuleRequest result = converter.convert(jsonObject);
+        final GetJudiciaryAvailabilityRuleRequest result = converter.convert(jsonObject);
 
         assertNotNull(result);
         assertThat(result.isWithJudiciary(), is(true)); // Default value
@@ -84,12 +87,12 @@ class GetJudiciaryAvailabilityRuleConverterTest {
     void shouldConvertJsonObjectWithWithJudiciaryFalse() {
         final String ruleId = randomUUID().toString();
         
-        JsonObject jsonObject = Json.createObjectBuilder()
-                .add("ruleId", ruleId)
-                .add("withJudiciary", false)
+        final JsonObject jsonObject = Json.createObjectBuilder()
+                .add(RULE_ID, ruleId)
+                .add(WITH_JUDICIARY, false)
                 .build();
 
-        GetJudiciaryAvailabilityRuleRequest result = converter.convert(jsonObject);
+        final GetJudiciaryAvailabilityRuleRequest result = converter.convert(jsonObject);
 
         assertNotNull(result);
         assertThat(result.getRuleId(), is(ruleId));
@@ -98,11 +101,11 @@ class GetJudiciaryAvailabilityRuleConverterTest {
 
     @Test
     void shouldHandleNullRuleId() {
-        JsonObject jsonObject = Json.createObjectBuilder()
-                .addNull("ruleId")
+        final JsonObject jsonObject = Json.createObjectBuilder()
+                .addNull(RULE_ID)
                 .build();
 
-        GetJudiciaryAvailabilityRuleRequest result = converter.convert(jsonObject);
+        final GetJudiciaryAvailabilityRuleRequest result = converter.convert(jsonObject);
 
         assertNotNull(result);
         assertThat(result.getRuleId(), is(nullValue()));
@@ -110,11 +113,11 @@ class GetJudiciaryAvailabilityRuleConverterTest {
 
     @Test
     void shouldHandleMissingRuleId() {
-        JsonObject jsonObject = Json.createObjectBuilder()
-                .add("withJudiciary", true)
+        final JsonObject jsonObject = Json.createObjectBuilder()
+                .add(WITH_JUDICIARY, true)
                 .build();
 
-        GetJudiciaryAvailabilityRuleRequest result = converter.convert(jsonObject);
+        final GetJudiciaryAvailabilityRuleRequest result = converter.convert(jsonObject);
 
         assertNotNull(result);
         assertThat(result.getRuleId(), is(nullValue()));

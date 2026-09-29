@@ -19,6 +19,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class JudiciaryAssignmentRequestHelperTest {
+    private static final String CHAIR_2 = "CHAIR";
+    private static final String LEFT_WINGER_2 = "LEFT_WINGER";
+
 
     @InjectMocks
     private JudiciaryAssignmentRequestHelper judiciaryAssignmentRequestHelper;
@@ -47,7 +50,7 @@ class JudiciaryAssignmentRequestHelperTest {
         // given
         final List<JudiciaryScheduleAssignment> assignmentList = List.of(
                 new JudiciaryScheduleAssignment(judiciaryId1, new JudiciaryCourtScheduleData(
-                        List.of(sessionId1), null, "CHAIR", true, false))
+                        List.of(sessionId1), null, CHAIR_2, true, false))
         );
 
         // when
@@ -59,7 +62,7 @@ class JudiciaryAssignmentRequestHelperTest {
         assertThat(result.getJudiciaries().get(0).getJudiciaryId(), is(judiciaryId1));
         assertThat(result.getJudiciaries().get(0).getSessionIds().size(), is(1));
         assertThat(result.getJudiciaries().get(0).getSessionIds().get(0), is(sessionId1.toString()));
-        assertThat(result.getJudiciaries().get(0).getPosition(), is("CHAIR"));
+        assertThat(result.getJudiciaries().get(0).getPosition(), is(CHAIR_2));
         assertThat(result.getJudiciaries().get(0).isBenchChairman(), is(true));
         assertThat(result.getJudiciaries().get(0).isDeputy(), is(false));
         assertThat(result.getJudiciaries().get(0).getRotaJudiciaryId(), is((String) null));
@@ -70,7 +73,7 @@ class JudiciaryAssignmentRequestHelperTest {
         // given
         final List<JudiciaryScheduleAssignment> assignmentList = List.of(
                 new JudiciaryScheduleAssignment(judiciaryId1, new JudiciaryCourtScheduleData(
-                        List.of(sessionId1, sessionId2, sessionId3), null, "LEFT_WINGER", false, true))
+                        List.of(sessionId1, sessionId2, sessionId3), null, LEFT_WINGER_2, false, true))
         );
 
         // when
@@ -84,7 +87,7 @@ class JudiciaryAssignmentRequestHelperTest {
         assertThat(result.getJudiciaries().get(0).getSessionIds().get(0), is(sessionId1.toString()));
         assertThat(result.getJudiciaries().get(0).getSessionIds().get(1), is(sessionId2.toString()));
         assertThat(result.getJudiciaries().get(0).getSessionIds().get(2), is(sessionId3.toString()));
-        assertThat(result.getJudiciaries().get(0).getPosition(), is("LEFT_WINGER"));
+        assertThat(result.getJudiciaries().get(0).getPosition(), is(LEFT_WINGER_2));
         assertThat(result.getJudiciaries().get(0).isBenchChairman(), is(false));
         assertThat(result.getJudiciaries().get(0).isDeputy(), is(true));
     }
@@ -94,7 +97,7 @@ class JudiciaryAssignmentRequestHelperTest {
         // given
         final List<JudiciaryScheduleAssignment> assignmentList = List.of(
                 new JudiciaryScheduleAssignment(judiciaryId1, new JudiciaryCourtScheduleData(
-                        List.of(sessionId1), null, "CHAIR", true, false)),
+                        List.of(sessionId1), null, CHAIR_2, true, false)),
                 new JudiciaryScheduleAssignment(judiciaryId2, new JudiciaryCourtScheduleData(
                         List.of(sessionId2), null, "RIGHT_WINGER", false, true))
         );
@@ -114,7 +117,7 @@ class JudiciaryAssignmentRequestHelperTest {
         assertThat(assignment1, is(notNullValue()));
         assertThat(assignment1.getSessionIds().size(), is(1));
         assertThat(assignment1.getSessionIds().get(0), is(sessionId1.toString()));
-        assertThat(assignment1.getPosition(), is("CHAIR"));
+        assertThat(assignment1.getPosition(), is(CHAIR_2));
         assertThat(assignment1.isBenchChairman(), is(true));
         assertThat(assignment1.isDeputy(), is(false));
 
@@ -136,9 +139,9 @@ class JudiciaryAssignmentRequestHelperTest {
         // given
         final List<JudiciaryScheduleAssignment> assignmentList = List.of(
                 new JudiciaryScheduleAssignment(judiciaryId1, new JudiciaryCourtScheduleData(
-                        List.of(sessionId1, sessionId2), null, "CHAIR", true, false)),
+                        List.of(sessionId1, sessionId2), null, CHAIR_2, true, false)),
                 new JudiciaryScheduleAssignment(judiciaryId2, new JudiciaryCourtScheduleData(
-                        List.of(sessionId3), null, "LEFT_WINGER", false, true))
+                        List.of(sessionId3), null, LEFT_WINGER_2, false, true))
         );
 
         // when
@@ -157,7 +160,7 @@ class JudiciaryAssignmentRequestHelperTest {
         assertThat(assignment1.getSessionIds().size(), is(2));
         assertThat(assignment1.getSessionIds().contains(sessionId1.toString()), is(true));
         assertThat(assignment1.getSessionIds().contains(sessionId2.toString()), is(true));
-        assertThat(assignment1.getPosition(), is("CHAIR"));
+        assertThat(assignment1.getPosition(), is(CHAIR_2));
         assertThat(assignment1.isBenchChairman(), is(true));
         assertThat(assignment1.isDeputy(), is(false));
 
@@ -169,7 +172,7 @@ class JudiciaryAssignmentRequestHelperTest {
         assertThat(assignment2, is(notNullValue()));
         assertThat(assignment2.getSessionIds().size(), is(1));
         assertThat(assignment2.getSessionIds().get(0), is(sessionId3.toString()));
-        assertThat(assignment2.getPosition(), is("LEFT_WINGER"));
+        assertThat(assignment2.getPosition(), is(LEFT_WINGER_2));
         assertThat(assignment2.isBenchChairman(), is(false));
         assertThat(assignment2.isDeputy(), is(true));
     }
@@ -179,7 +182,7 @@ class JudiciaryAssignmentRequestHelperTest {
         // given
         final List<JudiciaryScheduleAssignment> assignmentList = List.of(
                 new JudiciaryScheduleAssignment(judiciaryId1, new JudiciaryCourtScheduleData(
-                        List.of(), null, "CHAIR", true, false))
+                        List.of(), null, CHAIR_2, true, false))
         );
 
         // when
@@ -190,7 +193,7 @@ class JudiciaryAssignmentRequestHelperTest {
         assertThat(result.getJudiciaries().size(), is(1));
         assertThat(result.getJudiciaries().get(0).getJudiciaryId(), is(judiciaryId1));
         assertThat(result.getJudiciaries().get(0).getSessionIds().size(), is(0));
-        assertThat(result.getJudiciaries().get(0).getPosition(), is("CHAIR"));
+        assertThat(result.getJudiciaries().get(0).getPosition(), is(CHAIR_2));
         assertThat(result.getJudiciaries().get(0).isBenchChairman(), is(true));
         assertThat(result.getJudiciaries().get(0).isDeputy(), is(false));
     }
@@ -228,7 +231,7 @@ class JudiciaryAssignmentRequestHelperTest {
         final UUID uuid2 = UUID.fromString("6ba7b810-9dad-11d1-80b4-00c04fd430c8");
         final List<JudiciaryScheduleAssignment> assignmentList = List.of(
                 new JudiciaryScheduleAssignment(judiciaryId1, new JudiciaryCourtScheduleData(
-                        List.of(uuid1, uuid2), null, "CHAIR", true, false))
+                        List.of(uuid1, uuid2), null, CHAIR_2, true, false))
         );
 
         // when
@@ -244,7 +247,7 @@ class JudiciaryAssignmentRequestHelperTest {
         // given
         final List<JudiciaryScheduleAssignment> assignmentList = List.of(
                 new JudiciaryScheduleAssignment(judiciaryId1, new JudiciaryCourtScheduleData(
-                        List.of(sessionId1), null, "CHAIR", true, false))
+                        List.of(sessionId1), null, CHAIR_2, true, false))
         );
 
         // when
@@ -260,9 +263,9 @@ class JudiciaryAssignmentRequestHelperTest {
         // given
         final List<JudiciaryScheduleAssignment> assignmentList = List.of(
                 new JudiciaryScheduleAssignment(judiciaryId1, new JudiciaryCourtScheduleData(
-                        List.of(sessionId1), null, "CHAIR", true, false)),
+                        List.of(sessionId1), null, CHAIR_2, true, false)),
                 new JudiciaryScheduleAssignment(judiciaryId1, new JudiciaryCourtScheduleData(
-                        List.of(sessionId2), null, "LEFT_WINGER", false, true))
+                        List.of(sessionId2), null, LEFT_WINGER_2, false, true))
         );
 
         // when
@@ -273,9 +276,9 @@ class JudiciaryAssignmentRequestHelperTest {
         assertThat(result.getJudiciaries().size(), is(2));
         // Both assignments should be present
         assertThat(result.getJudiciaries().stream()
-                .anyMatch(a -> a.getJudiciaryId().equals(judiciaryId1) && a.getPosition().equals("CHAIR")), is(true));
+                .anyMatch(a -> a.getJudiciaryId().equals(judiciaryId1) && CHAIR_2.equals(a.getPosition())), is(true));
         assertThat(result.getJudiciaries().stream()
-                .anyMatch(a -> a.getJudiciaryId().equals(judiciaryId1) && a.getPosition().equals("LEFT_WINGER")), is(true));
+                .anyMatch(a -> a.getJudiciaryId().equals(judiciaryId1) && LEFT_WINGER_2.equals(a.getPosition())), is(true));
     }
 
     @Test
@@ -284,7 +287,7 @@ class JudiciaryAssignmentRequestHelperTest {
         final String rotaJudiciaryId = "rota-judge-123";
         final List<JudiciaryScheduleAssignment> assignmentList = List.of(
                 new JudiciaryScheduleAssignment(judiciaryId1, new JudiciaryCourtScheduleData(
-                        List.of(sessionId1), rotaJudiciaryId, "CHAIR", true, false))
+                        List.of(sessionId1), rotaJudiciaryId, CHAIR_2, true, false))
         );
 
         // when
@@ -303,9 +306,9 @@ class JudiciaryAssignmentRequestHelperTest {
         final String rotaJudiciaryId2 = "rota-judge-456";
         final List<JudiciaryScheduleAssignment> assignmentList = List.of(
                 new JudiciaryScheduleAssignment(judiciaryId1, new JudiciaryCourtScheduleData(
-                        List.of(sessionId1), rotaJudiciaryId1, "CHAIR", true, false)),
+                        List.of(sessionId1), rotaJudiciaryId1, CHAIR_2, true, false)),
                 new JudiciaryScheduleAssignment(judiciaryId2, new JudiciaryCourtScheduleData(
-                        List.of(sessionId2), rotaJudiciaryId2, "LEFT_WINGER", false, true))
+                        List.of(sessionId2), rotaJudiciaryId2, LEFT_WINGER_2, false, true))
         );
 
         // when

@@ -36,6 +36,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 
 class HearingIdIT extends AbstractIT {
+    private static final String ADULT_2 = "ADULT";
+    private static final String BA123_2 = "BA123";
+    private static final String HEARING_ID = "hearingId";
+    private static final String HEARING_IDS = "hearingIds";
+    private static final String PAGE_COUNT = "pageCount";
+    private static final String RESULTS = "results";
+
 
     private static final String RELATIVE_URL = "/hearingslots";
 
@@ -53,7 +60,7 @@ class HearingIdIT extends AbstractIT {
         final CourtSchedule courtSchedule3 = createCourtSchedule(sessionDate1, "COURT-SCHEDULE-3", "HOUSE-3");
         databaseSeeder.insertCourtSchedule(courtSchedule3);
 
-        List<String> expHearingIds = new ArrayList<>();
+        final List<String> expHearingIds = new ArrayList<>();
         final String hearingId1 = randomUUID().toString();
         final LocalDateTime hearing1StartTime = sessionDate.atTime(17, 0);
         final AllocatedListing allocateListing1 =
@@ -83,15 +90,15 @@ class HearingIdIT extends AbstractIT {
         expHearingIds.add(hearingId4);
 
         String hearingIdsReq = getPayload("courtscheduler.get.hearing.slots.json");
-        hearingIdsReq = hearingIdsReq.replace("PANEL", "ADULT");
-        hearingIdsReq = hearingIdsReq.replace("OU_CODE", "BA123");
+        hearingIdsReq = hearingIdsReq.replace("PANEL", ADULT_2);
+        hearingIdsReq = hearingIdsReq.replace("OU_CODE", BA123_2);
         hearingIdsReq = hearingIdsReq.replace("COURT_SESSION", "AM");
         final LocalDate startDate = today.minusDays(10);
         hearingIdsReq = hearingIdsReq.replace("SESSION_START_DATE", startDate.toString());
         hearingIdsReq = hearingIdsReq.replace("SESSION_END_DATE", today.minusDays(1).toString());
         hearingIdsReq = hearingIdsReq.replace("\"pageSize\": \"1\"", "\"pageSize\": \"10\"");
 
-        Map<String, Object> map = new ObjectMapper().readValue(hearingIdsReq, new TypeReference<>() {
+        final Map<String, Object> map = new ObjectMapper().readValue(hearingIdsReq, new TypeReference<>() {
         });
 
         final RequestParams requestParams = getRequestParams(map);
@@ -99,15 +106,15 @@ class HearingIdIT extends AbstractIT {
 
         assertEquals(OK.getStatusCode(), tempResponseData.getStatus().getStatusCode());
 
-        JsonObject jsonObject = stringToJsonObjectConverter.convert(tempResponseData.getPayload());
-        assertThat(jsonObject.getInt("results"), is(4));
-        assertThat(jsonObject.getInt("pageCount"), is(1));
+        final JsonObject jsonObject = stringToJsonObjectConverter.convert(tempResponseData.getPayload());
+        assertThat(jsonObject.getInt(RESULTS), is(4));
+        assertThat(jsonObject.getInt(PAGE_COUNT), is(1));
 
-        JsonArray hearingIds = jsonObject.getJsonArray("hearingIds");
-        assertThat(hearingIds.getJsonObject(0).getString("hearingId"), is(expHearingIds.get(0)));
-        assertThat(hearingIds.getJsonObject(1).getString("hearingId"), is(expHearingIds.get(1)));
-        assertThat(hearingIds.getJsonObject(2).getString("hearingId"), is(expHearingIds.get(2)));
-        assertThat(hearingIds.getJsonObject(3).getString("hearingId"), is(expHearingIds.get(3)));
+        final JsonArray hearingIds = jsonObject.getJsonArray(HEARING_IDS);
+        assertThat(hearingIds.getJsonObject(0).getString(HEARING_ID), is(expHearingIds.get(0)));
+        assertThat(hearingIds.getJsonObject(1).getString(HEARING_ID), is(expHearingIds.get(1)));
+        assertThat(hearingIds.getJsonObject(2).getString(HEARING_ID), is(expHearingIds.get(2)));
+        assertThat(hearingIds.getJsonObject(3).getString(HEARING_ID), is(expHearingIds.get(3)));
 
         hearingIds.forEach(each -> {
             assertThat(each.asJsonObject().getString("courtScheduleId"), startsWith("COURT-SCHEDULE-"));
@@ -124,31 +131,31 @@ class HearingIdIT extends AbstractIT {
 
     @Test
     void shouldRetrieveMultiPageHearingIds() throws Exception {
-        List<String> expHearingIds = new ArrayList<>();
-        LocalDate today = LocalDate.now();
-        int numOfHearings = 18;
+        final List<String> expHearingIds = new ArrayList<>();
+        final LocalDate today = LocalDate.now();
+        final int numOfHearings = 18;
         for (int idx = 1; idx <= numOfHearings; idx++) {
-            LocalDate sessionDate = today.minusDays(numOfHearings - idx);
-            CourtSchedule courtSchedule = createCourtSchedule(sessionDate, "COURT-SCHEDULE-" + idx, "HOUSE-" + idx);
+            final LocalDate sessionDate = today.minusDays(numOfHearings - idx);
+            final CourtSchedule courtSchedule = createCourtSchedule(sessionDate, "COURT-SCHEDULE-" + idx, "HOUSE-" + idx);
             databaseSeeder.insertCourtSchedule(courtSchedule);
 
-            String hearingId = randomUUID().toString();
-            LocalDateTime hearingStartTime = sessionDate.atTime(11, 0);
-            AllocatedListing allocateListing =
+            final String hearingId = randomUUID().toString();
+            final LocalDateTime hearingStartTime = sessionDate.atTime(11, 0);
+            final AllocatedListing allocateListing =
                     createAllocateListing(valueOf(idx), "BOOKING-" + idx, courtSchedule.getCourtScheduleId(), hearingId, hearingStartTime);
             databaseSeeder.insertAllocatedListing(allocateListing);
             expHearingIds.add(hearingId);
         }
 
         String hearingIdsReq = getPayload("courtscheduler.get.hearing.slots.json");
-        hearingIdsReq = hearingIdsReq.replace("PANEL", "ADULT");
-        hearingIdsReq = hearingIdsReq.replace("OU_CODE", "BA123");
+        hearingIdsReq = hearingIdsReq.replace("PANEL", ADULT_2);
+        hearingIdsReq = hearingIdsReq.replace("OU_CODE", BA123_2);
         hearingIdsReq = hearingIdsReq.replace("COURT_SESSION", "AM");
         hearingIdsReq = hearingIdsReq.replace("SESSION_START_DATE", today.minusDays(numOfHearings).toString());
         hearingIdsReq = hearingIdsReq.replace("SESSION_END_DATE", today.toString());
 
         final ObjectMapper objMapper = new ObjectMapper();
-        Map<String, Object> paramsMap = objMapper.readValue(hearingIdsReq, new TypeReference<>() {
+        final Map<String, Object> paramsMap = objMapper.readValue(hearingIdsReq, new TypeReference<>() {
         });
         RequestParams requestParams = getRequestParams(paramsMap);
         ResponseData responseData = poll(requestParams).with().timeout(30L, SECONDS).until();
@@ -156,13 +163,13 @@ class HearingIdIT extends AbstractIT {
         assertEquals(OK.getStatusCode(), responseData.getStatus().getStatusCode());
 
         JsonObject jsonObject = stringToJsonObjectConverter.convert(responseData.getPayload());
-        assertThat(jsonObject.getInt("results"), is(numOfHearings));
-        assertThat(jsonObject.getInt("pageCount"), is(2));
+        assertThat(jsonObject.getInt(RESULTS), is(numOfHearings));
+        assertThat(jsonObject.getInt(PAGE_COUNT), is(2));
 
-        JsonArray hearingIds = jsonObject.getJsonArray("hearingIds");
-        int defaultPageSize = 10;
+        JsonArray hearingIds = jsonObject.getJsonArray(HEARING_IDS);
+        final int defaultPageSize = 10;
         for (int idx = 0; idx < defaultPageSize; idx++) {
-            assertThat(hearingIds.getJsonObject(idx).getString("hearingId"), is(expHearingIds.get(idx)));
+            assertThat(hearingIds.getJsonObject(idx).getString(HEARING_ID), is(expHearingIds.get(idx)));
             assertThat(hearingIds.getJsonObject(idx).getString("courtScheduleId"), startsWith("COURT-SCHEDULE-"));
             assertThat(hearingIds.getJsonObject(idx).getString("hearingDate"), is(notNullValue()));
             assertThat(hearingIds.getJsonObject(idx).getInt("hearingDayCount"), is(1));
@@ -177,10 +184,10 @@ class HearingIdIT extends AbstractIT {
         assertEquals(OK.getStatusCode(), responseData.getStatus().getStatusCode());
 
         jsonObject = stringToJsonObjectConverter.convert(responseData.getPayload());
-        assertThat(jsonObject.getInt("pageCount"), is(2));
+        assertThat(jsonObject.getInt(PAGE_COUNT), is(2));
 
 
-        hearingIds = jsonObject.getJsonArray("hearingIds");
+        hearingIds = jsonObject.getJsonArray(HEARING_IDS);
         for (int idx = numOfHearings; idx < numOfHearings - defaultPageSize; idx++) {
             assertThat(hearingIds.getString(idx), is(expHearingIds.get(idx))); // we never hit here. To be fixed
         }
@@ -212,8 +219,8 @@ class HearingIdIT extends AbstractIT {
         databaseSeeder.insertAllocatedListing(finalAllocatedListing);
 
         String hearingIdsReq = getPayload("courtscheduler.get.hearing.slots.json");
-        hearingIdsReq = hearingIdsReq.replace("PANEL", "ADULT");
-        hearingIdsReq = hearingIdsReq.replace("OU_CODE", "BA123");
+        hearingIdsReq = hearingIdsReq.replace("PANEL", ADULT_2);
+        hearingIdsReq = hearingIdsReq.replace("OU_CODE", BA123_2);
         hearingIdsReq = hearingIdsReq.replace("COURT_SESSION", "AM");
         final LocalDate startDate = today.minusDays(10);
         hearingIdsReq = hearingIdsReq.replace("SESSION_START_DATE", startDate.toString());
@@ -228,9 +235,9 @@ class HearingIdIT extends AbstractIT {
         ResponseData responseData = poll(requestParams).with().timeout(30L, SECONDS).pollInterval(50L, MILLISECONDS).pollDelay(0L, MILLISECONDS).until();
         assertEquals(OK.getStatusCode(), responseData.getStatus().getStatusCode());
         JsonObject jsonObject = stringToJsonObjectConverter.convert(responseData.getPayload());
-        assertThat(jsonObject.getInt("results"), is(1));
-        JsonArray hearingIds = jsonObject.getJsonArray("hearingIds");
-        assertThat(hearingIds.getJsonObject(0).getString("hearingId"), is(finalHearingId));
+        assertThat(jsonObject.getInt(RESULTS), is(1));
+        JsonArray hearingIds = jsonObject.getJsonArray(HEARING_IDS);
+        assertThat(hearingIds.getJsonObject(0).getString(HEARING_ID), is(finalHearingId));
 
         // status=DRAFT -> only the DRAFT hearing
         map.put("status", "DRAFT");
@@ -238,9 +245,9 @@ class HearingIdIT extends AbstractIT {
         responseData = poll(requestParams).with().timeout(30L, SECONDS).pollInterval(50L, MILLISECONDS).pollDelay(0L, MILLISECONDS).until();
         assertEquals(OK.getStatusCode(), responseData.getStatus().getStatusCode());
         jsonObject = stringToJsonObjectConverter.convert(responseData.getPayload());
-        assertThat(jsonObject.getInt("results"), is(1));
-        hearingIds = jsonObject.getJsonArray("hearingIds");
-        assertThat(hearingIds.getJsonObject(0).getString("hearingId"), is(draftHearingId));
+        assertThat(jsonObject.getInt(RESULTS), is(1));
+        hearingIds = jsonObject.getJsonArray(HEARING_IDS);
+        assertThat(hearingIds.getJsonObject(0).getString(HEARING_ID), is(draftHearingId));
 
         // status absent -> BOTH draft and non-draft hearings (ordered by court_house_name: HOUSE-DRAFT < HOUSE-FINAL)
         map.remove("status");
@@ -248,19 +255,19 @@ class HearingIdIT extends AbstractIT {
         responseData = poll(requestParams).with().timeout(30L, SECONDS).pollInterval(50L, MILLISECONDS).pollDelay(0L, MILLISECONDS).until();
         assertEquals(OK.getStatusCode(), responseData.getStatus().getStatusCode());
         jsonObject = stringToJsonObjectConverter.convert(responseData.getPayload());
-        assertThat(jsonObject.getInt("results"), is(2));
-        hearingIds = jsonObject.getJsonArray("hearingIds");
-        assertThat(hearingIds.getJsonObject(0).getString("hearingId"), is(draftHearingId));
-        assertThat(hearingIds.getJsonObject(1).getString("hearingId"), is(finalHearingId));
+        assertThat(jsonObject.getInt(RESULTS), is(2));
+        hearingIds = jsonObject.getJsonArray(HEARING_IDS);
+        assertThat(hearingIds.getJsonObject(0).getString(HEARING_ID), is(draftHearingId));
+        assertThat(hearingIds.getJsonObject(1).getString(HEARING_ID), is(finalHearingId));
     }
 
-    private CourtSchedule createCourtSchedule(LocalDate sessionDate,
-                                              String courtScheduleId,
-                                              String courtHouseName) {
+    private CourtSchedule createCourtSchedule(final LocalDate sessionDate,
+                                              final String courtScheduleId,
+                                              final String courtHouseName) {
         final CourtSchedule courtSchedule = random(CourtSchedule.class);
         courtSchedule.setCourtScheduleId(courtScheduleId);
-        courtSchedule.setPanel("ADULT");
-        courtSchedule.setOuCode("BA123");
+        courtSchedule.setPanel(ADULT_2);
+        courtSchedule.setOuCode(BA123_2);
         courtSchedule.setCourtSession("AM");
         courtSchedule.setSessionDate(sessionDate);
         courtSchedule.setCourtHouseName(courtHouseName);
@@ -270,11 +277,11 @@ class HearingIdIT extends AbstractIT {
         return courtSchedule;
     }
 
-    private AllocatedListing createAllocateListing(String id,
-                                                   String bookingId,
-                                                   String courtScheduleId,
-                                                   String hearingId, LocalDateTime hearingStartTime) {
-        AllocatedListing allocatedListing = new AllocatedListing();
+    private AllocatedListing createAllocateListing(final String id,
+                                                   final String bookingId,
+                                                   final String courtScheduleId,
+                                                   final String hearingId, final LocalDateTime hearingStartTime) {
+        final AllocatedListing allocatedListing = new AllocatedListing();
         allocatedListing.setId(id);
         allocatedListing.setBookingId(bookingId);
         allocatedListing.setCourtScheduleId(courtScheduleId);
@@ -299,10 +306,10 @@ class HearingIdIT extends AbstractIT {
 
         assertEquals(OK.getStatusCode(), tempResponseDataWithStartDateTime.getStatus().getStatusCode());
 
-        JsonObject jsonObjectWithStartDateTime = stringToJsonObjectConverter.convert(tempResponseDataWithStartDateTime.getPayload());
-        assertThat(jsonObjectWithStartDateTime.getInt("results"), is(1));
-        assertThat(jsonObjectWithStartDateTime.getInt("pageCount"), is(1));
-        JsonArray hearingIdsWithStartDateTime = jsonObjectWithStartDateTime.getJsonArray("hearingIds");
-        assertThat(hearingIdsWithStartDateTime.getJsonObject(0).getString("hearingId"), is(hearingId3));
+        final JsonObject jsonObjectWithStartDateTime = stringToJsonObjectConverter.convert(tempResponseDataWithStartDateTime.getPayload());
+        assertThat(jsonObjectWithStartDateTime.getInt(RESULTS), is(1));
+        assertThat(jsonObjectWithStartDateTime.getInt(PAGE_COUNT), is(1));
+        final JsonArray hearingIdsWithStartDateTime = jsonObjectWithStartDateTime.getJsonArray(HEARING_IDS);
+        assertThat(hearingIdsWithStartDateTime.getJsonObject(0).getString(HEARING_ID), is(hearingId3));
     }
 }

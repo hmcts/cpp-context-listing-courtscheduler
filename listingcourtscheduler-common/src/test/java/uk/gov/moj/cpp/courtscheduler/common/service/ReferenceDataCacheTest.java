@@ -70,7 +70,7 @@ class ReferenceDataCacheTest {
     private static final String BUSINESS_TYPE_CODE = "DVLA";
     private static final String COURT_ROOM_ID = randomUUID().toString();
     private static final Integer LOCATION_ID = 77;
-    private static final Integer VENUE_ID = 23917;
+    private static final Integer VENUE_ID = 23_917;
     private static final String VENUE_NAME = "Court 8";
 
     private ObjectMapper objectMapper = new com.fasterxml.jackson.databind.ObjectMapper().findAndRegisterModules();

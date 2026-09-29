@@ -168,17 +168,10 @@ public class SlotsSearchService {
                 dateMap.merge(cs.getSessionDate(), cs, SlotsSearchService::preferNonOverbooking);
             }
 
-            for (final CourtSchedule cs : roomSchedules) {
-                // Intentional reference-identity check: dateMap.merge() above deliberately keeps
-                // one specific CourtSchedule instance per date (the non-overbooking winner). This
-                // skips every other (losing) instance for that date - a value-based equals() would
-                // be wrong here, since CourtSchedule has no equals() override and the intent is to
-                // find the one object that survived the merge, not any value-equal one.
-                @SuppressWarnings("PMD.CompareObjectsWithEquals")
-                final boolean isMergeWinner = dateMap.get(cs.getSessionDate()) == cs;
-                if (!isMergeWinner) {
-                    continue;
-                }
+            // dateMap holds exactly one CourtSchedule per date: the winner of the merge above (the
+            // non-overbooking one). Iterating its values visits only those winners, in date order
+            // because roomSchedules was sorted before the merge.
+            for (final CourtSchedule cs : dateMap.values()) {
                 if (isValidMultidayStart(cs.getSessionDate(), dateMap, daysNeeded, showOverbookedSlots)) {
                     validStartDates.add(cs);
                 }

@@ -175,7 +175,9 @@ public class StubUtil {
     private static int extractPort(final String url) {
         final String stripped = url.replaceFirst("^[a-z]+://", "");
         final int colon = stripped.indexOf(':');
-        if (colon < 0) return url.startsWith("https") ? 443 : 80;
+        if (colon < 0) {
+            return url.startsWith("https") ? 443 : 80;
+        }
         final int slash = stripped.indexOf('/', colon);
         final String portStr = slash > 0 ? stripped.substring(colon + 1, slash) : stripped.substring(colon + 1);
         return Integer.parseInt(portStr);

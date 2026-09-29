@@ -21,8 +21,8 @@ public class SessionsHelper {
     public static final String COURT_ROOM_ID = "courtRoomId";
     public static final String DATE = "date";
 
-    public static JsonObject mockBusinessType(String businessType) {
-        JsonObject businessTypeObject = Json.createObjectBuilder()
+    public static JsonObject mockBusinessType(final String businessType) {
+        final JsonObject businessTypeObject = Json.createObjectBuilder()
                 .add("id", randomUUID().toString())
                 .add("seqNum", 120)
                 .add("typeCode", businessType)
@@ -30,14 +30,14 @@ public class SessionsHelper {
                 .add("slot", true)
                 .add("duration", false)
                 .build();
-        JsonArrayBuilder arrayBuilder = Json.createArrayBuilder();
+        final JsonArrayBuilder arrayBuilder = Json.createArrayBuilder();
         arrayBuilder.add(businessTypeObject);
         return Json.createObjectBuilder().add("rotaBusinessTypes", arrayBuilder).build();
 
 
     }
-    public static JsonObject mockCourtRooms(String courtroomId) {
-        JsonObject businessTypeObject = Json.createObjectBuilder()
+    public static JsonObject mockCourtRooms(final String courtroomId) {
+        final JsonObject businessTypeObject = Json.createObjectBuilder()
                 .add("id", randomUUID().toString())
                 .add("rotaLocationId", 77)
                 .add("rotaVenueName", "Court 9")
@@ -52,12 +52,12 @@ public class SessionsHelper {
                 .add("courtroomId", courtroomId)
 
                 .build();
-        JsonArrayBuilder arrayBuilder = Json.createArrayBuilder();
+        final JsonArrayBuilder arrayBuilder = Json.createArrayBuilder();
         arrayBuilder.add(businessTypeObject);
         return Json.createObjectBuilder().add("cpRotaCourtRoomMappings", arrayBuilder).build();
     }
-    public static JsonObject getPayload(String path) {
-        StringToJsonObjectConverter stringToJsonObjectConverter = new StringToJsonObjectConverter();
+    public static JsonObject getPayload(final String path) {
+        final StringToJsonObjectConverter stringToJsonObjectConverter = new StringToJsonObjectConverter();
         return stringToJsonObjectConverter.convert(fileToString(path));
     }
 

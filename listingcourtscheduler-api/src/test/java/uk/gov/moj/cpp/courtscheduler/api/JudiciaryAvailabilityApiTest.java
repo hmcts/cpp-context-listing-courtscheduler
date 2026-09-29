@@ -24,6 +24,8 @@ import org.junit.jupiter.api.Disabled;
  * debt visible. See {@link RotaFileProcessorApiTest} for the rewrite pattern
  * once you decide to invest the time.</p>
  */
+// Deliberate: intentional empty placeholder kept to track migration debt; it has no test cases by design
+@SuppressWarnings("PMD.TestClassWithoutTestCases")
 @Disabled("Awaiting per-test rewrite onto Spring controller signatures — see Javadoc and RotaFileProcessorApiTest as the template.")
 class JudiciaryAvailabilityApiTest {
 }
