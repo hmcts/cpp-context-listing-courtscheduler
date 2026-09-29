@@ -12,4 +12,7 @@ dependencies {
     testFixturesRuntimeOnly 'org.eclipse.parsson:parsson:1.1.9'
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    // Jackson round-trip tests for the domain JSON contract (runtime mapper lives in the api module)
+    testImplementation 'com.fasterxml.jackson.core:jackson-databind'
+    testImplementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
 }

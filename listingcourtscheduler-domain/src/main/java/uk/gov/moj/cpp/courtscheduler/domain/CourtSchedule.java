@@ -298,6 +298,7 @@ public class CourtSchedule {
         return createdOn;
     }
 
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
     public void setCreatedOn(final Instant createdOn) {
         this.createdOn = createdOn;
     }
@@ -307,6 +308,7 @@ public class CourtSchedule {
         return updatedOn;
     }
 
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
     public void setUpdatedOn(final Instant updatedOn) {
         this.updatedOn = updatedOn;
     }
@@ -380,10 +382,12 @@ public class CourtSchedule {
         return sessionStartTime;
     }
 
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
     public void setSessionStartTime(final Instant sessionStartTime) {
         this.sessionStartTime = sessionStartTime;
     }
 
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
     public void setSessionEndTime(final Instant sessionEndTime) {
         this.sessionEndTime = sessionEndTime;
     }
@@ -406,6 +410,7 @@ public class CourtSchedule {
         return nationalBreakTime;
     }
 
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
     public void setNationalBreakTime(final Instant nationalBreakTime) {
         this.nationalBreakTime = nationalBreakTime;
     }
