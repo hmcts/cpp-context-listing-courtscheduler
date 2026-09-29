@@ -31,7 +31,7 @@ public class ProvisionalSessionDateProvider {
     private void populateProvisionalDataLookUp(final int rotaFileCycleLength) {
         final LocalDate provisionalDataStartDate = provisionalDataDateInfoProvider.getProvisionalDataStartDate();
         final LocalDate provisionalDataEndDate = provisionalDataDateInfoProvider.getProvisionalDataEndDate();
-        final long cyclesToPopulate = provisionalDataDateInfoProvider.getCyclesToPopulate();
+        final int cyclesToPopulate = provisionalDataDateInfoProvider.getCyclesToPopulate();
         final LocalDate extractStartDate = provisionalDataExtractDateInfoProvider.getProvisionalDataExtractStartDate();
         LocalDate nextProvisionalDataStartDate = provisionalDataStartDate;
 
