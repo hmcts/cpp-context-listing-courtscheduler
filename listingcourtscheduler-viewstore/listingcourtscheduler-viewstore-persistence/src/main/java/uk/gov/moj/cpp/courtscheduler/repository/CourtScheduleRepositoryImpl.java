@@ -1160,9 +1160,13 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
     @Override
     public List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> findConsecutiveSessionsForCentre(
             final String courtCentreId, final LocalDate fromDate, final int daysNeeded) {
-        // Candidate (room, business type) pairs in the centre that have a session on the start date,
-        // ordered so the earliest/most-populated room is tried first.
-        final String roomQuery = """
+        return findConsecutiveSessionsForCentre(courtCentreId, fromDate, daysNeeded, null);
+    }
+
+    @Override
+    public List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> findConsecutiveSessionsForCentre(
+            final String courtCentreId, final LocalDate fromDate, final int daysNeeded, final String courtRoomId) {
+        final StringBuilder roomQuery = new StringBuilder(512).append("""
                 SELECT s.court_room_id, s.rota_business_type
                 FROM court_schedule s
                 WHERE s.active = true
@@ -1170,12 +1174,20 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
                   AND s.court_session = 'AD'
                   AND EXTRACT(DOW FROM s.session_start) NOT IN (0, 6)
                   AND DATE(s.session_start) = :fromDate
+                """);
+        if (courtRoomId != null) {
+            roomQuery.append("  AND s.court_room_id = :courtRoomId\n");
+        }
+        roomQuery.append("""
                 GROUP BY s.court_room_id, s.rota_business_type
                 ORDER BY s.court_room_id, s.rota_business_type
-                """;
-        final jakarta.persistence.Query roomJpaQuery = entityManager.createNativeQuery(roomQuery);
+                """);
+        final jakarta.persistence.Query roomJpaQuery = entityManager.createNativeQuery(roomQuery.toString());
         roomJpaQuery.setParameter(COURT_CENTRE_ID, courtCentreId);
         roomJpaQuery.setParameter("fromDate", java.sql.Date.valueOf(fromDate));
+        if (courtRoomId != null) {
+            roomJpaQuery.setParameter("courtRoomId", courtRoomId);
+        }
 
         @SuppressWarnings(UNCHECKED_WARNING)
         final List<Object[]> rooms = roomJpaQuery.getResultList();
@@ -1188,10 +1200,10 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
         final LocalDate toInclusive = fromDate.plusDays((long) daysNeeded + weekendBuffer);
 
         for (final Object[] room : rooms) {
-            final String courtRoomId = (String) room[0];
+            final String candidateRoomId = (String) room[0];
             final String businessType = (String) room[1];
             final List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> run = queryAdWeekdaySessionsInCentre(
-                    courtCentreId, courtRoomId, businessType, fromDate, toInclusive);
+                    courtCentreId, candidateRoomId, businessType, fromDate, toInclusive);
             if (run.size() >= daysNeeded) {
                 return run;
             }

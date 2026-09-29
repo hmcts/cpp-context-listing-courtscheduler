@@ -117,6 +117,7 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
     private static final String DELETE_MT = "application/vnd.courtscheduler.validate.delete+json";
     private static final String COURT_SCHEDULES = "courtSchedules";
     private static final String END_DATE = "endDate";
+    private static final String COURT_ROOM_ID = "courtRoomId";
     private static final String DURATION_IN_MINUTES = "durationInMinutes";
     private static final java.time.format.DateTimeFormatter UTC_HH_MM_FORMATTER =
             java.time.format.DateTimeFormatter.ofPattern("HH:mm").withZone(java.time.ZoneOffset.UTC);
@@ -332,7 +333,7 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
                 .map(this::toSessionMapWithUtcTimes)
                 .toList();
         final Map<String, Object> group = new LinkedHashMap<>();
-        group.put("courtRoomId", courtRoomId);
+        group.put(COURT_ROOM_ID, courtRoomId);
         group.put("courtRoomName", sessions.isEmpty() ? null : sessions.getFirst().getCourtRoomName());
         group.put("sessions", sessionMaps);
         return group;
@@ -583,7 +584,7 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
                 .setHearingDate(getDateOrNull(payload, "hearingDate"))
                 .setEndDate(getDateOrNull(payload, END_DATE))
                 .setDurationInMinutes(payload.containsKey(DURATION_IN_MINUTES) ? payload.getInt(DURATION_IN_MINUTES) : 0)
-                .setCourtRoomId(getStringOrNull(payload, "courtRoomId"))
+                .setCourtRoomId(getStringOrNull(payload, COURT_ROOM_ID))
                 .setEarliestHearingTime(getStringOrNull(payload, "earliestHearingTime"))
                 .setCourtScheduleId(getStringOrNull(payload, "courtScheduleId"))
                 .setSource(getStringOrNull(payload, "source"))
@@ -608,7 +609,7 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
                 .setHearingDate(getDateOrNull(payload, "hearingDate"))
                 .setEndDate(getDateOrNull(payload, END_DATE))
                 .setDurationInMinutes(payload.containsKey(DURATION_IN_MINUTES) ? payload.getInt(DURATION_IN_MINUTES) : 0)
-                .setCourtRoomId(getStringOrNull(payload, "courtRoomId"))
+                .setCourtRoomId(getStringOrNull(payload, COURT_ROOM_ID))
                 .setHearingStartTime(getStringOrNull(payload, "hearingStartTime"))
                 .setHearingSessionDateSearchCutOff(getStringOrNull(payload, "hearingSessionDateSearchCutOff"))
                 .setIsPolice(getBooleanOrFalse(payload));
@@ -621,13 +622,29 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
         return ResponseEntity.ok(toResponseMap(response));
     }
 
+    /**
+     * courtCentreId/courtRoomId/jurisdiction/startTime/endTime mirror main's contract (the review
+     * artifact this reconciles); courtScheduleId is an additive CROWN payback anchor main has no
+     * equivalent for (main's CROWN never reaches this endpoint). startTime/endTime are absolute UTC
+     * instants: only their DATES drive the [startDate, endDate] span booked here — court-schedule
+     * sessions in this service are booked per day, not per time-slot, so the time-of-day is not
+     * otherwise matched.
+     */
     private ResponseEntity<Map<String, Object>> moveHearingToPastDate(final String hearingId, final JsonObject payload) {
+        final String startTimeRaw = getStringOrNull(payload, "startTime");
+        final String endTimeRaw = getStringOrNull(payload, "endTime");
+        final java.time.LocalDate startDate = startTimeRaw == null ? null
+                : java.time.ZonedDateTime.parse(startTimeRaw).toLocalDate();
+        final java.time.LocalDate endDate = endTimeRaw == null ? null
+                : java.time.ZonedDateTime.parse(endTimeRaw).toLocalDate();
+
         final MoveHearingToPastDateRequest moveRequest = new MoveHearingToPastDateRequest()
                 .setHearingId(hearingId)
                 .setCourtCentreId(getStringOrNull(payload, "courtCentreId"))
+                .setCourtRoomId(getStringOrNull(payload, COURT_ROOM_ID))
                 .setJurisdiction(getStringOrNull(payload, "jurisdiction"))
-                .setStartDate(getDateOrNull(payload, "startDate"))
-                .setEndDate(getDateOrNull(payload, END_DATE))
+                .setStartDate(startDate)
+                .setEndDate(endDate)
                 .setDurationInMinutes(payload.containsKey(DURATION_IN_MINUTES) ? payload.getInt(DURATION_IN_MINUTES) : 0)
                 .setCourtScheduleId(getStringOrNull(payload, "courtScheduleId"));
 
