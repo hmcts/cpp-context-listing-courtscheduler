@@ -7,6 +7,7 @@ import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
 import static jakarta.ws.rs.core.Response.Status.OK;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -25,7 +26,6 @@ import java.time.LocalDate;
 import java.util.List;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -34,6 +34,7 @@ import jakarta.json.Json;
 import jakarta.json.JsonArray;
 import jakarta.json.JsonArrayBuilder;
 import jakarta.json.JsonObject;
+import jakarta.json.JsonString;
 import jakarta.ws.rs.core.Response;
 
 import org.junit.jupiter.api.Test;
@@ -322,7 +323,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
 
         final JsonObject jsonObject = stringToJsonObjectConverter.convert(responseData.getPayload());
         final JsonArray availableJudiciaries = jsonObject.getJsonArray(AVAILABLE_JUDICIARIES);
-        assertTrue(availableJudiciaries.size() > 0, "Should find at least one available judiciary");
+        assertFalse(availableJudiciaries.isEmpty(), "Should find at least one available judiciary");
         assertTrue(containsJudiciary(availableJudiciaries, judiciaryId), "Should contain the judiciary ID");
     }
 
@@ -382,7 +383,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
 
         final JsonObject jsonObject = stringToJsonObjectConverter.convert(responseData.getPayload());
         final JsonArray availableJudiciaries = jsonObject.getJsonArray(AVAILABLE_JUDICIARIES);
-        assertTrue(availableJudiciaries.size() > 0, "Should find at least one available judiciary");
+        assertFalse(availableJudiciaries.isEmpty(), "Should find at least one available judiciary");
         assertTrue(containsJudiciary(availableJudiciaries, judiciaryId), "Should contain the judiciary ID");
     }
 
@@ -459,7 +460,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
 
         final JsonObject ruleJsonObject = stringToJsonObjectConverter.convert(ruleResponseData.getPayload());
         final JsonArray rules = ruleJsonObject.getJsonArray(RULES);
-        assertTrue(rules.size() > 0, SHOULD_FIND_AT_LEAST_ONE_RULE);
+        assertFalse(rules.isEmpty(), SHOULD_FIND_AT_LEAST_ONE_RULE);
         
         final JsonObject rule = rules.getJsonObject(0);
         assertThat(rule.getString(JUDICIARY_ID), is(judiciaryId));
@@ -467,7 +468,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         // Verify unavailabilities are present in the response
         assertTrue(rule.containsKey(UNAVAILABILITIES), "Rule should contain unavailabilities array");
         final JsonArray unavailabilities = rule.getJsonArray(UNAVAILABILITIES);
-        assertTrue(unavailabilities.size() > 0, "Should contain at least one unavailability");
+        assertFalse(unavailabilities.isEmpty(), "Should contain at least one unavailability");
         
         // Verify the unavailability structure and content
         final JsonObject unavailability = unavailabilities.getJsonObject(0);
@@ -623,7 +624,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 new ArrayList<>(),
                 startDate,
                 endDate,
-                Arrays.asList(AvailabilityDayOfWeek.MONDAY, AvailabilityDayOfWeek.TUESDAY, AvailabilityDayOfWeek.WEDNESDAY, AvailabilityDayOfWeek.THURSDAY, AvailabilityDayOfWeek.FRIDAY)
+                List.of(AvailabilityDayOfWeek.MONDAY, AvailabilityDayOfWeek.TUESDAY, AvailabilityDayOfWeek.WEDNESDAY, AvailabilityDayOfWeek.THURSDAY, AvailabilityDayOfWeek.FRIDAY)
         );
 
         // Verify the rule exists by finding availability - ensure query dates are within the rule's date range
@@ -684,7 +685,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
 
         jsonObject = stringToJsonObjectConverter.convert(responseData.getPayload());
         availableJudiciaries = jsonObject.getJsonArray(AVAILABLE_JUDICIARIES);
-        assertTrue(!containsJudiciary(availableJudiciaries, judiciaryId), "Judiciary should not be available after deletion");
+        assertFalse(containsJudiciary(availableJudiciaries, judiciaryId), "Judiciary should not be available after deletion");
     }
 
     private boolean containsJudiciary(final JsonArray availableJudiciaries, final String judiciaryId) {
@@ -723,7 +724,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 Collections.emptyList(),
                 startDate,
                 endDate,
-                Arrays.asList(AvailabilityDayOfWeek.MONDAY, AvailabilityDayOfWeek.TUESDAY)
+                List.of(AvailabilityDayOfWeek.MONDAY, AvailabilityDayOfWeek.TUESDAY)
         );
 
         databaseSeeder.insertJudiciaryAvailabilityRule(
@@ -733,7 +734,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 Collections.emptyList(),
                 startDate,
                 endDate,
-                Arrays.asList(AvailabilityDayOfWeek.WEDNESDAY, AvailabilityDayOfWeek.THURSDAY)
+                List.of(AvailabilityDayOfWeek.WEDNESDAY, AvailabilityDayOfWeek.THURSDAY)
         );
 
         final LocalDate queryStartDate = futureDate(1);
@@ -782,7 +783,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 Collections.emptyList(),
                 startDate,
                 endDate,
-                Arrays.asList(AvailabilityDayOfWeek.MONDAY)
+                List.of(AvailabilityDayOfWeek.MONDAY)
         );
 
         final LocalDate queryStartDate = futureDate(1);
@@ -823,7 +824,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 Collections.emptyList(),
                 startDate,
                 endDate,
-                Arrays.asList(AvailabilityDayOfWeek.MONDAY)
+                List.of(AvailabilityDayOfWeek.MONDAY)
         );
 
         final LocalDate queryStartDate = futureDate(1);
@@ -847,10 +848,10 @@ class JudiciaryAvailabilityIT extends AbstractIT {
 
         final JsonObject jsonObject = stringToJsonObjectConverter.convert(responseData.getPayload());
         final JsonArray rules = jsonObject.getJsonArray(RULES);
-        assertTrue(rules.size() > 0, SHOULD_FIND_AT_LEAST_ONE_RULE);
+        assertFalse(rules.isEmpty(), SHOULD_FIND_AT_LEAST_ONE_RULE);
         assertTrue(jsonObject.containsKey(JUDICIARIES), "Should contain judiciaries node");
         final JsonArray judiciaries = jsonObject.getJsonArray(JUDICIARIES);
-        assertTrue(judiciaries.size() > 0, "Should contain judiciaries when withJudiciary is true");
+        assertFalse(judiciaries.isEmpty(), "Should contain judiciaries when withJudiciary is true");
         
         // Verify judiciary structure
         final JsonObject judiciary = judiciaries.getJsonObject(0);
@@ -875,7 +876,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 Collections.emptyList(),
                 startDate,
                 endDate,
-                Arrays.asList(AvailabilityDayOfWeek.MONDAY)
+                List.of(AvailabilityDayOfWeek.MONDAY)
         );
 
         final LocalDate queryStartDate = futureDate(1);
@@ -918,7 +919,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 Collections.emptyList(),
                 startDate,
                 endDate,
-                Arrays.asList(AvailabilityDayOfWeek.MONDAY)
+                List.of(AvailabilityDayOfWeek.MONDAY)
         );
 
         final LocalDate queryStartDate = futureDate(1);
@@ -941,7 +942,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
 
         final JsonObject jsonObject = stringToJsonObjectConverter.convert(responseData.getPayload());
         final JsonArray rules = jsonObject.getJsonArray(RULES);
-        assertTrue(rules.size() > 0, SHOULD_FIND_AT_LEAST_ONE_RULE);
+        assertFalse(rules.isEmpty(), SHOULD_FIND_AT_LEAST_ONE_RULE);
         
         // Verify all rules match the courtHouseId filter
         for (int i = 0; i < rules.size(); i++) {
@@ -965,7 +966,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 Collections.emptyList(),
                 startDate,
                 endDate,
-                Arrays.asList(AvailabilityDayOfWeek.MONDAY)
+                List.of(AvailabilityDayOfWeek.MONDAY)
         );
 
         final LocalDate queryStartDate = futureDate(1);
@@ -1016,7 +1017,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 Collections.emptyList(),
                 startDate,
                 endDate,
-                Arrays.asList(AvailabilityDayOfWeek.MONDAY)
+                List.of(AvailabilityDayOfWeek.MONDAY)
         );
 
         databaseSeeder.insertJudiciaryAvailabilityRule(
@@ -1026,7 +1027,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 Collections.emptyList(),
                 startDate,
                 endDate,
-                Arrays.asList(AvailabilityDayOfWeek.TUESDAY)
+                List.of(AvailabilityDayOfWeek.TUESDAY)
         );
 
         databaseSeeder.insertJudiciaryAvailabilityRule(
@@ -1036,7 +1037,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 Collections.emptyList(),
                 startDate,
                 endDate,
-                Arrays.asList(AvailabilityDayOfWeek.WEDNESDAY)
+                List.of(AvailabilityDayOfWeek.WEDNESDAY)
         );
 
         final LocalDate queryStartDate = futureDate(1);
@@ -1065,7 +1066,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         assertThat(jsonObject.getInt(PAGE_NUMBER), is(2));
         assertThat(jsonObject.getInt(PAGE_SIZE), is(2));
         // Page 2 with pageSize 2 should have at least 1 rule (if totalCount >= 3)
-        assertTrue(rules.size() > 0, "Should find at least one rule on page 2");
+        assertFalse(rules.isEmpty(), "Should find at least one rule on page 2");
     }
 
     @Test
@@ -1083,7 +1084,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 Collections.emptyList(),
                 startDate,
                 endDate,
-                Arrays.asList(AvailabilityDayOfWeek.MONDAY)
+                List.of(AvailabilityDayOfWeek.MONDAY)
         );
 
         // Stub the specialisms response
@@ -1109,8 +1110,12 @@ class JudiciaryAvailabilityIT extends AbstractIT {
 
         final JsonObject jsonObject = stringToJsonObjectConverter.convert(responseData.getPayload());
         final JsonArray rules = jsonObject.getJsonArray(RULES);
-        assertTrue(rules.size() > 0, SHOULD_FIND_AT_LEAST_ONE_RULE);
-
+        assertFalse(rules.isEmpty(), SHOULD_FIND_AT_LEAST_ONE_RULE);
+        final JsonObject seededRule = rules.getValuesAs(JsonObject.class).stream()
+                .filter(r -> ruleId.equals(r.getString("id")))
+                .findFirst()
+                .orElseThrow();
+        assertThat(seededRule.getJsonArray(REPEAT_DAYS).getValuesAs(JsonString::getString), contains("Monday"));
     }
 
     @Test
@@ -1128,7 +1133,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 Collections.emptyList(),
                 startDate,
                 endDate,
-                Arrays.asList(AvailabilityDayOfWeek.MONDAY)
+                List.of(AvailabilityDayOfWeek.MONDAY)
         );
 
         // Stub the specialisms response
@@ -1156,7 +1161,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
 
         final JsonObject jsonObject = stringToJsonObjectConverter.convert(responseData.getPayload());
         final JsonArray rules = jsonObject.getJsonArray(RULES);
-        assertTrue(rules.size() > 0, SHOULD_FIND_AT_LEAST_ONE_RULE);
+        assertFalse(rules.isEmpty(), SHOULD_FIND_AT_LEAST_ONE_RULE);
 
         // Verify the rule contains the expected judiciary ID
         final JsonObject rule = rules.getJsonObject(0);
@@ -1167,7 +1172,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         final JsonArray judiciaries = jsonObject.getJsonArray(JUDICIARIES);
 
         // Verify judiciaries structure and content
-        assertTrue(judiciaries.size() > 0, "Should contain judiciaries when withJudiciary is true");
+        assertFalse(judiciaries.isEmpty(), "Should contain judiciaries when withJudiciary is true");
         final JsonObject judiciary = java.util.stream.IntStream.range(0, judiciaries.size())
             .mapToObj(judiciaries::getJsonObject)
             .filter(j -> judiciaryId.equals(j.getString("id")))
@@ -1198,7 +1203,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 new ArrayList<>(),
                 originalStartDate,
                 originalEndDate,
-                Arrays.asList(AvailabilityDayOfWeek.MONDAY, AvailabilityDayOfWeek.TUESDAY)
+                List.of(AvailabilityDayOfWeek.MONDAY, AvailabilityDayOfWeek.TUESDAY)
         );
 
         // Verify the original rule exists by finding availability.
@@ -1328,7 +1333,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
 
         jsonObject = stringToJsonObjectConverter.convert(responseData.getPayload());
         availableJudiciaries = jsonObject.getJsonArray(AVAILABLE_JUDICIARIES);
-        assertTrue(!containsJudiciary(availableJudiciaries, judiciaryId), "Judiciary should not be available during unavailability period (Feb 10-15)");
+        assertFalse(containsJudiciary(availableJudiciaries, judiciaryId), "Judiciary should not be available during unavailability period (Feb 10-15)");
 
         // Verify Mon/Tue availability is gone after updating the rule to Wed/Thu.
         // Use a Mon-Tue-only window to avoid overlap with the new rule's Wed/Thu repeat days.
@@ -1349,7 +1354,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
 
         jsonObject = stringToJsonObjectConverter.convert(responseData.getPayload());
         availableJudiciaries = jsonObject.getJsonArray(AVAILABLE_JUDICIARIES);
-        assertTrue(!containsJudiciary(availableJudiciaries, judiciaryId), "Judiciary should not be available in old date range after update");
+        assertFalse(containsJudiciary(availableJudiciaries, judiciaryId), "Judiciary should not be available in old date range after update");
     }
 
     @Test
@@ -1368,7 +1373,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 new ArrayList<>(),
                 startDate,
                 endDate,
-                Arrays.asList(AvailabilityDayOfWeek.MONDAY, AvailabilityDayOfWeek.TUESDAY)
+                List.of(AvailabilityDayOfWeek.MONDAY, AvailabilityDayOfWeek.TUESDAY)
         );
 
         // Get the rule
@@ -1395,6 +1400,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
         assertThat(rule.getString(COURT_HOUSE_ID), is(courtHouseId));
         assertThat(rule.getString(START_DATE), is(startDate.format(DATE_FORMATTER)));
         assertThat(rule.getString(END_DATE), is(endDate.format(DATE_FORMATTER)));
+        assertThat(rule.getJsonArray(REPEAT_DAYS).getValuesAs(JsonString::getString), contains("Monday", "Tuesday"));
     }
 
     @Test
@@ -1413,7 +1419,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 new ArrayList<>(),
                 startDate,
                 endDate,
-                Arrays.asList(AvailabilityDayOfWeek.WEDNESDAY)
+                List.of(AvailabilityDayOfWeek.WEDNESDAY)
         );
 
         // Get the rule with judiciary
@@ -1457,7 +1463,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 new ArrayList<>(),
                 startDate,
                 endDate,
-                Arrays.asList(AvailabilityDayOfWeek.FRIDAY)
+                List.of(AvailabilityDayOfWeek.FRIDAY)
         );
 
         // Get the rule without specifying withJudiciary (should default to true)
@@ -1552,7 +1558,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 Collections.emptyList(),
                 startDate,
                 endDate,
-                Arrays.asList(AvailabilityDayOfWeek.MONDAY)
+                List.of(AvailabilityDayOfWeek.MONDAY)
         );
 
         // Now validate an update
@@ -1596,7 +1602,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 Collections.emptyList(),
                 originalStartDate,
                 endDate,
-                Arrays.asList(AvailabilityDayOfWeek.MONDAY)
+                List.of(AvailabilityDayOfWeek.MONDAY)
         );
 
         // Now validate an update with changed start date in past
@@ -1637,7 +1643,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 Collections.emptyList(),
                 startDate,
                 endDate,
-                Arrays.asList(AvailabilityDayOfWeek.MONDAY)
+                List.of(AvailabilityDayOfWeek.MONDAY)
         );
 
         // Now validate delete - should succeed as no sessions are assigned
@@ -1672,7 +1678,7 @@ class JudiciaryAvailabilityIT extends AbstractIT {
                 Collections.emptyList(),
                 startDate,
                 endDate,
-                Arrays.asList(AvailabilityDayOfWeek.MONDAY)
+                List.of(AvailabilityDayOfWeek.MONDAY)
         );
         // Update session_type to AM
         databaseSeeder.updateJudiciaryAvailabilityRuleSessionType(ruleId, SessionType.AM.name());

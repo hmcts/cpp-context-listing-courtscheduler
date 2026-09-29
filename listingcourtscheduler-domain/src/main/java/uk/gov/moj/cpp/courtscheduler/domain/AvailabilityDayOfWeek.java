@@ -1,5 +1,8 @@
 package uk.gov.moj.cpp.courtscheduler.domain;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonValue;
+
 /**
  * Days of the week a judiciary availability rule can repeat on.
  *
@@ -22,10 +25,12 @@ public enum AvailabilityDayOfWeek {
         this.wireValue = wireValue;
     }
 
+    @JsonValue
     public String getWireValue() {
         return wireValue;
     }
 
+    @JsonCreator
     public static AvailabilityDayOfWeek fromWireValue(final String value) {
         for (final AvailabilityDayOfWeek day : values()) {
             if (day.wireValue.equals(value)) {
