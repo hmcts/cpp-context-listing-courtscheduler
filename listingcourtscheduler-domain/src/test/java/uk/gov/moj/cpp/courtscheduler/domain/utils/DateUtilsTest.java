@@ -3,6 +3,7 @@ package uk.gov.moj.cpp.courtscheduler.domain.utils;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.normaliseToHourMinute;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.resolveSessionTime;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toListingSession;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toMeridian;
@@ -26,6 +27,32 @@ class DateUtilsTest {
     void shouldConvertToDateTimeOffset() {
         final Timestamp actual = DateUtils.toRoundedTimestamp("2020-07-23T09:00:00.000Z");
         assertThat(actual.toString(), is("2020-07-23 09:00:00.0"));
+    }
+
+    @Test
+    void shouldParseStrictMillisecondZuluFormToOffsetDateTime() {
+        final OffsetDateTime actual = DateUtils.toOffsetDateTime("2026-08-06T09:00:00.000Z");
+        assertThat(actual, is(OffsetDateTime.of(2026, 8, 6, 9, 0, 0, 0, ZoneOffset.UTC)));
+    }
+
+    @Test
+    void shouldParseZonedDateTimeToStringFormToOffsetDateTime() {
+        // ZonedDateTime.toString() output as sent by listing's crown fallback: zone-id suffix and
+        // seconds omitted when zero (SPRDT-1159).
+        final OffsetDateTime actual = DateUtils.toOffsetDateTime("2026-08-06T09:00Z[UTC]");
+        assertThat(actual, is(OffsetDateTime.of(2026, 8, 6, 9, 0, 0, 0, ZoneOffset.UTC)));
+    }
+
+    @Test
+    void shouldParseOffsetFormToOffsetDateTimeNormalisedToUtc() {
+        final OffsetDateTime actual = DateUtils.toOffsetDateTime("2026-08-06T10:00:00+01:00");
+        assertThat(actual, is(OffsetDateTime.of(2026, 8, 6, 9, 0, 0, 0, ZoneOffset.UTC)));
+    }
+
+    @Test
+    void shouldStillThrowOnUnparseableDateTime() {
+        Assertions.assertThrows(java.time.format.DateTimeParseException.class,
+                () -> DateUtils.toOffsetDateTime("not-a-date"));
     }
 
     @Test
@@ -303,6 +330,38 @@ class DateUtilsTest {
     @Test
     void resolveSessionTimeShouldReturnNullWhenAllBlank() {
         assertThat(resolveSessionTime(null, null, null), is(nullValue()));
+    }
+
+    // ----- normaliseToHourMinute -----
+    // referencedata-query-api's organisation-unit defaultStartTime has been observed in both
+    // "HH:mm" and "HH:mm:ss" form (confirmed live on ns-ste-ccm-22: "10:30:00"). This must accept
+    // either without throwing.
+
+    @Test
+    void normaliseToHourMinuteShouldPassThroughHourMinuteFormat() {
+        assertThat(normaliseToHourMinute("10:30"), is("10:30"));
+    }
+
+    @Test
+    void normaliseToHourMinuteShouldStripSecondsFromHourMinuteSecondFormat() {
+        assertThat(normaliseToHourMinute("10:30:00"), is("10:30"));
+    }
+
+    @Test
+    void normaliseToHourMinuteShouldTrimWhitespace() {
+        assertThat(normaliseToHourMinute("  09:15:00  "), is("09:15"));
+    }
+
+    @Test
+    void normaliseToHourMinuteShouldReturnNullWhenBlank() {
+        assertThat(normaliseToHourMinute(null), is(nullValue()));
+        assertThat(normaliseToHourMinute(""), is(nullValue()));
+        assertThat(normaliseToHourMinute("   "), is(nullValue()));
+    }
+
+    @Test
+    void normaliseToHourMinuteShouldReturnNullWhenUnparseable() {
+        assertThat(normaliseToHourMinute("not-a-time"), is(nullValue()));
     }
 }
 

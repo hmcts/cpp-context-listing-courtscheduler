@@ -26,8 +26,10 @@ public class AllocatedHearingsQueryBuilder {
 
     private Map<String, Object> pagedQueryParamMap;
     private String allocatedHearingsQuery;
+    private HearingSlotRequestParam hearingIdsReq;
 
     public AllocatedHearingsQueryBuilder(HearingSlotRequestParam hearingIdsReq) {
+        this.hearingIdsReq = hearingIdsReq;
         bindQueryParamsFromHearingReq(hearingIdsReq);
         generateAllocatedHearingsQuery();
     }
@@ -56,6 +58,15 @@ public class AllocatedHearingsQueryBuilder {
         addCondition(BUSINESS_TYPE.getLabel(), "and cs.rota_business_type = :businessType ", queryStrBuilder);
         addCondition(COURT_SESSION.getLabel(), "and cs.court_session = :courtSession ", queryStrBuilder);
         addCondition(EXACT_HEARING_START_DATETIME.getLabel(), "and DATE_TRUNC('minute', al.hearing_start_time) = DATE_TRUNC('minute', CAST(:exactHearingStartDateTime as timestamptz)) ", queryStrBuilder);
+
+        if (StringUtils.isNotBlank(hearingIdsReq.status())) {
+            if ("DRAFT".equalsIgnoreCase(hearingIdsReq.status())) {
+                queryStrBuilder.append("and cs.is_draft = true ");
+            } else if ("FINAL".equalsIgnoreCase(hearingIdsReq.status())) {
+                queryStrBuilder.append("and cs.is_draft = false ");
+            }
+            // ALL / anything else -> no filter
+        }
 
         queryStrBuilder.append("order by cs.session_start, " +
                 "cs.court_house_name, " +

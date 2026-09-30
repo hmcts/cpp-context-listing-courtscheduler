@@ -3,6 +3,7 @@ package uk.gov.moj.cpp.courtscheduler.repository;
 import uk.gov.moj.cpp.courtscheduler.domain.AllocatedSlot;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleRequestParam;
+import uk.gov.moj.cpp.courtscheduler.domain.CrownFallbackRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.CrownFallbackSearchResult;
 import uk.gov.moj.cpp.courtscheduler.domain.Hearing;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
@@ -50,8 +51,20 @@ public interface CourtScheduleRepositoryCustom {
     Optional<AllocatedListing> findAllocatedListingByHearingId(String hearingId);
 
     /**
+     * SPRDT-1159 on-the-fly session creation for the Crown fallback: a duration-based AD session with
+     * a fixed 360-minute capacity and overbooking disallowed — FINAL/LNG when a courtRoomId was
+     * supplied, DRAFT/GENC otherwise; residual metadata copied from the latest active session at the
+     * court centre. SPRDT-1283: when the centre has no session to copy from, the session is built
+     * from the request's own metadata (requires ouCode on the request); empty only when neither a
+     * template nor a request ouCode is available.
+     */
+    Optional<CrownFallbackSearchResult> createCrownFallbackSession(CrownFallbackRequest request);
+
+    /**
      * Crown-only fallback search — strict on centre + date, relaxed on businessType/court_session
-     * and (optionally) courtRoomId, trying non-draft/draft tiers with and without overbooking.
+     * and (optionally) courtRoomId, trying non-draft then draft tiers. Availability is ignored
+     * (search-and-book is overbooking-exempt); durationInMinutes only feeds the informational
+     * overbooked flag on the result.
      */
     Optional<CrownFallbackSearchResult> searchCrownFallbackSlots(String courtCentreId,
                                                                  LocalDate hearingDate,
@@ -68,12 +81,18 @@ public interface CourtScheduleRepositoryCustom {
                                                                                               LocalDate fromDate,
                                                                                               int daysNeeded);
 
-    /** AD weekday sessions for a room/businessType in a date range, draft state unconstrained (extend path). */
+    /**
+     * AD weekday sessions for a room in a date range. businessType and isDraft are optional
+     * filters (null = unconstrained). The extend path (SPRDT-1273) passes the block's own draft
+     * state so an allocated hearing's tail days only ever book FINAL sessions — a draft tail
+     * session would strip every day's courtroom downstream (ADR-005).
+     */
     List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> findAdSessionsInRange(String ouCode,
                                                                                    String courtRoomId,
                                                                                    String businessType,
                                                                                    LocalDate fromInclusive,
-                                                                                   LocalDate toInclusive);
+                                                                                   LocalDate toInclusive,
+                                                                                   Boolean isDraft);
 
     /** Discovery + re-hydrate path for multi-day Crown searches (SPRDT-903 perf fix #4). */
     List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> getMultidayHearingSlotCandidates(HearingSlotRequestParam requestParam,

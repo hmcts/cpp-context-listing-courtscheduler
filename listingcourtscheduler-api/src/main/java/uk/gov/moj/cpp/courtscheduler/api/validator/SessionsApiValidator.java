@@ -297,25 +297,26 @@ public class SessionsApiValidator {
     private JsonObject validateCourtRoomForSession(Session session, String sessionJurisdiction) {
         String courtRoomId = session.getCourtRoomId();
 
-        // 1. Courtroom must exist in CP reference data (regardless of session jurisdiction)
+        // 1. Courtroom must exist in CP reference data (regardless of session jurisdiction).
+        // A courtroom shared between court centres has one entry per centre membership.
         long stepStart = System.currentTimeMillis();
-        Optional<CourtRoom> cpCourtRoomOpt = referenceDataCache.getCpCourtRoomByCourtRoomId(courtRoomId);
-        LOGGER.info("[PERF] getCpCourtRoomByCourtRoomId took {} ms", System.currentTimeMillis() - stepStart);
-        if (cpCourtRoomOpt.isEmpty()) {
+        List<CourtRoom> cpCourtRooms = referenceDataCache.getCpCourtRoomsByCourtRoomId(courtRoomId);
+        LOGGER.info("[PERF] getCpCourtRoomsByCourtRoomId took {} ms", System.currentTimeMillis() - stepStart);
+        if (cpCourtRooms.isEmpty()) {
             return buildErrorResponse("Courtroom does not exist");
         }
-        CourtRoom courtRoom = cpCourtRoomOpt.get();
 
-        // 2. Jurisdiction validation: oucode must match session jurisdiction (B = Magistrates, C = Crown)
+        // 2. Courtroom must belong to the court centre supplied in the payload; any membership counts
+        Optional<CourtRoom> courtRoomForCentre = findCourtRoomForCourtCentre(cpCourtRooms, session.getCourtCentreId());
+        if (courtRoomForCentre.isEmpty()) {
+            return buildErrorResponse("This courtroom belongs to a different court centre");
+        }
+        CourtRoom courtRoom = courtRoomForCentre.get();
+
+        // 3. Jurisdiction validation on the selected centre's membership: oucode must match session jurisdiction (B = Magistrates, C = Crown)
         JsonObject jurisdictionError = validateCourtRoomOucodeJurisdiction(courtRoom, sessionJurisdiction);
         if (jurisdictionError != EMPTY_JSON_OBJECT) {
             return jurisdictionError;
-        }
-
-        // 3. Courtroom must belong to the same court centre as supplied in the payload
-        JsonObject courtCentreError = validateCourtRoomBelongsToCourtCentre(session.getCourtCentreId(), courtRoom);
-        if (courtCentreError != EMPTY_JSON_OBJECT) {
-            return courtCentreError;
         }
 
         // 4. For MAGISTRATES only: courtroom must exist in Rota mapping
@@ -335,13 +336,10 @@ public class SessionsApiValidator {
         return EMPTY_JSON_OBJECT;
     }
 
-    private JsonObject validateCourtRoomBelongsToCourtCentre(String sessionCourtCentreId, CourtRoom courtRoom) {
-        String courtRoomCourtCentreId = courtRoom.getOucodeUUID();
-        if (isNull(sessionCourtCentreId) || isNull(courtRoomCourtCentreId)
-                || !sessionCourtCentreId.equals(courtRoomCourtCentreId)) {
-            return buildErrorResponse("This courtroom belongs to a different court centre");
-        }
-        return EMPTY_JSON_OBJECT;
+    private static Optional<CourtRoom> findCourtRoomForCourtCentre(List<CourtRoom> courtRoomMemberships, String courtCentreId) {
+        return courtRoomMemberships.stream()
+                .filter(courtRoom -> nonNull(courtCentreId) && courtCentreId.equals(courtRoom.getOucodeUUID()))
+                .findFirst();
     }
 
     private JsonObject validateCourtRoomOucodeJurisdiction(CourtRoom courtRoom, String sessionJurisdiction) {
@@ -945,21 +943,21 @@ public class SessionsApiValidator {
             }
         }
 
-        // Retrieve the new courtroom from reference data
-        Optional<CourtRoom> courtRoomOpt = CROWN.equalsIgnoreCase(jurisdiction)
-                ? referenceDataCache.getCpCourtRoomByCourtRoomId(newCourtRoomId)
-                : referenceDataCache.getRotaCourtRoomByCourtRoomId(newCourtRoomId);
+        // Retrieve the new courtroom from reference data; a CP courtroom shared between
+        // court centres has one entry per centre membership, and any of them may match
+        List<CourtRoom> newCourtRooms = CROWN.equalsIgnoreCase(jurisdiction)
+                ? referenceDataCache.getCpCourtRoomsByCourtRoomId(newCourtRoomId)
+                : referenceDataCache.getRotaCourtRoomByCourtRoomId(newCourtRoomId).map(List::of).orElse(List.of());
 
-        if (courtRoomOpt.isEmpty()) {
+        if (newCourtRooms.isEmpty()) {
             // Courtroom not found - this will be caught by validateCourtRoomForJurisdiction
             return EMPTY_JSON_OBJECT;
         }
 
-        CourtRoom newCourtRoom = courtRoomOpt.get();
-        String newCourtHouseId = newCourtRoom.getOucodeUUID();
-
         // Validate that the new courtroom belongs to the same court house
-        if (isNull(newCourtHouseId) || !newCourtHouseId.equals(originalCourtHouseId)) {
+        boolean belongsToSameCourtHouse = newCourtRooms.stream()
+                .anyMatch(courtRoom -> originalCourtHouseId.equals(courtRoom.getOucodeUUID()));
+        if (!belongsToSameCourtHouse) {
             return buildErrorResponse("Courtroom must belong to the same court house where the session was created. Original court house ID: " + originalCourtHouseId);
         }
 

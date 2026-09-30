@@ -47,7 +47,6 @@ import uk.gov.moj.cpp.courtscheduler.api.validator.ProvisionalBookingApiValidato
 import uk.gov.moj.cpp.courtscheduler.api.validator.SessionsApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.UnprocessableEntityException;
 import uk.gov.moj.cpp.courtscheduler.api.validator.ValidationException;
-import uk.gov.moj.cpp.courtscheduler.common.service.ExtendMultidayHearingService;
 import uk.gov.moj.cpp.courtscheduler.common.service.JudiciaryAssignmentService;
 import uk.gov.moj.cpp.courtscheduler.common.service.JudiciaryUnassignmentService;
 import uk.gov.moj.cpp.courtscheduler.common.service.SessionsService;
@@ -140,7 +139,6 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
     // --- hearings booking family (SPRDT-1089 reshape)
     private final SlotsUpdateService slotsUpdateService;
     private final SlotsRemoveService slotsRemoveService;
-    private final ExtendMultidayHearingService extendMultidayHearingService;
     private final HearingSlotsApiValidator hearingSlotsApiValidator;
     private final ListHearingSlotConverter listHearingSlotConverter;
 
@@ -171,7 +169,6 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
                              final AssignJudiciaryToSessionsConverter assignJudiciaryToSessionsConverter,
                              final SlotsUpdateService slotsUpdateService,
                              final SlotsRemoveService slotsRemoveService,
-                             final ExtendMultidayHearingService extendMultidayHearingService,
                              final HearingSlotsApiValidator hearingSlotsApiValidator,
                              final ListHearingSlotConverter listHearingSlotConverter,
                              final MiService miService,
@@ -197,7 +194,6 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
         this.assignJudiciaryToSessionsConverter = assignJudiciaryToSessionsConverter;
         this.slotsUpdateService = slotsUpdateService;
         this.slotsRemoveService = slotsRemoveService;
-        this.extendMultidayHearingService = extendMultidayHearingService;
         this.hearingSlotsApiValidator = hearingSlotsApiValidator;
         this.listHearingSlotConverter = listHearingSlotConverter;
         this.miService = miService;
@@ -462,6 +458,7 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
             final AssignJudiciaryToSessionsRequest dto = assignJudiciaryToSessionsConverter.convert(toJsonObject(body));
             judiciaryAssignmentService.assignJudiciaryToSessions(dto, UUID.randomUUID().toString());
         } catch (final IllegalArgumentException e) {
+            LOG.warn("courtscheduler.assign-judiciary-to-sessions: {}", e.getMessage());
             throw new ValidationException(
                     Json.createObjectBuilder().add("errorMessage", e.getMessage()).build());
         }
@@ -558,6 +555,13 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
         } catch (NoAllocationOnDateException e) {
             return ResponseEntity.unprocessableEntity()
                     .body(JsonValueConverter.toMap(buildErrorBody("NO_ALLOCATION_ON_DATE", e.getMessage())));
+        } catch (ExtendMultidayHearingException e) {
+            // SPRDT-1273: a same-start resize inside crown.search.and.book is delegated to the
+            // extend/shrink service; its rejections (NO_AVAILABILITY with the unavailable dates,
+            // INVALID_DATE_RANGE) surface on this endpoint with the same flat 422 body the retired
+            // PATCH extend endpoint used, so the listing caller can propagate them to the UI.
+            return ResponseEntity.unprocessableEntity()
+                    .body(JsonValueConverter.toMap(buildExtendErrorBody(e)));
         }
         throw new ResponseStatusException(HttpStatus.UNSUPPORTED_MEDIA_TYPE,
                 "Unsupported Content-Type for /hearings/{hearingId}: " + contentType);
@@ -573,7 +577,12 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
                 .setCourtRoomId(getStringOrNull(payload, "courtRoomId"))
                 .setEarliestHearingTime(getStringOrNull(payload, "earliestHearingTime"))
                 .setCourtScheduleId(getStringOrNull(payload, "courtScheduleId"))
-                .setSource(getStringOrNull(payload, "source"));
+                .setSource(getStringOrNull(payload, "source"))
+                // SPRDT-1283: optional centre metadata for auto-creating a session at a
+                // never-seeded centre (single-day fallback only).
+                .setOuCode(getStringOrNull(payload, "ouCode"))
+                .setCourtCentreName(getStringOrNull(payload, "courtCentreName"))
+                .setCourtRoomName(getStringOrNull(payload, "courtRoomName"));
 
         final JsonObject validationError = hearingSlotsApiValidator.crownSearchAndBookValidation(sabRequest);
         if (!validationError.isEmpty()) {
@@ -652,31 +661,6 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
                 .add("errorCode", errorCode)
                 .add("message", message == null ? "" : message)
                 .build();
-    }
-
-    /** PATCH /hearings/{hearingId} — extend, shrink, or no-op a CROWN multi-day booking. */
-    @Override
-    public ResponseEntity<Map<String, Object>> patchExtendMultidayHearing(final String hearingId,
-                                                                          final Map<String, Object> body) {
-        final JsonObject payload = toJsonObject(body);
-        LOG.info("courtscheduler.extend.multiday.hearing hearingId={}, payload={}", hearingId, payload);
-
-        final java.time.LocalDate startDate = java.time.LocalDate.parse(payload.getString("startDate"));
-        final java.time.LocalDate endDate = java.time.LocalDate.parse(payload.getString("endDate"));
-        final int durationInMinutes = payload.containsKey("durationInMinutes") ? payload.getInt("durationInMinutes") : 0;
-
-        try {
-            final List<CourtSchedule> schedules =
-                    extendMultidayHearingService.extend(hearingId, startDate, endDate, durationInMinutes);
-            CourtScheduleRoomSanitiser.stripCourtRoomFromDraftSessions(schedules);
-            final Map<String, Object> result = new LinkedHashMap<>();
-            result.put("courtSchedules", schedules);
-            return ResponseEntity.ok(result);
-        } catch (ExtendMultidayHearingException e) {
-            // Same flat-body contract as the POST booking family (vendor extend error media type).
-            return ResponseEntity.unprocessableEntity()
-                    .body(JsonValueConverter.toMap(buildExtendErrorBody(e)));
-        }
     }
 
     private static JsonObject buildExtendErrorBody(final ExtendMultidayHearingException e) {

@@ -292,7 +292,8 @@ public class DatabaseReader {
         allocatedListing.setCourtRoomId(resultSet.getInt("court_room_id"));
         allocatedListing.setRotaBusinessType(resultSet.getString("rota_business_type"));
         allocatedListing.setDuration(resultSet.getInt("duration"));
-        allocatedListing.setHearingStartTime(resultSet.getDate("hearing_start_time"));
+        // getTimestamp, not getDate — java.sql.Date drops the time-of-day and throws on toInstant()
+        allocatedListing.setHearingStartTime(resultSet.getTimestamp("hearing_start_time"));
         allocatedListing.setSource(resultSet.getString("source"));
         allocatedListing.setCreatedOn(resultSet.getDate("created_on"));
         allocatedListing.setUpdatedOn(resultSet.getDate("updated_on"));

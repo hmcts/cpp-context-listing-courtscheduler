@@ -260,9 +260,12 @@ class CourtSchedulerIT extends AbstractIT {
 
     @Test
     void shouldCreateCourtScheduleWithRefdataSessionTimesAM() {
-        // Refdata fixture has MONAM allocation for cppCourtRoomId=7777 oucode=B12JR00 with
-        // sessionStartTime="09:30" / sessionEndTime="12:45". The payload supplies no custom
-        // start/end times, so refdata should win over the AM defaults (10:00 / 13:00).
+        // WireMock stub has organisation-unit id=22c69328-70af-3e27-80c5-1a79e24903d2 (this
+        // fixture's courtCentreId) with defaultStartTime="09:15:00" — HH:mm:ss, matching the real
+        // ns-ste-ccm-22 shape (normalised to "09:15" before storage). The payload supplies no
+        // custom start/end times, so the court-centre default wins over the AM start default
+        // (10:00) but the end time is always the fixed AM default (13:00) — never refdata-driven
+        // (SPRDT-809).
         final String createCourtSchedulePayload = prepareCreateCourtSchedulePayload("create-court-schedule-with-refdata-session-times-am.json");
         final Response response = postCommand(BASE_RESOURCE_URL, COURT_SCHEDULE_CREATE_CONTENT_TYPE, USER_ID, createCourtSchedulePayload);
         assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
@@ -275,16 +278,16 @@ class CourtSchedulerIT extends AbstractIT {
             final java.util.Date localStartTime = TimezoneUtils.utcToLocal(courtSchedule.getSessionStartTime());
             final java.util.Date localEndTime = TimezoneUtils.utcToLocal(courtSchedule.getSessionEndTime());
 
-            assertThat(sdf.format(localStartTime), is("09:30"));
-            assertThat(sdf.format(localEndTime), is("12:45"));
+            assertThat(sdf.format(localStartTime), is("09:15"));
+            assertThat(sdf.format(localEndTime), is(DEFAULT_MORNING_END_TIME));
         }
     }
 
     @Test
     void shouldCreateCourtScheduleWithRefdataSessionTimesAD() {
-        // Refdata fixture has MONAM (09:30/12:45) and MONPM (13:30/16:30) allocations for
-        // cppCourtRoomId=7777 oucode=B12JR00. For an ALL_DAY session the API path takes the
-        // start time from the AM allocation and the end time from the PM allocation.
+        // Same organisation-unit stub as the AM test (defaultStartTime="09:15:00") — AD sources
+        // its start from the same court-centre default, but the end time is always the fixed AD
+        // default (17:00), never refdata-driven (SPRDT-809).
         final String createCourtSchedulePayload = prepareCreateCourtSchedulePayload("create-court-schedule-with-refdata-session-times-ad.json");
         final Response response = postCommand(BASE_RESOURCE_URL, COURT_SCHEDULE_CREATE_CONTENT_TYPE, USER_ID, createCourtSchedulePayload);
         assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
@@ -297,15 +300,38 @@ class CourtSchedulerIT extends AbstractIT {
             final java.util.Date localStartTime = TimezoneUtils.utcToLocal(courtSchedule.getSessionStartTime());
             final java.util.Date localEndTime = TimezoneUtils.utcToLocal(courtSchedule.getSessionEndTime());
 
-            assertThat(sdf.format(localStartTime), is("09:30"));
-            assertThat(sdf.format(localEndTime), is("16:30"));
+            assertThat(sdf.format(localStartTime), is("09:15"));
+            assertThat(sdf.format(localEndTime), is(DEFAULT_ALL_DAY_END_TIME));
+        }
+    }
+
+    @Test
+    void shouldCreateCourtScheduleWithFixedSessionTimesForPmIgnoringRefdata() {
+        // Same organisation-unit stub as the AM/AD tests (defaultStartTime="09:15:00") is
+        // reachable for this fixture's courtCentreId, but PM sessions must never consult
+        // reference data at all — both times are always the fixed PM defaults (SPRDT-809).
+        final String createCourtSchedulePayload = prepareCreateCourtSchedulePayload("create-court-schedule-with-refdata-present-pm.json");
+        final Response response = postCommand(BASE_RESOURCE_URL, COURT_SCHEDULE_CREATE_CONTENT_TYPE, USER_ID, createCourtSchedulePayload);
+        assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
+
+        final List<CourtSchedule> courtSchedules = databaseReader.courtSchedules();
+        assertThat(courtSchedules.size(), is(greaterThanOrEqualTo(1)));
+        for (final CourtSchedule courtSchedule : courtSchedules) {
+            assertThat(courtSchedule.getCourtScheduleId(), is(notNullValue()));
+
+            final java.util.Date localStartTime = TimezoneUtils.utcToLocal(courtSchedule.getSessionStartTime());
+            final java.util.Date localEndTime = TimezoneUtils.utcToLocal(courtSchedule.getSessionEndTime());
+
+            assertThat(sdf.format(localStartTime), is(DEFAULT_AFTERNOON_START_TIME));
+            assertThat(sdf.format(localEndTime), is(DEFAULT_AFTERNOON_END_TIME));
         }
     }
 
     @Test
     void shouldHonourCustomSessionTimesOverRefdataAndDefaults() {
-        // Refdata MONAM allocation says 09:30/12:45 but the request supplies 10:15/12:30
-        // explicitly. The custom times must win over both refdata and the hardcoded defaults.
+        // The organisation-unit stub says defaultStartTime=09:15:00 but the request supplies
+        // 10:15/12:30 explicitly. The custom times must win over both refdata and the hardcoded
+        // defaults.
         final String createCourtSchedulePayload = prepareCreateCourtSchedulePayload("create-court-schedule-with-custom-times-overrides-refdata.json");
         final Response response = postCommand(BASE_RESOURCE_URL, COURT_SCHEDULE_CREATE_CONTENT_TYPE, USER_ID, createCourtSchedulePayload);
         assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
@@ -571,6 +597,22 @@ class CourtSchedulerIT extends AbstractIT {
         final Response response = postCommand(VALIDATE_URL, COURT_SCHEDULE_VALIDATE_CREATE_CONTENT_TYPE, USER_ID, createCourtSchedulePayload);
 
         // Then
+        assertThat(response.getStatus(), is(OK.getStatusCode()));
+        final String responseBody = response.readEntity(String.class);
+        assertThat("Response should be empty JSON object for successful validation", responseBody, is("{}"));
+    }
+
+    @Test
+    void shouldAcceptValidateCreateForCourtroomSharedBetweenCourtCentres() {
+        // Courtroom 77777777-... is nested under BOTH C01CR00 and C45GU00 in the ou-courtrooms
+        // stub; the session targets C45GU00, the LATER of the two memberships. Considering only
+        // one arbitrary membership used to fail this with "belongs to a different court centre".
+        final LocalDate startDate = now().plusDays(1);
+        final String createCourtSchedulePayload = getPayload("validate-create-court-schedule-crown-shared-courtroom.json")
+                .replace("START_DATE", startDate.format(ofPattern("yyyy-MM-dd")));
+
+        final Response response = postCommand(VALIDATE_URL, COURT_SCHEDULE_VALIDATE_CREATE_CONTENT_TYPE, USER_ID, createCourtSchedulePayload);
+
         assertThat(response.getStatus(), is(OK.getStatusCode()));
         final String responseBody = response.readEntity(String.class);
         assertThat("Response should be empty JSON object for successful validation", responseBody, is("{}"));
@@ -5047,7 +5089,7 @@ class CourtSchedulerIT extends AbstractIT {
         String courtHouseId = "785339c1-af71-3322-a55b-ba255e0db1c2";
 
         draftSession.setCourtScheduleId(courtScheduleId.toString());
-        draftSession.setBusinessType("FWT");
+        draftSession.setBusinessType("LGT");
         draftSession.setSlotBased(true);
         draftSession.setMaxSlots(15);
         draftSession.setAvailableSlots(10); // Some slots booked
@@ -5072,7 +5114,7 @@ class CourtSchedulerIT extends AbstractIT {
         String updateCourtSchedulePayload = getPayload("update-court-schedule.json");
         updateCourtSchedulePayload = updateCourtSchedulePayload.replace("COURT_SCHEDULE_ID", draftSession.getCourtScheduleId());
         updateCourtSchedulePayload = updateCourtSchedulePayload.replace("COURT_ROOM_ID", newCourtRoomId);
-        updateCourtSchedulePayload = updateCourtSchedulePayload.replace("BUSINESS_TYPE", "FWT");
+        updateCourtSchedulePayload = updateCourtSchedulePayload.replace("BUSINESS_TYPE", "LGT");
         updateCourtSchedulePayload = updateCourtSchedulePayload.replace("SESSION_TYPE", AM_SESSION);
         updateCourtSchedulePayload = updateCourtSchedulePayload.replace("PANEL", "ADULT");
         updateCourtSchedulePayload = updateCourtSchedulePayload.replace("\"jurisdiction\": \"MAGISTRATES\"", "\"jurisdiction\": \"CROWN\"");
@@ -5095,7 +5137,7 @@ class CourtSchedulerIT extends AbstractIT {
         String courtHouseId = "785339c1-af71-3322-a55b-ba255e0db1c2";
 
         draftSession.setCourtScheduleId(courtScheduleId.toString());
-        draftSession.setBusinessType("FWT");
+        draftSession.setBusinessType("LGT");
         draftSession.setSlotBased(true);
         draftSession.setMaxSlots(15);
         draftSession.setAvailableSlots(10); // Some slots booked
@@ -5120,7 +5162,7 @@ class CourtSchedulerIT extends AbstractIT {
         String updateCourtSchedulePayload = getPayload("update-court-schedule.json");
         updateCourtSchedulePayload = updateCourtSchedulePayload.replace("COURT_SCHEDULE_ID", draftSession.getCourtScheduleId());
         updateCourtSchedulePayload = updateCourtSchedulePayload.replace("COURT_ROOM_ID", courtRoomId);
-        updateCourtSchedulePayload = updateCourtSchedulePayload.replace("BUSINESS_TYPE", "FWT");
+        updateCourtSchedulePayload = updateCourtSchedulePayload.replace("BUSINESS_TYPE", "LGT");
         updateCourtSchedulePayload = updateCourtSchedulePayload.replace("SESSION_TYPE", AM_SESSION);
         updateCourtSchedulePayload = updateCourtSchedulePayload.replace("PANEL", "ADULT");
         updateCourtSchedulePayload = updateCourtSchedulePayload.replace("\"jurisdiction\": \"MAGISTRATES\"", "\"jurisdiction\": \"CROWN\"");
@@ -5144,7 +5186,7 @@ class CourtSchedulerIT extends AbstractIT {
         String courtHouseId = "785339c1-af71-3322-a55b-ba255e0db1c2";
 
         draftSession.setCourtScheduleId(draftSessionId.toString());
-        draftSession.setBusinessType("FWT");
+        draftSession.setBusinessType("LGT");
         draftSession.setSlotBased(true);
         draftSession.setMaxSlots(15);
         draftSession.setAvailableSlots(10); // Some slots booked

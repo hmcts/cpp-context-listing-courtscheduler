@@ -8,6 +8,7 @@ import static java.util.Objects.nonNull;
 
 
 import static org.apache.commons.collections.CollectionUtils.isEmpty;
+import static org.apache.commons.lang3.StringUtils.isBlank;
 
 
 import static uk.gov.moj.cpp.courtscheduler.common.exception.MissingDataError.CREATE_SESSIONS_COURTROOM_NOT_FOUND;
@@ -21,6 +22,7 @@ import uk.gov.moj.cpp.courtscheduler.domain.BusinessType;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoomSessionAllocation;
 import uk.gov.moj.cpp.courtscheduler.domain.Judiciary;
+import uk.gov.moj.cpp.courtscheduler.domain.OrganisationUnit;
 import uk.gov.moj.cpp.courtscheduler.domain.Venue;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog;
 
@@ -65,6 +67,7 @@ public class ReferenceDataService {
     private static final String JUDICIARIES_PATH = REFERENCEDATA_BASE_PATH + "/judiciaries";
     private static final String COURT_ROOM_SESSION_ALLOCATIONS_PATH = REFERENCEDATA_BASE_PATH + "/courtroom-session-allocations";
     private static final String OU_COURT_ROOMS_PATH = REFERENCEDATA_BASE_PATH + "/courtrooms";
+    private static final String ORGANISATION_UNITS_PATH_PREFIX = REFERENCEDATA_BASE_PATH + "/organisation-units/";
 
     private static final String ACCEPT_PUBLIC_HOLIDAYS = "application/vnd.referencedata.query.public-holidays+json";
     private static final String ACCEPT_ROTA_BUSINESS_TYPES = "application/vnd.referencedata.query.rota-business-types+json";
@@ -78,6 +81,7 @@ public class ReferenceDataService {
     // Verified against the referencedata-query-api RAML and matches the constant
     // cp-court-list-publishing-service uses (ACCEPT_OU_COURTROOMS).
     private static final String ACCEPT_OU_COURT_ROOMS = "application/vnd.referencedata.ou-courtrooms+json";
+    private static final String ACCEPT_ORGANISATION_UNIT = "application/vnd.referencedata.query.organisation-unit+json";
 
     private static final String PUBLIC_HOLIDAYS = "publicHolidays";
     private static final String DATE = "date";
@@ -425,6 +429,34 @@ public class ReferenceDataService {
 
 
         return courtRoomSessionAllocations;
+    }
+
+    /**
+     * Looks up a court centre (organisation unit) by its UUID and returns its configured default
+     * session start time. Returns {@link Optional#empty()} when the id is blank, the organisation
+     * unit does not exist (referencedata responds 404 — treated as "no default configured", not an
+     * error), or the query yields no payload — callers fall back to the hardcoded per-session-type
+     * default rather than failing the whole session-creation request.
+     */
+    public Optional<OrganisationUnit> getOrganisationUnit(final String organisationUnitId) {
+        if (isBlank(organisationUnitId)) {
+            return Optional.empty();
+        }
+        final JsonObject payload;
+        try {
+            payload = commonPlatformQueryClient.getReferenceData(
+                    ORGANISATION_UNITS_PATH_PREFIX + organisationUnitId, ACCEPT_ORGANISATION_UNIT, Map.of());
+        } catch (final org.springframework.web.client.HttpClientErrorException.NotFound notFound) {
+            LOGGER.debug("No organisation-unit found for id: {} - falling back to hardcoded default", organisationUnitId);
+            return Optional.empty();
+        }
+        if (payload.isEmpty() || !payload.containsKey("id")) {
+            return Optional.empty();
+        }
+        return Optional.of(OrganisationUnit.OrganisationUnitBuilder.anOrganisationUnit()
+                .withId(getStringOrElse(payload, "id", null))
+                .withDefaultStartTime(getStringOrElse(payload, "defaultStartTime", null))
+                .build());
     }
 
     private BusinessType toBusinessType(JsonObject jsonObject) {

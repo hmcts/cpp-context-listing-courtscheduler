@@ -15,7 +15,9 @@ import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.RestPoller.poll;
 import static uk.gov.moj.cpp.courtscheduler.common.Jurisdiction.MAGISTRATES;
-import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.*;
+import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.ALL_DAY;
+import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.AM_SESSION;
+import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.PM_SESSION;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.*;
 import static uk.gov.moj.cpp.platform.test.data.utils.FileUtil.getPayload;
 
@@ -217,6 +219,75 @@ class HearingSlotIT extends AbstractIT {
                     }
                 }
         );
+    }
+
+    // ─── F3: available_duration_mins must not drift when the same hearing is re-listed ──────
+
+    @Test
+    void shouldNotLeakAvailableDurationWhenSameHearingIsReListedInSession() throws Exception {
+        // Every listing enrichment pass re-lists the hearing into its sessions
+        // (list.hearings-in-sessions). Before the F3 fix the re-list deleted the hearing's
+        // allocated_listings rows WITHOUT paying their minutes back into court_schedule while
+        // deducting the new booking again — available_duration_mins leaked the hearing's full
+        // duration on every pass, so sessions falsely reported no availability to every consumer
+        // of the column (crown fallback search, slot search).
+        final String courtScheduleId = randomUUID().toString();
+        final String hearingId = randomUUID().toString();
+        final LocalDate sessionDate = getRandomFutureDateWithinNextYear();
+
+        final CourtSchedule courtSchedule = RANDOM.nextObject(CourtSchedule.class);
+        courtSchedule.setCourtScheduleId(courtScheduleId);
+        courtSchedule.setOuCode("B40IM00");
+        courtSchedule.setCourtRoomNumber(1501);
+        courtSchedule.setCourtRoomName("Luton Magistrates's Court");
+        courtSchedule.setCourtRoomId("87b6ea2a-9d81-3a47-884d-306419431065");
+        courtSchedule.setCourtHouseId("785339c1-af71-3322-a55b-ba255e0db1c2");
+        courtSchedule.setPanel(PanelTypes.ADULT.name());
+        courtSchedule.setSlotBased(false);
+        courtSchedule.setMaxSlots(0);
+        courtSchedule.setSupportAdSplit(false);
+        courtSchedule.setCourtSession("AD");
+        courtSchedule.setMaxDuration(360);
+        courtSchedule.setAvailableDuration(360);
+        courtSchedule.setSessionDate(sessionDate);
+        courtSchedule.setSessionStartTime(combineDateAndTime(sessionDate, "10:00"));
+        courtSchedule.setSessionEndTime(combineDateAndTime(sessionDate, "17:00"));
+        courtSchedule.setIsOverbookingAllowed(false);
+        courtSchedule.setTotalBookedMorning(0);
+        databaseSeeder.insertCourtSchedule(courtSchedule);
+        databaseSeeder.saveJudiciarySchedule(createJudiciaryForSchedule(courtSchedule));
+
+        final String listPayload = jakarta.json.Json.createObjectBuilder()
+                .add("hearingSlots", jakarta.json.Json.createArrayBuilder()
+                        .add(jakarta.json.Json.createObjectBuilder()
+                                .add("hearingId", hearingId)
+                                .add("courtScheduleIds", jakarta.json.Json.createArrayBuilder()
+                                        .add(jakarta.json.Json.createObjectBuilder()
+                                                .add("courtScheduleId", courtScheduleId)
+                                                .add("hearingStartTime", toLocalDateTimeString(sessionDate.atTime(10, 0)))
+                                                .add("durationInMinutes", 60)))))
+                .build()
+                .toString();
+
+        // First list: books 60 minutes → 300 remaining.
+        final Response first = postCommand("/hearings",
+                "application/vnd.courtscheduler.list.hearings-in-sessions+json", SYSTEM_USER_ID, listPayload);
+        assertThat(first.getStatus(), is(OK.getStatusCode()));
+        assertThat(databaseReader.courtScheduleById(courtScheduleId).getAvailableDuration(), is(300));
+
+        // Re-list of the SAME hearing into the SAME session (what every enrichment pass does):
+        // the prior 60 minutes must be paid back before the new 60 are charged — still 300,
+        // not the pre-fix 240.
+        final Response second = postCommand("/hearings",
+                "application/vnd.courtscheduler.list.hearings-in-sessions+json", SYSTEM_USER_ID, listPayload);
+        assertThat(second.getStatus(), is(OK.getStatusCode()));
+        assertThat("capacity charged exactly once across re-lists — no drift",
+                databaseReader.courtScheduleById(courtScheduleId).getAvailableDuration(), is(300));
+
+        final long hearingRows = databaseReader.allocatedListings().stream()
+                .filter(al -> hearingId.equals(al.getHearingId()))
+                .count();
+        assertThat("exactly one allocated_listings row for the hearing after re-list", hearingRows, is(1L));
     }
 
     @Test

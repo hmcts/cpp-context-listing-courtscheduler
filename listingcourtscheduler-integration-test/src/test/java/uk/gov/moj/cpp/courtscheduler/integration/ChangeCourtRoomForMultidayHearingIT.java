@@ -169,6 +169,36 @@ class ChangeCourtRoomForMultidayHearingIT extends AbstractIT {
                 databaseReader.courtScheduleById(d2).getAvailableDuration(), is(DURATION_MINUTES));
     }
 
+    @Test
+    void shouldBookIntoFullNonOverbookableTargetSession_whenOverbookingExempt() throws Exception {
+        final String centreId = UUID.randomUUID().toString();
+        final String room1 = UUID.randomUUID().toString();
+        final String room2 = UUID.randomUUID().toString();
+        final String hearingId = UUID.randomUUID().toString();
+        final LocalDate day1 = LocalDate.now().plusDays(60);
+        final LocalDate day2 = day1.plusDays(1);
+
+        final String d1 = seedSession(day1, room1, "CR", centreId, "OU-CRN13", "CROWN", DURATION_MINUTES);
+        final String d2 = seedSession(day2, room1, "CR", centreId, "OU-CRN13", "CROWN", DURATION_MINUTES);
+        // room2 day2 target is fully committed (0 available) and non-overbookable - previously rejected with 422.
+        final String d2b = seedSession(day2, room2, "CR", centreId, "OU-CRN13", "CROWN", 0);
+
+        book(hearingId, d1, day1, DURATION_MINUTES);
+        book(hearingId, d2, day2, DURATION_MINUTES);
+        book(UUID.randomUUID().toString(), d2b, day2, DURATION_MINUTES);
+
+        final Response response = callChangeCourtRoom(hearingId, dayEntry(day2, d2b, DURATION_MINUTES));
+
+        assertThat(response.getStatus(), is(OK.getStatusCode()));
+        final String payload = body(response);
+        assertThat(payload, containsString("\"source\":\"CHANGE_COURT_ROOM_MULTIDAY\""));
+        assertThat(extractAllocatedScheduleIds(payload), hasItem(d2b));
+        assertThat("day2 moved into the full, non-overbookable room2 session (court-calendar overbooking exempt)",
+                bookedScheduleIds(hearingId), containsInAnyOrder(d1, d2b));
+        assertThat("overbooked change-courtroom booking records the reason in allocated_listings.source",
+                sourceOf(hearingId, d2b), is("MULTIDAY_COURTROOM_CHANGE"));
+    }
+
     // --- helpers ---
 
     private Response callChangeCourtRoom(final String hearingId, final JsonObjectBuilder... days) {
@@ -207,6 +237,13 @@ class ChangeCourtRoomForMultidayHearingIT extends AbstractIT {
                 .filter(al -> hearingId.equals(al.getHearingId()))
                 .map(AllocatedListing::getCourtScheduleId)
                 .collect(Collectors.toList());
+    }
+
+    private String sourceOf(final String hearingId, final String courtScheduleId) {
+        return databaseReader.allocatedListings().stream()
+                .filter(al -> hearingId.equals(al.getHearingId()) && courtScheduleId.equals(al.getCourtScheduleId()))
+                .map(AllocatedListing::getSource)
+                .findFirst().orElse(null);
     }
 
     private static String body(final Response response) {

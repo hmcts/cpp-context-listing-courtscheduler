@@ -1,16 +1,14 @@
 {
   "sessions": [
     {
-      "courtCentreId": "99999999-8888-7777-6666-555555555555",
-      "courtRoomId": "44444444-5555-6666-7777-888888888888",
-      "sessionType": "AM",
+      "courtCentreId": "22c69328-70af-3e27-80c5-1a79e24903d2",
+      "courtRoomId": "a1b2c3d4-e5f6-3a7b-8c9d-0e1f2a3b4c5d",
+      "sessionType": "PM",
       "businessType": "TRL",
       "duration": 20,
       "panel": "YOUTH",
       "repeatDays": [
-        "Monday",
-        "Wednesday",
-        "Friday"
+        "Monday"
       ],
       "isOverbookingAllowed": true,
       "jurisdiction": "MAGISTRATES"
