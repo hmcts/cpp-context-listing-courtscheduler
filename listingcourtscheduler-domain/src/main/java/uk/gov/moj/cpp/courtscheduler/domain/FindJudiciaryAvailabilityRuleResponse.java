@@ -14,7 +14,7 @@ public class FindJudiciaryAvailabilityRuleResponse {
     public FindJudiciaryAvailabilityRuleResponse() {
     }
 
-    public FindJudiciaryAvailabilityRuleResponse(List<JudiciaryAvailabilityRuleResponse> rules, Integer totalCount, Integer pageNumber, Integer pageSize) {
+    public FindJudiciaryAvailabilityRuleResponse(final List<JudiciaryAvailabilityRuleResponse> rules, final Integer totalCount, final Integer pageNumber, final Integer pageSize) {
         this.rules = rules;
         this.totalCount = totalCount;
         this.pageNumber = pageNumber;
@@ -25,7 +25,7 @@ public class FindJudiciaryAvailabilityRuleResponse {
         return this.rules;
     }
 
-    public void setRules(List<JudiciaryAvailabilityRuleResponse> rules) {
+    public void setRules(final List<JudiciaryAvailabilityRuleResponse> rules) {
         this.rules = rules;
     }
 
@@ -33,7 +33,7 @@ public class FindJudiciaryAvailabilityRuleResponse {
         return this.totalCount;
     }
 
-    public void setTotalCount(Integer totalCount) {
+    public void setTotalCount(final Integer totalCount) {
         this.totalCount = totalCount;
     }
 
@@ -41,7 +41,7 @@ public class FindJudiciaryAvailabilityRuleResponse {
         return this.pageNumber;
     }
 
-    public void setPageNumber(Integer pageNumber) {
+    public void setPageNumber(final Integer pageNumber) {
         this.pageNumber = pageNumber;
     }
 
@@ -49,7 +49,7 @@ public class FindJudiciaryAvailabilityRuleResponse {
         return this.pageSize;
     }
 
-    public void setPageSize(Integer pageSize) {
+    public void setPageSize(final Integer pageSize) {
         this.pageSize = pageSize;
     }
 
@@ -57,12 +57,12 @@ public class FindJudiciaryAvailabilityRuleResponse {
         return this.judiciaries;
     }
 
-    public void setJudiciaries(List<Judiciary> judiciaries) {
+    public void setJudiciaries(final List<Judiciary> judiciaries) {
         this.judiciaries = judiciaries;
     }
 
     @Override
-    public boolean equals(Object o) {
+    public boolean equals(final Object o) {
         if (this == o) {
             return true;
         }

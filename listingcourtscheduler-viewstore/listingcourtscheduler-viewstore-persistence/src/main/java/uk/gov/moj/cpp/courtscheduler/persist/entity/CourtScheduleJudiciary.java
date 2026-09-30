@@ -1,14 +1,12 @@
 package uk.gov.moj.cpp.courtscheduler.persist.entity;
 
-import java.util.Date;
+import java.time.Instant;
 import java.util.Objects;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import jakarta.persistence.Temporal;
-import jakarta.persistence.TemporalType;
 
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -33,32 +31,27 @@ public class CourtScheduleJudiciary {
     @Column(name = "judiciary_type", nullable = false)
     private String judiciaryType;
     @Column(name = "is_bench_chairman", nullable = false)
-    private Boolean isBenchChairman;
+    private Boolean benchChairman;
     @Column(name = "is_deputy", nullable = false)
-    private Boolean isDeputy;
+    private Boolean deputy;
     @Column(name = "position")
     private String position;
     @Column(name = "active", nullable = false)
     private Boolean active = true;
     @CreationTimestamp
-    @Temporal(TemporalType.TIMESTAMP)
     @Column(name = "created_on", nullable = false)
-    private java.util.Date createdOn;
+    private Instant createdOn;
 
     @UpdateTimestamp
-    @Temporal(TemporalType.TIMESTAMP)
     @Column(name = "updated_on", nullable = false)
-    private java.util.Date updatedOn;
+    private Instant updatedOn;
 
-    public CourtScheduleJudiciary() {
-        //For JPA
-    }
 
     public CourtScheduleJudiciaryKey getId() {
         return id;
     }
 
-    public void setId(CourtScheduleJudiciaryKey id) {
+    public void setId(final CourtScheduleJudiciaryKey id) {
         this.id = id;
     }
 
@@ -66,7 +59,7 @@ public class CourtScheduleJudiciary {
         return courtListingProfileId;
     }
 
-    public void setCourtListingProfileId(String courtListingProfileId) {
+    public void setCourtListingProfileId(final String courtListingProfileId) {
         this.courtListingProfileId = courtListingProfileId;
     }
 
@@ -74,7 +67,7 @@ public class CourtScheduleJudiciary {
         return rotaJudiciaryId;
     }
 
-    public void setRotaJudiciaryId(String rotaJudiciaryId) {
+    public void setRotaJudiciaryId(final String rotaJudiciaryId) {
         this.rotaJudiciaryId = rotaJudiciaryId;
     }
 
@@ -82,7 +75,7 @@ public class CourtScheduleJudiciary {
         return title;
     }
 
-    public void setTitle(String title) {
+    public void setTitle(final String title) {
         this.title = title;
     }
 
@@ -90,7 +83,7 @@ public class CourtScheduleJudiciary {
         return forenames;
     }
 
-    public void setForenames(String forenames) {
+    public void setForenames(final String forenames) {
         this.forenames = forenames;
     }
 
@@ -98,7 +91,7 @@ public class CourtScheduleJudiciary {
         return surname;
     }
 
-    public void setSurname(String surname) {
+    public void setSurname(final String surname) {
         this.surname = surname;
     }
 
@@ -106,7 +99,7 @@ public class CourtScheduleJudiciary {
         return email;
     }
 
-    public void setEmail(String email) {
+    public void setEmail(final String email) {
         this.email = email;
     }
 
@@ -114,60 +107,60 @@ public class CourtScheduleJudiciary {
         return judiciaryType;
     }
 
-    public void setJudiciaryType(String judiciaryType) {
+    public void setJudiciaryType(final String judiciaryType) {
         this.judiciaryType = judiciaryType;
     }
 
-    public Boolean getBenchChairman() {
-        return isBenchChairman;
+    public Boolean isBenchChairman() {
+        return benchChairman;
     }
 
-    public void setBenchChairman(Boolean benchChairman) {
-        isBenchChairman = benchChairman;
+    public void setBenchChairman(final Boolean benchChairman) {
+        this.benchChairman = benchChairman;
     }
 
-    public Boolean getDeputy() {
-        return isDeputy;
+    public Boolean isDeputy() {
+        return deputy;
     }
 
-    public void setDeputy(Boolean deputy) {
-        isDeputy = deputy;
+    public void setDeputy(final Boolean deputy) {
+        this.deputy = deputy;
     }
 
     public String getPosition() {
         return position;
     }
 
-    public void setPosition(String position) {
+    public void setPosition(final String position) {
         this.position = position;
     }
 
-    public Boolean getActive() {
+    public Boolean isActive() {
         return active;
     }
 
-    public void setActive(Boolean active) {
+    public void setActive(final Boolean active) {
         this.active = active;
     }
 
-    public java.util.Date getCreatedOn() {
+    public Instant getCreatedOn() {
         return createdOn;
     }
 
-    public void setCreatedOn(java.util.Date createdOn) {
+    public void setCreatedOn(final Instant createdOn) {
         this.createdOn = createdOn;
     }
 
-    public java.util.Date getUpdatedOn() {
+    public Instant getUpdatedOn() {
         return updatedOn;
     }
 
-    public void setUpdatedOn(java.util.Date updatedOn) {
+    public void setUpdatedOn(final Instant updatedOn) {
         this.updatedOn = updatedOn;
     }
 
     @Override
-    public boolean equals(Object o) {
+    public boolean equals(final Object o) {
         if (this == o) {
             return true;
         }
@@ -194,8 +187,8 @@ public class CourtScheduleJudiciary {
                 ", surname='" + surname + '\'' +
                 ", email='" + email + '\'' +
                 ", judiciaryType='" + judiciaryType + '\'' +
-                ", isBenchChairman=" + isBenchChairman +
-                ", isDeputy=" + isDeputy +
+                ", isBenchChairman=" + benchChairman +
+                ", isDeputy=" + deputy +
                 ", position='" + position + '\'' +
                 ", active=" + active +
                 ", createdOn=" + createdOn +
@@ -216,8 +209,8 @@ public class CourtScheduleJudiciary {
         private Boolean isDeputy;
         private String position;
         private Boolean active;
-        private Date createdOn;
-        private Date updatedOn;
+        private Instant createdOn;
+        private Instant updatedOn;
 
         private CourtScheduleJudiciaryBuilder() {
         }
@@ -226,78 +219,78 @@ public class CourtScheduleJudiciary {
             return new CourtScheduleJudiciaryBuilder();
         }
 
-        public CourtScheduleJudiciaryBuilder withId(CourtScheduleJudiciaryKey id) {
+        public CourtScheduleJudiciaryBuilder withId(final CourtScheduleJudiciaryKey id) {
             this.id = id;
             return this;
         }
 
-        public CourtScheduleJudiciaryBuilder withCourtListingProfileId(String courtListingProfileId) {
+        public CourtScheduleJudiciaryBuilder withCourtListingProfileId(final String courtListingProfileId) {
             this.courtListingProfileId = courtListingProfileId;
             return this;
         }
 
-        public CourtScheduleJudiciaryBuilder withRotaJudiciaryId(String rotaJudiciaryId) {
+        public CourtScheduleJudiciaryBuilder withRotaJudiciaryId(final String rotaJudiciaryId) {
             this.rotaJudiciaryId = rotaJudiciaryId;
             return this;
         }
 
-        public CourtScheduleJudiciaryBuilder withTitle(String title) {
+        public CourtScheduleJudiciaryBuilder withTitle(final String title) {
             this.title = title;
             return this;
         }
 
-        public CourtScheduleJudiciaryBuilder withForenames(String forenames) {
+        public CourtScheduleJudiciaryBuilder withForenames(final String forenames) {
             this.forenames = forenames;
             return this;
         }
 
-        public CourtScheduleJudiciaryBuilder withSurname(String surname) {
+        public CourtScheduleJudiciaryBuilder withSurname(final String surname) {
             this.surname = surname;
             return this;
         }
 
-        public CourtScheduleJudiciaryBuilder withEmail(String email) {
+        public CourtScheduleJudiciaryBuilder withEmail(final String email) {
             this.email = email;
             return this;
         }
 
-        public CourtScheduleJudiciaryBuilder withJudiciaryType(String judiciaryType) {
+        public CourtScheduleJudiciaryBuilder withJudiciaryType(final String judiciaryType) {
             this.judiciaryType = judiciaryType;
             return this;
         }
 
-        public CourtScheduleJudiciaryBuilder withIsBenchChairman(Boolean isBenchChairman) {
+        public CourtScheduleJudiciaryBuilder withIsBenchChairman(final Boolean isBenchChairman) {
             this.isBenchChairman = isBenchChairman;
             return this;
         }
 
-        public CourtScheduleJudiciaryBuilder withIsDeputy(Boolean isDeputy) {
+        public CourtScheduleJudiciaryBuilder withIsDeputy(final Boolean isDeputy) {
             this.isDeputy = isDeputy;
             return this;
         }
 
-        public CourtScheduleJudiciaryBuilder withPosition(String position) {
+        public CourtScheduleJudiciaryBuilder withPosition(final String position) {
             this.position = position;
             return this;
         }
 
-        public CourtScheduleJudiciaryBuilder withActive(Boolean active) {
+        public CourtScheduleJudiciaryBuilder withActive(final Boolean active) {
             this.active = active;
             return this;
         }
 
-        public CourtScheduleJudiciaryBuilder withCreatedOn(Date createdOn) {
+        public CourtScheduleJudiciaryBuilder withCreatedOn(final Instant createdOn) {
             this.createdOn = createdOn;
             return this;
         }
 
-        public CourtScheduleJudiciaryBuilder withUpdatedOn(Date updatedOn) {
+        public CourtScheduleJudiciaryBuilder withUpdatedOn(final Instant updatedOn) {
             this.updatedOn = updatedOn;
             return this;
         }
 
         public CourtScheduleJudiciary build() {
-            CourtScheduleJudiciary courtScheduleJudiciary = new CourtScheduleJudiciary();
+            final CourtScheduleJudiciary courtScheduleJudiciary = new CourtScheduleJudiciary();
             courtScheduleJudiciary.setId(id);
             courtScheduleJudiciary.setCourtListingProfileId(courtListingProfileId);
             courtScheduleJudiciary.setRotaJudiciaryId(rotaJudiciaryId);
@@ -310,8 +303,8 @@ public class CourtScheduleJudiciary {
             courtScheduleJudiciary.setActive(active);
             courtScheduleJudiciary.setCreatedOn(createdOn);
             courtScheduleJudiciary.setUpdatedOn(updatedOn);
-            courtScheduleJudiciary.isDeputy = this.isDeputy;
-            courtScheduleJudiciary.isBenchChairman = this.isBenchChairman;
+            courtScheduleJudiciary.deputy = this.isDeputy;
+            courtScheduleJudiciary.benchChairman = this.isBenchChairman;
             return courtScheduleJudiciary;
         }
     }

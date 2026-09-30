@@ -43,7 +43,7 @@ class SessionAvailabilityTest {
     }
 
     @Test
-    void getEffectiveAvailableDurationShouldHandleAllDaySplit() {
+    void effectiveAvailableDurationShouldHandleAllDaySplit() {
         final CourtSchedule split = new CourtSchedule();
         split.setAllDaySplit(true);
         split.setMaxDurationForMorning(180);
@@ -55,7 +55,7 @@ class SessionAvailabilityTest {
     }
 
     @Test
-    void getNextBusinessDayShouldSkipSaturdayAndSunday() {
+    void nextBusinessDayShouldSkipSaturdayAndSunday() {
         assertEquals(LocalDate.of(2026, 3, 9), SessionAvailability.getNextBusinessDay(LocalDate.of(2026, 3, 6)));
         assertEquals(LocalDate.of(2026, 3, 9), SessionAvailability.getNextBusinessDay(LocalDate.of(2026, 3, 7)));
         assertEquals(LocalDate.of(2026, 3, 9), SessionAvailability.getNextBusinessDay(LocalDate.of(2026, 3, 8)));

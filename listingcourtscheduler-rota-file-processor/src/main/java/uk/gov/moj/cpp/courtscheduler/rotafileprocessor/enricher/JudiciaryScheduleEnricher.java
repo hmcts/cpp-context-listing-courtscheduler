@@ -114,7 +114,7 @@ public class JudiciaryScheduleEnricher {
             }
         }
         final long enrichmentEnd = System.nanoTime();
-        logger.info("PRF: Time taken for judiciary enrichment : {}", (enrichmentEnd - enrichmentStart) / 1000000);
+        logger.info("PRF: Time taken for judiciary enrichment : {}", (enrichmentEnd - enrichmentStart) / 1_000_000);
 
         return courtScheduleJudiciarySchedules;
     }
@@ -135,7 +135,7 @@ public class JudiciaryScheduleEnricher {
             return;
         }
 
-        final Optional<uk.gov.moj.cpp.courtscheduler.domain.Judiciary> judiciaryFromMapper = referenceDataMapperService.findByEmail(email);
+        final Optional<Judiciary> judiciaryFromMapper = referenceDataMapperService.findByEmail(email);
 
         if (judiciaryFromMapper.isPresent()) {
             final Judiciary judiciary = judiciaryFromMapper.get();

@@ -2,9 +2,6 @@ package uk.gov.moj.cpp.courtscheduler.common.exception;
 
 public class ErrorMessages {
 
-    private ErrorMessages() {
-    }
-
     public static final String DUPLICATE_SESSIONS = "Session to be added has a duplicate";
     public static final String SESSION_EDIT_ANOTHER_USER = "This session is being edited by another user. Your changes cannot be saved so please try again later.";
     public static final String SESSION_NOT_FOUND = "Court Session not found";
@@ -30,4 +27,7 @@ public class ErrorMessages {
     public static final String SESSION_START_TIME_CANNOT_BE_CHANGED_TO_AFTER_HEARING_TIME = MIN_HEARING_TIME_AFTER_SESSION_START_TIME;
     public static final String SESSION_END_TIME_CANNOT_BE_CHANGED_TO_BEFORE_HEARING_TIME = "Session End Time can not be updated to a time that is before than the maximum hearing time";
     public static final String SESSION_IN_PAST_CANNOT_BE_EDITED = "Cannot edit a session that is in the past";
+
+    private ErrorMessages() {
+    }
 }

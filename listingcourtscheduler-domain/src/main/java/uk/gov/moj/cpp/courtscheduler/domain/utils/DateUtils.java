@@ -17,15 +17,16 @@ import java.sql.Timestamp;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.DayOfWeek;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.TextStyle;
-import java.util.Calendar;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.TimeZone;
@@ -46,7 +47,14 @@ public class DateUtils {
     public static final String DEFAULT_AFTERNOON_END_TIME = "17:00";
     public static final String DEFAULT_ALL_DAY_START_TIME = "10:00";
     public static final String DEFAULT_ALL_DAY_END_TIME = "17:00";
-    public static final DateTimeFormatter dtf = DateTimeFormatter.ofPattern(ISO_8601_PATTERN);
+    public static final DateTimeFormatter DTF = DateTimeFormatter.ofPattern(ISO_8601_PATTERN);
+    private static final DateTimeFormatter LEGACY_MINUTE_FORMATTER =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm'Z'", Locale.UK).withZone(ZoneId.systemDefault());
+    private static final DateTimeFormatter LEGACY_EXTENDED_FORMATTER =
+            DateTimeFormatter.ofPattern(ISO_8601_PATTERN, Locale.UK).withZone(ZoneId.systemDefault());
+    private static final DateTimeFormatter HOUR_MINUTE_FORMATTER =
+            DateTimeFormatter.ofPattern("HH:mm", Locale.UK).withZone(ZoneId.systemDefault());
+    private static final int ISO_DATE_LENGTH = 10;
 
 
     private DateUtils() {
@@ -115,78 +123,81 @@ public class DateUtils {
         return dateTimeOffset.format(ISO_8601_FORMATTER);
     }
 
-    public static String toIsoString(final Timestamp timestamp) {
-        if (timestamp == null) {
+    /**
+     * Formats an instant the way the legacy {@code java.sql.Timestamp}-based {@code toIsoString}
+     * did: {@code timestamp.toLocalDateTime()} reads the wall-clock fields in the JVM's default
+     * timezone, which are then labelled as UTC. Preserved here exactly (bug-for-bug) via the JVM
+     * default zone so behaviour for existing callers is unchanged.
+     */
+    public static String toIsoString(final Instant instant) {
+        if (instant == null) {
             return null;
         }
-        return timestamp.toLocalDateTime().atOffset(ZoneOffset.UTC).format(ISO_8601_FORMATTER);
+        return LEGACY_EXTENDED_FORMATTER.format(instant);
     }
 
-    public static String toIsoString(final java.util.Date date) {
-        if (date == null) {
+    /**
+     * Minute-precision variant used by the MI reporting DTOs, replicating the legacy
+     * {@code SimpleDateFormat("yyyy-MM-dd'T'HH:mm'Z'")} (no explicit timezone, i.e. JVM default)
+     * behaviour exactly.
+     */
+    public static String toIsoStringMinutes(final Instant instant) {
+        if (instant == null) {
             return null;
         }
-
-        return new SimpleDateFormat("yyyy-MM-dd'T'HH:mm'Z'").format(date);
+        return LEGACY_MINUTE_FORMATTER.format(instant);
     }
 
-    public static String toIsoStringExtended(final java.util.Date date) {
-        if (date == null) {
+    public static String toIsoStringExtended(final Instant instant) {
+        if (instant == null) {
             return null;
         }
-
-        return new SimpleDateFormat(ISO_8601_PATTERN).format(date);
+        return LEGACY_EXTENDED_FORMATTER.format(instant);
     }
 
-    public static String toResponseDateString(final java.util.Date date) {
-        if (date == null) {
+    public static String toResponseDateString(final Instant instant) {
+        if (instant == null) {
             return null;
         }
         // Convert to response json format
-        SimpleDateFormat sdf = new SimpleDateFormat(ISO_8601_PATTERN);
-        sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
-        return sdf.format(date);
+        return ISO_8601_FORMATTER.format(instant);
     }
 
-    public static String toResponseDateStringISO(final java.util.Date date) {
-        if (date == null) {
+    public static String toResponseDateStringISO(final Instant instant) {
+        if (instant == null) {
             return null;
         }
         // Convert to response json format
-        SimpleDateFormat sdf = new SimpleDateFormat(ISO_8601_PATTERN);
-        sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
-        return sdf.format(date);
+        return ISO_8601_FORMATTER.format(instant);
     }
 
     public static String toResponseDateStringWithoutMillis(final String isoDate) {
         if (isoDate == null) {
             return null;
         }
-        OffsetDateTime dateTime = OffsetDateTime.parse(isoDate);
-        DateTimeFormatter formatterWithoutMillis = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssX");
+        final OffsetDateTime dateTime = OffsetDateTime.parse(isoDate);
+        final DateTimeFormatter formatterWithoutMillis = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssX");
 
         return dateTime.format(formatterWithoutMillis);
     }
 
-    public static String toLocalDateTimeString(final java.time.LocalDateTime localDateTime) {
+    public static String toLocalDateTimeString(final LocalDateTime localDateTime) {
         if (localDateTime == null) {
             return null;
         }
 
-        return dtf.format(localDateTime);//"yyyy-MM-dd'T'HH:mm:ss'Z'"
+        return DTF.format(localDateTime);//"yyyy-MM-dd'T'HH:mm:ss'Z'"
     }
 
-    public static Date toSqlDate(String dateString) {
+    public static Date toSqlDate(final String dateString) {
         if (dateString == null) {
             return null;
         }
 
         final int length = dateString.length();
-        if (length > 10) {
-            dateString = dateString.substring(0, 10);
-        }
+        final String normalisedDateString = length > ISO_DATE_LENGTH ? dateString.substring(0, ISO_DATE_LENGTH) : dateString;
 
-        return Date.valueOf(dateString);
+        return Date.valueOf(normalisedDateString);
     }
 
     public static Date toSqlDate(final LocalDate localDate) {
@@ -197,17 +208,17 @@ public class DateUtils {
     }
 
 
-    public static java.util.Date getDate(LocalDate localDate) {
+    public static java.util.Date getDate(final LocalDate localDate) {
         try {
-            return new SimpleDateFormat("yyyy-MM-dd").parse(localDate.toString());
+            return new SimpleDateFormat("yyyy-MM-dd", Locale.UK).parse(localDate.toString());
         } catch (ParseException e) {
             throw new IllegalArgumentException(String.format("Passed localDate:%s cannot be parsed with format:yyyy-MM-dd", localDate));
         }
     }
 
-    public static java.util.Date getDate(String dateString) {
+    public static java.util.Date getDate(final String dateString) {
         try {
-            SimpleDateFormat isoFormat = new SimpleDateFormat(ISO_8601_PATTERN);
+            final SimpleDateFormat isoFormat = new SimpleDateFormat(ISO_8601_PATTERN, Locale.UK);
             isoFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
             return isoFormat.parse(dateString);
         } catch (ParseException e) {
@@ -302,60 +313,59 @@ public class DateUtils {
             throw new IllegalArgumentException("Date cannot be null");
         }
 
-        LocalTime localTime = LocalTime.parse(time, TIME_FORMATTER);
+        final LocalTime localTime = LocalTime.parse(time, TIME_FORMATTER);
 
         // Convert LocalDate and LocalTime to ZonedDateTime in London timezone, then convert to UTC
-        ZonedDateTime zonedDateTime = LocalDateTime.of(date, localTime).atZone(LONDON_ZONE).withZoneSameInstant(ZoneOffset.UTC);
+        final ZonedDateTime zonedDateTime = LocalDateTime.of(date, localTime).atZone(LONDON_ZONE).withZoneSameInstant(ZoneOffset.UTC);
 
-        Calendar calendar = new Calendar.Builder()
-                .setDate(zonedDateTime.getYear(), zonedDateTime.getMonthValue() - 1, zonedDateTime.getDayOfMonth())
-                .setTimeOfDay(zonedDateTime.getHour(), zonedDateTime.getMinute(), zonedDateTime.getSecond())
-                .build();
-
-        // Convert to Date
-        return calendar.getTime();
+        // Re-interpret the UTC wall-clock fields in the JVM default timezone: this replicates the
+        // previous Calendar.Builder-based construction exactly, since Calendar.Builder#setDate/
+        // #setTimeOfDay build the Calendar in the default timezone rather than UTC.
+        return java.util.Date.from(zonedDateTime.toLocalDateTime().atZone(ZoneId.systemDefault()).toInstant());
     }
 
     public static LocalTime toLocalTime(final String time) {
         return LocalTime.parse(time, TIME_FORMATTER);
     }
 
-    public static String sessionTimeFormatter(java.util.Date date) {
-        return new SimpleDateFormat("HH:mm").format(date);
+    public static String sessionTimeFormatter(final Instant instant) {
+        return HOUR_MINUTE_FORMATTER.format(instant);
     }
 
-    public static SessionStartAndEndTime getOrElseDefaultSessionStartAndEndTimeIfEmpty(final String sessionType, String sessionStartTime, String sessionEndTime) {
-        if (isEmpty(sessionStartTime)) {
+    public static SessionStartAndEndTime getOrElseDefaultSessionStartAndEndTimeIfEmpty(final String sessionType, final String sessionStartTime, final String sessionEndTime) {
+        String resolvedStartTime = sessionStartTime;
+        if (isEmpty(resolvedStartTime)) {
             switch (sessionType) {
                 case AM_SESSION:
-                    sessionStartTime = DEFAULT_MORNING_START_TIME;
+                    resolvedStartTime = DEFAULT_MORNING_START_TIME;
                     break;
                 case PM_SESSION:
-                    sessionStartTime = DEFAULT_AFTERNOON_START_TIME;
+                    resolvedStartTime = DEFAULT_AFTERNOON_START_TIME;
                     break;
                 case ALL_DAY:
-                    sessionStartTime = DEFAULT_ALL_DAY_START_TIME;
+                    resolvedStartTime = DEFAULT_ALL_DAY_START_TIME;
                     break;
                 default:
                     break;
             }
         }
-        if (isEmpty(sessionEndTime)) {
+        String resolvedEndTime = sessionEndTime;
+        if (isEmpty(resolvedEndTime)) {
             switch (sessionType) {
                 case AM_SESSION:
-                    sessionEndTime = DEFAULT_MORNING_END_TIME;
+                    resolvedEndTime = DEFAULT_MORNING_END_TIME;
                     break;
                 case PM_SESSION:
-                    sessionEndTime = DEFAULT_AFTERNOON_END_TIME;
+                    resolvedEndTime = DEFAULT_AFTERNOON_END_TIME;
                     break;
                 case ALL_DAY:
-                    sessionEndTime = DEFAULT_ALL_DAY_END_TIME;
+                    resolvedEndTime = DEFAULT_ALL_DAY_END_TIME;
                     break;
                 default:
                     break;
             }
         }
-        return new SessionStartAndEndTime(sessionStartTime, sessionEndTime);
+        return new SessionStartAndEndTime(resolvedStartTime, resolvedEndTime);
     }
 
     public record SessionStartAndEndTime(String sessionStartTime, String sessionEndTime) {
@@ -367,17 +377,17 @@ public class DateUtils {
      * @return LocalDate in the future within next 365 days
      */
     public static LocalDate getRandomFutureDateWithinNextYear() {
-        LocalDate today = LocalDate.now();
-        LocalDate nextYear = today.plusYears(1);
+        final LocalDate today = LocalDate.now();
+        final LocalDate nextYear = today.plusYears(1);
 
-        long startEpochDay = today.toEpochDay();
-        long endEpochDay = nextYear.toEpochDay();
+        final long startEpochDay = today.toEpochDay();
+        final long endEpochDay = nextYear.toEpochDay();
 
-        SecureRandom secureRandom = new SecureRandom();
+        final SecureRandom secureRandom = new SecureRandom();
         LocalDate randomDate;
 
         do {
-            long randomDay = startEpochDay + secureRandom.nextLong(endEpochDay - startEpochDay + 1);
+            final long randomDay = startEpochDay + secureRandom.nextLong(endEpochDay - startEpochDay + 1);
             randomDate = LocalDate.ofEpochDay(randomDay);
         } while (randomDate.getDayOfWeek() == DayOfWeek.SATURDAY
                 || randomDate.getDayOfWeek() == DayOfWeek.SUNDAY);

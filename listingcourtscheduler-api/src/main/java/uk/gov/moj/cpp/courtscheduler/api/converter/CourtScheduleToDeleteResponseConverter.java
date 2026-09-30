@@ -12,10 +12,10 @@ import java.util.List;
 public class CourtScheduleToDeleteResponseConverter implements Converter<List<CourtSchedule>, List<CourtScheduleDeleteResponse>> {
 
     @Override
-    public List<CourtScheduleDeleteResponse> convert(List<CourtSchedule> courtSchedules) {
-        List<CourtScheduleDeleteResponse> courtScheduleDeleteResponses = new ArrayList<>();
+    public List<CourtScheduleDeleteResponse> convert(final List<CourtSchedule> courtSchedules) {
+        final List<CourtScheduleDeleteResponse> courtScheduleDeleteResponses = new ArrayList<>();
         courtSchedules.forEach(courtSchedule -> {
-            CourtScheduleDeleteResponse courtScheduleView = new CourtScheduleDeleteResponse.CourtScheduleDeleteResponseBuilder()
+            final CourtScheduleDeleteResponse courtScheduleView = new CourtScheduleDeleteResponse.CourtScheduleDeleteResponseBuilder()
                     .withCourtScheduleId(courtSchedule.getCourtScheduleId())
                     .withActive(courtSchedule.isActive())
                     .withSlotBased(courtSchedule.isSlotBased())

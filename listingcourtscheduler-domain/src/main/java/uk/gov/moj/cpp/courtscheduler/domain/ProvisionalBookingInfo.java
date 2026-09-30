@@ -1,15 +1,15 @@
 package uk.gov.moj.cpp.courtscheduler.domain;
 
+import java.time.Instant;
 import java.time.LocalDate;
-import java.util.Date;
 import java.util.List;
 
-@SuppressWarnings({"PMD.BeanMembersShouldSerialize", "squid:S2384"})
+@SuppressWarnings("squid:S2384")
 public class ProvisionalBookingInfo extends CourtSchedule {
 
     private String bookingId;
 
-    private Date hearingStartTime;
+    private Instant hearingStartTime;
 
     private ProvisionalBookingInfo(final ProvisionalBookingInfoBuilder builder) {
         super(builder.courtScheduleBuilder);
@@ -21,7 +21,7 @@ public class ProvisionalBookingInfo extends CourtSchedule {
 
     public String getBookingId() { return bookingId; }
 
-    public Date getHearingStartTime() { return hearingStartTime; }
+    public Instant getHearingStartTime() { return hearingStartTime; }
 
     @Override
     public String toString() {
@@ -33,7 +33,7 @@ public class ProvisionalBookingInfo extends CourtSchedule {
 
     public static final class ProvisionalBookingInfoBuilder {
         private String bookingId;
-        private Date hearingStartTime;
+        private Instant hearingStartTime;
         private CourtScheduleBuilder courtScheduleBuilder = new CourtScheduleBuilder();
 
         public ProvisionalBookingInfoBuilder withBookingId(final String bookingId) {
@@ -41,7 +41,7 @@ public class ProvisionalBookingInfo extends CourtSchedule {
             return this;
         }
 
-        public ProvisionalBookingInfoBuilder withHearingStartTime(final Date hearingStartTime) {
+        public ProvisionalBookingInfoBuilder withHearingStartTime(final Instant hearingStartTime) {
             this.hearingStartTime = hearingStartTime;
             return this;
         }

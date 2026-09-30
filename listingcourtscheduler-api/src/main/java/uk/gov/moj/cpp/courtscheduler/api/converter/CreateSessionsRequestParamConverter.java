@@ -40,6 +40,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 import jakarta.json.Json;
 import jakarta.json.JsonArray;
@@ -57,7 +58,7 @@ public class CreateSessionsRequestParamConverter implements Converter<JsonObject
             sessionToBeAdded = convertSession(jsonObject.getJsonObject(RequestParameterConstant.SESSION_TO_BE_ADDED.getLabel()));
         }
 
-        CreateSessionRequestParam.CreateSessionRequestParamBuilder createSessionRequestParamBuilder = CreateSessionRequestParam.CreateSessionRequestParamBuilder.createSessionRequestParam();
+        final CreateSessionRequestParam.CreateSessionRequestParamBuilder createSessionRequestParamBuilder = CreateSessionRequestParam.CreateSessionRequestParamBuilder.createSessionRequestParam();
         createSessionRequestParamBuilder.withSessionList(sessions);
         createSessionRequestParamBuilder.withRepeatPattern(repeatPattern);
         if (nonNull(sessionToBeAdded)) {
@@ -67,10 +68,10 @@ public class CreateSessionsRequestParamConverter implements Converter<JsonObject
         return createSessionRequestParamBuilder.build();
     }
 
-    private List<Session> convertSessions(JsonArray jsonArray) {
-        List<Session> sessions = new ArrayList<>();
-        for (JsonValue jsonValue : jsonArray) {
-            JsonObject jsonObject = (JsonObject) jsonValue;
+    private List<Session> convertSessions(final JsonArray jsonArray) {
+        final List<Session> sessions = new ArrayList<>();
+        for (final JsonValue jsonValue : jsonArray) {
+            final JsonObject jsonObject = (JsonObject) jsonValue;
             if (jsonObject.getJsonArray(REPEAT_DAYS.getLabel()).isEmpty()) {
                 throw new IllegalArgumentException("Repeat days cannot be empty");
             }
@@ -107,7 +108,7 @@ public class CreateSessionsRequestParamConverter implements Converter<JsonObject
         return sessions;
     }
 
-    private Session convertSession(JsonObject jsonObject) {
+    private Session convertSession(final JsonObject jsonObject) {
         final Session.SessionBuilder sessionBuilder = Session.SessionBuilder.session()
                 .withCourtCentreId(jsonObject.getString(COURT_CENTRE_ID.getLabel()))
                 .withCourtRoomId(jsonObject.getString(COURT_ROOM.getLabel()))
@@ -142,14 +143,15 @@ public class CreateSessionsRequestParamConverter implements Converter<JsonObject
         return sessionBuilder.build();
     }
 
-    private RepeatPattern convertRepeatPattern(JsonObject jsonObject) {
+    private RepeatPattern convertRepeatPattern(final JsonObject jsonObject) {
         final String startDateStr = jsonObject.getString(START_DATE.getLabel());
-        String endDateStr = jsonObject.getString(END_DATE.getLabel(), null);
-        
+        final String rawEndDateStr = jsonObject.getString(END_DATE.getLabel(), null);
+
         // Treat placeholder values as null
-        if (endDateStr != null && (endDateStr.equals("END_DATE") || endDateStr.trim().isEmpty())) {
-            endDateStr = null;
-        }
+        final String endDateStr = (rawEndDateStr != null
+                && !"END_DATE".equals(rawEndDateStr) && !rawEndDateStr.isBlank())
+                ? rawEndDateStr
+                : null;
 
         final LocalDate startDate = parseDateOrThrow(startDateStr, true);
         final LocalDate endDate = endDateStr != null ? parseDateOrThrow(endDateStr, false) : null;
@@ -161,7 +163,7 @@ public class CreateSessionsRequestParamConverter implements Converter<JsonObject
         }
 
         return RepeatPattern.RepeatPatternBuilder.repeatPattern()
-                .withFrequency(RepeatFrequency.valueOf(jsonObject.getString(RequestParameterConstant.REPEAT_FREQUENCY.getLabel()).trim().toUpperCase()))
+                .withFrequency(RepeatFrequency.valueOf(jsonObject.getString(RequestParameterConstant.REPEAT_FREQUENCY.getLabel()).trim().toUpperCase(Locale.ROOT)))
                 .withRepeatFor(jsonObject.getInt(RequestParameterConstant.REPEAT_FOR.getLabel()))
                 .withStartDate(startDate)
                 .withEndDate(endDate)

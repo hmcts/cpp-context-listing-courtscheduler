@@ -8,6 +8,6 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface CourtMigrationRepository extends JpaRepository<CourtSchedulerMigrationStatus, String> {
 
-     CourtSchedulerMigrationStatus findByOuCode(final String ouCode);
-     CourtSchedulerMigrationStatus findByCourtCentreId(final String courtCentreId);
+     CourtSchedulerMigrationStatus findByOuCode(String ouCode);
+     CourtSchedulerMigrationStatus findByCourtCentreId(String courtCentreId);
 }

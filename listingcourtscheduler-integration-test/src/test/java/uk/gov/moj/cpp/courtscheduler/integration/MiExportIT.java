@@ -19,7 +19,6 @@ import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciaryKey;
 import java.sql.SQLException;
 import java.time.LocalDate;
 import java.util.Map;
-import java.util.UUID;
 
 import jakarta.json.JsonObject;
 
@@ -32,17 +31,17 @@ class MiExportIT extends AbstractIT {
 
     @Test
     void shouldExportCourtSchedules() throws SQLException, JsonProcessingException {
-        LocalDate fromDate = LocalDate.now().minusDays(1);
-        LocalDate toDate = LocalDate.now().plusDays(1);
-        String courtScheduleId = UUID.randomUUID().toString();
-        CourtSchedule expected = RANDOM.nextObject(CourtSchedule.class);
+        final LocalDate fromDate = LocalDate.now().minusDays(1);
+        final LocalDate toDate = LocalDate.now().plusDays(1);
+        final String courtScheduleId = randomUUID().toString();
+        final CourtSchedule expected = RANDOM.nextObject(CourtSchedule.class);
         expected.setCourtScheduleId(courtScheduleId);
 
         String exportMiDataRequestParams = getPayload("courtscheduler.export.mi_data_query.json");
         exportMiDataRequestParams = exportMiDataRequestParams.replace("FROM_DATE", fromDate.toString());
         exportMiDataRequestParams = exportMiDataRequestParams.replace("TO_DATE", toDate.toString());
 
-        Map<String, Object> map = mapper.readValue(exportMiDataRequestParams, new TypeReference<>() {
+        final Map<String, Object> map = mapper.readValue(exportMiDataRequestParams, new TypeReference<>() {
         });
 
         final RequestParams requestParams = getRequestParams("/mi/court_schedules",
@@ -54,7 +53,7 @@ class MiExportIT extends AbstractIT {
 
         assertThat(tempResponseData.getStatus().getStatusCode(), is(OK.getStatusCode()));
 
-        JsonObject jsonObject = stringToJsonObjectConverter.convert(tempResponseData.getPayload());
+        final JsonObject jsonObject = stringToJsonObjectConverter.convert(tempResponseData.getPayload());
 
         assertThat(jsonObject.getJsonArray("courtSchedules").get(0)
                 .asJsonObject().getString("id"), is(courtScheduleId));
@@ -62,20 +61,20 @@ class MiExportIT extends AbstractIT {
 
     @Test
     void shouldExportCourtScheduleJudiciaries() throws Exception {
-        LocalDate fromDate = LocalDate.now().minusDays(1);
-        LocalDate toDate = LocalDate.now().plusDays(1);
-        String courtScheduleId = UUID.randomUUID().toString();
-        CourtSchedule expected = RANDOM.nextObject(CourtSchedule.class);
+        final LocalDate fromDate = LocalDate.now().minusDays(1);
+        final LocalDate toDate = LocalDate.now().plusDays(1);
+        final String courtScheduleId = randomUUID().toString();
+        final CourtSchedule expected = RANDOM.nextObject(CourtSchedule.class);
         expected.setCourtScheduleId(courtScheduleId);
-        CourtScheduleJudiciary courtScheduleJudiciary = RANDOM.nextObject(CourtScheduleJudiciary.class);
-        CourtScheduleJudiciaryKey courtScheduleJudiciaryId = courtScheduleJudiciary.getId();
+        final CourtScheduleJudiciary courtScheduleJudiciary = RANDOM.nextObject(CourtScheduleJudiciary.class);
+        final CourtScheduleJudiciaryKey courtScheduleJudiciaryId = courtScheduleJudiciary.getId();
         courtScheduleJudiciaryId.setCourtScheduleId(courtScheduleId);
 
         String exportMiDataRequestParams = getPayload("courtscheduler.export.mi_data_query.json");
         exportMiDataRequestParams = exportMiDataRequestParams.replace("FROM_DATE", fromDate.toString());
         exportMiDataRequestParams = exportMiDataRequestParams.replace("TO_DATE", toDate.toString());
 
-        Map<String, Object> map = mapper.readValue(exportMiDataRequestParams, new TypeReference<>() {
+        final Map<String, Object> map = mapper.readValue(exportMiDataRequestParams, new TypeReference<>() {
         });
 
         final RequestParams requestParams = getRequestParams("/mi/court_schedule_judiciaries",
@@ -88,7 +87,7 @@ class MiExportIT extends AbstractIT {
 
         assertThat(tempResponseData.getStatus().getStatusCode(), is(OK.getStatusCode()));
 
-        JsonObject jsonObject = stringToJsonObjectConverter.convert(tempResponseData.getPayload());
+        final JsonObject jsonObject = stringToJsonObjectConverter.convert(tempResponseData.getPayload());
 
         assertThat(jsonObject.getJsonArray("courtScheduleJudiciaries").get(0)
                 .asJsonObject().getString("court_schedule_id"), is(courtScheduleId));
@@ -96,12 +95,12 @@ class MiExportIT extends AbstractIT {
 
     @Test
     void shouldExportAllocatedListings() throws Exception {
-        LocalDate fromDate = LocalDate.now().minusDays(1);
-        LocalDate toDate = LocalDate.now().plusDays(1);
-        String courtScheduleId = UUID.randomUUID().toString();
-        CourtSchedule expected = RANDOM.nextObject(CourtSchedule.class);
+        final LocalDate fromDate = LocalDate.now().minusDays(1);
+        final LocalDate toDate = LocalDate.now().plusDays(1);
+        final String courtScheduleId = randomUUID().toString();
+        final CourtSchedule expected = RANDOM.nextObject(CourtSchedule.class);
         expected.setCourtScheduleId(courtScheduleId);
-        AllocatedListing allocatedListing = RANDOM.nextObject(AllocatedListing.class);
+        final AllocatedListing allocatedListing = RANDOM.nextObject(AllocatedListing.class);
         allocatedListing.setId(randomUUID().toString());
         allocatedListing.setCourtScheduleId(courtScheduleId);
 
@@ -109,7 +108,7 @@ class MiExportIT extends AbstractIT {
         exportMiDataRequestParams = exportMiDataRequestParams.replace("FROM_DATE", fromDate.toString());
         exportMiDataRequestParams = exportMiDataRequestParams.replace("TO_DATE", toDate.toString());
 
-        Map<String, Object> map = mapper.readValue(exportMiDataRequestParams, new TypeReference<>() {
+        final Map<String, Object> map = mapper.readValue(exportMiDataRequestParams, new TypeReference<>() {
         });
 
         final RequestParams requestParams = getRequestParams("/mi/allocated_listings",
@@ -122,7 +121,7 @@ class MiExportIT extends AbstractIT {
 
         assertThat(tempResponseData.getStatus().getStatusCode(), is(OK.getStatusCode()));
 
-        JsonObject jsonObject = stringToJsonObjectConverter.convert(tempResponseData.getPayload());
+        final JsonObject jsonObject = stringToJsonObjectConverter.convert(tempResponseData.getPayload());
 
         assertThat(jsonObject.getJsonArray("allocatedListings").get(0)
                 .asJsonObject().getString("court_schedule_id"), is(courtScheduleId));

@@ -16,8 +16,8 @@ public record CrownFallbackResponse(String hearingId,
 
     @Override
     public boolean equals(final Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (this == o) { return true; }
+        if (o == null || getClass() != o.getClass()) { return false; }
         final CrownFallbackResponse that = (CrownFallbackResponse) o;
         return Objects.equals(hearingId, that.hearingId)
                 && Objects.equals(courtScheduleId, that.courtScheduleId)

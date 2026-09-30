@@ -29,6 +29,13 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class VenueCourtRoomHelperTest {
+    private static final String VALUE_100 = "100";
+    private static final String VALUE_200 = "200";
+    private static final String TEST_VENUE = "Test Venue";
+    private static final String LOCATION_ID = "locationId";
+    private static final String VENUE_ID = "venueId";
+    private static final String VENUE_NAME = "venueName";
+
 
     @Mock
     private RotaReferenceDataService referenceDataValidationService;
@@ -55,17 +62,17 @@ class VenueCourtRoomHelperTest {
     @Test
     void shouldGetCourtRoom_WhenAllVenueInformationPresent() {
         // given
-        listingProfile.put("locationId", "100");
-        listingProfile.put("venueId", "200");
-        listingProfile.put("venueName", "Test Venue");
+        listingProfile.put(LOCATION_ID, VALUE_100);
+        listingProfile.put(VENUE_ID, VALUE_200);
+        listingProfile.put(VENUE_NAME, TEST_VENUE);
 
-        Venue venue = new Venue(100, 200, "Test Venue");
+        final Venue venue = new Venue(100, 200, TEST_VENUE);
         when(referenceDataValidationService.validateAndFindVenue(
                 eq(venue), anyMap(), eq(executionId)))
                 .thenReturn(Optional.of(expectedCourtRoom));
 
         // when
-        CourtRoom result = venueCourtRoomHelper.getCourtRoom(
+        final CourtRoom result = venueCourtRoomHelper.getCourtRoom(
                 listingProfile, executionId, missingReferenceDataMappingMap);
 
         // then
@@ -77,11 +84,11 @@ class VenueCourtRoomHelperTest {
     @Test
     void shouldReturnNull_WhenLocationIdMissing() {
         // given
-        listingProfile.put("venueId", "200");
-        listingProfile.put("venueName", "Test Venue");
+        listingProfile.put(VENUE_ID, VALUE_200);
+        listingProfile.put(VENUE_NAME, TEST_VENUE);
 
         // when
-        CourtRoom result = venueCourtRoomHelper.getCourtRoom(
+        final CourtRoom result = venueCourtRoomHelper.getCourtRoom(
                 listingProfile, executionId, missingReferenceDataMappingMap);
 
         // then
@@ -92,11 +99,11 @@ class VenueCourtRoomHelperTest {
     @Test
     void shouldReturnNull_WhenVenueIdMissing() {
         // given
-        listingProfile.put("locationId", "100");
-        listingProfile.put("venueName", "Test Venue");
+        listingProfile.put(LOCATION_ID, VALUE_100);
+        listingProfile.put(VENUE_NAME, TEST_VENUE);
 
         // when
-        CourtRoom result = venueCourtRoomHelper.getCourtRoom(
+        final CourtRoom result = venueCourtRoomHelper.getCourtRoom(
                 listingProfile, executionId, missingReferenceDataMappingMap);
 
         // then
@@ -107,11 +114,11 @@ class VenueCourtRoomHelperTest {
     @Test
     void shouldReturnNull_WhenVenueNameMissing() {
         // given
-        listingProfile.put("locationId", "100");
-        listingProfile.put("venueId", "200");
+        listingProfile.put(LOCATION_ID, VALUE_100);
+        listingProfile.put(VENUE_ID, VALUE_200);
 
         // when
-        CourtRoom result = venueCourtRoomHelper.getCourtRoom(
+        final CourtRoom result = venueCourtRoomHelper.getCourtRoom(
                 listingProfile, executionId, missingReferenceDataMappingMap);
 
         // then
@@ -122,17 +129,17 @@ class VenueCourtRoomHelperTest {
     @Test
     void shouldReturnNull_WhenVenueNotFound() {
         // given
-        listingProfile.put("locationId", "100");
-        listingProfile.put("venueId", "200");
-        listingProfile.put("venueName", "Test Venue");
+        listingProfile.put(LOCATION_ID, VALUE_100);
+        listingProfile.put(VENUE_ID, VALUE_200);
+        listingProfile.put(VENUE_NAME, TEST_VENUE);
 
-        Venue venue = new Venue(100, 200, "Test Venue");
+        final Venue venue = new Venue(100, 200, TEST_VENUE);
         when(referenceDataValidationService.validateAndFindVenue(
                 eq(venue), anyMap(), eq(executionId)))
                 .thenReturn(Optional.empty());
 
         // when
-        CourtRoom result = venueCourtRoomHelper.getCourtRoom(
+        final CourtRoom result = venueCourtRoomHelper.getCourtRoom(
                 listingProfile, executionId, missingReferenceDataMappingMap);
 
         // then
@@ -142,12 +149,12 @@ class VenueCourtRoomHelperTest {
     @Test
     void shouldReturnNull_WhenLocationIdIsInvalid() {
         // given
-        listingProfile.put("locationId", "invalid");
-        listingProfile.put("venueId", "200");
-        listingProfile.put("venueName", "Test Venue");
+        listingProfile.put(LOCATION_ID, "invalid");
+        listingProfile.put(VENUE_ID, VALUE_200);
+        listingProfile.put(VENUE_NAME, TEST_VENUE);
 
         // when
-        CourtRoom result = venueCourtRoomHelper.getCourtRoom(
+        final CourtRoom result = venueCourtRoomHelper.getCourtRoom(
                 listingProfile, executionId, missingReferenceDataMappingMap);
 
         // then
@@ -158,12 +165,12 @@ class VenueCourtRoomHelperTest {
     @Test
     void shouldReturnNull_WhenVenueIdIsInvalid() {
         // given
-        listingProfile.put("locationId", "100");
-        listingProfile.put("venueId", "invalid");
-        listingProfile.put("venueName", "Test Venue");
+        listingProfile.put(LOCATION_ID, VALUE_100);
+        listingProfile.put(VENUE_ID, "invalid");
+        listingProfile.put(VENUE_NAME, TEST_VENUE);
 
         // when
-        CourtRoom result = venueCourtRoomHelper.getCourtRoom(
+        final CourtRoom result = venueCourtRoomHelper.getCourtRoom(
                 listingProfile, executionId, missingReferenceDataMappingMap);
 
         // then
@@ -177,7 +184,7 @@ class VenueCourtRoomHelperTest {
         listingProfile.clear();
 
         // when
-        CourtRoom result = venueCourtRoomHelper.getCourtRoom(
+        final CourtRoom result = venueCourtRoomHelper.getCourtRoom(
                 listingProfile, executionId, missingReferenceDataMappingMap);
 
         // then

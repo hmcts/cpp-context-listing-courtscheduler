@@ -15,10 +15,9 @@ import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 
 import java.io.StringReader;
-import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
-import java.util.Date;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -51,6 +50,10 @@ import org.junit.jupiter.params.provider.ValueSource;
  * the effect of pre-existing allocations on per-day availability, idempotency, and historic dates.
  */
 class MultiDaySearchAndBookIT extends AbstractIT {
+    private static final String BTX_2 = "BTX";
+    private static final String MOVE_2 = "MOVE";
+    private static final String OU_A = "OU-A";
+
 
     private static final String ACCEPT = "application/vnd.courtscheduler.crown.search.and.book+json";
 
@@ -67,9 +70,9 @@ class MultiDaySearchAndBookIT extends AbstractIT {
         final String hearingId = UUID.randomUUID().toString();
 
         // Three consecutive weekday sessions in the same room + businessType.
-        final String day1Id = seedSession(ANCHOR_MONDAY, roomId, "BTX", CENTRE_A, "OU-A", false, false, 360, 0);
-        final String day2Id = seedSession(ANCHOR_MONDAY.plusDays(1), roomId, "BTX", CENTRE_A, "OU-A", false, false, 360, 0);
-        final String day3Id = seedSession(ANCHOR_MONDAY.plusDays(2), roomId, "BTX", CENTRE_A, "OU-A", false, false, 360, 0);
+        final String day1Id = seedSession(ANCHOR_MONDAY, roomId, BTX_2, CENTRE_A, OU_A, false, false, 360);
+        final String day2Id = seedSession(ANCHOR_MONDAY.plusDays(1), roomId, BTX_2, CENTRE_A, OU_A, false, false, 360);
+        final String day3Id = seedSession(ANCHOR_MONDAY.plusDays(2), roomId, BTX_2, CENTRE_A, OU_A, false, false, 360);
 
         final Response response = callCrown(day1Id, CENTRE_A, ANCHOR_MONDAY, 1080, hearingId);
 
@@ -91,7 +94,7 @@ class MultiDaySearchAndBookIT extends AbstractIT {
                 .map(AllocatedListing::getRotaBusinessType)
                 .collect(Collectors.toList());
         assertThat("rotaBusinessType is persisted on each allocated_listings row",
-                bookedBusinessTypes, containsInAnyOrder("BTX", "BTX", "BTX"));
+                bookedBusinessTypes, containsInAnyOrder(BTX_2, BTX_2, BTX_2));
     }
 
     // --- Gap #2: same-room constraint ---
@@ -101,10 +104,10 @@ class MultiDaySearchAndBookIT extends AbstractIT {
         final String roomA = UUID.randomUUID().toString();
         final String roomB = UUID.randomUUID().toString();
 
-        final String day1Anchor = seedSession(ANCHOR_MONDAY, roomA, "BTX", CENTRE_A, "OU-A", false, false, 360, 0);
+        final String day1Anchor = seedSession(ANCHOR_MONDAY, roomA, BTX_2, CENTRE_A, OU_A, false, false, 360);
         // Day 2 + 3 exist on the right dates but in a DIFFERENT room — must be excluded.
-        seedSession(ANCHOR_MONDAY.plusDays(1), roomB, "BTX", CENTRE_A, "OU-A", false, false, 360, 0);
-        seedSession(ANCHOR_MONDAY.plusDays(2), roomB, "BTX", CENTRE_A, "OU-A", false, false, 360, 0);
+        seedSession(ANCHOR_MONDAY.plusDays(1), roomB, BTX_2, CENTRE_A, OU_A, false, false, 360);
+        seedSession(ANCHOR_MONDAY.plusDays(2), roomB, BTX_2, CENTRE_A, OU_A, false, false, 360);
 
         final Response response = callCrown(day1Anchor, CENTRE_A, ANCHOR_MONDAY, 1080, UUID.randomUUID().toString());
 
@@ -119,10 +122,10 @@ class MultiDaySearchAndBookIT extends AbstractIT {
     void shouldReturnEmptyWhenSubsequentSessionsAreInDifferentOuCode() throws Exception {
         final String roomId = UUID.randomUUID().toString();
 
-        final String day1Anchor = seedSession(ANCHOR_MONDAY, roomId, "BTX", CENTRE_A, "OU-A", false, false, 360, 0);
+        final String day1Anchor = seedSession(ANCHOR_MONDAY, roomId, BTX_2, CENTRE_A, OU_A, false, false, 360);
         // Same room id but different ouCode (i.e. different operational unit) → excluded by SQL filter.
-        seedSession(ANCHOR_MONDAY.plusDays(1), roomId, "BTX", "centre-B", "OU-B", false, false, 360, 0);
-        seedSession(ANCHOR_MONDAY.plusDays(2), roomId, "BTX", "centre-B", "OU-B", false, false, 360, 0);
+        seedSession(ANCHOR_MONDAY.plusDays(1), roomId, BTX_2, "centre-B", "OU-B", false, false, 360);
+        seedSession(ANCHOR_MONDAY.plusDays(2), roomId, BTX_2, "centre-B", "OU-B", false, false, 360);
 
         final Response response = callCrown(day1Anchor, CENTRE_A, ANCHOR_MONDAY, 1080, UUID.randomUUID().toString());
 
@@ -137,10 +140,10 @@ class MultiDaySearchAndBookIT extends AbstractIT {
     void shouldReturnEmptyWhenSubsequentSessionsHaveDifferentBusinessType() throws Exception {
         final String roomId = UUID.randomUUID().toString();
 
-        final String day1Anchor = seedSession(ANCHOR_MONDAY, roomId, "BTX", CENTRE_A, "OU-A", false, false, 360, 0);
+        final String day1Anchor = seedSession(ANCHOR_MONDAY, roomId, BTX_2, CENTRE_A, OU_A, false, false, 360);
         // Different businessType → excluded by SQL filter even though room + centre match.
-        seedSession(ANCHOR_MONDAY.plusDays(1), roomId, "BTY", CENTRE_A, "OU-A", false, false, 360, 0);
-        seedSession(ANCHOR_MONDAY.plusDays(2), roomId, "BTY", CENTRE_A, "OU-A", false, false, 360, 0);
+        seedSession(ANCHOR_MONDAY.plusDays(1), roomId, "BTY", CENTRE_A, OU_A, false, false, 360);
+        seedSession(ANCHOR_MONDAY.plusDays(2), roomId, "BTY", CENTRE_A, OU_A, false, false, 360);
 
         final Response response = callCrown(day1Anchor, CENTRE_A, ANCHOR_MONDAY, 1080, UUID.randomUUID().toString());
 
@@ -157,9 +160,9 @@ class MultiDaySearchAndBookIT extends AbstractIT {
         final String roomId = UUID.randomUUID().toString();
         final String hearingId = UUID.randomUUID().toString();
 
-        final String day1Anchor = seedSession(ANCHOR_MONDAY, roomId, "BTX", CENTRE_A, "OU-A", false, false, 360, 0);
-        final String day2Id = seedSession(ANCHOR_MONDAY.plusDays(1), roomId, "BTX", CENTRE_A, "OU-A", false, false, 360, 0);
-        final String day3Id = seedSession(ANCHOR_MONDAY.plusDays(2), roomId, "BTX", CENTRE_A, "OU-A", false, false, 360, 0);
+        final String day1Anchor = seedSession(ANCHOR_MONDAY, roomId, BTX_2, CENTRE_A, OU_A, false, false, 360);
+        final String day2Id = seedSession(ANCHOR_MONDAY.plusDays(1), roomId, BTX_2, CENTRE_A, OU_A, false, false, 360);
+        final String day3Id = seedSession(ANCHOR_MONDAY.plusDays(2), roomId, BTX_2, CENTRE_A, OU_A, false, false, 360);
 
         // Pre-existing allocation from another hearing on day 2 consumes 200 of 360 minutes.
         // F1: the shortfall is advisory — the booking must proceed and overbook day 2.
@@ -183,8 +186,8 @@ class MultiDaySearchAndBookIT extends AbstractIT {
         final String roomId = UUID.randomUUID().toString();
         final String hearingId = UUID.randomUUID().toString();
 
-        final String day1Anchor = seedSession(ANCHOR_MONDAY, roomId, "BTX", CENTRE_A, "OU-A", false, false, 360, 0);
-        final String day2Id = seedSession(ANCHOR_MONDAY.plusDays(1), roomId, "BTX", CENTRE_A, "OU-A", false, false, 360, 0);
+        final String day1Anchor = seedSession(ANCHOR_MONDAY, roomId, BTX_2, CENTRE_A, OU_A, false, false, 360);
+        final String day2Id = seedSession(ANCHOR_MONDAY.plusDays(1), roomId, BTX_2, CENTRE_A, OU_A, false, false, 360);
 
         // Day 2 is FULLY booked by another hearing and overbooking is NOT allowed — previously the
         // whole 2-day block was rejected and the hearing stayed unassigned (RC-1).
@@ -215,7 +218,7 @@ class MultiDaySearchAndBookIT extends AbstractIT {
         // a smoke test that historic anchors don't blow up. If product later requires explicit
         // rejection of past anchors, this test will need to be tightened.
         final LocalDate pastMonday = LocalDate.now().minusDays(daysUntilNextMonday()).minusDays(28);
-        final String day1Anchor = seedSession(pastMonday, roomId, "BTX", CENTRE_A, "OU-A", false, false, 360, 0);
+        final String day1Anchor = seedSession(pastMonday, roomId, BTX_2, CENTRE_A, OU_A, false, false, 360);
 
         final Response response = callCrown(day1Anchor, CENTRE_A, pastMonday, 1080, UUID.randomUUID().toString());
 
@@ -236,9 +239,9 @@ class MultiDaySearchAndBookIT extends AbstractIT {
         final String roomId = UUID.randomUUID().toString();
         final String hearingId = UUID.randomUUID().toString();
 
-        final String day1Anchor = seedSession(ANCHOR_MONDAY, roomId, "BTX", CENTRE_A, "OU-A", false, false, 360, 0);
-        final String day2Id = seedSession(ANCHOR_MONDAY.plusDays(1), roomId, "BTX", CENTRE_A, "OU-A", false, false, 360, 0);
-        final String day3Id = seedSession(ANCHOR_MONDAY.plusDays(2), roomId, "BTX", CENTRE_A, "OU-A", false, false, 360, 0);
+        final String day1Anchor = seedSession(ANCHOR_MONDAY, roomId, BTX_2, CENTRE_A, OU_A, false, false, 360);
+        final String day2Id = seedSession(ANCHOR_MONDAY.plusDays(1), roomId, BTX_2, CENTRE_A, OU_A, false, false, 360);
+        final String day3Id = seedSession(ANCHOR_MONDAY.plusDays(2), roomId, BTX_2, CENTRE_A, OU_A, false, false, 360);
 
         // First call books all three days.
         final Response first = callCrown(day1Anchor, CENTRE_A, ANCHOR_MONDAY, 1080, hearingId);
@@ -269,9 +272,9 @@ class MultiDaySearchAndBookIT extends AbstractIT {
         final String hearingId = UUID.randomUUID().toString();
 
         // Original three-day allocation (as if booked unallocated, one row per day).
-        final String oldDay1 = seedSession(ANCHOR_MONDAY, roomId, "BTX", CENTRE_A, "OU-A", false, false, 360, 0);
-        final String oldDay2 = seedSession(ANCHOR_MONDAY.plusDays(1), roomId, "BTX", CENTRE_A, "OU-A", false, false, 360, 0);
-        final String oldDay3 = seedSession(ANCHOR_MONDAY.plusDays(2), roomId, "BTX", CENTRE_A, "OU-A", false, false, 360, 0);
+        final String oldDay1 = seedSession(ANCHOR_MONDAY, roomId, BTX_2, CENTRE_A, OU_A, false, false, 360);
+        final String oldDay2 = seedSession(ANCHOR_MONDAY.plusDays(1), roomId, BTX_2, CENTRE_A, OU_A, false, false, 360);
+        final String oldDay3 = seedSession(ANCHOR_MONDAY.plusDays(2), roomId, BTX_2, CENTRE_A, OU_A, false, false, 360);
         final Response first = callCrown(oldDay1, CENTRE_A, ANCHOR_MONDAY, 1080, hearingId);
         assertThat(first.getStatus(), is(OK.getStatusCode()));
         assertThat("first call writes 3 allocated_listings", databaseReader.allocatedListings().size(), is(3));
@@ -279,9 +282,9 @@ class MultiDaySearchAndBookIT extends AbstractIT {
         // A NEW consecutive run in a different room, one week later — mirrors update-hearing-for-listing
         // supplying a different FINAL session anchor.
         final LocalDate newMonday = ANCHOR_MONDAY.plusWeeks(1);
-        final String newDay1 = seedSession(newMonday, newRoomId, "BTX", CENTRE_A, "OU-A", false, false, 360, 0);
-        final String newDay2 = seedSession(newMonday.plusDays(1), newRoomId, "BTX", CENTRE_A, "OU-A", false, false, 360, 0);
-        final String newDay3 = seedSession(newMonday.plusDays(2), newRoomId, "BTX", CENTRE_A, "OU-A", false, false, 360, 0);
+        final String newDay1 = seedSession(newMonday, newRoomId, BTX_2, CENTRE_A, OU_A, false, false, 360);
+        final String newDay2 = seedSession(newMonday.plusDays(1), newRoomId, BTX_2, CENTRE_A, OU_A, false, false, 360);
+        final String newDay3 = seedSession(newMonday.plusDays(2), newRoomId, BTX_2, CENTRE_A, OU_A, false, false, 360);
 
         final Response moveResponse = callCrown(newDay1, CENTRE_A, newMonday, 1080, hearingId);
 
@@ -307,7 +310,7 @@ class MultiDaySearchAndBookIT extends AbstractIT {
                 scheduleIdsAfterMove, not(containsInAnyOrder(oldDay1, oldDay2, oldDay3)));
         assertThat("moved rows are tagged source=MOVE",
                 rowsAfterMove.stream().map(AllocatedListing::getSource).collect(Collectors.toList()),
-                containsInAnyOrder("MOVE", "MOVE", "MOVE"));
+                containsInAnyOrder(MOVE_2, MOVE_2, MOVE_2));
     }
 
     // --- SPRDT-1089: live STE bug (hearing 00b7b8bd/072b7512) — a MOVE re-anchored on a
@@ -325,10 +328,10 @@ class MultiDaySearchAndBookIT extends AbstractIT {
 
         // Four consecutive weekday sessions in the same room — enough for the original 3-day block
         // AND the new 3-day block that starts one day later (re-using day2/day3, adding day4).
-        final String day1Id = seedSession(ANCHOR_MONDAY, roomId, "BTX", CENTRE_A, "OU-A", false, false, 360, 0);
-        final String day2Id = seedSession(ANCHOR_MONDAY.plusDays(1), roomId, "BTX", CENTRE_A, "OU-A", false, false, 360, 0);
-        final String day3Id = seedSession(ANCHOR_MONDAY.plusDays(2), roomId, "BTX", CENTRE_A, "OU-A", false, false, 360, 0);
-        final String day4Id = seedSession(ANCHOR_MONDAY.plusDays(3), roomId, "BTX", CENTRE_A, "OU-A", false, false, 360, 0);
+        final String day1Id = seedSession(ANCHOR_MONDAY, roomId, BTX_2, CENTRE_A, OU_A, false, false, 360);
+        final String day2Id = seedSession(ANCHOR_MONDAY.plusDays(1), roomId, BTX_2, CENTRE_A, OU_A, false, false, 360);
+        final String day3Id = seedSession(ANCHOR_MONDAY.plusDays(2), roomId, BTX_2, CENTRE_A, OU_A, false, false, 360);
+        final String day4Id = seedSession(ANCHOR_MONDAY.plusDays(3), roomId, BTX_2, CENTRE_A, OU_A, false, false, 360);
 
         // Book the original 3-day block: [day1, day2, day3].
         final Response first = callCrown(day1Id, CENTRE_A, ANCHOR_MONDAY, 1080, hearingId);
@@ -360,7 +363,7 @@ class MultiDaySearchAndBookIT extends AbstractIT {
                 scheduleIdsAfterMove, not(org.hamcrest.Matchers.hasItem(day1Id)));
         assertThat("moved rows are tagged source=MOVE",
                 rowsAfterMove.stream().map(AllocatedListing::getSource).collect(Collectors.toList()),
-                containsInAnyOrder("MOVE", "MOVE", "MOVE"));
+                containsInAnyOrder(MOVE_2, MOVE_2, MOVE_2));
 
         // Counters restored on the released day1 — back to its full 360-minute capacity.
         final CourtSchedule day1AfterMove = databaseReader.courtScheduleById(day1Id);
@@ -381,8 +384,8 @@ class MultiDaySearchAndBookIT extends AbstractIT {
         final String roomId = UUID.randomUUID().toString();
         final String hearingId = UUID.randomUUID().toString();
 
-        final String day1Id = seedSession(ANCHOR_MONDAY, roomId, "BTX", CENTRE_A, "OU-A", false, false, 360, 0);
-        final String day2Id = seedSession(ANCHOR_MONDAY.plusDays(1), roomId, "BTX", CENTRE_A, "OU-A", false, false, 360, 0);
+        final String day1Id = seedSession(ANCHOR_MONDAY, roomId, BTX_2, CENTRE_A, OU_A, false, false, 360);
+        final String day2Id = seedSession(ANCHOR_MONDAY.plusDays(1), roomId, BTX_2, CENTRE_A, OU_A, false, false, 360);
 
         // The hearing's existing single-day booking fully consumes day 1's capacity.
         databaseSeeder.insertAllocatedListing(allocatedListing(day1Id, hearingId, 360));
@@ -421,8 +424,8 @@ class MultiDaySearchAndBookIT extends AbstractIT {
         final String hearingId = UUID.randomUUID().toString();
 
         // Sessions allow overbooking → availability check is bypassed.
-        final String day1Anchor = seedSession(ANCHOR_MONDAY, roomId, "BTX", CENTRE_A, "OU-A", false, true, 360, 0);
-        seedSession(ANCHOR_MONDAY.plusDays(1), roomId, "BTX", CENTRE_A, "OU-A", false, true, 360, 0);
+        final String day1Anchor = seedSession(ANCHOR_MONDAY, roomId, BTX_2, CENTRE_A, OU_A, false, true, 360);
+        seedSession(ANCHOR_MONDAY.plusDays(1), roomId, BTX_2, CENTRE_A, OU_A, false, true, 360);
 
         final Response first = callCrown(day1Anchor, CENTRE_A, ANCHOR_MONDAY, 720, hearingId);
         assertThat(first.getStatus(), is(OK.getStatusCode()));
@@ -445,8 +448,8 @@ class MultiDaySearchAndBookIT extends AbstractIT {
         final String roomId = UUID.randomUUID().toString();
 
         // Only 2 of the 3 required consecutive days exist in the anchor's room — day 3 is missing.
-        final String day1Anchor = seedSession(ANCHOR_MONDAY, roomId, "BTX", CENTRE_A, "OU-A", false, false, 360, 0);
-        seedSession(ANCHOR_MONDAY.plusDays(1), roomId, "BTX", CENTRE_A, "OU-A", false, false, 360, 0);
+        final String day1Anchor = seedSession(ANCHOR_MONDAY, roomId, BTX_2, CENTRE_A, OU_A, false, false, 360);
+        seedSession(ANCHOR_MONDAY.plusDays(1), roomId, BTX_2, CENTRE_A, OU_A, false, false, 360);
 
         final int allocatedListingsBefore = databaseReader.allocatedListings().size();
 
@@ -527,11 +530,10 @@ class MultiDaySearchAndBookIT extends AbstractIT {
                                final String ouCode,
                                final boolean isDraft,
                                final boolean overbookingAllowed,
-                               final int maxDuration,
-                               final int totalBookedIgnored) throws java.sql.SQLException {
+                               final int maxDuration) throws java.sql.SQLException {
         final String id = UUID.randomUUID().toString();
-        final Date sessionStart = Date.from(sessionDate.atTime(10, 0).toInstant(ZoneOffset.UTC));
-        final Date sessionEnd = Date.from(sessionDate.atTime(17, 0).toInstant(ZoneOffset.UTC));
+        final Instant sessionStart = sessionDate.atTime(10, 0).toInstant(ZoneOffset.UTC);
+        final Instant sessionEnd = sessionDate.atTime(17, 0).toInstant(ZoneOffset.UTC);
 
         final CourtSchedule cs = new CourtSchedule();
         cs.setCourtScheduleId(id);
@@ -578,11 +580,11 @@ class MultiDaySearchAndBookIT extends AbstractIT {
         al.setCourtScheduleId(courtScheduleId);
         al.setBookingId(UUID.randomUUID().toString());
         al.setHearingId(hearingId);
-        al.setOucode("OU-A");
+        al.setOucode(OU_A);
         al.setCourtRoomId(1);
-        al.setRotaBusinessType("BTX");
+        al.setRotaBusinessType(BTX_2);
         al.setDuration(duration);
-        al.setHearingStartTime(new Timestamp(System.currentTimeMillis()));
+        al.setHearingStartTime(Instant.now());
         return al;
     }
 

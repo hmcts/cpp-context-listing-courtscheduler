@@ -16,7 +16,7 @@ import java.io.StringReader;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
-import java.util.Date;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -48,6 +48,13 @@ import org.junit.jupiter.api.Test;
  * <p>Sister unit tests live in {@code SlotsUpdateServiceTest.MoveHearingToPastDate}.
  */
 class MoveHearingToPastDateIT extends AbstractIT {
+    private static final String CROWN_2 = "CROWN";
+    private static final String MAGISTRATES_2 = "MAGISTRATES";
+    private static final String MOVE_TO_PAST_DATE_2 = "MOVE_TO_PAST_DATE";
+    private static final String OU_CRN4 = "OU-CRN4";
+    private static final String SOURCE_MOVE_TO_PAST_DATE = "\"source\":\"MOVE_TO_PAST_DATE\"";
+    private static final String PERSISTED_ALLOCATED_LISTINGS_SOURCE = "persisted allocated_listings.source";
+
 
     private static final String ACCEPT = "application/vnd.courtscheduler.move-hearing-to-past-date+json";
 
@@ -60,17 +67,17 @@ class MoveHearingToPastDateIT extends AbstractIT {
         final String hearingId = UUID.randomUUID().toString();
         final LocalDate day = pastMonday();
 
-        final String sessionId = seedSession(day, roomId, "NGAP", centreId, "OU-MAG1", "MAGISTRATES");
+        final String sessionId = seedSession(day, roomId, "NGAP", centreId, "OU-MAG1", MAGISTRATES_2);
 
-        final Response response = callMove(centreId, roomId, "MAGISTRATES", day, null, 360, hearingId);
+        final Response response = callMove(centreId, roomId, MAGISTRATES_2, day, null, 360, hearingId);
 
         assertThat(response.getStatus(), is(OK.getStatusCode()));
         final String payload = body(response);
-        assertThat(payload, containsString("\"source\":\"MOVE_TO_PAST_DATE\""));
+        assertThat(payload, containsString(SOURCE_MOVE_TO_PAST_DATE));
         assertThat(extractSessionIds(payload), contains(sessionId));
         assertThat("one allocated_listings row booked for the hearing",
                 bookedScheduleIds(hearingId), contains(sessionId));
-        assertThat("persisted allocated_listings.source", bookedSources(hearingId), contains("MOVE_TO_PAST_DATE"));
+        assertThat(PERSISTED_ALLOCATED_LISTINGS_SOURCE, bookedSources(hearingId), contains(MOVE_TO_PAST_DATE_2));
     }
 
     // --- (b) single-day CROWN (no anchor → centre search) ---
@@ -82,17 +89,17 @@ class MoveHearingToPastDateIT extends AbstractIT {
         final String hearingId = UUID.randomUUID().toString();
         final LocalDate day = pastMonday();
 
-        final String sessionId = seedSession(day, roomId, "CR", centreId, "OU-CRN1", "CROWN");
+        final String sessionId = seedSession(day, roomId, "CR", centreId, "OU-CRN1", CROWN_2);
 
-        final Response response = callMove(centreId, roomId, "CROWN", day, null, 360, hearingId);
+        final Response response = callMove(centreId, roomId, CROWN_2, day, null, 360, hearingId);
 
         assertThat(response.getStatus(), is(OK.getStatusCode()));
         final String payload = body(response);
-        assertThat(payload, containsString("\"source\":\"MOVE_TO_PAST_DATE\""));
+        assertThat(payload, containsString(SOURCE_MOVE_TO_PAST_DATE));
         assertThat(extractSessionIds(payload), contains(sessionId));
         assertThat("one allocated_listings row booked for the hearing",
                 bookedScheduleIds(hearingId), contains(sessionId));
-        assertThat("persisted allocated_listings.source", bookedSources(hearingId), contains("MOVE_TO_PAST_DATE"));
+        assertThat(PERSISTED_ALLOCATED_LISTINGS_SOURCE, bookedSources(hearingId), contains(MOVE_TO_PAST_DATE_2));
     }
 
     // --- (b2) single-day CROWN, room-scoped: a session in another room on the same day is ignored ---
@@ -107,10 +114,10 @@ class MoveHearingToPastDateIT extends AbstractIT {
 
         // Another room in the same centre also has a session on this day — main-contract alignment
         // means the search must not wander into it once a courtRoomId is supplied.
-        seedSession(day, otherRoomId, "CR", centreId, "OU-CRN1B", "CROWN");
-        final String requestedRoomSessionId = seedSession(day, requestedRoomId, "CR", centreId, "OU-CRN1B", "CROWN");
+        seedSession(day, otherRoomId, "CR", centreId, "OU-CRN1B", CROWN_2);
+        final String requestedRoomSessionId = seedSession(day, requestedRoomId, "CR", centreId, "OU-CRN1B", CROWN_2);
 
-        final Response response = callMove(centreId, requestedRoomId, "CROWN", day, null, 360, hearingId);
+        final Response response = callMove(centreId, requestedRoomId, CROWN_2, day, null, 360, hearingId);
 
         assertThat(response.getStatus(), is(OK.getStatusCode()));
         assertThat(extractSessionIds(body(response)), contains(requestedRoomSessionId));
@@ -127,21 +134,21 @@ class MoveHearingToPastDateIT extends AbstractIT {
         final String hearingId = UUID.randomUUID().toString();
         final LocalDate day1 = pastMonday();
 
-        final String d1 = seedSession(day1, roomId, "NGAP", centreId, "OU-MAG2", "MAGISTRATES");
-        final String d2 = seedSession(day1.plusDays(1), roomId, "NGAP", centreId, "OU-MAG2", "MAGISTRATES");
+        final String d1 = seedSession(day1, roomId, "NGAP", centreId, "OU-MAG2", MAGISTRATES_2);
+        final String d2 = seedSession(day1.plusDays(1), roomId, "NGAP", centreId, "OU-MAG2", MAGISTRATES_2);
 
         // A genuine date range (endDate after startDate) => 2 days needed; consecutive Mon+Tue in the
         // same room + business type. durationInMinutes alone no longer drives multi-day sizing here —
         // it's the hearing's own overall estimate (SPRDT-1361), unrelated to this move's day count.
-        final Response response = callMove(centreId, roomId, "MAGISTRATES", day1, day1.plusDays(1), 720, hearingId);
+        final Response response = callMove(centreId, roomId, MAGISTRATES_2, day1, day1.plusDays(1), 720, hearingId);
 
         assertThat(response.getStatus(), is(OK.getStatusCode()));
         final String payload = body(response);
-        assertThat(payload, containsString("\"source\":\"MOVE_TO_PAST_DATE\""));
+        assertThat(payload, containsString(SOURCE_MOVE_TO_PAST_DATE));
         assertThat(extractSessionIds(payload), contains(d1, d2));
         assertThat("both consecutive days booked for the hearing",
                 bookedScheduleIds(hearingId), containsInAnyOrder(d1, d2));
-        assertThat("persisted allocated_listings.source", bookedSources(hearingId), contains("MOVE_TO_PAST_DATE"));
+        assertThat(PERSISTED_ALLOCATED_LISTINGS_SOURCE, bookedSources(hearingId), contains(MOVE_TO_PAST_DATE_2));
     }
 
     // --- (d) multi-day CROWN (no anchor → centre consecutive search) ---
@@ -153,19 +160,19 @@ class MoveHearingToPastDateIT extends AbstractIT {
         final String hearingId = UUID.randomUUID().toString();
         final LocalDate day1 = pastMonday();
 
-        final String d1 = seedSession(day1, roomId, "CR", centreId, "OU-CRN2", "CROWN");
-        final String d2 = seedSession(day1.plusDays(1), roomId, "CR", centreId, "OU-CRN2", "CROWN");
+        final String d1 = seedSession(day1, roomId, "CR", centreId, "OU-CRN2", CROWN_2);
+        final String d2 = seedSession(day1.plusDays(1), roomId, "CR", centreId, "OU-CRN2", CROWN_2);
 
         // A genuine date range (endDate after startDate) drives the 2-day search; see the MAGS case above.
-        final Response response = callMove(centreId, roomId, "CROWN", day1, day1.plusDays(1), 720, hearingId);
+        final Response response = callMove(centreId, roomId, CROWN_2, day1, day1.plusDays(1), 720, hearingId);
 
         assertThat(response.getStatus(), is(OK.getStatusCode()));
         final String payload = body(response);
-        assertThat(payload, containsString("\"source\":\"MOVE_TO_PAST_DATE\""));
+        assertThat(payload, containsString(SOURCE_MOVE_TO_PAST_DATE));
         assertThat(extractSessionIds(payload), contains(d1, d2));
         assertThat("both consecutive days booked for the hearing",
                 bookedScheduleIds(hearingId), containsInAnyOrder(d1, d2));
-        assertThat("persisted allocated_listings.source", bookedSources(hearingId), contains("MOVE_TO_PAST_DATE"));
+        assertThat(PERSISTED_ALLOCATED_LISTINGS_SOURCE, bookedSources(hearingId), contains(MOVE_TO_PAST_DATE_2));
     }
 
 
@@ -186,19 +193,19 @@ class MoveHearingToPastDateIT extends AbstractIT {
         final LocalDate pastDay = pastMonday();
 
         // Currently booked: a future session fully consumed by this hearing (0 mins left).
-        final String futureSession = seedSession(futureDay, roomId, "CR", centreId, "OU-CRN3", "CROWN", 0);
+        final String futureSession = seedSession(futureDay, roomId, "CR", centreId, "OU-CRN3", CROWN_2, 0);
         book(hearingId, futureSession, futureDay, 360, "OU-CRN3");
         // Target: a past session with full capacity.
-        final String pastSession = seedSession(pastDay, roomId, "CR", centreId, "OU-CRN3", "CROWN", 360);
+        final String pastSession = seedSession(pastDay, roomId, "CR", centreId, "OU-CRN3", CROWN_2, 360);
 
-        final Response response = callMove(centreId, roomId, "CROWN", pastDay, null, 360, hearingId);
+        final Response response = callMove(centreId, roomId, CROWN_2, pastDay, null, 360, hearingId);
 
         assertThat(response.getStatus(), is(OK.getStatusCode()));
         assertThat(extractSessionIds(body(response)), contains(pastSession));
 
         assertThat("hearing now booked on the past session only",
                 bookedScheduleIds(hearingId), contains(pastSession));
-        assertThat("persisted allocated_listings.source", bookedSources(hearingId), contains("MOVE_TO_PAST_DATE"));
+        assertThat(PERSISTED_ALLOCATED_LISTINGS_SOURCE, bookedSources(hearingId), contains(MOVE_TO_PAST_DATE_2));
         assertThat("prior future session's capacity paid back in full",
                 databaseReader.courtScheduleById(futureSession).getAvailableDuration(), is(360));
         assertThat("past session's capacity consumed by the moved hearing",
@@ -223,16 +230,16 @@ class MoveHearingToPastDateIT extends AbstractIT {
         final LocalDate pastDay2 = pastDay1.plusDays(1);
 
         // Currently booked: Mon+Tue future block, both days fully consumed by this hearing.
-        final String f1 = seedSession(futureDay1, roomId, "CR", centreId, "OU-CRN4", "CROWN", 0);
-        final String f2 = seedSession(futureDay2, roomId, "CR", centreId, "OU-CRN4", "CROWN", 0);
-        book(hearingId, f1, futureDay1, 360, "OU-CRN4");
-        book(hearingId, f2, futureDay2, 360, "OU-CRN4");
+        final String f1 = seedSession(futureDay1, roomId, "CR", centreId, OU_CRN4, CROWN_2, 0);
+        final String f2 = seedSession(futureDay2, roomId, "CR", centreId, OU_CRN4, CROWN_2, 0);
+        book(hearingId, f1, futureDay1, 360, OU_CRN4);
+        book(hearingId, f2, futureDay2, 360, OU_CRN4);
         // Target: consecutive past Mon+Tue in the same room + business type.
-        final String p1 = seedSession(pastDay1, roomId, "CR", centreId, "OU-CRN4", "CROWN", 360);
-        final String p2 = seedSession(pastDay2, roomId, "CR", centreId, "OU-CRN4", "CROWN", 360);
+        final String p1 = seedSession(pastDay1, roomId, "CR", centreId, OU_CRN4, CROWN_2, 360);
+        final String p2 = seedSession(pastDay2, roomId, "CR", centreId, OU_CRN4, CROWN_2, 360);
 
         // A genuine date range (endDate after startDate) => 2 days needed; see case (c)/(d) above.
-        final Response response = callMove(centreId, roomId, "CROWN", pastDay1, pastDay2, 720, hearingId);
+        final Response response = callMove(centreId, roomId, CROWN_2, pastDay1, pastDay2, 720, hearingId);
 
         assertThat(response.getStatus(), is(OK.getStatusCode()));
         assertThat(extractSessionIds(body(response)), contains(p1, p2));
@@ -241,7 +248,7 @@ class MoveHearingToPastDateIT extends AbstractIT {
                 bookedScheduleIds(hearingId), containsInAnyOrder(p1, p2));
         assertThat("no allocation left on either prior future session",
                 allocationsOnSchedules(hearingId, f1, f2), is(empty()));
-        assertThat("persisted allocated_listings.source", bookedSources(hearingId), contains("MOVE_TO_PAST_DATE"));
+        assertThat(PERSISTED_ALLOCATED_LISTINGS_SOURCE, bookedSources(hearingId), contains(MOVE_TO_PAST_DATE_2));
         assertThat("first future session's capacity paid back in full",
                 databaseReader.courtScheduleById(f1).getAvailableDuration(), is(360));
         assertThat("second future session's capacity paid back in full",
@@ -317,7 +324,7 @@ class MoveHearingToPastDateIT extends AbstractIT {
         allocatedListing.setCourtRoomId(1);
         allocatedListing.setRotaBusinessType("CR");
         allocatedListing.setDuration(durationMinutes);
-        allocatedListing.setHearingStartTime(Date.from(sessionDate.atTime(10, 0).toInstant(ZoneOffset.UTC)));
+        allocatedListing.setHearingStartTime(sessionDate.atTime(10, 0).toInstant(ZoneOffset.UTC));
         databaseSeeder.insertAllocatedListing(allocatedListing);
     }
 
@@ -376,8 +383,8 @@ class MoveHearingToPastDateIT extends AbstractIT {
                                final String jurisdiction,
                                final int availableDurationMinutes) throws java.sql.SQLException {
         final String id = UUID.randomUUID().toString();
-        final Date sessionStart = Date.from(sessionDate.atTime(10, 0).toInstant(ZoneOffset.UTC));
-        final Date sessionEnd = Date.from(sessionDate.atTime(17, 0).toInstant(ZoneOffset.UTC));
+        final Instant sessionStart = sessionDate.atTime(10, 0).toInstant(ZoneOffset.UTC);
+        final Instant sessionEnd = sessionDate.atTime(17, 0).toInstant(ZoneOffset.UTC);
 
         final CourtSchedule cs = new CourtSchedule();
         cs.setCourtScheduleId(id);

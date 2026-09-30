@@ -16,8 +16,8 @@ import java.util.Map;
 @Service
 public class CourtScheduleToViewConverter {
 
-    public static List<CourtSessionsView> getCourtSessionsViews(List<CourtSchedule> courtSchedules) {
-        Map<String, CourtSessionsView> courtSessionsViews = new HashMap<>();
+    public static List<CourtSessionsView> getCourtSessionsViews(final List<CourtSchedule> courtSchedules) {
+        final Map<String, CourtSessionsView> courtSessionsViews = new HashMap<>();
         courtSchedules.forEach(courtSchedule -> {
             final String courtRoomName = courtSchedule.getCourtRoomName();
             final String courtRoomId = courtSchedule.getCourtRoomId();
@@ -59,7 +59,7 @@ public class CourtScheduleToViewConverter {
                     .withJurisdictionType(courtSchedule.getJurisdiction())
                     .withJudiciaries(courtSchedule.getJudiciaries())
                     .build();
-            CourtSessionsView courtSessionsView;
+            final CourtSessionsView courtSessionsView;
             if (courtSessionsViews.containsKey(courtRoomName)) {
                 courtSessionsView = courtSessionsViews.get(courtRoomName);
             } else {

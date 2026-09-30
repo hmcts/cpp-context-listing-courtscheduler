@@ -11,7 +11,7 @@ public class SearchCourtSchedulesByIdRequestParam {
         return courtScheduleIds;
     }
 
-    public SearchCourtSchedulesByIdRequestParam(List<String> courtScheduleIds) {
+    public SearchCourtSchedulesByIdRequestParam(final List<String> courtScheduleIds) {
         this.courtScheduleIds = courtScheduleIds;
     }
 
@@ -25,7 +25,7 @@ public class SearchCourtSchedulesByIdRequestParam {
             return new SearchCourtSchedulesByIdRequestParam.SearchCourtSchedulesByIdRequestParamBuilder();
         }
 
-        public SearchCourtSchedulesByIdRequestParam.SearchCourtSchedulesByIdRequestParamBuilder withCourtScheduleIds(List<String> courtScheduleIds) {
+        public SearchCourtSchedulesByIdRequestParam.SearchCourtSchedulesByIdRequestParamBuilder withCourtScheduleIds(final List<String> courtScheduleIds) {
             this.courtScheduleIds = courtScheduleIds;
             return this;
         }
@@ -37,8 +37,12 @@ public class SearchCourtSchedulesByIdRequestParam {
 
     @Override
     public boolean equals(final Object o) {
-        if (this == o) return true;
-        if (!(o instanceof final SearchCourtSchedulesByIdRequestParam that)) return false;
+        if (this == o) {
+            return true;
+        }
+        if (!(o instanceof final SearchCourtSchedulesByIdRequestParam that)) {
+            return false;
+        }
         return Objects.equals(getCourtScheduleIds(), that.getCourtScheduleIds());
     }
 

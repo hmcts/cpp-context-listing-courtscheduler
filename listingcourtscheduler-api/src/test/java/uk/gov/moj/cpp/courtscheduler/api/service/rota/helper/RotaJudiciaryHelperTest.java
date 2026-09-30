@@ -35,7 +35,6 @@ import uk.gov.moj.cpp.courtscheduler.domain.Judiciary;
 import uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload;
 import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.enricher.JudiciaryBuilder;
 
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -53,6 +52,16 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class RotaJudiciaryHelperTest {
+    private static final String CHAIR_2 = "CHAIR";
+    private static final String DOE = "Doe";
+    private static final String JOHN = "John";
+    private static final String JUDGE_EXAMPLE_COM = "judge@example.com";
+    private static final String JUSTICE_1 = "justice-1";
+    private static final String LISTING_1 = "listing-1";
+    private static final String MAG_1 = "mag-1";
+    private static final String MISSING_EXAMPLE_COM = "missing@example.com";
+    private static final String SCHEDULE_1 = "schedule-1";
+
 
     @Mock
     private RotaReferenceDataService referenceDataValidationService;
@@ -78,9 +87,9 @@ class RotaJudiciaryHelperTest {
         judiciaryId = UUID.randomUUID().toString();
         judiciary = Judiciary.JudiciaryBuilder.aJudiciary()
                 .withId(judiciaryId)
-                .withEmailAddress("judge@example.com")
-                .withForenames("John")
-                .withSurname("Doe")
+                .withEmailAddress(JUDGE_EXAMPLE_COM)
+                .withForenames(JOHN)
+                .withSurname(DOE)
                 .withTitlePrefix("Mr")
                 .withJudiciaryType("Judge")
                 .build();
@@ -93,10 +102,10 @@ class RotaJudiciaryHelperTest {
     @Test
     void shouldCreateJudiciaryMap_WhenMagistratesAndJudgesPresent() {
         // given
-        final String magistrateId = "mag-1";
+        final String magistrateId = MAG_1;
         final String judgeId = "judge-1";
         final String magistrateEmail = "mag@example.com";
-        final String judgeEmail = "judge@example.com";
+        final String judgeEmail = JUDGE_EXAMPLE_COM;
 
         final Map<String, Map<String, String>> magistrates = new HashMap<>();
         magistrates.put(magistrateId, Map.of(MAGS_EMAIL, magistrateEmail));
@@ -145,7 +154,7 @@ class RotaJudiciaryHelperTest {
     @Test
     void shouldSkipJudiciary_WhenEmailIsMissing() {
         // given
-        final String magistrateId = "mag-1";
+        final String magistrateId = MAG_1;
         final Map<String, Map<String, String>> magistrates = new HashMap<>();
         magistrates.put(magistrateId, Map.of("otherField", "value"));
         records.put(MAGISTRATES, magistrates);
@@ -161,8 +170,8 @@ class RotaJudiciaryHelperTest {
     @Test
     void shouldNotLogMissingJudiciary_WhenJudiciaryNotFoundInCreateJudiciaryMap() {
         // given
-        final String magistrateId = "mag-1";
-        final String magistrateEmail = "missing@example.com";
+        final String magistrateId = MAG_1;
+        final String magistrateEmail = MISSING_EXAMPLE_COM;
         final Map<String, Map<String, String>> magistrates = new HashMap<>();
         magistrates.put(magistrateId, Map.of(MAGS_EMAIL, magistrateEmail));
         records.put(MAGISTRATES, magistrates);
@@ -187,7 +196,7 @@ class RotaJudiciaryHelperTest {
     void shouldGetJudiciaryInfoMap_WhenRecordsContainJudiciaries() {
         // given
         final Map<String, Map<String, String>> magistrates = new HashMap<>();
-        magistrates.put("mag-1", Map.of("field1", "value1"));
+        magistrates.put(MAG_1, Map.of("field1", "value1"));
         records.put(MAGISTRATES, magistrates);
 
         final Map<String, Map<String, String>> districtJudges = new HashMap<>();
@@ -199,7 +208,7 @@ class RotaJudiciaryHelperTest {
 
         // then
         assertThat(result.size(), is(2));
-        assertThat(result.containsKey("mag-1"), is(true));
+        assertThat(result.containsKey(MAG_1), is(true));
         assertThat(result.containsKey("judge-1"), is(true));
     }
 
@@ -221,8 +230,8 @@ class RotaJudiciaryHelperTest {
         // given
         final Map<String, String> schedule = new HashMap<>();
         final Map<String, Map<String, String>> judiciariesMap = new HashMap<>();
-        final String rotaJusticeId = "justice-1";
-        final String email = "judge@example.com";
+        final String rotaJusticeId = JUSTICE_1;
+        final String email = JUDGE_EXAMPLE_COM;
 
         judiciariesMap.put(rotaJusticeId, Map.of(JUDGE_EMAIL, email));
         schedule.put(ROTA_JUDICIARY_ID, rotaJusticeId);
@@ -246,10 +255,10 @@ class RotaJudiciaryHelperTest {
         // given
         final Map<String, String> schedule = new HashMap<>();
         final Map<String, Map<String, String>> judiciariesMap = new HashMap<>();
-        final String rotaJusticeId = "justice-1";
-        final String email = "missing@example.com";
+        final String rotaJusticeId = JUSTICE_1;
+        final String email = MISSING_EXAMPLE_COM;
 
-        judiciariesMap.put(rotaJusticeId, Map.of(JUDGE_EMAIL, email, JUDGE_FORENAMES, "John", JUDGE_SURNAME, "Doe"));
+        judiciariesMap.put(rotaJusticeId, Map.of(JUDGE_EMAIL, email, JUDGE_FORENAMES, JOHN, JUDGE_SURNAME, DOE));
         schedule.put(ROTA_JUDICIARY_ID, rotaJusticeId);
 
         when(referenceDataValidationService.validateAndFindJudiciaryByEmail(  eq(email), eq(executionId)))
@@ -272,8 +281,8 @@ class RotaJudiciaryHelperTest {
     @Test
     void shouldCreateJudiciaryCourtScheduleMap_WhenValidData() {
         // given
-        final String justiceId = "justice-1";
-        final String courtListingProfileId = "listing-1";
+        final String justiceId = JUSTICE_1;
+        final String courtListingProfileId = LISTING_1;
         final UUID sessionId1 = UUID.randomUUID();
         final UUID sessionId2 = UUID.randomUUID();
         final UUID judiciaryUuid = UUID.fromString(judiciaryId);
@@ -286,11 +295,11 @@ class RotaJudiciaryHelperTest {
         schedule.put(ROTA_JUDICIARY_ID, justiceId);
         schedule.put(COURT_LISTING_PROFILE_ID, courtListingProfileId);
         schedule.put(JUDICIARY_ID, judiciaryId);
-        schedules.put("schedule-1", schedule);
+        schedules.put(SCHEDULE_1, schedule);
         records.put(SCHEDULE, schedules);
 
         final Map<String, Map<String, String>> magistrates = new HashMap<>();
-        magistrates.put(justiceId, Map.of(MAGS_EMAIL, "judge@example.com"));
+        magistrates.put(justiceId, Map.of(MAGS_EMAIL, JUDGE_EXAMPLE_COM));
         records.put(MAGISTRATES, magistrates);
 
         when(referenceDataValidationService.validateAndFindJudiciaryByEmail(anyString(), anyString()))
@@ -299,7 +308,7 @@ class RotaJudiciaryHelperTest {
         final CourtScheduleJudiciary courtScheduleJudiciary = CourtScheduleJudiciary.judiciary()
                 .withJudiciaryId(judiciaryId)
                 .withCourtListingProfileId(courtListingProfileId)
-                .withPosition("CHAIR")
+                .withPosition(CHAIR_2)
                 .withIsBenchChairman(true)
                 .withIsDeputy(false)
                 .build();
@@ -320,7 +329,7 @@ class RotaJudiciaryHelperTest {
         assertThat(data.courtScheduleIds().size(), is(2));
         assertThat(data.courtScheduleIds().contains(sessionId1), is(true));
         assertThat(data.courtScheduleIds().contains(sessionId2), is(true));
-        assertThat(data.position(), is("CHAIR"));
+        assertThat(data.position(), is(CHAIR_2));
         assertThat(data.isBenchChairman(), is(true));
         assertThat(data.isDeputy(), is(false));
     }
@@ -328,8 +337,8 @@ class RotaJudiciaryHelperTest {
     @Test
     void shouldReturnEmptyMap_WhenNoSchedulesInRecords() {
         // given
-        final Map<String, UUID> judiciaryMap = Map.of("justice-1", UUID.randomUUID());
-        final Map<String, Set<UUID>> courtScheduleMap = Map.of("listing-1", Set.of(UUID.randomUUID()));
+        final Map<String, UUID> judiciaryMap = Map.of(JUSTICE_1, UUID.randomUUID());
+        final Map<String, Set<UUID>> courtScheduleMap = Map.of(LISTING_1, Set.of(UUID.randomUUID()));
 
         // when
         final Map<String, List<JudiciaryCourtScheduleData>> result = rotaJudiciaryHelper.createJudiciaryCourtScheduleMap(
@@ -342,11 +351,11 @@ class RotaJudiciaryHelperTest {
     @Test
     void shouldReturnEmptyMap_WhenCourtScheduleMapIsEmpty() {
         // given
-        final Map<String, UUID> judiciaryMap = Map.of("justice-1", UUID.randomUUID());
-        final Map<String, Set<UUID>> courtScheduleMap = Collections.emptyMap();
+        final Map<String, UUID> judiciaryMap = Map.of(JUSTICE_1, UUID.randomUUID());
+        final Map<String, Set<UUID>> courtScheduleMap = emptyMap();
 
         final Map<String, Map<String, String>> schedules = new HashMap<>();
-        schedules.put("schedule-1", Map.of(ROTA_JUDICIARY_ID, "justice-1", COURT_LISTING_PROFILE_ID, "listing-1"));
+        schedules.put(SCHEDULE_1, Map.of(ROTA_JUDICIARY_ID, JUSTICE_1, COURT_LISTING_PROFILE_ID, LISTING_1));
         records.put(SCHEDULE, schedules);
 
         // when
@@ -360,8 +369,8 @@ class RotaJudiciaryHelperTest {
     @Test
     void shouldSkipSchedule_WhenJudiciaryIdNotInMap() {
         // given
-        final String justiceId = "justice-1";
-        final String courtListingProfileId = "listing-1";
+        final String justiceId = JUSTICE_1;
+        final String courtListingProfileId = LISTING_1;
         final UUID sessionId = UUID.randomUUID();
         final UUID differentJudiciaryUuid = UUID.randomUUID();
 
@@ -373,11 +382,11 @@ class RotaJudiciaryHelperTest {
         schedule.put(ROTA_JUDICIARY_ID, justiceId);
         schedule.put(COURT_LISTING_PROFILE_ID, courtListingProfileId);
         schedule.put(JUDICIARY_ID, UUID.randomUUID().toString());
-        schedules.put("schedule-1", schedule);
+        schedules.put(SCHEDULE_1, schedule);
         records.put(SCHEDULE, schedules);
 
         final Map<String, Map<String, String>> magistrates = new HashMap<>();
-        magistrates.put(justiceId, Map.of(MAGS_EMAIL, "judge@example.com"));
+        magistrates.put(justiceId, Map.of(MAGS_EMAIL, JUDGE_EXAMPLE_COM));
         records.put(MAGISTRATES, magistrates);
 
         when(referenceDataValidationService.validateAndFindJudiciaryByEmail(anyString(), anyString()))
@@ -394,8 +403,8 @@ class RotaJudiciaryHelperTest {
     @Test
     void shouldCreateJudiciaryCourtScheduleMap_WhenMultipleSchedulesForSameJudiciary() {
         // given
-        final String justiceId = "justice-1";
-        final String courtListingProfileId1 = "listing-1";
+        final String justiceId = JUSTICE_1;
+        final String courtListingProfileId1 = LISTING_1;
         final String courtListingProfileId2 = "listing-2";
         final UUID sessionId1 = UUID.randomUUID();
         final UUID sessionId2 = UUID.randomUUID();
@@ -413,7 +422,7 @@ class RotaJudiciaryHelperTest {
         schedule1.put(ROTA_JUDICIARY_ID, justiceId);
         schedule1.put(COURT_LISTING_PROFILE_ID, courtListingProfileId1);
         schedule1.put(JUDICIARY_ID, judiciaryId);
-        schedules.put("schedule-1", schedule1);
+        schedules.put(SCHEDULE_1, schedule1);
 
         final Map<String, String> schedule2 = new HashMap<>();
         schedule2.put(ROTA_JUDICIARY_ID, justiceId);
@@ -423,7 +432,7 @@ class RotaJudiciaryHelperTest {
         records.put(SCHEDULE, schedules);
 
         final Map<String, Map<String, String>> magistrates = new HashMap<>();
-        magistrates.put(justiceId, Map.of(MAGS_EMAIL, "judge@example.com"));
+        magistrates.put(justiceId, Map.of(MAGS_EMAIL, JUDGE_EXAMPLE_COM));
         records.put(MAGISTRATES, magistrates);
 
         when(referenceDataValidationService.validateAndFindJudiciaryByEmail(anyString(), anyString()))
@@ -432,7 +441,7 @@ class RotaJudiciaryHelperTest {
         final CourtScheduleJudiciary courtScheduleJudiciary1 = CourtScheduleJudiciary.judiciary()
                 .withJudiciaryId(judiciaryId)
                 .withCourtListingProfileId(courtListingProfileId1)
-                .withPosition("CHAIR")
+                .withPosition(CHAIR_2)
                 .withIsBenchChairman(true)
                 .withIsDeputy(false)
                 .build();
@@ -462,7 +471,7 @@ class RotaJudiciaryHelperTest {
         
         // Verify first schedule data
         final JudiciaryCourtScheduleData data1 = dataList.stream()
-                .filter(d -> d.position().equals("CHAIR"))
+                .filter(d -> CHAIR_2.equals(d.position()))
                 .findFirst()
                 .orElse(null);
         assertThat(data1, is(notNullValue()));
@@ -472,7 +481,7 @@ class RotaJudiciaryHelperTest {
 
         // Verify second schedule data
         final JudiciaryCourtScheduleData data2 = dataList.stream()
-                .filter(d -> d.position().equals("LEFT_WINGER"))
+                .filter(d -> "LEFT_WINGER".equals(d.position()))
                 .findFirst()
                 .orElse(null);
         assertThat(data2, is(notNullValue()));
@@ -484,8 +493,8 @@ class RotaJudiciaryHelperTest {
     @Test
     void shouldReturnEmptyMap_WhenScheduleJudiciaryListIsNull() {
         // given
-        final Map<String, UUID> judiciaryMap = Map.of("justice-1", UUID.randomUUID());
-        final Map<String, Set<UUID>> courtScheduleMap = Map.of("listing-1", Set.of(UUID.randomUUID()));
+        final Map<String, UUID> judiciaryMap = Map.of(JUSTICE_1, UUID.randomUUID());
+        final Map<String, Set<UUID>> courtScheduleMap = Map.of(LISTING_1, Set.of(UUID.randomUUID()));
 
         // when
         final Map<String, List<JudiciaryCourtScheduleData>> result = rotaJudiciaryHelper.createJudiciaryCourtScheduleMap(
@@ -498,8 +507,8 @@ class RotaJudiciaryHelperTest {
     @Test
     void shouldSkipSchedule_WhenMissingJudiciaryId() {
         // given
-        final String justiceId = "justice-1";
-        final String courtListingProfileId = "listing-1";
+        final String justiceId = JUSTICE_1;
+        final String courtListingProfileId = LISTING_1;
         final UUID sessionId = UUID.randomUUID();
         final UUID judiciaryUuid = UUID.fromString(judiciaryId);
 
@@ -511,11 +520,11 @@ class RotaJudiciaryHelperTest {
         schedule.put(ROTA_JUDICIARY_ID, justiceId);
         schedule.put(COURT_LISTING_PROFILE_ID, courtListingProfileId);
         // Missing JUDICIARY_ID
-        schedules.put("schedule-1", schedule);
+        schedules.put(SCHEDULE_1, schedule);
         records.put(SCHEDULE, schedules);
 
         final Map<String, Map<String, String>> magistrates = new HashMap<>();
-        magistrates.put(justiceId, Map.of(MAGS_EMAIL, "judge@example.com"));
+        magistrates.put(justiceId, Map.of(MAGS_EMAIL, JUDGE_EXAMPLE_COM));
         records.put(MAGISTRATES, magistrates);
 
         when(referenceDataValidationService.validateAndFindJudiciaryByEmail(anyString(), anyString()))
@@ -532,23 +541,23 @@ class RotaJudiciaryHelperTest {
     @Test
     void shouldSkipSchedule_WhenMissingCourtListingProfileId() {
         // given
-        final String justiceId = "justice-1";
+        final String justiceId = JUSTICE_1;
         final UUID sessionId = UUID.randomUUID();
         final UUID judiciaryUuid = UUID.fromString(judiciaryId);
 
         final Map<String, UUID> judiciaryMap = Map.of(justiceId, judiciaryUuid);
-        final Map<String, Set<UUID>> courtScheduleMap = Map.of("listing-1", Set.of(sessionId));
+        final Map<String, Set<UUID>> courtScheduleMap = Map.of(LISTING_1, Set.of(sessionId));
 
         final Map<String, Map<String, String>> schedules = new HashMap<>();
         final Map<String, String> schedule = new HashMap<>();
         schedule.put(ROTA_JUDICIARY_ID, justiceId);
         schedule.put(JUDICIARY_ID, judiciaryId);
         // Missing COURT_LISTING_PROFILE_ID
-        schedules.put("schedule-1", schedule);
+        schedules.put(SCHEDULE_1, schedule);
         records.put(SCHEDULE, schedules);
 
         final Map<String, Map<String, String>> magistrates = new HashMap<>();
-        magistrates.put(justiceId, Map.of(MAGS_EMAIL, "judge@example.com"));
+        magistrates.put(justiceId, Map.of(MAGS_EMAIL, JUDGE_EXAMPLE_COM));
         records.put(MAGISTRATES, magistrates);
 
         when(referenceDataValidationService.validateAndFindJudiciaryByEmail(anyString(), anyString()))
@@ -565,8 +574,8 @@ class RotaJudiciaryHelperTest {
     @Test
     void shouldHandleException_WhenProcessingSchedule() {
         // given
-        final String justiceId = "justice-1";
-        final String courtListingProfileId = "listing-1";
+        final String justiceId = JUSTICE_1;
+        final String courtListingProfileId = LISTING_1;
         final UUID sessionId = UUID.randomUUID();
         final UUID judiciaryUuid = UUID.fromString(judiciaryId);
 
@@ -578,11 +587,11 @@ class RotaJudiciaryHelperTest {
         schedule.put(ROTA_JUDICIARY_ID, justiceId);
         schedule.put(COURT_LISTING_PROFILE_ID, courtListingProfileId);
         schedule.put(JUDICIARY_ID, "invalid-uuid-format"); // This will cause exception when parsing
-        schedules.put("schedule-1", schedule);
+        schedules.put(SCHEDULE_1, schedule);
         records.put(SCHEDULE, schedules);
 
         final Map<String, Map<String, String>> magistrates = new HashMap<>();
-        magistrates.put(justiceId, Map.of(MAGS_EMAIL, "judge@example.com"));
+        magistrates.put(justiceId, Map.of(MAGS_EMAIL, JUDGE_EXAMPLE_COM));
         records.put(MAGISTRATES, magistrates);
 
         when(referenceDataValidationService.validateAndFindJudiciaryByEmail(anyString(), anyString()))
@@ -600,8 +609,8 @@ class RotaJudiciaryHelperTest {
     @Test
     void shouldCreateJudiciaryCourtScheduleMap_WhenMultipleCourtListingProfilesForSameJudiciary() {
         // given
-        final String justiceId = "justice-1";
-        final String courtListingProfileId1 = "listing-1";
+        final String justiceId = JUSTICE_1;
+        final String courtListingProfileId1 = LISTING_1;
         final String courtListingProfileId2 = "listing-2";
         final UUID sessionId1 = UUID.randomUUID();
         final UUID sessionId2 = UUID.randomUUID();
@@ -618,7 +627,7 @@ class RotaJudiciaryHelperTest {
         schedule1.put(ROTA_JUDICIARY_ID, justiceId);
         schedule1.put(COURT_LISTING_PROFILE_ID, courtListingProfileId1);
         schedule1.put(JUDICIARY_ID, judiciaryId);
-        schedules.put("schedule-1", schedule1);
+        schedules.put(SCHEDULE_1, schedule1);
 
         final Map<String, String> schedule2 = new HashMap<>();
         schedule2.put(ROTA_JUDICIARY_ID, justiceId);
@@ -628,7 +637,7 @@ class RotaJudiciaryHelperTest {
         records.put(SCHEDULE, schedules);
 
         final Map<String, Map<String, String>> magistrates = new HashMap<>();
-        magistrates.put(justiceId, Map.of(MAGS_EMAIL, "judge@example.com"));
+        magistrates.put(justiceId, Map.of(MAGS_EMAIL, JUDGE_EXAMPLE_COM));
         records.put(MAGISTRATES, magistrates);
 
         when(referenceDataValidationService.validateAndFindJudiciaryByEmail(anyString(), anyString()))
@@ -637,7 +646,7 @@ class RotaJudiciaryHelperTest {
         final CourtScheduleJudiciary courtScheduleJudiciary1 = CourtScheduleJudiciary.judiciary()
                 .withJudiciaryId(judiciaryId)
                 .withCourtListingProfileId(courtListingProfileId1)
-                .withPosition("CHAIR")
+                .withPosition(CHAIR_2)
                 .withIsBenchChairman(true)
                 .withIsDeputy(false)
                 .build();
@@ -672,8 +681,8 @@ class RotaJudiciaryHelperTest {
     @Test
     void shouldReturnEmptyMap_WhenScheduleJudiciaryListIsEmpty() {
         // given
-        final Map<String, UUID> judiciaryMap = Map.of("justice-1", UUID.randomUUID());
-        final Map<String, Set<UUID>> courtScheduleMap = Map.of("listing-1", Set.of(UUID.randomUUID()));
+        final Map<String, UUID> judiciaryMap = Map.of(JUSTICE_1, UUID.randomUUID());
+        final Map<String, Set<UUID>> courtScheduleMap = Map.of(LISTING_1, Set.of(UUID.randomUUID()));
 
         final Map<String, Map<String, String>> schedules = new HashMap<>();
         records.put(SCHEDULE, schedules); // Empty schedules
@@ -689,8 +698,8 @@ class RotaJudiciaryHelperTest {
     @Test
     void shouldSkipSchedule_WhenCourtScheduleMapDoesNotContainListingProfile() {
         // given
-        final String justiceId = "justice-1";
-        final String courtListingProfileId = "listing-1";
+        final String justiceId = JUSTICE_1;
+        final String courtListingProfileId = LISTING_1;
         final UUID judiciaryUuid = UUID.fromString(judiciaryId);
 
         final Map<String, UUID> judiciaryMap = Map.of(justiceId, judiciaryUuid);
@@ -701,11 +710,11 @@ class RotaJudiciaryHelperTest {
         schedule.put(ROTA_JUDICIARY_ID, justiceId);
         schedule.put(COURT_LISTING_PROFILE_ID, courtListingProfileId);
         schedule.put(JUDICIARY_ID, judiciaryId);
-        schedules.put("schedule-1", schedule);
+        schedules.put(SCHEDULE_1, schedule);
         records.put(SCHEDULE, schedules);
 
         final Map<String, Map<String, String>> magistrates = new HashMap<>();
-        magistrates.put(justiceId, Map.of(MAGS_EMAIL, "judge@example.com"));
+        magistrates.put(justiceId, Map.of(MAGS_EMAIL, JUDGE_EXAMPLE_COM));
         records.put(MAGISTRATES, magistrates);
 
         when(referenceDataValidationService.validateAndFindJudiciaryByEmail(anyString(), anyString()))
@@ -714,7 +723,7 @@ class RotaJudiciaryHelperTest {
         final CourtScheduleJudiciary courtScheduleJudiciary = CourtScheduleJudiciary.judiciary()
                 .withJudiciaryId(judiciaryId)
                 .withCourtListingProfileId(courtListingProfileId)
-                .withPosition("CHAIR")
+                .withPosition(CHAIR_2)
                 .withIsBenchChairman(true)
                 .withIsDeputy(false)
                 .build();
@@ -736,12 +745,12 @@ class RotaJudiciaryHelperTest {
     @Test
     void shouldLogJudiciaryMissingMessage_WhenJudiciaryNotFoundInSchedule() {
         // given
-        final String rotaJusticeId = "justice-1";
-        final String email = "missing@example.com";
-        final String firstName = "John";
-        final String lastName = "Doe";
+        final String rotaJusticeId = JUSTICE_1;
+        final String email = MISSING_EXAMPLE_COM;
+        final String firstName = JOHN;
+        final String lastName = DOE;
         final UUID judiciaryUuid = UUID.fromString(judiciaryId);
-        final String courtListingProfileId = "listing-1";
+        final String courtListingProfileId = LISTING_1;
 
         final Map<String, UUID> judiciaryMap = Map.of(rotaJusticeId, judiciaryUuid);
         final Map<String, Set<UUID>> courtScheduleMap = Map.of(courtListingProfileId, Set.of(UUID.randomUUID()));
@@ -752,7 +761,7 @@ class RotaJudiciaryHelperTest {
         schedule.put(EMAIL_ADDRESS, email);
         schedule.put(FORENAMES, firstName);
         schedule.put(SURNAME, lastName);
-        schedules.put("schedule-1", schedule);
+        schedules.put(SCHEDULE_1, schedule);
         records.put(SCHEDULE, schedules);
 
         final Map<String, Map<String, String>> magistrates = new HashMap<>();
@@ -785,10 +794,10 @@ class RotaJudiciaryHelperTest {
     @Test
     void shouldNotLogJudiciaryMissingMessage_WhenNoErrors() {
         // given
-        final String rotaJusticeId = "justice-1";
-        final String email = "judge@example.com";
+        final String rotaJusticeId = JUSTICE_1;
+        final String email = JUDGE_EXAMPLE_COM;
         final UUID judiciaryUuid = UUID.fromString(judiciaryId);
-        final String courtListingProfileId = "listing-1";
+        final String courtListingProfileId = LISTING_1;
 
         final Map<String, UUID> judiciaryMap = Map.of(rotaJusticeId, judiciaryUuid);
         final Map<String, Set<UUID>> courtScheduleMap = Map.of(courtListingProfileId, Set.of(UUID.randomUUID()));
@@ -799,7 +808,7 @@ class RotaJudiciaryHelperTest {
         schedule.put(EMAIL_ADDRESS, email);
         schedule.put(COURT_LISTING_PROFILE_ID, courtListingProfileId);
         schedule.put(JUDICIARY_ID, judiciaryId);
-        schedules.put("schedule-1", schedule);
+        schedules.put(SCHEDULE_1, schedule);
         records.put(SCHEDULE, schedules);
 
         final Map<String, Map<String, String>> magistrates = new HashMap<>();
@@ -828,12 +837,12 @@ class RotaJudiciaryHelperTest {
     @Test
     void shouldNotLogJudiciaryMissingMessage_WhenExecutionIdIsNull() {
         // given
-        final String rotaJusticeId = "justice-1";
-        final String email = "missing@example.com";
-        final String firstName = "John";
-        final String lastName = "Doe";
+        final String rotaJusticeId = JUSTICE_1;
+        final String email = MISSING_EXAMPLE_COM;
+        final String firstName = JOHN;
+        final String lastName = DOE;
         final UUID judiciaryUuid = UUID.fromString(judiciaryId);
-        final String courtListingProfileId = "listing-1";
+        final String courtListingProfileId = LISTING_1;
 
         final Map<String, UUID> judiciaryMap = Map.of(rotaJusticeId, judiciaryUuid);
         final Map<String, Set<UUID>> courtScheduleMap = Map.of(courtListingProfileId, Set.of(UUID.randomUUID()));
@@ -844,7 +853,7 @@ class RotaJudiciaryHelperTest {
         schedule.put(EMAIL_ADDRESS, email);
         schedule.put(FORENAMES, firstName);
         schedule.put(SURNAME, lastName);
-        schedules.put("schedule-1", schedule);
+        schedules.put(SCHEDULE_1, schedule);
         records.put(SCHEDULE, schedules);
 
         final Map<String, Map<String, String>> magistrates = new HashMap<>();
@@ -867,17 +876,17 @@ class RotaJudiciaryHelperTest {
     @Test
     void shouldLogMultipleJudiciaryMissingMessages() {
         // given
-        final String rotaJusticeId1 = "justice-1";
+        final String rotaJusticeId1 = JUSTICE_1;
         final String rotaJusticeId2 = "justice-2";
         final String email1 = "missing1@example.com";
         final String email2 = "missing2@example.com";
-        final String firstName1 = "John";
-        final String lastName1 = "Doe";
+        final String firstName1 = JOHN;
+        final String lastName1 = DOE;
         final String firstName2 = "Jane";
         final String lastName2 = "Smith";
         final UUID judiciaryUuid1 = UUID.fromString(judiciaryId);
         final UUID judiciaryUuid2 = UUID.randomUUID();
-        final String courtListingProfileId = "listing-1";
+        final String courtListingProfileId = LISTING_1;
 
         final Map<String, UUID> judiciaryMap = Map.of(rotaJusticeId1, judiciaryUuid1, rotaJusticeId2, judiciaryUuid2);
         final Map<String, Set<UUID>> courtScheduleMap = Map.of(courtListingProfileId, Set.of(UUID.randomUUID()));
@@ -889,7 +898,7 @@ class RotaJudiciaryHelperTest {
         schedule1.put(EMAIL_ADDRESS, email1);
         schedule1.put(FORENAMES, firstName1);
         schedule1.put(SURNAME, lastName1);
-        schedules.put("schedule-1", schedule1);
+        schedules.put(SCHEDULE_1, schedule1);
 
         final Map<String, String> schedule2 = new HashMap<>();
         schedule2.put(ROTA_JUDICIARY_ID, rotaJusticeId2);

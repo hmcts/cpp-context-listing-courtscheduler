@@ -1,14 +1,14 @@
 package uk.gov.moj.cpp.courtscheduler.domain;
 
-import java.util.Date;
+import java.time.Instant;
 
 public class AllocatedListingEachBooked {
 
-    private String courtScheduleId;
-    private Integer duration;
-    private Date hearingStartTime;
+    private final String courtScheduleId;
+    private final Integer duration;
+    private final Instant hearingStartTime;
 
-    public AllocatedListingEachBooked(final String courtScheduleId, final Integer duration, final Date hearingStartTime) {
+    public AllocatedListingEachBooked(final String courtScheduleId, final Integer duration, final Instant hearingStartTime) {
         this.courtScheduleId = courtScheduleId;
         this.duration = duration;
         this.hearingStartTime = hearingStartTime;
@@ -22,7 +22,7 @@ public class AllocatedListingEachBooked {
         return courtScheduleId;
     }
 
-    public Date getHearingStartTime() {
+    public Instant getHearingStartTime() {
         return hearingStartTime;
     }
 }

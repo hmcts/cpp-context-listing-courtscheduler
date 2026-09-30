@@ -10,16 +10,17 @@ import java.util.Properties;
 
 public class PropertiesLoader {
 
-    private static final Properties properties = new Properties();
+    private static final Properties PROPERTIES = new Properties();
 
     public static Map<String, String> getProperties(final String propertiesFile) throws IOException {
-        final InputStream inputStream = PropertiesLoader.class.getClassLoader().getResourceAsStream(propertiesFile);
-        if (nonNull(inputStream)) {
-            properties.load(inputStream);
+        try (InputStream inputStream = Thread.currentThread().getContextClassLoader().getResourceAsStream(propertiesFile)) {
+            if (nonNull(inputStream)) {
+                PROPERTIES.load(inputStream);
+            }
         }
 
-        return properties.stringPropertyNames()
+        return PROPERTIES.stringPropertyNames()
                 .stream()
-                .collect(toMap(property -> property, properties::getProperty));
+                .collect(toMap(property -> property, PROPERTIES::getProperty));
     }
 }

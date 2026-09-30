@@ -5,6 +5,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.json.Json;
 import jakarta.json.JsonObject;
 import jakarta.json.JsonObjectBuilder;
+import jakarta.json.JsonReader;
+import jakarta.json.JsonString;
+import jakarta.json.JsonValue;
 import java.io.StringReader;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -90,7 +93,7 @@ public class JudiciaryAvailabilityApi implements JudiciaryAvailabilityOpenApi {
     private JsonObject toJsonObject(final Map<String, Object> body) {
         try {
             final String json = body == null ? "{}" : objectMapper.writeValueAsString(body);
-            try (var reader = Json.createReader(new StringReader(json))) {
+            try (JsonReader reader = Json.createReader(new StringReader(json))) {
                 return reader.readObject();
             }
         } catch (JsonProcessingException e) {
@@ -102,12 +105,12 @@ public class JudiciaryAvailabilityApi implements JudiciaryAvailabilityOpenApi {
     private JsonObject queryToJsonObject(final String startDate, final String endDate, final String courtCentreId,
                                          final Integer pageSize, final Integer pageNumber, final Boolean withJudiciary) {
         final JsonObjectBuilder b = Json.createObjectBuilder();
-        if (startDate != null)     b.add("startDate", startDate);
-        if (endDate != null)       b.add("endDate", endDate);
-        if (courtCentreId != null) b.add("courtCentreId", courtCentreId);
-        if (pageSize != null)      b.add("pageSize", pageSize);
-        if (pageNumber != null)    b.add("pageNumber", pageNumber);
-        if (withJudiciary != null) b.add("withJudiciary", withJudiciary);
+        if (startDate != null)     { b.add("startDate", startDate); }
+        if (endDate != null)       { b.add("endDate", endDate); }
+        if (courtCentreId != null) { b.add("courtCentreId", courtCentreId); }
+        if (pageSize != null)      { b.add("pageSize", pageSize); }
+        if (pageNumber != null)    { b.add("pageNumber", pageNumber); }
+        if (withJudiciary != null) { b.add("withJudiciary", withJudiciary); }
         return b.build();
     }
 
@@ -201,10 +204,10 @@ public class JudiciaryAvailabilityApi implements JudiciaryAvailabilityOpenApi {
     }
 
     private static String extractFirstString(final JsonObject errors) {
-        for (final var entry : errors.entrySet()) {
-            final var v = entry.getValue();
-            if (v.getValueType() == jakarta.json.JsonValue.ValueType.STRING) {
-                return ((jakarta.json.JsonString) v).getString();
+        for (final Map.Entry<String, JsonValue> entry : errors.entrySet()) {
+            final JsonValue value = entry.getValue();
+            if (value.getValueType() == JsonValue.ValueType.STRING) {
+                return ((JsonString) value).getString();
             }
         }
         return errors.toString();
@@ -233,7 +236,7 @@ public class JudiciaryAvailabilityApi implements JudiciaryAvailabilityOpenApi {
         LOG.info("courtscheduler.judiciary.get.availability.rule ruleId={}, withJudiciary={}", ruleId, withJudiciary);
         final JsonObjectBuilder b = Json.createObjectBuilder();
         b.add("ruleId", ruleId);
-        if (withJudiciary != null) b.add("withJudiciary", withJudiciary);
+        if (withJudiciary != null) { b.add("withJudiciary", withJudiciary); }
         final GetJudiciaryAvailabilityRuleRequest request = getRuleConverter.convert(b.build());
         final GetJudiciaryAvailabilityRuleResponse response = judiciaryAvailabilityService.getJudiciaryAvailabilityRule(request);
         return ResponseEntity.ok(toFlatMap(response));
@@ -276,13 +279,13 @@ public class JudiciaryAvailabilityApi implements JudiciaryAvailabilityOpenApi {
                                                                            final Boolean ignoreAvailability) {
         LOG.info("courtscheduler.search.available.judiciaries search={}, judiciaryGroup={}", search, judiciaryGroup);
         final JsonObjectBuilder b = Json.createObjectBuilder();
-        if (search != null)           b.add("search", search);
-        if (judiciaryGroup != null)   b.add("judiciaryGroup", judiciaryGroup);
-        if (limit != null)            b.add("limit", limit);
-        if (dates != null)            b.add("dates", dates);
-        if (courtHouseId != null)     b.add("courtHouseId", courtHouseId);
-        if (courtScheduleIds != null) b.add("courtScheduleIds", courtScheduleIds);
-        if (ignoreAvailability != null) b.add("ignoreAvailability", ignoreAvailability);
+        if (search != null)             { b.add("search", search); }
+        if (judiciaryGroup != null)     { b.add("judiciaryGroup", judiciaryGroup); }
+        if (limit != null)              { b.add("limit", limit); }
+        if (dates != null)              { b.add("dates", dates); }
+        if (courtHouseId != null)       { b.add("courtHouseId", courtHouseId); }
+        if (courtScheduleIds != null)   { b.add("courtScheduleIds", courtScheduleIds); }
+        if (ignoreAvailability != null) { b.add("ignoreAvailability", ignoreAvailability); }
 
         final List<Judiciary> judiciaries = searchAvailableJudiciariesService.search(b.build());
 
@@ -310,7 +313,7 @@ public class JudiciaryAvailabilityApi implements JudiciaryAvailabilityOpenApi {
         }
         try {
             return objectMapper.convertValue(response, Map.class);
-        } catch (Exception e) {
+        } catch (IllegalArgumentException e) {
             LOG.warn("Failed to flatten response of type {}: {}", response.getClass(), e.getMessage());
             final Map<String, Object> body = new LinkedHashMap<>();
             body.put("payload", response);

@@ -14,57 +14,60 @@ import org.junit.jupiter.api.Test;
 
 
 class CourtMigrationRepositoryTest extends uk.gov.moj.cpp.courtscheduler.repository.AbstractRepositoryTest {
+    private static final String COURT_CENTRE_ID = "courtCentreId";
+    private static final String OU_CODE = "ouCode";
+
 
     @Autowired
     private CourtMigrationRepository courtMigrationRepository;
 
     @BeforeEach
     public void setUp() {
-        List<CourtSchedulerMigrationStatus> courtSchedulerMigrationStatusList = courtMigrationRepository.findAll();
+        final List<CourtSchedulerMigrationStatus> courtSchedulerMigrationStatusList = courtMigrationRepository.findAll();
         courtSchedulerMigrationStatusList.forEach(courtSchedulerMigrationStatus -> courtMigrationRepository.delete(courtSchedulerMigrationStatus));
     }
 
     @Test
-    public void shouldReturnMigrationEnabledByOuCode() {
-        CourtSchedulerMigrationStatus courtSchedulerMigrationStatus = new CourtSchedulerMigrationStatus();
-        courtSchedulerMigrationStatus.setOuCode("ouCode");
-        courtSchedulerMigrationStatus.setCourtCentreId("courtCentreId");
+    void shouldReturnMigrationEnabledByOuCode() {
+        final CourtSchedulerMigrationStatus courtSchedulerMigrationStatus = new CourtSchedulerMigrationStatus();
+        courtSchedulerMigrationStatus.setOuCode(OU_CODE);
+        courtSchedulerMigrationStatus.setCourtCentreId(COURT_CENTRE_ID);
         courtSchedulerMigrationStatus.setMigrated(true);
         courtMigrationRepository.save(courtSchedulerMigrationStatus);
-        CourtSchedulerMigrationStatus courtSchedulerMigrationStatus1 = courtMigrationRepository.findByOuCode("ouCode");
+        final CourtSchedulerMigrationStatus courtSchedulerMigrationStatus1 = courtMigrationRepository.findByOuCode(OU_CODE);
         assertTrue(courtSchedulerMigrationStatus1.isMigrated());
     }
 
     @Test
-    public void shouldReturnMigrationEnabledByCourtCentreId() {
-        CourtSchedulerMigrationStatus courtSchedulerMigrationStatus = new CourtSchedulerMigrationStatus();
-        courtSchedulerMigrationStatus.setOuCode("ouCode");
-        courtSchedulerMigrationStatus.setCourtCentreId("courtCentreId");
+    void shouldReturnMigrationEnabledByCourtCentreId() {
+        final CourtSchedulerMigrationStatus courtSchedulerMigrationStatus = new CourtSchedulerMigrationStatus();
+        courtSchedulerMigrationStatus.setOuCode(OU_CODE);
+        courtSchedulerMigrationStatus.setCourtCentreId(COURT_CENTRE_ID);
         courtSchedulerMigrationStatus.setMigrated(true);
         courtMigrationRepository.save(courtSchedulerMigrationStatus);
-        CourtSchedulerMigrationStatus courtSchedulerMigrationStatus1 = courtMigrationRepository.findByCourtCentreId("courtCentreId");
+        final CourtSchedulerMigrationStatus courtSchedulerMigrationStatus1 = courtMigrationRepository.findByCourtCentreId(COURT_CENTRE_ID);
         assertTrue(courtSchedulerMigrationStatus1.isMigrated());
     }
 
     @Test
-    public void shouldReturnMigrationDisabledByOuCode() {
-        CourtSchedulerMigrationStatus courtSchedulerMigrationStatus = new CourtSchedulerMigrationStatus();
-        courtSchedulerMigrationStatus.setOuCode("ouCode");
-        courtSchedulerMigrationStatus.setCourtCentreId("courtCentreId");
+    void shouldReturnMigrationDisabledByOuCode() {
+        final CourtSchedulerMigrationStatus courtSchedulerMigrationStatus = new CourtSchedulerMigrationStatus();
+        courtSchedulerMigrationStatus.setOuCode(OU_CODE);
+        courtSchedulerMigrationStatus.setCourtCentreId(COURT_CENTRE_ID);
         courtSchedulerMigrationStatus.setMigrated(false);
         courtMigrationRepository.save(courtSchedulerMigrationStatus);
-        CourtSchedulerMigrationStatus courtSchedulerMigrationStatus1 = courtMigrationRepository.findByOuCode("ouCode");
+        final CourtSchedulerMigrationStatus courtSchedulerMigrationStatus1 = courtMigrationRepository.findByOuCode(OU_CODE);
         assertFalse(courtSchedulerMigrationStatus1.isMigrated());
     }
 
     @Test
-    public void shouldReturnMigrationDisabledByCourtCentreId() {
-        CourtSchedulerMigrationStatus courtSchedulerMigrationStatus = new CourtSchedulerMigrationStatus();
-        courtSchedulerMigrationStatus.setOuCode("ouCode");
-        courtSchedulerMigrationStatus.setCourtCentreId("courtCentreId");
+    void shouldReturnMigrationDisabledByCourtCentreId() {
+        final CourtSchedulerMigrationStatus courtSchedulerMigrationStatus = new CourtSchedulerMigrationStatus();
+        courtSchedulerMigrationStatus.setOuCode(OU_CODE);
+        courtSchedulerMigrationStatus.setCourtCentreId(COURT_CENTRE_ID);
         courtSchedulerMigrationStatus.setMigrated(false);
         courtMigrationRepository.save(courtSchedulerMigrationStatus);
-        CourtSchedulerMigrationStatus courtSchedulerMigrationStatus1 = courtMigrationRepository.findByCourtCentreId("courtCentreId");
+        final CourtSchedulerMigrationStatus courtSchedulerMigrationStatus1 = courtMigrationRepository.findByCourtCentreId(COURT_CENTRE_ID);
         assertFalse(courtSchedulerMigrationStatus1.isMigrated());
     }
 

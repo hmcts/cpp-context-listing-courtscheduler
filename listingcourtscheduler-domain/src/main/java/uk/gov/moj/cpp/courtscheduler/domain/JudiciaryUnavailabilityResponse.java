@@ -11,7 +11,7 @@ public class JudiciaryUnavailabilityResponse {
     public JudiciaryUnavailabilityResponse() {
     }
 
-    public JudiciaryUnavailabilityResponse(LocalDate startDate, LocalDate endDate, UnavailabilityReason reason) {
+    public JudiciaryUnavailabilityResponse(final LocalDate startDate, final LocalDate endDate, final UnavailabilityReason reason) {
         this.startDate = startDate;
         this.endDate = endDate;
         this.reason = reason;
@@ -21,7 +21,7 @@ public class JudiciaryUnavailabilityResponse {
         return startDate;
     }
 
-    public void setStartDate(LocalDate startDate) {
+    public void setStartDate(final LocalDate startDate) {
         this.startDate = startDate;
     }
 
@@ -29,7 +29,7 @@ public class JudiciaryUnavailabilityResponse {
         return endDate;
     }
 
-    public void setEndDate(LocalDate endDate) {
+    public void setEndDate(final LocalDate endDate) {
         this.endDate = endDate;
     }
 
@@ -37,15 +37,19 @@ public class JudiciaryUnavailabilityResponse {
         return reason;
     }
 
-    public void setReason(UnavailabilityReason reason) {
+    public void setReason(final UnavailabilityReason reason) {
         this.reason = reason;
     }
 
     @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        JudiciaryUnavailabilityResponse that = (JudiciaryUnavailabilityResponse) o;
+    public boolean equals(final Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        final JudiciaryUnavailabilityResponse that = (JudiciaryUnavailabilityResponse) o;
         return Objects.equals(startDate, that.startDate) &&
                 Objects.equals(endDate, that.endDate) &&
                 reason == that.reason;

@@ -88,7 +88,7 @@ class RotaReferenceDataServiceTest {
         when(referenceDataMapperService.findByEmail(email)).thenReturn(Optional.of(judiciary));
 
         // when
-        Optional<Judiciary> result = rotaReferenceDataService.validateAndFindJudiciaryByEmail(email, executionId);
+        final Optional<Judiciary> result = rotaReferenceDataService.validateAndFindJudiciaryByEmail(email, executionId);
 
         // then
         assertTrue(result.isPresent());
@@ -100,7 +100,7 @@ class RotaReferenceDataServiceTest {
     @Test
     void shouldReturnEmpty_WhenEmailIsEmpty() {
         // when
-        Optional<Judiciary> result = rotaReferenceDataService.validateAndFindJudiciaryByEmail("", executionId);
+        final Optional<Judiciary> result = rotaReferenceDataService.validateAndFindJudiciaryByEmail("", executionId);
 
         // then
         assertFalse(result.isPresent());
@@ -111,7 +111,7 @@ class RotaReferenceDataServiceTest {
     @Test
     void shouldReturnEmpty_WhenEmailIsNull() {
         // when
-        Optional<Judiciary> result = rotaReferenceDataService.validateAndFindJudiciaryByEmail(null, executionId);
+        final Optional<Judiciary> result = rotaReferenceDataService.validateAndFindJudiciaryByEmail(null, executionId);
 
         // then
         assertFalse(result.isPresent());
@@ -125,7 +125,7 @@ class RotaReferenceDataServiceTest {
         when(referenceDataMapperService.findByEmail(email)).thenReturn(Optional.empty());
 
         // when
-        Optional<Judiciary> result = rotaReferenceDataService.validateAndFindJudiciaryByEmail(email, executionId);
+        final Optional<Judiciary> result = rotaReferenceDataService.validateAndFindJudiciaryByEmail(email, executionId);
 
         // then
         assertFalse(result.isPresent());
@@ -140,7 +140,7 @@ class RotaReferenceDataServiceTest {
         when(referenceDataMapperService.findByEmail(email)).thenReturn(Optional.empty());
 
         // when
-        Optional<Judiciary> result = rotaReferenceDataService.validateAndFindJudiciaryByEmail(email, null);
+        final Optional<Judiciary> result = rotaReferenceDataService.validateAndFindJudiciaryByEmail(email, null);
 
         // then
         assertFalse(result.isPresent());
@@ -151,21 +151,21 @@ class RotaReferenceDataServiceTest {
     @Test
     void shouldReturnEmptyAndLogError_WhenExceptionOccurs() {
         // given
-        RuntimeException exception = new RuntimeException("Database error");
+        final RuntimeException exception = new RuntimeException("Database error");
         when(referenceDataMapperService.findByEmail(email)).thenThrow(exception);
 
         // when
-        Optional<Judiciary> result = rotaReferenceDataService.validateAndFindJudiciaryByEmail(email, executionId);
+        final Optional<Judiciary> result = rotaReferenceDataService.validateAndFindJudiciaryByEmail(email, executionId);
 
         // then
         assertFalse(result.isPresent());
         verify(referenceDataMapperService).findByEmail(email);
 
-        ArgumentCaptor<uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog> logCaptor =
+        final ArgumentCaptor<uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog> logCaptor =
                 ArgumentCaptor.forClass(uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog.class);
         verify(rotaProcessLogService).saveRotaProcessLog(logCaptor.capture());
 
-        uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog log = logCaptor.getValue();
+        final uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog log = logCaptor.getValue();
         assertThat(log.getExecutionId(), is(executionId));
         assertThat(log.getErrorCode(), is(ROTA_PROCESSING_ERROR.code()));
     }
@@ -176,7 +176,7 @@ class RotaReferenceDataServiceTest {
         when(referenceDataMapperService.findByEmail(email)).thenReturn(Optional.empty());
 
         // when
-        Optional<Judiciary> result = rotaReferenceDataService.validateAndFindJudiciaryByEmail(email, executionId);
+        final Optional<Judiciary> result = rotaReferenceDataService.validateAndFindJudiciaryByEmail(email, executionId);
 
         // then
         assertFalse(result.isPresent());
@@ -191,7 +191,7 @@ class RotaReferenceDataServiceTest {
         when(referenceDataMapperService.findByEmail(email)).thenReturn(Optional.empty());
 
         // when
-        Optional<Judiciary> result = rotaReferenceDataService.validateAndFindJudiciaryByEmail(email, executionId);
+        final Optional<Judiciary> result = rotaReferenceDataService.validateAndFindJudiciaryByEmail(email, executionId);
 
         // then
         assertFalse(result.isPresent());
@@ -205,7 +205,7 @@ class RotaReferenceDataServiceTest {
         when(referenceDataMapperService.findByEmail(email)).thenReturn(Optional.empty());
 
         // when
-        Optional<Judiciary> result = rotaReferenceDataService.validateAndFindJudiciaryByEmail(email, executionId);
+        final Optional<Judiciary> result = rotaReferenceDataService.validateAndFindJudiciaryByEmail(email, executionId);
 
         // then
         assertFalse(result.isPresent());
@@ -219,7 +219,7 @@ class RotaReferenceDataServiceTest {
         when(referenceDataMapperService.findByEmail(email)).thenReturn(Optional.empty());
 
         // when
-        Optional<Judiciary> result = rotaReferenceDataService.validateAndFindJudiciaryByEmail(email, executionId);
+        final Optional<Judiciary> result = rotaReferenceDataService.validateAndFindJudiciaryByEmail(email, executionId);
 
         // then
         assertFalse(result.isPresent());
@@ -233,7 +233,7 @@ class RotaReferenceDataServiceTest {
         when(referenceDataMapperService.findByEmail(email)).thenReturn(Optional.empty());
 
         // when
-        Optional<Judiciary> result = rotaReferenceDataService.validateAndFindJudiciaryByEmail(email, executionId);
+        final Optional<Judiciary> result = rotaReferenceDataService.validateAndFindJudiciaryByEmail(email, executionId);
 
         // then
         assertFalse(result.isPresent());
@@ -247,7 +247,7 @@ class RotaReferenceDataServiceTest {
         when(referenceDataMapperService.findByEmail(email)).thenReturn(Optional.empty());
 
         // when
-        Optional<Judiciary> result = rotaReferenceDataService.validateAndFindJudiciaryByEmail(email, executionId);
+        final Optional<Judiciary> result = rotaReferenceDataService.validateAndFindJudiciaryByEmail(email, executionId);
 
         // then
         assertFalse(result.isPresent());
@@ -258,7 +258,7 @@ class RotaReferenceDataServiceTest {
     @Test
     void shouldReturnEmpty_WhenEmailIsWhitespace() {
         // when
-        Optional<Judiciary> result = rotaReferenceDataService.validateAndFindJudiciaryByEmail("   ", executionId);
+        final Optional<Judiciary> result = rotaReferenceDataService.validateAndFindJudiciaryByEmail("   ", executionId);
 
         // then
         assertFalse(result.isPresent());
@@ -269,11 +269,11 @@ class RotaReferenceDataServiceTest {
     @Test
     void shouldNotLogError_WhenExceptionOccursAndExecutionIdIsNull() {
         // given
-        RuntimeException exception = new RuntimeException("Database error");
+        final RuntimeException exception = new RuntimeException("Database error");
         when(referenceDataMapperService.findByEmail(email)).thenThrow(exception);
 
         // when
-        Optional<Judiciary> result = rotaReferenceDataService.validateAndFindJudiciaryByEmail(email, null);
+        final Optional<Judiciary> result = rotaReferenceDataService.validateAndFindJudiciaryByEmail(email, null);
 
         // then
         assertFalse(result.isPresent());
@@ -293,7 +293,7 @@ class RotaReferenceDataServiceTest {
                 .thenReturn(Optional.of(courtRoom));
 
         // when
-        Optional<CourtRoom> result = rotaReferenceDataService.validateAndFindVenue(
+        final Optional<CourtRoom> result = rotaReferenceDataService.validateAndFindVenue(
                 venue, exceptionMessages, executionId);
 
         // then
@@ -306,7 +306,7 @@ class RotaReferenceDataServiceTest {
     @Test
     void shouldPopulateMapWhenVenueIsNull() {
         // when
-        Optional<CourtRoom> result = rotaReferenceDataService.validateAndFindVenue(
+        final Optional<CourtRoom> result = rotaReferenceDataService.validateAndFindVenue(
                 null, exceptionMessages, executionId);
 
         // then
@@ -320,18 +320,18 @@ class RotaReferenceDataServiceTest {
     @Test
     void shouldLogDirectlyWhenVenueIsNullAndNoMapProvided() {
         // when
-        Optional<CourtRoom> result = rotaReferenceDataService.validateAndFindVenue(
+        final Optional<CourtRoom> result = rotaReferenceDataService.validateAndFindVenue(
                 null, null, executionId);
 
         // then
         assertFalse(result.isPresent());
         verify(referenceDataMapperService, never()).findByVenue(any(), anyMap());
 
-        ArgumentCaptor<uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog> logCaptor =
+        final ArgumentCaptor<uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog> logCaptor =
                 ArgumentCaptor.forClass(uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog.class);
         verify(rotaProcessLogService).saveRotaProcessLog(logCaptor.capture());
 
-        uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog log = logCaptor.getValue();
+        final uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog log = logCaptor.getValue();
         assertThat(log.getExecutionId(), is(executionId));
         assertThat(log.getErrorCode(), is(REF_DATA_VENUE_NOT_FOUND.code()));
     }
@@ -339,7 +339,7 @@ class RotaReferenceDataServiceTest {
     @Test
     void shouldNotLogError_WhenVenueIsNullAndExecutionIdIsNull() {
         // when
-        Optional<CourtRoom> result = rotaReferenceDataService.validateAndFindVenue(
+        final Optional<CourtRoom> result = rotaReferenceDataService.validateAndFindVenue(
                 null, exceptionMessages, null);
 
         // then
@@ -355,7 +355,7 @@ class RotaReferenceDataServiceTest {
                 .thenReturn(Optional.empty());
 
         // when
-        Optional<CourtRoom> result = rotaReferenceDataService.validateAndFindVenue(
+        final Optional<CourtRoom> result = rotaReferenceDataService.validateAndFindVenue(
                 venue, exceptionMessages, executionId);
 
         // then
@@ -373,18 +373,18 @@ class RotaReferenceDataServiceTest {
                 .thenReturn(Optional.empty());
 
         // when
-        Optional<CourtRoom> result = rotaReferenceDataService.validateAndFindVenue(
+        final Optional<CourtRoom> result = rotaReferenceDataService.validateAndFindVenue(
                 venue, null, executionId);
 
         // then
         assertFalse(result.isPresent());
         verify(referenceDataMapperService).findByVenue(eq(venue), anyMap());
 
-        ArgumentCaptor<uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog> logCaptor =
+        final ArgumentCaptor<uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog> logCaptor =
                 ArgumentCaptor.forClass(uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog.class);
         verify(rotaProcessLogService).saveRotaProcessLog(logCaptor.capture());
 
-        uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog log = logCaptor.getValue();
+        final uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog log = logCaptor.getValue();
         assertThat(log.getExecutionId(), is(executionId));
         assertThat(log.getErrorCode(), is(REF_DATA_VENUE_NOT_FOUND.code()));
     }
@@ -392,23 +392,23 @@ class RotaReferenceDataServiceTest {
     @Test
     void shouldReturnEmptyAndLogError_WhenExceptionOccursDuringVenueValidation() {
         // given
-        RuntimeException exception = new RuntimeException("Database error");
+        final RuntimeException exception = new RuntimeException("Database error");
         when(referenceDataMapperService.findByVenue(eq(venue), anyMap()))
                 .thenThrow(exception);
 
         // when
-        Optional<CourtRoom> result = rotaReferenceDataService.validateAndFindVenue(
+        final Optional<CourtRoom> result = rotaReferenceDataService.validateAndFindVenue(
                 venue, exceptionMessages, executionId);
 
         // then
         assertFalse(result.isPresent());
         verify(referenceDataMapperService).findByVenue(eq(venue), anyMap());
 
-        ArgumentCaptor<uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog> logCaptor =
+        final ArgumentCaptor<uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog> logCaptor =
                 ArgumentCaptor.forClass(uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog.class);
         verify(rotaProcessLogService).saveRotaProcessLog(logCaptor.capture());
 
-        uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog log = logCaptor.getValue();
+        final uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog log = logCaptor.getValue();
         assertThat(log.getExecutionId(), is(executionId));
         assertThat(log.getErrorCode(), is(ROTA_PROCESSING_ERROR.code()));
     }

@@ -28,15 +28,15 @@ public class MiService {
     private AllocatedListingRepository allocatedListingRepository;
 
 
-    public List<CourtSchedule> getCourtSchedules(MiFilterCriteria miFilterCriteria) {
+    public List<CourtSchedule> getCourtSchedules(final MiFilterCriteria miFilterCriteria) {
         return courtScheduleRepository.findByUpdatedOnGreaterThanAndUpdatedOnLessThan(miFilterCriteria);
     }
 
-    public List<CourtScheduleJudiciary> getCourtSchedulesJudiciary(MiFilterCriteria miFilterCriteria) {
+    public List<CourtScheduleJudiciary> getCourtSchedulesJudiciary(final MiFilterCriteria miFilterCriteria) {
         return courtScheduleJudiciaryRepository.findByUpdatedOnGreaterThanAndUpdatedOnLessThan(miFilterCriteria);
     }
 
-    public List<AllocatedListing> getAllocatedListings(MiFilterCriteria miFilterCriteria) {
+    public List<AllocatedListing> getAllocatedListings(final MiFilterCriteria miFilterCriteria) {
         return allocatedListingRepository.findByUpdatedOnGreaterThanAndUpdatedOnLessThan(miFilterCriteria);
     }
 

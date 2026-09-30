@@ -22,10 +22,10 @@ class CourtScheduleToDeleteResponseConverterTest {
     private CourtScheduleToDeleteResponseConverter converter;
 
     @Test
-    public void shouldConvertListCourtSchedule_ListCourtScheduleDeleteResponse() {
-        List<CourtSchedule> courtScheduleList = List.of(random(CourtSchedule.class));
+    void shouldConvertListCourtSchedule_ListCourtScheduleDeleteResponse() {
+        final List<CourtSchedule> courtScheduleList = List.of(random(CourtSchedule.class));
 
-        List<CourtScheduleDeleteResponse> courtScheduleDeleteResponses = converter.convert(courtScheduleList);
+        final List<CourtScheduleDeleteResponse> courtScheduleDeleteResponses = converter.convert(courtScheduleList);
 
         assertThat(courtScheduleDeleteResponses.size(), is(1));
         assertEquals(courtScheduleDeleteResponses.get(0).getCourtScheduleId(), courtScheduleList.get(0).getCourtScheduleId());

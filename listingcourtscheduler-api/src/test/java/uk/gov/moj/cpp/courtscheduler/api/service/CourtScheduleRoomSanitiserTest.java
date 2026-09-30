@@ -15,6 +15,8 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class CourtScheduleRoomSanitiserTest {
+    private static final String SCHEDULE_1 = "schedule-1";
+
 
     @Test
     void stripsCourtRoomFieldsFromDraftSession() {
@@ -46,7 +48,7 @@ class CourtScheduleRoomSanitiserTest {
 
         CourtScheduleRoomSanitiser.stripCourtRoomFromDraftSessions(List.of(draft));
 
-        assertThat(draft.getCourtScheduleId(), is("schedule-1"));
+        assertThat(draft.getCourtScheduleId(), is(SCHEDULE_1));
         assertThat(draft.getCourtHouseId(), is("house-1"));
         assertThat(draft.getCourtHouseName(), is("Liverpool Mags Court"));
     }
@@ -81,7 +83,7 @@ class CourtScheduleRoomSanitiserTest {
         final CrownFallbackResponse result = CourtScheduleRoomSanitiser.stripCourtRoomFromDraftFallbackResponse(draft);
 
         assertThat(result.courtRoomId(), is(nullValue()));
-        assertThat(result.courtScheduleId(), is("schedule-1"));
+        assertThat(result.courtScheduleId(), is(SCHEDULE_1));
         assertThat(result.isDraft(), is(true));
         assertThat(result.sessionDate(), is("2026-06-01"));
     }
@@ -102,13 +104,13 @@ class CourtScheduleRoomSanitiserTest {
     }
 
     private static CrownFallbackResponse fallbackResponse(final boolean draft) {
-        return new CrownFallbackResponse("hearing-1", "schedule-1", "731816c1-5ee4-373a-9bda-840e13a5bcb0", "2026-06-01",
+        return new CrownFallbackResponse("hearing-1", SCHEDULE_1, "731816c1-5ee4-373a-9bda-840e13a5bcb0", "2026-06-01",
                 "10:00", "16:00", 360, draft, "CROWN_TRIAL", "SOURCE", false);
     }
 
     private static CourtSchedule scheduleWithRoom(final boolean draft) {
         final CourtSchedule courtSchedule = new CourtSchedule();
-        courtSchedule.setCourtScheduleId("schedule-1");
+        courtSchedule.setCourtScheduleId(SCHEDULE_1);
         courtSchedule.setIsDraft(draft);
         courtSchedule.setCourtRoomId("room-1");
         courtSchedule.setCourtRoomName("Courtroom 01");

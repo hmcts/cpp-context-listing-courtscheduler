@@ -50,7 +50,7 @@ class RotaPeriodDateInfoProviderTest {
     }
 
     private byte[] givenBlobContent(final String file) throws IOException {
-        try (final InputStream inputStream = RotaPeriodDateInfoProviderTest.class.getClassLoader().getResourceAsStream(file)) {
+        try (InputStream inputStream = RotaPeriodDateInfoProviderTest.class.getResourceAsStream("/" + file)) {
             return toByteArray(inputStream);
         }
     }

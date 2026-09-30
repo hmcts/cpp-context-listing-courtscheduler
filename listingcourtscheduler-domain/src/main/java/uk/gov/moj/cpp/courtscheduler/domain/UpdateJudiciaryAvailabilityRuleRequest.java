@@ -9,11 +9,17 @@ import java.util.StringJoiner;
 public class UpdateJudiciaryAvailabilityRuleRequest extends BaseJudiciaryAvailabilityRuleWithDetailsRequest {
 
     @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        if (!super.equals(o)) return false;
-        UpdateJudiciaryAvailabilityRuleRequest that = (UpdateJudiciaryAvailabilityRuleRequest) o;
+    public boolean equals(final Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        if (!super.equals(o)) {
+            return false;
+        }
+        final UpdateJudiciaryAvailabilityRuleRequest that = (UpdateJudiciaryAvailabilityRuleRequest) o;
         return Objects.equals(repeatDays, that.repeatDays) &&
                 sessionType == that.sessionType &&
                 Objects.equals(unavailabilities, that.unavailabilities);

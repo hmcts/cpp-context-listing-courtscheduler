@@ -8,6 +8,7 @@ import uk.gov.moj.cpp.courtscheduler.domain.SlotStartTime;
 import java.io.StringReader;
 import java.util.List;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.json.Json;
 import jakarta.json.JsonArray;
@@ -35,6 +36,10 @@ import org.junit.jupiter.api.Test;
  * API-test failsafe reports.</p>
  */
 class ListToJsonArrayConverterTest {
+    private static final String VALUE_2026_06_28_T09_00 = "2026-06-28T09:00";
+    private static final String VALUE_2026_06_28_T10_00 = "2026-06-28T10:00";
+    private static final String HEARING_START_TIME = "hearingStartTime";
+
 
     /**
      * Reproduces the pre-fix bug: a plain {@code new ObjectMapper()} (no NON_NULL
@@ -45,24 +50,24 @@ class ListToJsonArrayConverterTest {
     @Test
     void plainObjectMapperWithoutNonNullInclusion_reproducesApiTestClassCastException() {
         final SlotStartTime slotWithoutHearing = new SlotStartTime(
-                "2026-06-28T09:00", "2026-06-28T10:00", null, 0L);
+                VALUE_2026_06_28_T09_00, VALUE_2026_06_28_T10_00, null, 0L);
 
         final ObjectMapper legacyMapper = new ObjectMapper();
         final String json;
         try {
             json = legacyMapper.writeValueAsString(slotWithoutHearing);
-        } catch (Exception e) {
+        } catch (JsonProcessingException e) {
             throw new AssertionError(e);
         }
 
         try (JsonReader reader = Json.createReader(new StringReader(json))) {
             final JsonObject parsed = reader.readObject();
 
-            assertThat(parsed.containsKey("hearingStartTime"))
+            assertThat(parsed.containsKey(HEARING_START_TIME))
                     .as("the bug: the key is present in the JSON")
                     .isTrue();
 
-            assertThatThrownBy(() -> parsed.getString("hearingStartTime"))
+            assertThatThrownBy(() -> parsed.getString(HEARING_START_TIME))
                     .as("the bug: JSON null value cannot be read as a JsonString")
                     .isInstanceOf(ClassCastException.class);
         }
@@ -79,16 +84,16 @@ class ListToJsonArrayConverterTest {
     void converter_omitsNullFields_soApiTestPatternIsSafe() {
         final ListToJsonArrayConverter<SlotStartTime> converter = new ListToJsonArrayConverter<>();
         final SlotStartTime slotWithoutHearing = new SlotStartTime(
-                "2026-06-28T09:00", "2026-06-28T10:00", null, 0L);
+                VALUE_2026_06_28_T09_00, VALUE_2026_06_28_T10_00, null, 0L);
 
         final JsonArray arr = converter.convert(List.of(slotWithoutHearing));
         final JsonObject slotJson = arr.getJsonObject(0);
 
-        assertThat(slotJson.containsKey("hearingStartTime"))
+        assertThat(slotJson.containsKey(HEARING_START_TIME))
                 .as("fix: null hearingStartTime is omitted from JSON")
                 .isFalse();
-        assertThat(slotJson.getString("sessionStartTime")).isEqualTo("2026-06-28T09:00");
-        assertThat(slotJson.getString("sessionEndTime")).isEqualTo("2026-06-28T10:00");
+        assertThat(slotJson.getString("sessionStartTime")).isEqualTo(VALUE_2026_06_28_T09_00);
+        assertThat(slotJson.getString("sessionEndTime")).isEqualTo(VALUE_2026_06_28_T10_00);
     }
 
     /**
@@ -99,12 +104,12 @@ class ListToJsonArrayConverterTest {
     void converter_keepsPopulatedHearingStartTime() {
         final ListToJsonArrayConverter<SlotStartTime> converter = new ListToJsonArrayConverter<>();
         final SlotStartTime slot = new SlotStartTime(
-                "2026-06-28T09:00", "2026-06-28T10:00", "2026-06-28T09:30", 1L);
+                VALUE_2026_06_28_T09_00, VALUE_2026_06_28_T10_00, "2026-06-28T09:30", 1L);
 
         final JsonObject slotJson = converter.convert(List.of(slot)).getJsonObject(0);
 
-        assertThat(slotJson.containsKey("hearingStartTime")).isTrue();
-        assertThat(slotJson.getString("hearingStartTime")).isEqualTo("2026-06-28T09:30");
+        assertThat(slotJson.containsKey(HEARING_START_TIME)).isTrue();
+        assertThat(slotJson.getString(HEARING_START_TIME)).isEqualTo("2026-06-28T09:30");
     }
 
     /**
@@ -116,14 +121,14 @@ class ListToJsonArrayConverterTest {
     void hearingSlotsHelperPattern_doesNotThrowAfterFix() {
         final ListToJsonArrayConverter<SlotStartTime> converter = new ListToJsonArrayConverter<>();
         final JsonArray slotStartTimes = converter.convert(List.of(
-                new SlotStartTime("2026-06-28T09:00", "2026-06-28T10:00", null, 0L),
-                new SlotStartTime("2026-06-28T10:00", "2026-06-28T11:00", "2026-06-28T10:30", 1L)
+                new SlotStartTime(VALUE_2026_06_28_T09_00, VALUE_2026_06_28_T10_00, null, 0L),
+                new SlotStartTime(VALUE_2026_06_28_T10_00, "2026-06-28T11:00", "2026-06-28T10:30", 1L)
         ));
 
         // Replicate HearingSlotsHelper.hasSlot exactly.
         final boolean found = slotStartTimes.getValuesAs(JsonObject.class).stream()
-                .filter(s -> s.containsKey("hearingStartTime"))
-                .anyMatch(s -> s.getString("hearingStartTime").startsWith("2026-06-28T10:30"));
+                .filter(s -> s.containsKey(HEARING_START_TIME))
+                .anyMatch(s -> s.getString(HEARING_START_TIME).startsWith("2026-06-28T10:30"));
 
         assertThat(found).isTrue();
     }

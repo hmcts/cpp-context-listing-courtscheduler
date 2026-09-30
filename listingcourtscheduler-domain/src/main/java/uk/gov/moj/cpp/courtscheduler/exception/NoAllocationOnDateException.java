@@ -7,6 +7,8 @@ package uk.gov.moj.cpp.courtscheduler.exception;
  */
 public class NoAllocationOnDateException extends RuntimeException {
 
+    private static final long serialVersionUID = 1L;
+
     public NoAllocationOnDateException(final String message) {
         super(message);
     }

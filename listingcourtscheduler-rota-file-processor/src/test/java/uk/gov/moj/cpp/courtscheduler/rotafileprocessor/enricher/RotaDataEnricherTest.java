@@ -12,7 +12,6 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload.COURT_LISTING;
 import static org.springframework.test.util.ReflectionTestUtils.setField;
@@ -29,7 +28,6 @@ import uk.gov.moj.cpp.platform.test.data.utils.FileUtil;
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.LocalDate;
-import java.util.Calendar;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -46,6 +44,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class RotaDataEnricherTest {
+    private static final String WEDPM_2 = "WEDPM";
+
 
     @InjectMocks
     private RotaDataEnricher rotaDataEnricher;
@@ -87,12 +87,12 @@ class RotaDataEnricherTest {
                 .withCourtSchedule(courtSchedule)
                 .withCourtScheduleId(courtScheduleId)
                 .withOuCode(courtSchedule.getOuCode())
-                .withCreatedOn(Calendar.getInstance().getTime())
+                .withCreatedOn(java.time.Instant.now())
                 .build());
 
         when(referenceDataMapperService.findByOuCodeAndRoomIdAndListingSessionAndBusinessType(anyString(), anyInt(), anyString(), anyString())).thenReturn(of(sessionAllocation));
         when(courtScheduleEnricher.build(anyMap(), any(LocalDate.class), anyMap(), anyList(), anyString())).thenReturn(courtSchedule);
-        when(courtSession.getCourtSession(any(LocalDate.class), anyString())).thenReturn("WEDPM");
+        when(courtSession.getCourtSession(any(LocalDate.class), anyString())).thenReturn(WEDPM_2);
 
         final byte[] blobContent = givenBlobContent(file);
         final Map<RotaPayload, Map<String, Map<String, String>>> records = rotaFileParser.parse(file, blobContent);
@@ -101,10 +101,10 @@ class RotaDataEnricherTest {
 
         final Collection<CourtSchedule> schedules = courtSchedules.values();
         final Integer totalListings = records.get(COURT_LISTING).values().size();
-        final long allDay = schedules.stream().filter(ch -> ch.getCourtSession().equals(ALL_DAY_SESSION)).count();
-        final long amSessions = schedules.stream().filter(ch -> ch.getCourtSession().equals(AM_SESSION)).count();
-        final long pmSessions = schedules.stream().filter(ch -> ch.getCourtSession().equals(PM_SESSION)).count();
-        final CourtSchedule pmSession = schedules.stream().filter(ch -> ch.getCourtSession().equals(PM_SESSION)).findFirst().get();
+        final long allDay = schedules.stream().filter(ch -> ALL_DAY_SESSION.equals(ch.getCourtSession())).count();
+        final long amSessions = schedules.stream().filter(ch -> AM_SESSION.equals(ch.getCourtSession())).count();
+        final long pmSessions = schedules.stream().filter(ch -> PM_SESSION.equals(ch.getCourtSession())).count();
+        final CourtSchedule pmSession = schedules.stream().filter(ch -> PM_SESSION.equals(ch.getCourtSession())).findFirst().get();
 
         assertThat(totalListings, is(472));
         assertThat(allDay, is(0L));
@@ -133,12 +133,12 @@ class RotaDataEnricherTest {
                 .withCourtSchedule(courtSchedule)
                 .withCourtScheduleId(courtScheduleId)
                 .withOuCode(courtSchedule.getOuCode())
-                .withCreatedOn(Calendar.getInstance().getTime())
+                .withCreatedOn(java.time.Instant.now())
                 .build());
 
         when(referenceDataMapperService.findByOuCodeAndRoomIdAndListingSessionAndBusinessType(anyString(), anyInt(), anyString(), anyString())).thenReturn(empty());
         when(courtScheduleEnricher.build(anyMap(), any(LocalDate.class), anyMap(), anyList(), anyString())).thenReturn(courtSchedule);
-        when(courtSession.getCourtSession(any(LocalDate.class), anyString())).thenReturn("WEDPM");
+        when(courtSession.getCourtSession(any(LocalDate.class), anyString())).thenReturn(WEDPM_2);
 
         final byte[] blobContent = givenBlobContent(file);
 
@@ -148,10 +148,10 @@ class RotaDataEnricherTest {
 
         final Collection<CourtSchedule> schedules = courtSchedules.values();
         final Integer totalListings = records.get(COURT_LISTING).values().size();
-        final long allDay = schedules.stream().filter(ch -> ch.getCourtSession().equals(ALL_DAY_SESSION)).count();
-        final long amSessions = schedules.stream().filter(ch -> ch.getCourtSession().equals(AM_SESSION)).count();
-        final long pmSessions = schedules.stream().filter(ch -> ch.getCourtSession().equals(PM_SESSION)).count();
-        final CourtSchedule pmSession = schedules.stream().filter(ch -> ch.getCourtSession().equals(PM_SESSION)).findFirst().get();
+        final long allDay = schedules.stream().filter(ch -> ALL_DAY_SESSION.equals(ch.getCourtSession())).count();
+        final long amSessions = schedules.stream().filter(ch -> AM_SESSION.equals(ch.getCourtSession())).count();
+        final long pmSessions = schedules.stream().filter(ch -> PM_SESSION.equals(ch.getCourtSession())).count();
+        final CourtSchedule pmSession = schedules.stream().filter(ch -> PM_SESSION.equals(ch.getCourtSession())).findFirst().get();
 
         assertThat(totalListings, is(472));
         assertThat(allDay, is(0L));
@@ -199,7 +199,7 @@ class RotaDataEnricherTest {
         when(courtScheduleEnricher.build(anyMap(), any(LocalDate.class), anyMap(), anyList(), anyString())).thenReturn(built);
 
         // Second row triggers refdata lookup; refdata supplies custom AD start/end times
-        when(courtSession.getCourtSession(any(LocalDate.class), anyString())).thenReturn("WEDPM");
+        when(courtSession.getCourtSession(any(LocalDate.class), anyString())).thenReturn(WEDPM_2);
         final CourtRoomSessionAllocation allocation = CourtRoomSessionAllocation.CourtRoomSessionAllocationBuilder.aCourtRoomSessionAllocation()
                 .withId("alloc-1")
                 .withCourtRoomId(courtRoomNumber)
@@ -207,7 +207,7 @@ class RotaDataEnricherTest {
                 .withMaxSlot(4)
                 .withMaxDurationMins(45)
                 .withRotaBusinessTypeCode(businessType)
-                .withCourtSession("WEDPM")
+                .withCourtSession(WEDPM_2)
                 .withSessionStartTime("09:15")
                 .withSessionEndTime("16:30")
                 .build();
@@ -222,8 +222,8 @@ class RotaDataEnricherTest {
         final CourtSchedule updated = result.get("L1");
         assertThat(updated.getCourtSession(), is(ALL_DAY_SESSION));
         // refdata times override hardcoded ALL_DAY defaults (10:00 / 17:00)
-        assertThat(updated.getSessionStartTime(), is(DateUtils.combineDateAndTime(sessionDate, "09:15")));
-        assertThat(updated.getSessionEndTime(), is(DateUtils.combineDateAndTime(sessionDate, "16:30")));
+        assertThat(updated.getSessionStartTime(), is(DateUtils.combineDateAndTime(sessionDate, "09:15").toInstant()));
+        assertThat(updated.getSessionEndTime(), is(DateUtils.combineDateAndTime(sessionDate, "16:30").toInstant()));
         // slot/duration totals get incremented by allocation values
         assertThat(updated.getMaxSlots(), is(4));
         assertThat(updated.getAvailableSlots(), is(4));
@@ -258,7 +258,7 @@ class RotaDataEnricherTest {
                 .build();
         when(courtScheduleEnricher.build(anyMap(), any(LocalDate.class), anyMap(), anyList(), anyString())).thenReturn(built);
 
-        when(courtSession.getCourtSession(any(LocalDate.class), anyString())).thenReturn("WEDPM");
+        when(courtSession.getCourtSession(any(LocalDate.class), anyString())).thenReturn(WEDPM_2);
         // No allocation -> defaults must apply (ALL_DAY: 10:00 / 17:00)
         when(referenceDataMapperService.findByOuCodeAndRoomIdAndListingSessionAndBusinessType(anyString(), anyInt(), anyString(), anyString()))
                 .thenReturn(empty());
@@ -269,8 +269,8 @@ class RotaDataEnricherTest {
 
         final CourtSchedule updated = result.get("L1");
         assertThat(updated.getCourtSession(), is(ALL_DAY_SESSION));
-        assertThat(updated.getSessionStartTime(), is(DateUtils.combineDateAndTime(sessionDate, "10:00")));
-        assertThat(updated.getSessionEndTime(), is(DateUtils.combineDateAndTime(sessionDate, "17:00")));
+        assertThat(updated.getSessionStartTime(), is(DateUtils.combineDateAndTime(sessionDate, "10:00").toInstant()));
+        assertThat(updated.getSessionEndTime(), is(DateUtils.combineDateAndTime(sessionDate, "17:00").toInstant()));
     }
 
     private Map<String, String> listingRow(final String id, final String linkedSessionId, final LocalDate sessionDate, final String session, final String businessType) {
@@ -284,7 +284,7 @@ class RotaDataEnricherTest {
     }
 
     private byte[] givenBlobContent(final String file) throws IOException {
-        try (final InputStream inputStream = RotaDataEnricherTest.class.getClassLoader().getResourceAsStream(file)) {
+        try (InputStream inputStream = RotaDataEnricherTest.class.getResourceAsStream("/" + file)) {
             return toByteArray(inputStream);
         }
     }
