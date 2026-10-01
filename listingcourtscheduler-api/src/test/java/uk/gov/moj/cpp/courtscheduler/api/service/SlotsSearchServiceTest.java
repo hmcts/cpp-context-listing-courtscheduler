@@ -14,13 +14,12 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static uk.gov.moj.cpp.courtscheduler.common.Jurisdiction.CROWN;
 import static uk.gov.moj.cpp.courtscheduler.common.Jurisdiction.MAGISTRATES;
-import static uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary.judiciary;
 import static uk.gov.moj.cpp.platform.test.data.utils.FileUtil.fileToString;
 import static org.springframework.test.util.ReflectionTestUtils.setField;
 
 import uk.gov.moj.cpp.courtscheduler.common.converter.StringToJsonObjectConverter;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.TimezoneUtils;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
@@ -132,7 +131,7 @@ class SlotsSearchServiceTest {
         // ADR-005: get.hearing.slots must not expose a courtroom for a draft (unallocated) session.
         // courtScheduleId (used to book) survives; only the room within the venue is provisional.
         final CourtSchedule draftSchedule = courtScheduleWithMultipleJudiciaries(rightWingerId, leftWingerId, chairId);
-        draftSchedule.setIsDraft(true);
+        draftSchedule.setDraft(true);
         final Pair<Integer, List<CourtSchedule>> courtSchedulePair = Pair.of(1, List.of(draftSchedule));
         final HearingSlotRequestParam hearingSlotRequestParam = createRequestParam("10");
         when(courtScheduleRepository.getCourtSchedules(hearingSlotRequestParam)).thenReturn(courtSchedulePair);
@@ -255,40 +254,38 @@ class SlotsSearchServiceTest {
     }
 
     private CourtSchedule createCourtScheduleWithoutListingProfileId() {
-        return new CourtSchedule.CourtScheduleBuilder()
-                .withCourtScheduleId(randomUUID().toString())
-                .withListingProfileId(null)
-                .build();
+        return new CourtSchedule()
+                .courtScheduleId(randomUUID().toString())
+                .listingProfileId(null);
     }
 
     private CourtSchedule createCourtScheduleWithHearingTimes() {
-        return new CourtSchedule.CourtScheduleBuilder()
-                .withCourtScheduleId(randomUUID().toString())
-                .withListingProfileId(randomUUID().toString())
-                .withSessionDate(parse("2025-03-01"))
-                .withOuCode(B12_JR00)
-                .withCourtRoomId(UUID_001C067D)
-                .withCourtRoomNumber(1234)
-                .withCourtHouseName("Test Court House")
-                .withCourtHouseId(UUID_0B9417B8)
-                .withCourtRoomName("Test Court Room")
-                .withOperationalUnit(UNN_2)
-                .withBusinessType(BYS_2)
-                .withBusinessDescription("Test Business")
-                .withPanel(PANEL_2)
-                .withCourtSession("AM")
-                .withMaxDuration(120)
-                .withAvailableSlots(2)
-                .withAvailableDuration(120)
-                .withMaxSlots(2)
-                .withJudiciaries(List.of(buildJudiciary(randomUUID(), CHAIR_2)))
-                .withActive(true)
-                .withSessionStartTime(LocalTime.parse(VALUE_10_00).atDate(LocalDate.of(2025, 3, 12)).atZone(ZoneId.of(UTC_2)).toInstant())
-                .withSessionEndTime(LocalTime.parse(VALUE_12_00).atDate(LocalDate.of(2025, 3, 12)).atZone(ZoneId.of(UTC_2)).toInstant())
-                .withIsOverbookingAllowed(true)
-                .withMinHearingTime("09:00")
-                .withMaxHearingTime(VALUE_12_00)
-                .build();
+        return new CourtSchedule()
+                .courtScheduleId(randomUUID().toString())
+                .listingProfileId(randomUUID().toString())
+                .sessionDate(parse("2025-03-01"))
+                .ouCode(B12_JR00)
+                .courtRoomId(UUID_001C067D)
+                .courtRoomNumber(1234)
+                .courtHouseName("Test Court House")
+                .courtHouseId(UUID_0B9417B8)
+                .courtRoomName("Test Court Room")
+                .operationalUnit(UNN_2)
+                .businessType(BYS_2)
+                .businessDescription("Test Business")
+                .panel(PANEL_2)
+                .courtSession("AM")
+                .maxDuration(120)
+                .availableSlots(2)
+                .availableDuration(120)
+                .maxSlots(2)
+                .judiciaries(List.of(buildJudiciary(randomUUID(), CHAIR_2)))
+                .active(true)
+                .sessionStartTime(uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toOffsetDateTime(LocalTime.parse(VALUE_10_00).atDate(LocalDate.of(2025, 3, 12)).atZone(ZoneId.of(UTC_2)).toInstant()))
+                .sessionEndTime(uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toOffsetDateTime(LocalTime.parse(VALUE_12_00).atDate(LocalDate.of(2025, 3, 12)).atZone(ZoneId.of(UTC_2)).toInstant()))
+                .overbookingAllowed(true)
+                .minHearingTime("09:00")
+                .maxHearingTime(VALUE_12_00);
     }
 
 
@@ -304,102 +301,98 @@ class SlotsSearchServiceTest {
     }
 
     private CourtScheduleJudiciary buildJudiciary(final UUID id, final String position) {
-        return judiciary()
-                .withJudiciaryId(id.toString())
-                .withPosition(position)
-                .build();
+        return new CourtScheduleJudiciary()
+                .judiciaryId(id.toString())
+                .position(position);
     }
 
     private CourtSchedule courtSchedule(final List<CourtScheduleJudiciary> courtScheduleJudiciary) {
-        return new CourtSchedule.CourtScheduleBuilder()
-                .withCourtScheduleId("0000fbb0-8579-4f2b-948e-c4e48a48e3f8")
-                .withListingProfileId(null)
-                .withSessionDate(parse("2020-12-01"))
-                .withOuCode("CABC90")
-                .withCourtRoomId(UUID_001C067D)
-                .withCourtRoomNumber(1234)
-                .withCourtHouseName(LIVERPOOL_MAGS_COURT)
-                .withCourtHouseId(UUID_0B9417B8)
-                .withCourtRoomName(COURT_NAME1)
-                .withOperationalUnit(UNN_2)
-                .withBusinessType(BYS_2)
-                .withBusinessDescription(null)
-                .withPanel(PANEL_2)
-                .withCourtSession("AM")
-                .withMaxDuration(182)
-                .withAvailableSlots(125)
-                .withAvailableDuration(182)
-                .withMaxSlots(125)
-                .withJudiciaries(courtScheduleJudiciary)
-                .withActive(true)
-                .withSessionStartTime(LocalTime.parse(VALUE_10_00).atDate(LocalDate.of(2020, 12, 1)).atZone(ZoneId.of(UTC_2)).toInstant())
-                .withSessionEndTime(LocalTime.parse("13:00").atDate(LocalDate.of(2020, 12, 1)).atZone(ZoneId.of(UTC_2)).toInstant())
-                .withNationalBreakTime(TimezoneUtils.calculateNationalBreakTime(LocalDate.of(2020, 12, 1)).toInstant())
-                .withIsOverbookingAllowed(true)
-                .withIsDraft(false)
-                .withJurisdiction(MAGISTRATES.getJurisdiction())
-                .withMinHearingTime("09:00")
-                .withMaxHearingTime(VALUE_12_00)
-                .build();
+        return new CourtSchedule()
+                .courtScheduleId("0000fbb0-8579-4f2b-948e-c4e48a48e3f8")
+                .listingProfileId(null)
+                .sessionDate(parse("2020-12-01"))
+                .ouCode("CABC90")
+                .courtRoomId(UUID_001C067D)
+                .courtRoomNumber(1234)
+                .courtHouseName(LIVERPOOL_MAGS_COURT)
+                .courtHouseId(UUID_0B9417B8)
+                .courtRoomName(COURT_NAME1)
+                .operationalUnit(UNN_2)
+                .businessType(BYS_2)
+                .businessDescription(null)
+                .panel(PANEL_2)
+                .courtSession("AM")
+                .maxDuration(182)
+                .availableSlots(125)
+                .availableDuration(182)
+                .maxSlots(125)
+                .judiciaries(courtScheduleJudiciary)
+                .active(true)
+                .sessionStartTime(uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toOffsetDateTime(LocalTime.parse(VALUE_10_00).atDate(LocalDate.of(2020, 12, 1)).atZone(ZoneId.of(UTC_2)).toInstant()))
+                .sessionEndTime(uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toOffsetDateTime(LocalTime.parse("13:00").atDate(LocalDate.of(2020, 12, 1)).atZone(ZoneId.of(UTC_2)).toInstant()))
+                .nationalBreakTime(uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toOffsetDateTime(TimezoneUtils.calculateNationalBreakTime(LocalDate.of(2020, 12, 1))))
+                .overbookingAllowed(true)
+                .draft(false)
+                .jurisdiction(MAGISTRATES.getJurisdiction())
+                .minHearingTime("09:00")
+                .maxHearingTime(VALUE_12_00);
     }
 
     private CourtSchedule getCourtScheduleWithRegularSessions() {
-        return new CourtSchedule.CourtScheduleBuilder()
-                .withCourtScheduleId(randomUUID().toString())
-                .withListingProfileId(null)
-                .withSessionDate(parse("2025-03-01"))
-                .withOuCode(B12_JR00)
-                .withCourtRoomId(UUID_001C067D)
-                .withCourtRoomNumber(1234)
-                .withCourtHouseName(LIVERPOOL_MAGS_COURT)
-                .withCourtHouseId(UUID_0B9417B8)
-                .withCourtRoomName(COURT_NAME1)
-                .withOperationalUnit(UNN_2)
-                .withBusinessType(BYS_2)
-                .withBusinessDescription(null)
-                .withPanel(PANEL_2)
-                .withCourtSession("AM")
-                .withMaxDuration(120)
-                .withAvailableSlots(2)
-                .withAvailableDuration(120)
-                .withMaxSlots(2)
-                .withJudiciaries(List.of(buildJudiciary(randomUUID(),CHAIR_2)))
-                .withActive(true)
-                .withSessionStartTime(LocalTime.parse(VALUE_10_00).atDate(LocalDate.of(2025, 3, 12)).atZone(ZoneId.of(UTC_2)).toInstant())
-                .withSessionEndTime(LocalTime.parse(VALUE_12_00).atDate(LocalDate.of(2025, 3, 12)).atZone(ZoneId.of(UTC_2)).toInstant())
-                .withIsOverbookingAllowed(true)
-                .build();
+        return new CourtSchedule()
+                .courtScheduleId(randomUUID().toString())
+                .listingProfileId(null)
+                .sessionDate(parse("2025-03-01"))
+                .ouCode(B12_JR00)
+                .courtRoomId(UUID_001C067D)
+                .courtRoomNumber(1234)
+                .courtHouseName(LIVERPOOL_MAGS_COURT)
+                .courtHouseId(UUID_0B9417B8)
+                .courtRoomName(COURT_NAME1)
+                .operationalUnit(UNN_2)
+                .businessType(BYS_2)
+                .businessDescription(null)
+                .panel(PANEL_2)
+                .courtSession("AM")
+                .maxDuration(120)
+                .availableSlots(2)
+                .availableDuration(120)
+                .maxSlots(2)
+                .judiciaries(List.of(buildJudiciary(randomUUID(),CHAIR_2)))
+                .active(true)
+                .sessionStartTime(uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toOffsetDateTime(LocalTime.parse(VALUE_10_00).atDate(LocalDate.of(2025, 3, 12)).atZone(ZoneId.of(UTC_2)).toInstant()))
+                .sessionEndTime(uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toOffsetDateTime(LocalTime.parse(VALUE_12_00).atDate(LocalDate.of(2025, 3, 12)).atZone(ZoneId.of(UTC_2)).toInstant()))
+                .overbookingAllowed(true);
     }
 
     private CourtSchedule getCourtScheduleWithSlotBasedSessions() {
-        return new CourtSchedule.CourtScheduleBuilder()
-                .withCourtScheduleId(randomUUID().toString())
-                .withListingProfileId(null)
-                .withSessionDate(parse("2025-03-01"))
-                .withOuCode(B12_JR00)
-                .withCourtRoomId(UUID_001C067D)
-                .withCourtRoomNumber(1234)
-                .withCourtHouseName(LIVERPOOL_MAGS_COURT)
-                .withCourtHouseId(UUID_0B9417B8)
-                .withCourtRoomName(COURT_NAME1)
-                .withSlotBased(true)
-                .withOperationalUnit(UNN_2)
-                .withBusinessType(BYS_2)
-                .withBusinessDescription(null)
-                .withPanel(PANEL_2)
-                .withCourtSession("AM")
-                .withMaxDuration(120)
-                .withAvailableSlots(2)
-                .withAvailableDuration(120)
-                .withMaxSlots(2)
-                .withJudiciaries(List.of(buildJudiciary(randomUUID(),CHAIR_2)))
-                .withActive(true)
-                .withSessionStartTime(LocalTime.parse(VALUE_10_00).atDate(LocalDate.of(2025, 3, 12)).atZone(ZoneId.of(UTC_2)).toInstant())
-                .withSessionEndTime(LocalTime.parse(VALUE_12_00).atDate(LocalDate.of(2025, 3, 12)).atZone(ZoneId.of(UTC_2)).toInstant())
-                .withIsOverbookingAllowed(true)
-                .withIsDraft(false)
-                .withJurisdiction(MAGISTRATES.getJurisdiction())
-                .build();
+        return new CourtSchedule()
+                .courtScheduleId(randomUUID().toString())
+                .listingProfileId(null)
+                .sessionDate(parse("2025-03-01"))
+                .ouCode(B12_JR00)
+                .courtRoomId(UUID_001C067D)
+                .courtRoomNumber(1234)
+                .courtHouseName(LIVERPOOL_MAGS_COURT)
+                .courtHouseId(UUID_0B9417B8)
+                .courtRoomName(COURT_NAME1)
+                .slotBased(true)
+                .operationalUnit(UNN_2)
+                .businessType(BYS_2)
+                .businessDescription(null)
+                .panel(PANEL_2)
+                .courtSession("AM")
+                .maxDuration(120)
+                .availableSlots(2)
+                .availableDuration(120)
+                .maxSlots(2)
+                .judiciaries(List.of(buildJudiciary(randomUUID(),CHAIR_2)))
+                .active(true)
+                .sessionStartTime(uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toOffsetDateTime(LocalTime.parse(VALUE_10_00).atDate(LocalDate.of(2025, 3, 12)).atZone(ZoneId.of(UTC_2)).toInstant()))
+                .sessionEndTime(uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toOffsetDateTime(LocalTime.parse(VALUE_12_00).atDate(LocalDate.of(2025, 3, 12)).atZone(ZoneId.of(UTC_2)).toInstant()))
+                .overbookingAllowed(true)
+                .draft(false)
+                .jurisdiction(MAGISTRATES.getJurisdiction());
     }
 
     private HearingSlotRequestParam createRequestParam(final String pageSize) {
@@ -653,58 +646,54 @@ class SlotsSearchServiceTest {
     private CourtSchedule createCourtScheduleWithOverbookingAllowed(final boolean isOverbookingAllowed, final boolean slotBased,
             final int maxDurationForMorning, final int maxDurationForAfternoon, final int totalBookedForMorning, final int totalBookedForAfternoon,
             final int maxDuration, final int totalBooked) {
-        return new CourtSchedule.CourtScheduleBuilder()
-                .withCourtScheduleId(randomUUID().toString())
-                .withIsOverbookingAllowed(isOverbookingAllowed)
-                .withSlotBased(slotBased)
-                .withAllDaySplit(!slotBased)
-                .withMaxDurationForMorning(maxDurationForMorning)
-                .withMaxDurationForAfternoon(maxDurationForAfternoon)
-                .withTotalBookedForMorning(totalBookedForMorning)
-                .withTotalBookedForAfternoon(totalBookedForAfternoon)
-                .withMaxDuration(maxDuration)
-                .withTotalBooked(totalBooked)
-                .withMaxSlots(5)
-                .build();
+        return new CourtSchedule()
+                .courtScheduleId(randomUUID().toString())
+                .overbookingAllowed(isOverbookingAllowed)
+                .slotBased(slotBased)
+                .allDaySplit(!slotBased)
+                .maxDurationForMorning(maxDurationForMorning)
+                .maxDurationForAfternoon(maxDurationForAfternoon)
+                .totalBookedForMorning(totalBookedForMorning)
+                .totalBookedForAfternoon(totalBookedForAfternoon)
+                .maxDuration(maxDuration)
+                .totalBooked(totalBooked)
+                .maxSlots(5);
     }
 
     private CourtSchedule createSlotBasedCourtSchedule(final boolean isOverbookingAllowed, final boolean allDaySplit, final int totalBooked, final int maxSlots) {
-        return new CourtSchedule.CourtScheduleBuilder()
-                .withCourtScheduleId(randomUUID().toString())
-                .withIsOverbookingAllowed(isOverbookingAllowed)
-                .withSlotBased(true)
-                .withAllDaySplit(allDaySplit)
-                .withTotalBooked(totalBooked)
-                .withMaxSlots(maxSlots)
-                .build();
+        return new CourtSchedule()
+                .courtScheduleId(randomUUID().toString())
+                .overbookingAllowed(isOverbookingAllowed)
+                .slotBased(true)
+                .allDaySplit(allDaySplit)
+                .totalBooked(totalBooked)
+                .maxSlots(maxSlots);
     }
 
     private CourtSchedule createAllDaySplitCourtSchedule(final boolean isOverbookingAllowed, final boolean slotBased,
             final int maxDurationForMorning, final int maxDurationForAfternoon, final int totalBookedForMorning, final int totalBookedForAfternoon,
             final int maxDuration, final int totalBooked) {
-        return new CourtSchedule.CourtScheduleBuilder()
-                .withCourtScheduleId(randomUUID().toString())
-                .withIsOverbookingAllowed(isOverbookingAllowed)
-                .withSlotBased(slotBased)
-                .withAllDaySplit(true)
-                .withMaxDurationForMorning(maxDurationForMorning)
-                .withMaxDurationForAfternoon(maxDurationForAfternoon)
-                .withTotalBookedForMorning(totalBookedForMorning)
-                .withTotalBookedForAfternoon(totalBookedForAfternoon)
-                .withMaxDuration(maxDuration)
-                .withTotalBooked(totalBooked)
-                .build();
+        return new CourtSchedule()
+                .courtScheduleId(randomUUID().toString())
+                .overbookingAllowed(isOverbookingAllowed)
+                .slotBased(slotBased)
+                .allDaySplit(true)
+                .maxDurationForMorning(maxDurationForMorning)
+                .maxDurationForAfternoon(maxDurationForAfternoon)
+                .totalBookedForMorning(totalBookedForMorning)
+                .totalBookedForAfternoon(totalBookedForAfternoon)
+                .maxDuration(maxDuration)
+                .totalBooked(totalBooked);
     }
 
     private CourtSchedule createRegularCourtSchedule(final boolean isOverbookingAllowed, final boolean slotBased, final int maxDuration, final int totalBooked) {
-        return new CourtSchedule.CourtScheduleBuilder()
-                .withCourtScheduleId(randomUUID().toString())
-                .withIsOverbookingAllowed(isOverbookingAllowed)
-                .withSlotBased(slotBased)
-                .withAllDaySplit(false)
-                .withMaxDuration(maxDuration)
-                .withTotalBooked(totalBooked)
-                .build();
+        return new CourtSchedule()
+                .courtScheduleId(randomUUID().toString())
+                .overbookingAllowed(isOverbookingAllowed)
+                .slotBased(slotBased)
+                .allDaySplit(false)
+                .maxDuration(maxDuration)
+                .totalBooked(totalBooked);
     }
 
     // ---- Multiday CROWN search tests ----
@@ -1127,25 +1116,24 @@ class SlotsSearchServiceTest {
     private CourtSchedule createMultidayCourtScheduleWithNames(final String courtRoomId, final int courtRoomNumber,
                                                                 final LocalDate sessionDate,
                                                                 final String courtHouseName, final String courtRoomName) {
-        return new CourtSchedule.CourtScheduleBuilder()
-                .withCourtScheduleId(randomUUID().toString())
-                .withCourtRoomId(courtRoomId)
-                .withCourtRoomNumber(courtRoomNumber)
-                .withSessionDate(sessionDate)
-                .withMaxDuration(360)
-                .withTotalBooked(0)
-                .withAvailableDuration(360)
-                .withIsOverbookingAllowed(false)
-                .withSlotBased(false)
-                .withAllDaySplit(false)
-                .withCourtSession("AD")
-                .withJurisdiction(CROWN.getJurisdiction())
-                .withPanel(ADULT_2)
-                .withOuCode(C20_CO00)
-                .withCourtHouseName(courtHouseName)
-                .withCourtRoomName(courtRoomName)
-                .withActive(true)
-                .build();
+        return new CourtSchedule()
+                .courtScheduleId(randomUUID().toString())
+                .courtRoomId(courtRoomId)
+                .courtRoomNumber(courtRoomNumber)
+                .sessionDate(sessionDate)
+                .maxDuration(360)
+                .totalBooked(0)
+                .availableDuration(360)
+                .overbookingAllowed(false)
+                .slotBased(false)
+                .allDaySplit(false)
+                .courtSession("AD")
+                .jurisdiction(CROWN.getJurisdiction())
+                .panel(ADULT_2)
+                .ouCode(C20_CO00)
+                .courtHouseName(courtHouseName)
+                .courtRoomName(courtRoomName)
+                .active(true);
     }
 
     @Test
@@ -1191,21 +1179,20 @@ class SlotsSearchServiceTest {
     void filterForMultidayAvailability_shouldHandleAllDaySplitAvailability() {
         // allDaySplit session: morning 200 + afternoon 200 - booked 20+20 = 360 available
         final String courtRoomId = randomUUID().toString();
-        final CourtSchedule adSplitDay1 = new CourtSchedule.CourtScheduleBuilder()
-                .withCourtScheduleId(randomUUID().toString())
-                .withCourtRoomId(courtRoomId)
-                .withSessionDate(parse(DATE_2026_03_26))
-                .withAllDaySplit(true)
-                .withMaxDurationForMorning(200)
-                .withMaxDurationForAfternoon(200)
-                .withTotalBookedForMorning(20)
-                .withTotalBookedForAfternoon(20)
-                .withMaxDuration(400)
-                .withTotalBooked(40)
-                .withIsOverbookingAllowed(false)
-                .withOuCode(C20_CO00)
-                .build();
-        final CourtSchedule day2 = createMultidayCourtSchedule(courtRoomId, parse(DATE_2026_03_27), 360, 0, false);
+        final CourtSchedule adSplitDay1 = new CourtSchedule()
+                .courtScheduleId(randomUUID().toString())
+                .courtRoomId(courtRoomId)
+                .sessionDate(parse("2026-03-26"))
+                .allDaySplit(true)
+                .maxDurationForMorning(200)
+                .maxDurationForAfternoon(200)
+                .totalBookedForMorning(20)
+                .totalBookedForAfternoon(20)
+                .maxDuration(400)
+                .totalBooked(40)
+                .overbookingAllowed(false)
+                .ouCode(C20_CO00);
+        final CourtSchedule day2 = createMultidayCourtSchedule(courtRoomId, parse("2026-03-27"), 360, 0, false);
 
         final List<CourtSchedule> schedules = new ArrayList<>(List.of(adSplitDay1, day2));
         final List<CourtSchedule> result = slotsSearchService.filterForMultidayAvailability(schedules, 2, false);
@@ -1218,21 +1205,20 @@ class SlotsSearchServiceTest {
     void filterForMultidayAvailability_shouldRejectAllDaySplitWithInsufficientAvailability() {
         // allDaySplit session: morning 200 + afternoon 200 - booked 100+100 = 200 available (<360)
         final String courtRoomId = randomUUID().toString();
-        final CourtSchedule adSplitDay1 = new CourtSchedule.CourtScheduleBuilder()
-                .withCourtScheduleId(randomUUID().toString())
-                .withCourtRoomId(courtRoomId)
-                .withSessionDate(parse(DATE_2026_03_26))
-                .withAllDaySplit(true)
-                .withMaxDurationForMorning(200)
-                .withMaxDurationForAfternoon(200)
-                .withTotalBookedForMorning(100)
-                .withTotalBookedForAfternoon(100)
-                .withMaxDuration(400)
-                .withTotalBooked(200)
-                .withIsOverbookingAllowed(false)
-                .withOuCode(C20_CO00)
-                .build();
-        final CourtSchedule day2 = createMultidayCourtSchedule(courtRoomId, parse(DATE_2026_03_27), 360, 0, false);
+        final CourtSchedule adSplitDay1 = new CourtSchedule()
+                .courtScheduleId(randomUUID().toString())
+                .courtRoomId(courtRoomId)
+                .sessionDate(parse("2026-03-26"))
+                .allDaySplit(true)
+                .maxDurationForMorning(200)
+                .maxDurationForAfternoon(200)
+                .totalBookedForMorning(100)
+                .totalBookedForAfternoon(100)
+                .maxDuration(400)
+                .totalBooked(200)
+                .overbookingAllowed(false)
+                .ouCode(C20_CO00);
+        final CourtSchedule day2 = createMultidayCourtSchedule(courtRoomId, parse("2026-03-27"), 360, 0, false);
 
         final List<CourtSchedule> schedules = new ArrayList<>(List.of(adSplitDay1, day2));
         final List<CourtSchedule> result = slotsSearchService.filterForMultidayAvailability(schedules, 2, false);
@@ -1732,48 +1718,46 @@ class SlotsSearchServiceTest {
 
     private CourtSchedule createMultidayCourtSchedule(final String courtRoomId, final LocalDate sessionDate,
                                                        final int maxDuration, final int totalBooked, final boolean overbookingAllowed) {
-        return new CourtSchedule.CourtScheduleBuilder()
-                .withCourtScheduleId(randomUUID().toString())
-                .withCourtRoomId(courtRoomId)
-                .withCourtRoomNumber(1)
-                .withSessionDate(sessionDate)
-                .withMaxDuration(maxDuration)
-                .withTotalBooked(totalBooked)
-                .withAvailableDuration(maxDuration - totalBooked)
-                .withIsOverbookingAllowed(overbookingAllowed)
-                .withSlotBased(false)
-                .withAllDaySplit(false)
-                .withCourtSession("AD")
-                .withJurisdiction(CROWN.getJurisdiction())
-                .withPanel(ADULT_2)
-                .withOuCode(C20_CO00)
-                .withCourtHouseName("Crown Court")
-                .withActive(true)
-                .build();
+        return new CourtSchedule()
+                .courtScheduleId(randomUUID().toString())
+                .courtRoomId(courtRoomId)
+                .courtRoomNumber(1)
+                .sessionDate(sessionDate)
+                .maxDuration(maxDuration)
+                .totalBooked(totalBooked)
+                .availableDuration(maxDuration - totalBooked)
+                .overbookingAllowed(overbookingAllowed)
+                .slotBased(false)
+                .allDaySplit(false)
+                .courtSession("AD")
+                .jurisdiction(CROWN.getJurisdiction())
+                .panel(ADULT_2)
+                .ouCode(C20_CO00)
+                .courtHouseName("Crown Court")
+                .active(true);
     }
 
     private CourtSchedule createMultidayCourtSchedule(final String courtRoomId, final LocalDate sessionDate,
                                                        final int maxDuration, final int totalBooked, final boolean overbookingAllowed,
                                                        final String businessType, final String ouCode) {
-        return new CourtSchedule.CourtScheduleBuilder()
-                .withCourtScheduleId(randomUUID().toString())
-                .withCourtRoomId(courtRoomId)
-                .withCourtRoomNumber(1)
-                .withSessionDate(sessionDate)
-                .withMaxDuration(maxDuration)
-                .withTotalBooked(totalBooked)
-                .withAvailableDuration(maxDuration - totalBooked)
-                .withIsOverbookingAllowed(overbookingAllowed)
-                .withSlotBased(false)
-                .withAllDaySplit(false)
-                .withCourtSession("AD")
-                .withJurisdiction(CROWN.getJurisdiction())
-                .withPanel(ADULT_2)
-                .withOuCode(ouCode)
-                .withBusinessType(businessType)
-                .withCourtHouseName("Crown Court")
-                .withActive(true)
-                .build();
+        return new CourtSchedule()
+                .courtScheduleId(randomUUID().toString())
+                .courtRoomId(courtRoomId)
+                .courtRoomNumber(1)
+                .sessionDate(sessionDate)
+                .maxDuration(maxDuration)
+                .totalBooked(totalBooked)
+                .availableDuration(maxDuration - totalBooked)
+                .overbookingAllowed(overbookingAllowed)
+                .slotBased(false)
+                .allDaySplit(false)
+                .courtSession("AD")
+                .jurisdiction(CROWN.getJurisdiction())
+                .panel(ADULT_2)
+                .ouCode(ouCode)
+                .businessType(businessType)
+                .courtHouseName("Crown Court")
+                .active(true);
     }
 
     private HearingSlotRequestParam createMultidayRequestParam(final String jurisdiction, final String duration) {

@@ -52,9 +52,9 @@
       "totalBookedForMorning": 0,
       "totalBookedForAfternoon": 0,
       "jurisdiction": "MAGISTRATES",
-      "sessionStartTime": "2020-12-01T10:00:00.000+00:00",
-      "sessionEndTime": "2020-12-01T13:00:00.000+00:00",
-      "nationalBreakTime": "2020-12-01T13:00:00.000+00:00",
+      "sessionStartTime": "2020-12-01T10:00:00Z",
+      "sessionEndTime": "2020-12-01T13:00:00Z",
+      "nationalBreakTime": "2020-12-01T13:00:00Z",
       "overbookingAllowed": true,
       "draft": false
     }

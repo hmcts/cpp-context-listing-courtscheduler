@@ -4,8 +4,8 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 import uk.gov.moj.cpp.courtscheduler.config.JacksonObjectMapperConfig;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleView;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtScheduleView;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -29,11 +29,10 @@ class CourtScheduleWireContractTest {
 
     @Test
     void courtScheduleKeepsLegacyBeanNamesForDraftAndOverbookingFlags() throws Exception {
-        final CourtSchedule courtSchedule = new CourtSchedule.CourtScheduleBuilder()
-                .withCourtScheduleId("30f5b5af-2844-40bd-9bf6-397ad99182c2")
-                .withIsDraft(true)
-                .withIsOverbookingAllowed(true)
-                .build();
+        final CourtSchedule courtSchedule = new CourtSchedule()
+                .courtScheduleId("30f5b5af-2844-40bd-9bf6-397ad99182c2")
+                .draft(true)
+                .overbookingAllowed(true);
 
         final JsonNode json = objectMapper.readTree(objectMapper.writeValueAsString(courtSchedule));
 
@@ -45,11 +44,10 @@ class CourtScheduleWireContractTest {
 
     @Test
     void courtScheduleViewKeepsLegacyIsPrefixedNamesForDraftAndOverbookingFlags() throws Exception {
-        final CourtScheduleView view = new CourtScheduleView.CourtScheduleViewBuilder()
-                .withCourtScheduleId("30f5b5af-2844-40bd-9bf6-397ad99182c2")
-                .withIsDraft(Boolean.TRUE)
-                .withIsOverbookingAllowed(true)
-                .build();
+        final CourtScheduleView view = new CourtScheduleView()
+                .courtScheduleId("30f5b5af-2844-40bd-9bf6-397ad99182c2")
+                .isDraft(Boolean.TRUE)
+                .isOverbookingAllowed(true);
 
         final JsonNode json = objectMapper.readTree(objectMapper.writeValueAsString(view));
 

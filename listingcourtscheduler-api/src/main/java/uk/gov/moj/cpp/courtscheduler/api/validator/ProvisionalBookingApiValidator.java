@@ -15,14 +15,15 @@ import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.PAYLOAD_CANNOT_EMPT
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.PAYLOAD_NOT_CORRECT;
 
 import uk.gov.moj.cpp.courtscheduler.api.converter.ConverterException;
-import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalBookingSlots;
-import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalSlot;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.ProvisionalBookingSlots;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.ProvisionalSlot;
 
 import java.util.List;
 import java.util.Optional;
 
 import jakarta.json.JsonObject;
 
+import org.owasp.encoder.Encode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,7 +44,7 @@ public class ProvisionalBookingApiValidator {
                     return EMPTY_JSON_OBJECT;
                 }
             } catch (ConverterException converterException) {
-                LOGGER.error("provisionalSlot payload is incorrect : {}", converterException.getMessage());
+                LOGGER.error("provisionalSlot payload is incorrect : {}", Encode.forJava(converterException.getMessage()));
                 return getMessage(PAYLOAD_NOT_CORRECT);
             }
             LOGGER.info("Mandatory data missing on Provisional Booking Payload : {}", provisionalBookingSlots);

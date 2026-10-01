@@ -2,10 +2,10 @@ package uk.gov.moj.cpp.courtscheduler.repository;
 
 import static uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant.EXACT_HEARING_START_DATETIME;
 
-import uk.gov.moj.cpp.courtscheduler.domain.AllocatedListingTotalBooked;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.AllocatedListingTotalBooked;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.IdResponse;
-import uk.gov.moj.cpp.courtscheduler.domain.MiFilterCriteria;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.MiFilterCriteria;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
 
@@ -52,7 +52,9 @@ class AllocatedListingRepositoryImpl implements AllocatedListingRepositoryCustom
                 .getResultList();
 
         return results.stream()
-                .map(row -> new AllocatedListingTotalBooked((String) row[0], ((Number) row[1]).longValue()))
+                .map(row -> new AllocatedListingTotalBooked()
+                        .courtScheduleId((String) row[0])
+                        .totalBooked(((Number) row[1]).intValue()))
                 .toList();
     }
 
@@ -66,8 +68,8 @@ class AllocatedListingRepositoryImpl implements AllocatedListingRepositoryCustom
                         "SELECT al FROM AllocatedListing al "
                                 + "WHERE al.updatedOn > :fromDate AND al.updatedOn < :toDate",
                         AllocatedListing.class)
-                .setParameter("fromDate", DateUtils.getDate(miFilterCriteria.getFromLocalDate()).toInstant())
-                .setParameter("toDate", DateUtils.getDate(miFilterCriteria.getToLocalDate()).toInstant())
+                .setParameter("fromDate", DateUtils.getDate(miFilterCriteria.getFromDate()).toInstant())
+                .setParameter("toDate", DateUtils.getDate(miFilterCriteria.getToDate()).toInstant())
                 .getResultList();
 
         return allocatedListings.stream().map(entity -> {

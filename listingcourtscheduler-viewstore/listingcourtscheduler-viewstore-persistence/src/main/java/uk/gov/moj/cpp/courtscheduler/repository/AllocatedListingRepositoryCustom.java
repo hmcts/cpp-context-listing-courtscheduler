@@ -1,9 +1,9 @@
 package uk.gov.moj.cpp.courtscheduler.repository;
 
-import uk.gov.moj.cpp.courtscheduler.domain.AllocatedListingTotalBooked;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.AllocatedListingTotalBooked;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.IdResponse;
-import uk.gov.moj.cpp.courtscheduler.domain.MiFilterCriteria;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.MiFilterCriteria;
 
 import java.util.List;
 import java.util.Set;

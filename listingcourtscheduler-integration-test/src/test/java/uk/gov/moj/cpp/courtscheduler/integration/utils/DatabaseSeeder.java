@@ -7,8 +7,8 @@ import static uk.gov.moj.cpp.courtscheduler.common.Jurisdiction.MAGISTRATES;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toRoundedTimestamp;
 
 import uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek;
-import uk.gov.moj.cpp.courtscheduler.domain.JudiciaryUnavailabilityRequest;
-import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalSlot;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.JudiciaryUnavailability;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.ProvisionalSlot;
 import uk.gov.moj.cpp.courtscheduler.exception.PersistenceStoreException;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
@@ -461,7 +461,7 @@ public class DatabaseSeeder {
             final String ruleId,
             final String judiciaryId,
             final String courtHouseId,
-            final List<JudiciaryUnavailabilityRequest> unavailabilities,
+            final List<JudiciaryUnavailability> unavailabilities,
             final LocalDate fromDate,
             final LocalDate toDate,
             final List<AvailabilityDayOfWeek> repeatDays) throws SQLException {
@@ -491,7 +491,7 @@ public class DatabaseSeeder {
                 // If availabilityType is UNAVAILABLE, create a corresponding JudiciaryUnavailability record
                 if (unavailabilities != null && !unavailabilities.isEmpty()) {
 
-                    for(final JudiciaryUnavailabilityRequest request : unavailabilities) {
+                    for(final JudiciaryUnavailability request : unavailabilities) {
 
                         final String unavailabilityId = java.util.UUID.randomUUID().toString();
                         unavailabilityStmt.setString(1, unavailabilityId);
@@ -499,7 +499,7 @@ public class DatabaseSeeder {
                         unavailabilityStmt.setDate(3, Date.valueOf(request.getStartDate()));
                         unavailabilityStmt.setDate(4, Date.valueOf(request.getEndDate()));
                         if (request.getReason() != null) {
-                            unavailabilityStmt.setString(5, request.getReason().name());
+                            unavailabilityStmt.setString(5, request.getReason());
                         } else {
                             unavailabilityStmt.setNull(5, Types.VARCHAR);
                         }
@@ -554,7 +554,7 @@ public class DatabaseSeeder {
 
                     // If availabilityType is UNAVAILABLE, create a corresponding JudiciaryUnavailability record
                     if (rule.unavailabilities != null && !rule.unavailabilities.isEmpty()) {
-                        for(final JudiciaryUnavailabilityRequest request : rule.unavailabilities) {
+                        for(final JudiciaryUnavailability request : rule.unavailabilities) {
                             // Skip unavailability records without startDate (from_date has NOT NULL constraint)
                             if (request.getStartDate() == null || request.getEndDate() == null) {
                                 continue;
@@ -565,7 +565,7 @@ public class DatabaseSeeder {
                             unavailabilityStmt.setDate(3, Date.valueOf(request.getStartDate()));
                             unavailabilityStmt.setDate(4, Date.valueOf(request.getEndDate()));
                             if (request.getReason() != null) {
-                                unavailabilityStmt.setString(5, request.getReason().name());
+                                unavailabilityStmt.setString(5, request.getReason());
                             } else {
                                 unavailabilityStmt.setNull(5, Types.VARCHAR);
                             }
@@ -604,12 +604,12 @@ public class DatabaseSeeder {
         private final String ruleId;
         private final String judiciaryId;
         private final String courtHouseId;
-        private final List<JudiciaryUnavailabilityRequest> unavailabilities;
+        private final List<JudiciaryUnavailability> unavailabilities;
         private final LocalDate fromDate;
         private final LocalDate toDate;
         private final List<String> repeatDays;
 
-        public RuleData(final String ruleId, final String judiciaryId, final String courtHouseId, final List<JudiciaryUnavailabilityRequest> unavailabilities,
+        public RuleData(final String ruleId, final String judiciaryId, final String courtHouseId, final List<JudiciaryUnavailability> unavailabilities,
                         final LocalDate fromDate, final LocalDate toDate,
                         final List<String> repeatDays) {
             this.ruleId = ruleId;

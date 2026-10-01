@@ -11,7 +11,8 @@
         "Monday"
       ],
       "isOverbookingAllowed": true,
-      "jurisdiction": "MAGISTRATES"
+      "jurisdiction": "MAGISTRATES",
+      "allDaySplit": false
     }
   ],
   "repeatPattern": {

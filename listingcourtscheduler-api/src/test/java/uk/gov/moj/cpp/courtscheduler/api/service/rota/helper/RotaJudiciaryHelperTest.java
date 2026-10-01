@@ -30,8 +30,8 @@ import static uk.gov.moj.cpp.courtscheduler.common.exception.MissingDataError.JU
 
 import uk.gov.moj.cpp.courtscheduler.api.service.rota.RotaReferenceDataService;
 import uk.gov.moj.cpp.courtscheduler.common.service.RotaProcessLogService;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
-import uk.gov.moj.cpp.courtscheduler.domain.Judiciary;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtScheduleJudiciary;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.Judiciary;
 import uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload;
 import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.enricher.JudiciaryBuilder;
 
@@ -85,14 +85,13 @@ class RotaJudiciaryHelperTest {
         executionId = "execution-123";
         records = new HashMap<>();
         judiciaryId = UUID.randomUUID().toString();
-        judiciary = Judiciary.JudiciaryBuilder.aJudiciary()
-                .withId(judiciaryId)
-                .withEmailAddress(JUDGE_EXAMPLE_COM)
-                .withForenames(JOHN)
-                .withSurname(DOE)
-                .withTitlePrefix("Mr")
-                .withJudiciaryType("Judge")
-                .build();
+        judiciary = new Judiciary()
+                .id(judiciaryId)
+                .emailAddress("judge@example.com")
+                .forenames("John")
+                .surname("Doe")
+                .titlePrefix("Mr")
+                .judiciaryType("Judge");
     }
 
     // ============================================================================
@@ -305,13 +304,12 @@ class RotaJudiciaryHelperTest {
         when(referenceDataValidationService.validateAndFindJudiciaryByEmail(anyString(), anyString()))
                 .thenReturn(Optional.of(judiciary));
 
-        final CourtScheduleJudiciary courtScheduleJudiciary = CourtScheduleJudiciary.judiciary()
-                .withJudiciaryId(judiciaryId)
-                .withCourtListingProfileId(courtListingProfileId)
-                .withPosition(CHAIR_2)
-                .withIsBenchChairman(true)
-                .withIsDeputy(false)
-                .build();
+        final CourtScheduleJudiciary courtScheduleJudiciary = new CourtScheduleJudiciary()
+                .judiciaryId(judiciaryId)
+                .courtListingProfileId(courtListingProfileId)
+                .position(CHAIR_2)
+                .benchChairman(true)
+                .deputy(false);
 
         when(judiciaryBuilder.build(anyMap(), anyString())).thenReturn(courtScheduleJudiciary);
 
@@ -438,21 +436,19 @@ class RotaJudiciaryHelperTest {
         when(referenceDataValidationService.validateAndFindJudiciaryByEmail(anyString(), anyString()))
                 .thenReturn(Optional.of(judiciary));
 
-        final CourtScheduleJudiciary courtScheduleJudiciary1 = CourtScheduleJudiciary.judiciary()
-                .withJudiciaryId(judiciaryId)
-                .withCourtListingProfileId(courtListingProfileId1)
-                .withPosition(CHAIR_2)
-                .withIsBenchChairman(true)
-                .withIsDeputy(false)
-                .build();
+        final CourtScheduleJudiciary courtScheduleJudiciary1 = new CourtScheduleJudiciary()
+                .judiciaryId(judiciaryId)
+                .courtListingProfileId(courtListingProfileId1)
+                .position(CHAIR_2)
+                .benchChairman(true)
+                .deputy(false);
 
-        final CourtScheduleJudiciary courtScheduleJudiciary2 = CourtScheduleJudiciary.judiciary()
-                .withJudiciaryId(judiciaryId)
-                .withCourtListingProfileId(courtListingProfileId2)
-                .withPosition("LEFT_WINGER")
-                .withIsBenchChairman(false)
-                .withIsDeputy(true)
-                .build();
+        final CourtScheduleJudiciary courtScheduleJudiciary2 = new CourtScheduleJudiciary()
+                .judiciaryId(judiciaryId)
+                .courtListingProfileId(courtListingProfileId2)
+                .position("LEFT_WINGER")
+                .benchChairman(false)
+                .deputy(true);
 
         when(judiciaryBuilder.build(anyMap(), anyString()))
                 .thenReturn(courtScheduleJudiciary1)
@@ -643,21 +639,19 @@ class RotaJudiciaryHelperTest {
         when(referenceDataValidationService.validateAndFindJudiciaryByEmail(anyString(), anyString()))
                 .thenReturn(Optional.of(judiciary));
 
-        final CourtScheduleJudiciary courtScheduleJudiciary1 = CourtScheduleJudiciary.judiciary()
-                .withJudiciaryId(judiciaryId)
-                .withCourtListingProfileId(courtListingProfileId1)
-                .withPosition(CHAIR_2)
-                .withIsBenchChairman(true)
-                .withIsDeputy(false)
-                .build();
+        final CourtScheduleJudiciary courtScheduleJudiciary1 = new CourtScheduleJudiciary()
+                .judiciaryId(judiciaryId)
+                .courtListingProfileId(courtListingProfileId1)
+                .position(CHAIR_2)
+                .benchChairman(true)
+                .deputy(false);
 
-        final CourtScheduleJudiciary courtScheduleJudiciary2 = CourtScheduleJudiciary.judiciary()
-                .withJudiciaryId(judiciaryId)
-                .withCourtListingProfileId(courtListingProfileId2)
-                .withPosition("LEFT_WINGER")
-                .withIsBenchChairman(false)
-                .withIsDeputy(true)
-                .build();
+        final CourtScheduleJudiciary courtScheduleJudiciary2 = new CourtScheduleJudiciary()
+                .judiciaryId(judiciaryId)
+                .courtListingProfileId(courtListingProfileId2)
+                .position("LEFT_WINGER")
+                .benchChairman(false)
+                .deputy(true);
 
         when(judiciaryBuilder.build(anyMap(), anyString()))
                 .thenReturn(courtScheduleJudiciary1)
@@ -720,13 +714,12 @@ class RotaJudiciaryHelperTest {
         when(referenceDataValidationService.validateAndFindJudiciaryByEmail(anyString(), anyString()))
                 .thenReturn(Optional.of(judiciary));
 
-        final CourtScheduleJudiciary courtScheduleJudiciary = CourtScheduleJudiciary.judiciary()
-                .withJudiciaryId(judiciaryId)
-                .withCourtListingProfileId(courtListingProfileId)
-                .withPosition(CHAIR_2)
-                .withIsBenchChairman(true)
-                .withIsDeputy(false)
-                .build();
+        final CourtScheduleJudiciary courtScheduleJudiciary = new CourtScheduleJudiciary()
+                .judiciaryId(judiciaryId)
+                .courtListingProfileId(courtListingProfileId)
+                .position(CHAIR_2)
+                .benchChairman(true)
+                .deputy(false);
 
         when(judiciaryBuilder.build(anyMap(), anyString())).thenReturn(courtScheduleJudiciary);
 
@@ -818,10 +811,9 @@ class RotaJudiciaryHelperTest {
         when(referenceDataValidationService.validateAndFindJudiciaryByEmail(  eq(email), eq(executionId)))
                 .thenReturn(Optional.of(judiciary));
 
-        final CourtScheduleJudiciary courtScheduleJudiciary = CourtScheduleJudiciary.judiciary()
-                .withJudiciaryId(judiciaryId)
-                .withCourtListingProfileId(courtListingProfileId)
-                .build();
+        final CourtScheduleJudiciary courtScheduleJudiciary = new CourtScheduleJudiciary()
+                .judiciaryId(judiciaryId)
+                .courtListingProfileId(courtListingProfileId);
         when(judiciaryBuilder.build(anyMap(), anyString())).thenReturn(courtScheduleJudiciary);
 
         // when
