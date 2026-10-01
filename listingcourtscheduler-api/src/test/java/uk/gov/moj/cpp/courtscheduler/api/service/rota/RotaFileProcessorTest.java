@@ -48,6 +48,7 @@ import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.RotaFileParser;
 import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.provisionaldata.RotaPeriodDateInfoProvider;
 
 import java.io.ByteArrayInputStream;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.Collections;
 import java.util.HashMap;
@@ -69,6 +70,14 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 @DisplayName("RotaFileProcessor Tests")
 class RotaFileProcessorTest {
+    private static final String CHAIR_2 = "CHAIR";
+    private static final String PANEL1_2 = "PANEL1";
+    private static final String JUDGE_1 = "judge-1";
+    private static final String LISTING_1 = "listing-1";
+    private static final String MAG_1 = "mag-1";
+    private static final String MAGISTRATE_EXAMPLE_COM = "magistrate@example.com";
+    private static final String SCHEDULE_1 = "schedule-1";
+
 
     @Mock
     private AzureBlobClientService azureBlobClientService;
@@ -115,7 +124,7 @@ class RotaFileProcessorTest {
     void setUp() {
         blobName = "test_rota_file.xml";
         leaseId = "lease-123";
-        blobContent = "test content".getBytes();
+        blobContent = "test content".getBytes(StandardCharsets.UTF_8);
         blobContentWrapper = new BlobContent(blobContent);
         executionId = "execution-123";
         rotaFileProcessHistory = new RotaFileProcessHistory();
@@ -134,7 +143,7 @@ class RotaFileProcessorTest {
         courtSchedule = new CourtSchedule.CourtScheduleBuilder()
                 .withCourtScheduleId(randomUUID().toString())
                 .withCourtRoomId("courtroom-1")
-                .withPanel("PANEL1")
+                .withPanel(PANEL1_2)
                 .withSessionDate(LocalDate.parse("2024-01-15"))
                 .withCourtSession("AM")
                 .build();
@@ -144,6 +153,7 @@ class RotaFileProcessorTest {
     // Tests for downloadAndProcessForEachFile - Main Entry Point
     // ============================================================================
 
+    /* default */
     @Nested
     @DisplayName("File Processing Entry Point Tests")
     class FileProcessingEntryPointTests {
@@ -185,6 +195,7 @@ class RotaFileProcessorTest {
     // Tests for File Type Validation (shouldProcessFile)
     // ============================================================================
 
+    /* default */
     @Nested
     @DisplayName("File Type Validation Tests")
     class FileTypeValidationTests {
@@ -253,6 +264,7 @@ class RotaFileProcessorTest {
     // Tests for File Process History
     // ============================================================================
 
+    /* default */
     @Nested
     @DisplayName("File Process History Tests")
     class FileProcessHistoryTests {
@@ -364,6 +376,7 @@ class RotaFileProcessorTest {
     // Tests for Location and Period Operations
     // ============================================================================
 
+    /* default */
     @Nested
     @DisplayName("Location and Period Operations Tests")
     class LocationAndPeriodOperationsTests {
@@ -460,6 +473,7 @@ class RotaFileProcessorTest {
     // Tests for Record Processing
     // ============================================================================
 
+    /* default */
     @Nested
     @DisplayName("Record Processing Tests")
     class RecordProcessingTests {
@@ -486,11 +500,11 @@ class RotaFileProcessorTest {
         void shouldProcessJudiciariesFromRecords() {
             // given
             setupSuccessfulProcessing();
-            final Map<String, Map<String, String>> magistrates = createMagistratesRecord("mag-1", "magistrate@example.com");
+            final Map<String, Map<String, String>> magistrates = createMagistratesRecord(MAG_1, MAGISTRATE_EXAMPLE_COM);
             records.put(MAGISTRATES, magistrates);
             when(rotaFileParser.parse(anyString(), any())).thenReturn(records);
             when(rotaJudiciaryHelper.createJudiciaryMap(anyMap(), anyString()))
-                    .thenReturn(Map.of("mag-1", UUID.fromString(judiciary.getId())));
+                    .thenReturn(Map.of(MAG_1, UUID.fromString(judiciary.getId())));
             setupEmptyProcessingMaps();
 
             // when
@@ -505,11 +519,11 @@ class RotaFileProcessorTest {
         void shouldProcessCourtListingsFromRecords() {
             // given
             setupSuccessfulProcessing();
-            final Map<String, Map<String, String>> courtListings = createCourtListingRecord("listing-1");
+            final Map<String, Map<String, String>> courtListings = createCourtListingRecord(LISTING_1);
             records.put(COURT_LISTING, courtListings);
             when(rotaFileParser.parse(anyString(), any())).thenReturn(records);
             when(rotaCourtScheduleHelper.createCourtScheduleMap(anyMap(), anyString()))
-                    .thenReturn(Map.of("listing-1", Set.of(UUID.fromString(courtSchedule.getCourtScheduleId()))));
+                    .thenReturn(Map.of(LISTING_1, Set.of(UUID.fromString(courtSchedule.getCourtScheduleId()))));
             setupEmptyProcessingMaps();
 
             // when
@@ -526,9 +540,9 @@ class RotaFileProcessorTest {
             setupSuccessfulProcessing();
             final Map<String, Map<String, String>> courtListings = new HashMap<>();
             final Map<String, String> listingData = new HashMap<>();
-            listingData.put("panel", "PANEL1");
+            listingData.put("panel", PANEL1_2);
             // Missing sessionDate and session
-            courtListings.put("listing-1", listingData);
+            courtListings.put(LISTING_1, listingData);
             records.put(COURT_LISTING, courtListings);
             when(rotaFileParser.parse(anyString(), any())).thenReturn(records);
             when(rotaCourtScheduleHelper.createCourtScheduleMap(anyMap(), anyString()))
@@ -549,10 +563,10 @@ class RotaFileProcessorTest {
             setupSuccessfulProcessing();
             final Map<String, Map<String, String>> courtListings = new HashMap<>();
             final Map<String, String> listingData = new HashMap<>();
-            listingData.put("panel", "PANEL1");
+            listingData.put("panel", PANEL1_2);
             listingData.put("sessionDate", "invalid-date");
             listingData.put("session", "AM");
-            courtListings.put("listing-1", listingData);
+            courtListings.put(LISTING_1, listingData);
             records.put(COURT_LISTING, courtListings);
             when(rotaFileParser.parse(anyString(), any())).thenReturn(records);
             when(rotaCourtScheduleHelper.createCourtScheduleMap(anyMap(), anyString()))
@@ -571,18 +585,18 @@ class RotaFileProcessorTest {
         void shouldProcessSchedulesFromRecords() {
             // given
             setupSuccessfulProcessing();
-            final Map<String, Map<String, String>> schedules = createScheduleRecord("schedule-1", "judge-1", "listing-1");
+            final Map<String, Map<String, String>> schedules = createScheduleRecord(SCHEDULE_1, JUDGE_1, LISTING_1);
             records.put(SCHEDULE, schedules);
-            final Map<String, Map<String, String>> magistrates = createMagistratesRecord("judge-1", "magistrate@example.com");
+            final Map<String, Map<String, String>> magistrates = createMagistratesRecord(JUDGE_1, MAGISTRATE_EXAMPLE_COM);
             records.put(MAGISTRATES, magistrates);
             when(rotaFileParser.parse(anyString(), any())).thenReturn(records);
             when(rotaJudiciaryHelper.createJudiciaryMap(anyMap(), anyString()))
-                    .thenReturn(Map.of("judge-1", UUID.fromString(judiciary.getId())));
+                    .thenReturn(Map.of(JUDGE_1, UUID.fromString(judiciary.getId())));
             when(rotaCourtScheduleHelper.createCourtScheduleMap(anyMap(), anyString()))
-                    .thenReturn(Map.of("listing-1", Set.of(UUID.randomUUID())));
+                    .thenReturn(Map.of(LISTING_1, Set.of(randomUUID())));
             when(rotaJudiciaryHelper.createJudiciaryCourtScheduleMap(anyMap(), anyMap(), anyMap(), anyString()))
                     .thenReturn(Map.of(judiciary.getId(), List.of(new JudiciaryCourtScheduleData(
-                            List.of(UUID.randomUUID()), null, "CHAIR", true, false))));
+                            List.of(randomUUID()), null, CHAIR_2, true, false))));
 
             // when
             rotaFileProcessor.downloadAndProcessForEachFile(blobContentWrapper, blobName, leaseId);
@@ -599,8 +613,8 @@ class RotaFileProcessorTest {
             final Map<String, Map<String, String>> schedules = new HashMap<>();
             final Map<String, String> scheduleData = new HashMap<>();
             // Missing ROTA_JUDICIARY_ID
-            scheduleData.put(COURT_LISTING_PROFILE_ID, "listing-1");
-            schedules.put("schedule-1", scheduleData);
+            scheduleData.put(COURT_LISTING_PROFILE_ID, LISTING_1);
+            schedules.put(SCHEDULE_1, scheduleData);
             records.put(SCHEDULE, schedules);
             when(rotaFileParser.parse(anyString(), any())).thenReturn(records);
             setupEmptyProcessingMaps();
@@ -619,19 +633,19 @@ class RotaFileProcessorTest {
             setupSuccessfulProcessing();
             final Map<String, Map<String, String>> schedules = new HashMap<>();
             final Map<String, String> scheduleData = new HashMap<>();
-            scheduleData.put(ROTA_JUDICIARY_ID, "judge-1");
+            scheduleData.put(ROTA_JUDICIARY_ID, JUDGE_1);
             // Missing COURT_LISTING_PROFILE_ID
-            schedules.put("schedule-1", scheduleData);
+            schedules.put(SCHEDULE_1, scheduleData);
             records.put(SCHEDULE, schedules);
-            final Map<String, Map<String, String>> magistrates = createMagistratesRecord("judge-1", "magistrate@example.com");
+            final Map<String, Map<String, String>> magistrates = createMagistratesRecord(JUDGE_1, MAGISTRATE_EXAMPLE_COM);
             records.put(MAGISTRATES, magistrates);
             when(rotaFileParser.parse(anyString(), any())).thenReturn(records);
             when(rotaJudiciaryHelper.createJudiciaryMap(anyMap(), anyString()))
-                    .thenReturn(Map.of("judge-1", UUID.fromString(judiciary.getId())));
+                    .thenReturn(Map.of(JUDGE_1, UUID.fromString(judiciary.getId())));
             when(rotaCourtScheduleHelper.createCourtScheduleMap(anyMap(), anyString()))
                     .thenReturn(emptyMap());
             when(rotaJudiciaryHelper.createJudiciaryCourtScheduleMap(anyMap(), anyMap(), anyMap(), anyString()))
-                    .thenReturn(Collections.emptyMap());
+                    .thenReturn(emptyMap());
 
             // when
             rotaFileProcessor.downloadAndProcessForEachFile(blobContentWrapper, blobName, leaseId);
@@ -645,6 +659,7 @@ class RotaFileProcessorTest {
     // Tests for Judiciary Assignment Operations
     // ============================================================================
 
+    /* default */
     @Nested
     @DisplayName("Judiciary Assignment Tests")
     class JudiciaryAssignmentTests {
@@ -658,7 +673,7 @@ class RotaFileProcessorTest {
             final UUID sessionId1 = UUID.fromString(courtSchedule.getCourtScheduleId());
             final Map<String, JudiciaryCourtScheduleData> assignmentDataMap = new HashMap<>();
             assignmentDataMap.put(judiciary.getId(), new JudiciaryCourtScheduleData(
-                    List.of(sessionId1), null, "CHAIR", true, false));
+                    List.of(sessionId1), null, CHAIR_2, true, false));
 
             final AssignJudiciariesRequest assignRequest = createAssignRequest(judiciary.getId(), sessionId1);
             when(judiciaryAssignmentRequestHelper.buildAssignJudiciariesRequest(anyList()))
@@ -690,7 +705,7 @@ class RotaFileProcessorTest {
 
             final Map<String, List<JudiciaryCourtScheduleData>> rotaFeedDataMap = new HashMap<>();
             rotaFeedDataMap.put(judiciary.getId(), List.of(new JudiciaryCourtScheduleData(
-                    List.of(sessionId1, sessionId2), null, "CHAIR", true, false)));
+                    List.of(sessionId1, sessionId2), null, CHAIR_2, true, false)));
             when(rotaJudiciaryHelper.createJudiciaryCourtScheduleMap(anyMap(), anyMap(), anyMap(), anyString()))
                     .thenReturn(rotaFeedDataMap);
 
@@ -747,9 +762,9 @@ class RotaFileProcessorTest {
 
             final Map<String, List<JudiciaryCourtScheduleData>> rotaFeedDataMap = new HashMap<>();
             rotaFeedDataMap.put(judiciaryId1, List.of(new JudiciaryCourtScheduleData(
-                    List.of(sessionId1), null, "CHAIR", true, false)));
+                    List.of(sessionId1), null, CHAIR_2, true, false)));
             rotaFeedDataMap.put(judiciaryId2, List.of(new JudiciaryCourtScheduleData(
-                    List.of(sessionId2), null, "CHAIR", true, false)));
+                    List.of(sessionId2), null, CHAIR_2, true, false)));
             when(rotaJudiciaryHelper.createJudiciaryCourtScheduleMap(anyMap(), anyMap(), anyMap(), anyString()))
                     .thenReturn(rotaFeedDataMap);
 
@@ -787,7 +802,7 @@ class RotaFileProcessorTest {
             final Map<String, List<JudiciaryCourtScheduleData>> rotaFeedDataMap = new HashMap<>();
             // Same judiciary with multiple schedule data entries
             rotaFeedDataMap.put(judiciaryId1, List.of(
-                    new JudiciaryCourtScheduleData(List.of(sessionId1), null, "CHAIR", true, false),
+                    new JudiciaryCourtScheduleData(List.of(sessionId1), null, CHAIR_2, true, false),
                     new JudiciaryCourtScheduleData(List.of(sessionId2), null, "LEFT_WINGER", false, true),
                     new JudiciaryCourtScheduleData(List.of(sessionId3), null, "RIGHT_WINGER", false, false)
             ));
@@ -831,7 +846,7 @@ class RotaFileProcessorTest {
 
             final Map<String, List<JudiciaryCourtScheduleData>> rotaFeedDataMap = new HashMap<>();
             rotaFeedDataMap.put(judiciaryId1, List.of(new JudiciaryCourtScheduleData(
-                    List.of(sessionId1), null, "CHAIR", true, false)));
+                    List.of(sessionId1), null, CHAIR_2, true, false)));
             rotaFeedDataMap.put("judiciary-2", Collections.emptyList()); // Empty list
             rotaFeedDataMap.put("judiciary-3", null); // Null list
             when(rotaJudiciaryHelper.createJudiciaryCourtScheduleMap(anyMap(), anyMap(), anyMap(), anyString()))
@@ -864,6 +879,7 @@ class RotaFileProcessorTest {
     // Tests for Error Handling
     // ============================================================================
 
+    /* default */
     @Nested
     @DisplayName("Error Handling Tests")
     class ErrorHandlingTests {
@@ -881,7 +897,7 @@ class RotaFileProcessorTest {
             lenient().when(rotaFileUtility.isNewerSnapshotFileProcessed(anyString())).thenReturn(false);
             doNothing().when(azureBlobClientService).releaseLease(anyString(), anyString(), anyBoolean());
 
-            final Map<String, Map<String, String>> courtListings = createCourtListingRecord("listing-1");
+            final Map<String, Map<String, String>> courtListings = createCourtListingRecord(LISTING_1);
             records.put(COURT_LISTING, courtListings);
 
             setupLocationAndPeriodHelpers();
@@ -903,10 +919,10 @@ class RotaFileProcessorTest {
             when(rotaFileUtility.createAndSaveFileProcessHistory(anyString(), any(), any()))
                     .thenReturn(rotaFileProcessHistory);
             when(rotaFileParser.parse(anyString(), any())).thenReturn(records);
-            final Map<String, Map<String, String>> schedules = createScheduleRecord("schedule-1", "judge-1", "listing-1");
+            final Map<String, Map<String, String>> schedules = createScheduleRecord(SCHEDULE_1, JUDGE_1, LISTING_1);
             records.put(SCHEDULE, schedules);
 
-            final Map<String, Map<String, String>> magistrates = createMagistratesRecord("judge-1", "magistrate@example.com");
+            final Map<String, Map<String, String>> magistrates = createMagistratesRecord(JUDGE_1, MAGISTRATE_EXAMPLE_COM);
             records.put(MAGISTRATES, magistrates);
 
             setupLocationAndPeriodHelpers();
@@ -989,7 +1005,7 @@ class RotaFileProcessorTest {
     private Map<String, Map<String, String>> createCourtListingRecord(final String id) {
         final Map<String, Map<String, String>> courtListings = new HashMap<>();
         final Map<String, String> listingData = new HashMap<>();
-        listingData.put("panel", "PANEL1");
+        listingData.put("panel", PANEL1_2);
         listingData.put("sessionDate", "2024-01-15");
         listingData.put("session", "AM");
         listingData.put("locationId", "100");
@@ -1015,7 +1031,7 @@ class RotaFileProcessorTest {
                         uk.gov.moj.cpp.courtscheduler.domain.JudiciaryAssignment.builder()
                                 .withJudiciaryId(judiciaryId)
                                 .withSessionIds(java.util.Arrays.stream(sessionIds).map(UUID::toString).toList())
-                                .withPosition("CHAIR")
+                                .withPosition(CHAIR_2)
                                 .withIsBenchChairman(true)
                                 .withIsDeputy(false)
                                 .build()
@@ -1031,14 +1047,14 @@ class RotaFileProcessorTest {
                         uk.gov.moj.cpp.courtscheduler.domain.JudiciaryAssignment.builder()
                                 .withJudiciaryId(judiciaryId1)
                                 .withSessionIds(List.of(sessionId1.toString()))
-                                .withPosition("CHAIR")
+                                .withPosition(CHAIR_2)
                                 .withIsBenchChairman(true)
                                 .withIsDeputy(false)
                                 .build(),
                         uk.gov.moj.cpp.courtscheduler.domain.JudiciaryAssignment.builder()
                                 .withJudiciaryId(judiciaryId2)
                                 .withSessionIds(List.of(sessionId2.toString()))
-                                .withPosition("CHAIR")
+                                .withPosition(CHAIR_2)
                                 .withIsBenchChairman(true)
                                 .withIsDeputy(false)
                                 .build()
@@ -1131,40 +1147,40 @@ class RotaFileProcessorTest {
         records.put(RotaPayload.ROTA_PERIOD, rotaPeriodMap);
 
         // Setup magistrates
-        records.put(MAGISTRATES, createMagistratesRecord("mag-1", "magistrate@example.com"));
+        records.put(MAGISTRATES, createMagistratesRecord(MAG_1, MAGISTRATE_EXAMPLE_COM));
 
         // Setup district judges
         final Map<String, Map<String, String>> districtJudges = new HashMap<>();
         final Map<String, String> judgeData = new HashMap<>();
         judgeData.put(JUDGE_EMAIL, "judge@example.com");
-        districtJudges.put("judge-1", judgeData);
+        districtJudges.put(JUDGE_1, judgeData);
         records.put(DISTRICT_JUDGES, districtJudges);
 
         // Setup court listings
-        records.put(COURT_LISTING, createCourtListingRecord("listing-1"));
+        records.put(COURT_LISTING, createCourtListingRecord(LISTING_1));
 
         // Setup schedules
-        records.put(SCHEDULE, createScheduleRecord("schedule-1", "judge-1", "listing-1"));
+        records.put(SCHEDULE, createScheduleRecord(SCHEDULE_1, JUDGE_1, LISTING_1));
 
         when(rotaFileParser.parse(anyString(), any())).thenReturn(records);
 
         // Mock RotaJudiciaryHelper
         final Map<String, UUID> judiciaryMap = new HashMap<>();
-        judiciaryMap.put("mag-1", UUID.fromString(judiciary.getId()));
-        judiciaryMap.put("judge-1", UUID.fromString(judiciary.getId()));
+        judiciaryMap.put(MAG_1, UUID.fromString(judiciary.getId()));
+        judiciaryMap.put(JUDGE_1, UUID.fromString(judiciary.getId()));
         when(rotaJudiciaryHelper.createJudiciaryMap(anyMap(), anyString()))
                 .thenReturn(judiciaryMap);
 
         // Mock RotaCourtScheduleHelper
         final Map<String, Set<UUID>> courtScheduleMap = new HashMap<>();
-        courtScheduleMap.put("listing-1", Set.of(UUID.fromString(courtSchedule.getCourtScheduleId())));
+        courtScheduleMap.put(LISTING_1, Set.of(UUID.fromString(courtSchedule.getCourtScheduleId())));
         when(rotaCourtScheduleHelper.createCourtScheduleMap(anyMap(), anyString()))
                 .thenReturn(courtScheduleMap);
 
         // Mock RotaJudiciaryHelper for judiciary court schedule map
         final Map<String, List<JudiciaryCourtScheduleData>> rotaFeedMap = new HashMap<>();
         rotaFeedMap.put(judiciary.getId(), List.of(new JudiciaryCourtScheduleData(
-                List.of(UUID.fromString(courtSchedule.getCourtScheduleId())), null, "CHAIR", true, false)));
+                List.of(UUID.fromString(courtSchedule.getCourtScheduleId())), null, CHAIR_2, true, false)));
         when(rotaJudiciaryHelper.createJudiciaryCourtScheduleMap(anyMap(), anyMap(), anyMap(), anyString()))
                 .thenReturn(rotaFeedMap);
     }

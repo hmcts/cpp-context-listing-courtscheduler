@@ -4,10 +4,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 
 import uk.gov.moj.cpp.courtscheduler.domain.AllocatedListingEachBooked;
+import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 
-import java.text.SimpleDateFormat;
-import java.util.Calendar;
+import java.time.Instant;
 import java.util.List;
 
 import io.github.benas.randombeans.api.EnhancedRandom;
@@ -17,7 +17,7 @@ class CourtSchedulerConverterTest {
 
     @Test
     void shouldConvert() {
-        CourtSchedule courtScheduleEnt = EnhancedRandom.random(CourtSchedule.class);
+        final CourtSchedule courtScheduleEnt = EnhancedRandom.random(CourtSchedule.class);
         courtScheduleEnt.setSupportAdSplit(null);
 
         final uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule converted = CourtSchedulerConverter.convert(courtScheduleEnt);
@@ -45,11 +45,11 @@ class CourtSchedulerConverterTest {
 
     @Test
     void shouldConvertWithAllocatedListingBooked() {
-        CourtSchedule courtScheduleEnt = EnhancedRandom.random(CourtSchedule.class);
+        final CourtSchedule courtScheduleEnt = EnhancedRandom.random(CourtSchedule.class);
         courtScheduleEnt.setSupportAdSplit(null);
 
         final List<AllocatedListingEachBooked> allocatedListingEachBookedList = List.of(new AllocatedListingEachBooked(
-                courtScheduleEnt.getCourtScheduleId(), courtScheduleEnt.getAvailableDuration(), Calendar.getInstance().getTime()
+                courtScheduleEnt.getCourtScheduleId(), courtScheduleEnt.getAvailableDuration(), Instant.now()
         ));
         final uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule converted = CourtSchedulerConverter.convert(courtScheduleEnt, allocatedListingEachBookedList);
 
@@ -73,7 +73,7 @@ class CourtSchedulerConverterTest {
 
     @Test
     void shouldConvertToMi() {
-        CourtSchedule courtScheduleEnt = EnhancedRandom.random(CourtSchedule.class);
+        final CourtSchedule courtScheduleEnt = EnhancedRandom.random(CourtSchedule.class);
 
         final uk.gov.moj.cpp.courtscheduler.domain.mi.CourtSchedule converted = CourtSchedulerConverter.convertToMi(courtScheduleEnt);
 
@@ -90,9 +90,8 @@ class CourtSchedulerConverterTest {
         assertEquals(converted.getCourtHouseId(), courtScheduleEnt.getCourtHouseId());
         assertEquals(converted.getCourtHouseName(), courtScheduleEnt.getCourtHouseName());
         assertEquals(converted.getPanel(), courtScheduleEnt.getPanel());
-        final SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm'Z'");
-        assertEquals(converted.getCreatedOn(), simpleDateFormat.format(courtScheduleEnt.getCreatedOn()));
-        assertEquals(converted.getUpdatedOn(), simpleDateFormat.format(courtScheduleEnt.getUpdatedOn()));
+        assertEquals(converted.getCreatedOn(), DateUtils.toIsoStringMinutes(courtScheduleEnt.getCreatedOn()));
+        assertEquals(converted.getUpdatedOn(), DateUtils.toIsoStringMinutes(courtScheduleEnt.getUpdatedOn()));
     }
 
 

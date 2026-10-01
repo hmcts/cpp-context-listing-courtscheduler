@@ -62,8 +62,7 @@ public class AssignJudiciaryToSessionsConverter {
             return List.of();
         }
         final List<SessionJudiciary> out = new ArrayList<>();
-        for (int i = 0; i < arr.size(); i++) {
-            final JsonValue v = arr.get(i);
+        for (final JsonValue v : arr) {
             if (v.getValueType() != JsonValue.ValueType.OBJECT) {
                 continue;
             }

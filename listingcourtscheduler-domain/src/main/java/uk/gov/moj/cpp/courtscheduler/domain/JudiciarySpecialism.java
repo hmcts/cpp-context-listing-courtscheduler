@@ -12,7 +12,7 @@ public class JudiciarySpecialism {
         this.specialisms = new ArrayList<>();
     }
 
-    public JudiciarySpecialism(String judiciaryId, List<JudiciarySpecialismType> specialisms) {
+    public JudiciarySpecialism(final String judiciaryId, final List<JudiciarySpecialismType> specialisms) {
         this.judiciaryId = judiciaryId;
         this.specialisms = specialisms != null ? new ArrayList<>(specialisms) : new ArrayList<>();
     }
@@ -21,7 +21,7 @@ public class JudiciarySpecialism {
         return judiciaryId;
     }
 
-    public void setJudiciaryId(String judiciaryId) {
+    public void setJudiciaryId(final String judiciaryId) {
         this.judiciaryId = judiciaryId;
     }
 
@@ -29,19 +29,19 @@ public class JudiciarySpecialism {
         return specialisms;
     }
 
-    public void setSpecialisms(List<JudiciarySpecialismType> specialisms) {
+    public void setSpecialisms(final List<JudiciarySpecialismType> specialisms) {
         this.specialisms = specialisms != null ? new ArrayList<>(specialisms) : new ArrayList<>();
     }
 
     @Override
-    public boolean equals(Object o) {
+    public boolean equals(final Object o) {
         if (this == o) {
             return true;
         }
         if (o == null || getClass() != o.getClass()) {
             return false;
         }
-        JudiciarySpecialism that = (JudiciarySpecialism) o;
+        final JudiciarySpecialism that = (JudiciarySpecialism) o;
         return Objects.equals(judiciaryId, that.judiciaryId) &&
                 Objects.equals(specialisms, that.specialisms);
     }

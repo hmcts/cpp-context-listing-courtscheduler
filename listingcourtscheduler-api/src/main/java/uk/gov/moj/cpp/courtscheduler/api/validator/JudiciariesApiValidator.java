@@ -37,7 +37,6 @@ public class JudiciariesApiValidator {
 
         for (int i = 0; i < judiciaries.size(); i++) {
             final JsonObject judiciary = judiciaries.getJsonObject(i);
-            final String judiciaryId = judiciary.getString(JUDICIARY_ID, "");
 
             final JsonArray sessionIds = judiciary.getJsonArray(SESSIONIDS);
             if (sessionIds == null || sessionIds.isEmpty()) {

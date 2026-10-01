@@ -6,6 +6,8 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 
 public class SlotsBookException extends RuntimeException {
 
+    private static final long serialVersionUID = 1L;
+
     public SlotsBookException(final Throwable ex) {
         super(ExceptionUtils.getStackTrace(ex),ex);
     }

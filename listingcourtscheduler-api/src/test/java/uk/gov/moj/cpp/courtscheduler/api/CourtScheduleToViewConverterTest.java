@@ -16,117 +16,123 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class CourtScheduleToViewConverterTest {
+    private static final String TITLE = "His Honour";
+    private static final String FORENAMES = "Mark J";
+    private static final String SURNAME = "Ainsworth";
+    private static final String EMAIL_ADDRESS = "mark.ainsworth@ejudiciary.net";
+    private static final String JUDICIARY_TYPE = "Recorder";
+    private static final int SEQ_ID = 143_117;
 
     @Test
-    public void shouldConvert() {
+    void shouldConvert() {
         // given
-        String courtRoomId1 = "courtRoomId3";
-        String courtRoomId2 = "courtRoomId2";
-        Integer totalBooked1 = 10;
-        Integer totalBooked2 = 20;
+        final String courtRoomId1 = "courtRoomId3";
+        final String courtRoomId2 = "courtRoomId2";
+        final Integer totalBooked1 = 10;
+        final Integer totalBooked2 = 20;
         // and
-        LocalDate sessionDate1 = LocalDate.now();
-        LocalDate sessionDate2 = LocalDate.now();
-        LocalDate sessionDate3 = LocalDate.now().plusDays(1);
+        final LocalDate sessionDate1 = LocalDate.now();
+        final LocalDate sessionDate2 = LocalDate.now();
+        final LocalDate sessionDate3 = LocalDate.now().plusDays(1);
 
-        CourtSchedule courtSchedule1WithCourtRoom1 = random(CourtSchedule.class);
+        final CourtSchedule courtSchedule1WithCourtRoom1 = random(CourtSchedule.class);
         courtSchedule1WithCourtRoom1.setCourtRoomId(courtRoomId1);
         courtSchedule1WithCourtRoom1.setCourtRoomName(courtRoomId1);
         courtSchedule1WithCourtRoom1.setSessionDate(sessionDate1);
         courtSchedule1WithCourtRoom1.setTotalBooked(totalBooked1);
 
-        CourtSchedule courtSchedule2WithCourtRoom1 = random(CourtSchedule.class);
+        final CourtSchedule courtSchedule2WithCourtRoom1 = random(CourtSchedule.class);
         courtSchedule2WithCourtRoom1.setCourtRoomId(courtRoomId2);
         courtSchedule2WithCourtRoom1.setCourtRoomName(courtRoomId2);
         courtSchedule2WithCourtRoom1.setSessionDate(sessionDate2);
 
-        CourtSchedule courtSchedule1WithCourtRoom2 = random(CourtSchedule.class);
+        final CourtSchedule courtSchedule1WithCourtRoom2 = random(CourtSchedule.class);
         courtSchedule1WithCourtRoom2.setCourtRoomId(courtRoomId2);
         courtSchedule1WithCourtRoom2.setCourtRoomName(courtRoomId2);
         courtSchedule1WithCourtRoom2.setSessionDate(sessionDate3);
         courtSchedule1WithCourtRoom2.setTotalBooked(totalBooked2);
 
-        List<CourtSessionsView> courtSessionsViews = CourtScheduleToViewConverter.getCourtSessionsViews(List.of(courtSchedule1WithCourtRoom1, courtSchedule1WithCourtRoom2, courtSchedule2WithCourtRoom1));
+        final List<CourtSessionsView> courtSessionsViews = CourtScheduleToViewConverter.getCourtSessionsViews(List.of(courtSchedule1WithCourtRoom1, courtSchedule1WithCourtRoom2, courtSchedule2WithCourtRoom1));
 
         assertThat(courtSessionsViews.size(), is(2));
-        assertThat(courtSessionsViews.get(0).getSessions().size(), is(2));
-        assertThat(courtSessionsViews.get(0).getSessions().get(0).getSessionDate(), is(sessionDate2));
-        assertThat(courtSessionsViews.get(0).getSessions().get(1).getSessionDate(), is(sessionDate3));
-        assertThat(courtSessionsViews.get(0).getSessions().get(1).getTotalBooked(), is(totalBooked2));
+        assertThat(courtSessionsViews.getFirst().getSessions().size(), is(2));
+        assertThat(courtSessionsViews.getFirst().getSessions().getFirst().getSessionDate(), is(sessionDate2));
+        assertThat(courtSessionsViews.getFirst().getSessions().get(1).getSessionDate(), is(sessionDate3));
+        assertThat(courtSessionsViews.getFirst().getSessions().get(1).getTotalBooked(), is(totalBooked2));
         assertThat(courtSessionsViews.get(1).getSessions().size(), is(1));
-        assertThat(courtSessionsViews.get(1).getSessions().get(0).getCourtRoomId(), is(courtRoomId1));
-        assertThat(courtSessionsViews.get(1).getSessions().get(0).getSessionDate(), is(sessionDate1));
-        assertThat(courtSessionsViews.get(1).getSessions().get(0).getTotalBooked(), is(totalBooked1));
+        assertThat(courtSessionsViews.get(1).getSessions().getFirst().getCourtRoomId(), is(courtRoomId1));
+        assertThat(courtSessionsViews.get(1).getSessions().getFirst().getSessionDate(), is(sessionDate1));
+        assertThat(courtSessionsViews.get(1).getSessions().getFirst().getTotalBooked(), is(totalBooked1));
     }
 
     @Test
-    public void shouldConvertJurisdictionType() {
+    void shouldConvertJurisdictionType() {
         // given
-        String jurisdictionType = "MAGISTRATES";
-        CourtSchedule courtSchedule = random(CourtSchedule.class);
+        final String jurisdictionType = "MAGISTRATES";
+        final CourtSchedule courtSchedule = random(CourtSchedule.class);
         courtSchedule.setJurisdiction(jurisdictionType);
 
         // when
-        List<CourtSessionsView> courtSessionsViews = CourtScheduleToViewConverter.getCourtSessionsViews(List.of(courtSchedule));
+        final List<CourtSessionsView> courtSessionsViews = CourtScheduleToViewConverter.getCourtSessionsViews(List.of(courtSchedule));
 
         // then
         assertThat(courtSessionsViews.size(), is(1));
-        List<CourtScheduleView> sessions = courtSessionsViews.get(0).getSessions();
+        final List<CourtScheduleView> sessions = courtSessionsViews.getFirst().getSessions();
         assertThat(sessions.size(), is(1));
-        assertThat(sessions.get(0).getJurisdiction(), is(jurisdictionType));
+        assertThat(sessions.getFirst().getJurisdiction(), is(jurisdictionType));
     }
 
     @Test
-    public void shouldConvertJurisdictionTypeWhenNull() {
+    void shouldConvertJurisdictionTypeWhenNull() {
         // given
-        CourtSchedule courtSchedule = random(CourtSchedule.class);
+        final CourtSchedule courtSchedule = random(CourtSchedule.class);
         courtSchedule.setJurisdiction(null);
 
         // when
-        List<CourtSessionsView> courtSessionsViews = CourtScheduleToViewConverter.getCourtSessionsViews(List.of(courtSchedule));
+        final List<CourtSessionsView> courtSessionsViews = CourtScheduleToViewConverter.getCourtSessionsViews(List.of(courtSchedule));
 
         // then
         assertThat(courtSessionsViews.size(), is(1));
-        List<CourtScheduleView> sessions = courtSessionsViews.get(0).getSessions();
+        final List<CourtScheduleView> sessions = courtSessionsViews.getFirst().getSessions();
         assertThat(sessions.size(), is(1));
-        assertThat(sessions.get(0).getJurisdiction(), is((String) null));
+        assertThat(sessions.getFirst().getJurisdiction(), is((String) null));
     }
 
     @Test
-    public void shouldConvertJurisdictionTypeForCrown() {
+    void shouldConvertJurisdictionTypeForCrown() {
         // given
-        String jurisdictionType = "CROWN";
-        CourtSchedule courtSchedule = random(CourtSchedule.class);
+        final String jurisdictionType = "CROWN";
+        final CourtSchedule courtSchedule = random(CourtSchedule.class);
         courtSchedule.setJurisdiction(jurisdictionType);
 
         // when
-        List<CourtSessionsView> courtSessionsViews = CourtScheduleToViewConverter.getCourtSessionsViews(List.of(courtSchedule));
+        final List<CourtSessionsView> courtSessionsViews = CourtScheduleToViewConverter.getCourtSessionsViews(List.of(courtSchedule));
 
         // then
         assertThat(courtSessionsViews.size(), is(1));
-        List<CourtScheduleView> sessions = courtSessionsViews.get(0).getSessions();
+        final List<CourtScheduleView> sessions = courtSessionsViews.getFirst().getSessions();
         assertThat(sessions.size(), is(1));
-        assertThat(sessions.get(0).getJurisdiction(), is(jurisdictionType));
+        assertThat(sessions.getFirst().getJurisdiction(), is(jurisdictionType));
     }
 
     @Test
-    public void shouldGroupByCourtRoomIdNotCourtRoomName() {
+    void shouldGroupByCourtRoomIdNotCourtRoomName() {
         // Two schedules with the same courtRoomName but different courtRoomIds must NOT be merged
-        String sharedCourtRoomName = "Room A";
-        String courtRoomId1 = "room-id-unique-1";
-        String courtRoomId2 = "room-id-unique-2";
+        final String sharedCourtRoomName = "Room A";
+        final String courtRoomId1 = "room-id-unique-1";
+        final String courtRoomId2 = "room-id-unique-2";
 
-        CourtSchedule schedule1 = random(CourtSchedule.class);
+        final CourtSchedule schedule1 = random(CourtSchedule.class);
         schedule1.setCourtRoomId(courtRoomId1);
         schedule1.setCourtRoomName(sharedCourtRoomName);
         schedule1.setSessionDate(LocalDate.now());
 
-        CourtSchedule schedule2 = random(CourtSchedule.class);
+        final CourtSchedule schedule2 = random(CourtSchedule.class);
         schedule2.setCourtRoomId(courtRoomId2);
         schedule2.setCourtRoomName(sharedCourtRoomName);
         schedule2.setSessionDate(LocalDate.now().plusDays(1));
 
-        List<CourtSessionsView> result = CourtScheduleToViewConverter.getCourtSessionsViews(List.of(schedule1, schedule2));
+        final List<CourtSessionsView> result = CourtScheduleToViewConverter.getCourtSessionsViews(List.of(schedule1, schedule2));
 
         // Must have 2 courtRoom groups, not 1 (collision on name must not happen)
         assertThat(result.size(), is(2));
@@ -140,11 +146,11 @@ class CourtScheduleToViewConverterTest {
         final String judiciaryId = "9f39f876-3ff6-32b5-926e-c588e36a87b8";
         schedule.setJudiciaries(List.of(judiciary()
                 .withJudiciaryId(judiciaryId)
-                .withTitle("His Honour")
-                .withForenames("Mark J")
-                .withSurname("Ainsworth")
-                .withEmailAddress("mark.ainsworth@ejudiciary.net")
-                .withJudiciaryType("Recorder")
+                .withTitle(TITLE)
+                .withForenames(FORENAMES)
+                .withSurname(SURNAME)
+                .withEmailAddress(EMAIL_ADDRESS)
+                .withJudiciaryType(JUDICIARY_TYPE)
                 .withIsBenchChairman(true)
                 .withIsDeputy(false)
                 .build()));
@@ -152,18 +158,18 @@ class CourtScheduleToViewConverterTest {
         final List<CourtSessionsView> courtSessionsViews = CourtScheduleToViewConverter.getCourtSessionsViews(List.of(schedule));
 
         assertThat(courtSessionsViews.size(), is(1));
-        final List<CourtScheduleView> sessions = courtSessionsViews.get(0).getSessions();
+        final List<CourtScheduleView> sessions = courtSessionsViews.getFirst().getSessions();
         assertThat(sessions.size(), is(1));
-        assertThat(sessions.get(0).getJudiciaries().size(), is(1));
-        final uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary result = sessions.get(0).getJudiciaries().get(0);
+        assertThat(sessions.getFirst().getJudiciaries().size(), is(1));
+        final uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary result = sessions.getFirst().getJudiciaries().getFirst();
         assertThat(result.getJudiciaryId(), is(judiciaryId));
-        assertThat(result.getTitle(), is("His Honour"));
-        assertThat(result.getForenames(), is("Mark J"));
-        assertThat(result.getSurname(), is("Ainsworth"));
-        assertThat(result.getEmailAddress(), is("mark.ainsworth@ejudiciary.net"));
-        assertThat(result.getJudiciaryType(), is("Recorder"));
-        assertThat(result.getBenchChairman(), is(true));
-        assertThat(result.getDeputy(), is(false));
+        assertThat(result.getTitle(), is(TITLE));
+        assertThat(result.getForenames(), is(FORENAMES));
+        assertThat(result.getSurname(), is(SURNAME));
+        assertThat(result.getEmailAddress(), is(EMAIL_ADDRESS));
+        assertThat(result.getJudiciaryType(), is(JUDICIARY_TYPE));
+        assertThat(result.isBenchChairman(), is(true));
+        assertThat(result.isDeputy(), is(false));
     }
 
     @Test
@@ -172,15 +178,15 @@ class CourtScheduleToViewConverterTest {
         final String judiciaryId = "9f39f876-3ff6-32b5-926e-c588e36a87b8";
         final uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary judiciary = judiciary()
                 .withJudiciaryId(judiciaryId)
-                .withTitle("His Honour")
-                .withForenames("Mark J")
-                .withSurname("Ainsworth")
-                .withEmailAddress("mark.ainsworth@ejudiciary.net")
-                .withJudiciaryType("Recorder")
+                .withTitle(TITLE)
+                .withForenames(FORENAMES)
+                .withSurname(SURNAME)
+                .withEmailAddress(EMAIL_ADDRESS)
+                .withJudiciaryType(JUDICIARY_TYPE)
                 .withIsBenchChairman(true)
                 .withIsDeputy(false)
                 .build();
-        judiciary.setSeqId(143117);
+        judiciary.setSeqId(SEQ_ID);
         judiciary.setTitleJudicialPrefix("His Honour Judge");
         judiciary.setTitleJudicialPrefixWelsh("Ei Anrhydedd y Barnwr");
         judiciary.setPersonId("131172");
@@ -191,16 +197,16 @@ class CourtScheduleToViewConverterTest {
 
         assertThat(courtSessionsViews.size(), is(1));
         final uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary result =
-                courtSessionsViews.get(0).getSessions().get(0).getJudiciaries().get(0);
+                courtSessionsViews.getFirst().getSessions().getFirst().getJudiciaries().getFirst();
         assertThat(result.getJudiciaryId(), is(judiciaryId));
-        assertThat(result.getTitle(), is("His Honour"));
-        assertThat(result.getForenames(), is("Mark J"));
-        assertThat(result.getSurname(), is("Ainsworth"));
-        assertThat(result.getEmailAddress(), is("mark.ainsworth@ejudiciary.net"));
-        assertThat(result.getJudiciaryType(), is("Recorder"));
-        assertThat(result.getBenchChairman(), is(true));
-        assertThat(result.getDeputy(), is(false));
-        assertThat(result.getSeqId(), is(143117));
+        assertThat(result.getTitle(), is(TITLE));
+        assertThat(result.getForenames(), is(FORENAMES));
+        assertThat(result.getSurname(), is(SURNAME));
+        assertThat(result.getEmailAddress(), is(EMAIL_ADDRESS));
+        assertThat(result.getJudiciaryType(), is(JUDICIARY_TYPE));
+        assertThat(result.isBenchChairman(), is(true));
+        assertThat(result.isDeputy(), is(false));
+        assertThat(result.getSeqId(), is(SEQ_ID));
         assertThat(result.getTitleJudicialPrefix(), is("His Honour Judge"));
         assertThat(result.getTitleJudicialPrefixWelsh(), is("Ei Anrhydedd y Barnwr"));
         assertThat(result.getPersonId(), is("131172"));

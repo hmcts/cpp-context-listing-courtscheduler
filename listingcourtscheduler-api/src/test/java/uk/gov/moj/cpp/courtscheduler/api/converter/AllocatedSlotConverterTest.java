@@ -23,7 +23,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
      void shouldConvertAllocatedSlot() {
         final String payload = fileToString("/test-data/courtscheduler.update.available.hearing.slots.json");
 
-        AllocatedSlots allocatedSlots = converter.convert(payload);
+        final AllocatedSlots allocatedSlots = converter.convert(payload);
         final List<AllocatedSlot> allocatedSlotsList = allocatedSlots.getHearingSlots();
 
         assertThat(allocatedSlotsList.size(), is(2));
@@ -53,7 +53,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
      void shouldConvertAllocatedSlotWithBookingId() {
         final String payload = fileToString("/test-data/courtscheduler.update.available.hearing.slots-with-bookingid.json");
 
-        AllocatedSlots allocatedSlots = converter.convert(payload);
+        final AllocatedSlots allocatedSlots = converter.convert(payload);
         final List<AllocatedSlot> allocatedSlotsList = allocatedSlots.getHearingSlots();
 
         assertThat(allocatedSlotsList.size(), is(1));

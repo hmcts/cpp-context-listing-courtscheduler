@@ -31,7 +31,7 @@ import org.slf4j.LoggerFactory;
 public class ProvisionalBookingApiValidator {
     private static final Logger LOGGER = LoggerFactory.getLogger(ProvisionalBookingApiValidator.class.getName());
 
-    public JsonObject createProvisionalBookingValidation(ProvisionalBookingSlots provisionalBookingSlots) {
+    public JsonObject createProvisionalBookingValidation(final ProvisionalBookingSlots provisionalBookingSlots) {
 
         if (provisionalBookingSlots != null
                 && provisionalBookingSlots.getProvisionalSlots() != null
@@ -73,7 +73,7 @@ public class ProvisionalBookingApiValidator {
         return buildErrorResponse(MANDATORY_SEARCH_CRITERIA + value + CANNOT_BE_NULL);
     }
 
-    private JsonObject buildErrorResponse(String errorMessage) {
+    private JsonObject buildErrorResponse(final String errorMessage) {
         return createObjectBuilder()
                 .add(ERROR_MESSAGE, errorMessage)
                 .build();

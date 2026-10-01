@@ -72,7 +72,7 @@ class RotaFileCaptureAndProcessTriggerServiceTest {
     }
 
     private byte[] givenBlobContent(final String file) throws IOException {
-        try (final InputStream inputStream = RotaFileCaptureAndProcessTriggerServiceTest.class.getClassLoader().getResourceAsStream(file)) {
+        try (InputStream inputStream = Thread.currentThread().getContextClassLoader().getResourceAsStream(file)) {
             return toByteArray(inputStream);
         }
     }

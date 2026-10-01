@@ -12,14 +12,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static uk.gov.moj.cpp.courtscheduler.common.Jurisdiction.MAGISTRATES;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.MissingDataError.CREATE_SESSIONS_DUPLICATE_COURTROOMS_FOUND;
-import static uk.gov.moj.cpp.courtscheduler.common.helper.SessionsHelper.REFERENCEDATA_QUERY_PUBLIC_HOLIDAYS_NAME;
-import static uk.gov.moj.cpp.courtscheduler.common.helper.SessionsHelper.REFERENCEDATA_QUERY_ROTA_BUSINESS_TYPES_NAME;
-import static uk.gov.moj.cpp.courtscheduler.common.helper.SessionsHelper.REFERENCEDATA_QUERY_ROTA_COURT_ROOM_NAME;
-import static uk.gov.moj.cpp.courtscheduler.common.helper.SessionsHelper.REFERENCEDATA_QUERY_OU_COURT_ROOMS_NAME;
-import static uk.gov.moj.cpp.courtscheduler.common.helper.SessionsHelper.REFERENCEDATA_QUERY_ROTA_COURT_ROOM_SESSION_ALLOCATIONS_NAME;
-import static uk.gov.moj.cpp.courtscheduler.common.helper.SessionsHelper.REFERENCEDATA_QUERY_ROTA_JUDICIARIES_NAME;
 import static uk.gov.moj.cpp.courtscheduler.common.helper.SessionsHelper.getPayload;
-import static uk.gov.moj.cpp.courtscheduler.common.helper.SessionsHelper.mockBusinessType;
 import static uk.gov.moj.cpp.courtscheduler.common.helper.SessionsHelper.mockCourtRooms;
 
 import uk.gov.moj.cpp.courtscheduler.common.converter.JsonObjectToObjectConverter;
@@ -53,6 +46,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class ReferenceDataServiceTest {
 
+    private static final int SECOND_JUDICIARY_INDEX = 1;
+
     @Mock
     private RotaProcessLogService rotaProcessLogService;
 
@@ -79,9 +74,9 @@ class ReferenceDataServiceTest {
         assertEquals("APP", businessType.get().getTypeCode());
 
         @SuppressWarnings({"rawtypes", "unchecked"})
-        ArgumentCaptor<java.util.Map> envelopeCaptor = ArgumentCaptor.forClass(java.util.Map.class);
+        final ArgumentCaptor<Map> envelopeCaptor = ArgumentCaptor.forClass(Map.class);
         verify(commonPlatformQueryClient).getReferenceData(any(), any(), envelopeCaptor.capture());
-        java.util.Map<String, Object> payload = envelopeCaptor.getValue();
+        final Map<String, Object> payload = envelopeCaptor.getValue();
         assertEquals("ALL", String.valueOf(payload.get("jurisdiction")));
         assertFalse(payload.containsKey("typeCode"));
     }
@@ -127,8 +122,8 @@ class ReferenceDataServiceTest {
         assertTrue(isNotEmpty(judiciaries));
         // Verify requestedName is populated
         assertThat(judiciaries.get(0).getRequestedName(), Matchers.is("HER HONOUR JUDGE K WANT QC, HONORARY RECORDER OF WALES"));
-        if (judiciaries.size() > 1) {
-            assertThat(judiciaries.get(1).getRequestedName(), Matchers.is("HER HONOUR JUDGE N SHANT QC, HONORARY RECORDER OF DERBY"));
+        if (judiciaries.size() > SECOND_JUDICIARY_INDEX) {
+            assertThat(judiciaries.get(SECOND_JUDICIARY_INDEX).getRequestedName(), Matchers.is("HER HONOUR JUDGE N SHANT QC, HONORARY RECORDER OF DERBY"));
         }
     }
 
@@ -153,13 +148,13 @@ class ReferenceDataServiceTest {
         assertTrue(isNotEmpty(businessTypes));
 
         @SuppressWarnings({"rawtypes", "unchecked"})
-        ArgumentCaptor<java.util.Map> envelopeCaptor = ArgumentCaptor.forClass(java.util.Map.class);
+        final ArgumentCaptor<Map> envelopeCaptor = ArgumentCaptor.forClass(Map.class);
         verify(commonPlatformQueryClient).getReferenceData(any(), any(), envelopeCaptor.capture());
-        java.util.Map<String, Object> payload = envelopeCaptor.getValue();
+        final Map<String, Object> payload = envelopeCaptor.getValue();
         assertEquals("ALL", String.valueOf(payload.get("jurisdiction")));
 
         // Verify mapping of jurisdiction
-        Optional<BusinessType> appType = businessTypes.stream().filter(b -> "APP".equals(b.getTypeCode())).findFirst();
+        final Optional<BusinessType> appType = businessTypes.stream().filter(b -> "APP".equals(b.getTypeCode())).findFirst();
         assertTrue(appType.isPresent());
         assertEquals(MAGISTRATES.getJurisdiction(), appType.get().getJurisdiction());
     }
@@ -174,7 +169,7 @@ class ReferenceDataServiceTest {
         final List<CourtRoom> courtRooms = referenceDataService.getCpCourtRooms();
         assertTrue(isNotEmpty(courtRooms));
         assertEquals(1, courtRooms.size());
-        CourtRoom courtRoom = courtRooms.get(0);
+        final CourtRoom courtRoom = courtRooms.get(0);
         assertEquals("8e912353-3b5d-36c3-953e-ad3b94b19de3", courtRoom.getId());
         assertEquals(121, courtRoom.getCppCourtRoomId());
         assertEquals("121", courtRoom.getCourtroomId());
@@ -205,9 +200,9 @@ class ReferenceDataServiceTest {
         final Map<UUID, CourtRoom> courtRoomsMap = referenceDataService.getCourtRoomsMap();
         assertFalse(courtRoomsMap.isEmpty());
 
-        ArgumentCaptor<RotaProcessLog> logCaptor = ArgumentCaptor.forClass(RotaProcessLog.class);
+        final ArgumentCaptor<RotaProcessLog> logCaptor = ArgumentCaptor.forClass(RotaProcessLog.class);
         verify(rotaProcessLogService, atLeastOnce()).saveRotaProcessLog(logCaptor.capture());
-        RotaProcessLog saved = logCaptor.getValue();
+        final RotaProcessLog saved = logCaptor.getValue();
 
         // Code matches
         assertEquals(

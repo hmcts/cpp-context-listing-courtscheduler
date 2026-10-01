@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Objects;
 
 public class SessionsParam {
+    /* package */
     List<String> sessions;
 
     public List<String> getSessions() {
@@ -16,8 +17,12 @@ public class SessionsParam {
 
     @Override
     public boolean equals(final Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
         final SessionsParam that = (SessionsParam) o;
         return Objects.equals(sessions, that.sessions);
     }

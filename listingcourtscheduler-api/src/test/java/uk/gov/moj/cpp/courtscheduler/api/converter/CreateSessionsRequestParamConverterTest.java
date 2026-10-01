@@ -20,8 +20,8 @@ class CreateSessionsRequestParamConverterTest {
     private final CreateSessionsRequestParamConverter converter = new CreateSessionsRequestParamConverter();
 
     @Test
-    public void shouldConvertJsonObjectToCreateSessionRequestParam() {
-        JsonObject jsonObject = Json.createObjectBuilder()
+    void shouldConvertJsonObjectToCreateSessionRequestParam() {
+        final JsonObject jsonObject = Json.createObjectBuilder()
                 .add("sessions", Json.createArrayBuilder()
                         .add(Json.createObjectBuilder()
                                 .add("courtCentreId", randomUUID().toString())
@@ -40,15 +40,15 @@ class CreateSessionsRequestParamConverterTest {
                         .add("endDate", "2022-12-31"))
                 .build();
 
-        CreateSessionRequestParam result = converter.convert(jsonObject);
+        final CreateSessionRequestParam result = converter.convert(jsonObject);
 
         assertThat(result.getSessionList().size(), is(1));
         assertThat(result.getRepeatPattern().getFrequency(), is(RepeatFrequency.EVERY_WEEK));
     }
 
     @Test
-    public void shouldHandleEmptyRepeatDaysArray() {
-        JsonObject jsonObject = Json.createObjectBuilder()
+    void shouldHandleEmptyRepeatDaysArray() {
+        final JsonObject jsonObject = Json.createObjectBuilder()
                 .add("sessions", Json.createArrayBuilder()
                         .add(Json.createObjectBuilder()
                                 .add("courtCentreId", "centre1")

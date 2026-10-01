@@ -3,11 +3,9 @@ package uk.gov.moj.cpp.courtscheduler.common.service;
 import static java.util.Collections.emptyList;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-
 
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoomSessionAllocation;
@@ -40,8 +38,8 @@ class ReferenceDataMapperServiceTest {
     private final ObjectMapper objectMapper = new com.fasterxml.jackson.databind.ObjectMapper().findAndRegisterModules();
 
     private static final Integer LOCATION_ID = 77;
-    private static final Integer VENUE_ID = 23917;
-    private static final Integer NOT_MATCHING_VENUE_ID = 29999;
+    private static final Integer VENUE_ID = 23_917;
+    private static final Integer NOT_MATCHING_VENUE_ID = 29_999;
     private static final String VENUE_NAME = "Court 8";
     private static final String NOT_MATCHING_VENUE_NAME = "Court 08";
     private static final String MULTIPLE_MATCH_VENUE_NAME = "Court 5";

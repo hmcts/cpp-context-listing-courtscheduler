@@ -4,33 +4,38 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class Result {
+    /* package */
     final String msg;
-    final boolean success;
+    /* package */
+    final boolean successful;
+    /* package */
     String courtRoomId;
+    /* package */
     String courtRoomName;
+    /* package */
     final Map<String, String> hearingDayCourtSchedules = new HashMap<>();
 
-    public Result(String msg, boolean isSuccess, String courtRoomId) {
+    public Result(final String msg, final boolean isSuccess, final String courtRoomId) {
         this.msg = msg;
-        this.success = isSuccess;
+        this.successful = isSuccess;
         this.courtRoomId = courtRoomId;
     }
 
-    public Result(String msg, boolean isSuccess) {
+    public Result(final String msg, final boolean isSuccess) {
         this.msg = msg;
-        this.success = isSuccess;
+        this.successful = isSuccess;
     }
 
-    public static Result SUCCESS() {
+    public static Result success() {
         return new Result("Success", true);
     }
 
-    public static Result FAILED(String msg) {
+    public static Result failed(final String msg) {
         return new Result(msg, false);
     }
 
     public boolean isSuccess() {
-        return success;
+        return successful;
     }
 
     public String getMsg() {return msg;}
@@ -55,7 +60,7 @@ public class Result {
         return hearingDayCourtSchedules;
     }
 
-    public void addHearingDaySchedule(String hearingDay, String courtScheduleId) {
+    public void addHearingDaySchedule(final String hearingDay, final String courtScheduleId) {
         hearingDayCourtSchedules.put(hearingDay, courtScheduleId);
     }
 }

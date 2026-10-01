@@ -20,9 +20,9 @@ class CourtScheduleToDeleteResponseConverterTest {
 
     @Test
     void shouldConvertListCourtSchedule_ListCourtScheduleDeleteResponse() {
-        List<CourtSchedule> courtScheduleList = List.of(random(CourtSchedule.class));
+        final List<CourtSchedule> courtScheduleList = List.of(random(CourtSchedule.class));
 
-        List<CourtScheduleDeleteResponse> courtScheduleDeleteResponses = CourtScheduleToDeleteResponseConverter.convert(courtScheduleList, List.of());
+        final List<CourtScheduleDeleteResponse> courtScheduleDeleteResponses = CourtScheduleToDeleteResponseConverter.convert(courtScheduleList, List.of());
 
         assertThat(courtScheduleDeleteResponses.size(), is(1));
         assertEquals(courtScheduleDeleteResponses.get(0).getCourtScheduleId(), courtScheduleList.get(0).getCourtScheduleId());

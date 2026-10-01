@@ -55,6 +55,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class RotaFilePartialProcessorTest {
+    private static final String B01_KR00 = "B01KR00";
+    private static final String B53_DJ00 = "B53DJ00";
+    private static final String CABC90_2 = "CABC90";
+    private static final String OU1_2 = "OU1";
+
 
     @InjectMocks
     private RotaFilePartialProcessor rotaFilePartialProcessor;
@@ -92,10 +97,10 @@ class RotaFilePartialProcessorTest {
         final Map<String, CourtSchedule> slotsForMigrated = getSlotsForMigrated();
         final LocalDate partialStartDate = LocalDate.of(2019, 10, 1);
         final LocalDate partialEndDate = LocalDate.of(2019, 10, 7);
-        final List<String> ouCodes = List.of("B01KR00", "B53DJ00");
-        final List<String> nonMigratedOuCodes = List.of("B01KR00", "B53DJ00");
+        final List<String> ouCodes = List.of(B01_KR00, B53_DJ00);
+        final List<String> nonMigratedOuCodes = List.of(B01_KR00, B53_DJ00);
         final Map<String, BusinessType> businessTypeMap = getRotaBusinessTypes().stream().collect(Collectors.toMap(BusinessType::getTypeCode, b -> b));
-        final Map<String, Boolean> migratedMap = Map.of("CABC90", false);
+        final Map<String, Boolean> migratedMap = Map.of(CABC90_2, false);
 
         final LocalDate extractStartDate = LocalDate.of(2019, 10, 1);
         final List<CourtSchedule> extractedSchedules = new ArrayList<>();
@@ -135,9 +140,9 @@ class RotaFilePartialProcessorTest {
         final Map<String, CourtSchedule> slotsForMigrated = getSlotsForMigratedDurationBased();
         final LocalDate partialStartDate = LocalDate.of(2019, 10, 1);
         final LocalDate partialEndDate = LocalDate.of(2019, 10, 7);
-        final List<String> ouCodes = List.of("B01KR00", "B53DJ00");
+        final List<String> ouCodes = List.of(B01_KR00, B53_DJ00);
         final Map<String, BusinessType> businessTypeMap = getRotaBusinessTypes().stream().collect(Collectors.toMap(BusinessType::getTypeCode, b -> b));
-        final Map<String, Boolean> migratedMap = Map.of("CABC90", false);
+        final Map<String, Boolean> migratedMap = Map.of(CABC90_2, false);
 
         final LocalDate extractStartDate = LocalDate.of(2019, 10, 1);
         final List<CourtSchedule> extractedSchedules = new ArrayList<>();
@@ -174,9 +179,9 @@ class RotaFilePartialProcessorTest {
         final Map<String, LocalDate> startAndEndDate = new HashMap<>();
         startAndEndDate.put(START_DATE.getLabel(), partialStartDate);
         startAndEndDate.put(END_DATE.getLabel(), partialEndDate);
-        final List<String> ouCodes = List.of("B01KR00", "B53DJ00");
+        final List<String> ouCodes = List.of(B01_KR00, B53_DJ00);
         final Map<String, BusinessType> businessTypeMap = getRotaBusinessTypes().stream().collect(Collectors.toMap(BusinessType::getTypeCode, b -> b));
-        final Map<String, Boolean> migratedMap = Map.of("CABC90", false);
+        final Map<String, Boolean> migratedMap = Map.of(CABC90_2, false);
 
         final LocalDate rotaPeriodStartDate = LocalDate.of(2019, 10, 1);
         final LocalDate rotaPeriodEndDate = LocalDate.of(2020, 3, 31);
@@ -199,9 +204,9 @@ class RotaFilePartialProcessorTest {
         final Map<String, CourtSchedule> slotsForMigrated = new HashMap<>();
         final LocalDate startDate = LocalDate.of(2024, 1, 1);
         final LocalDate endDate = startDate.plusDays(6);
-        final List<String> ouCodes = List.of("OU1");
+        final List<String> ouCodes = List.of(OU1_2);
         final Map<String, BusinessType> businessTypeMap = new HashMap<>();
-        final Map<String, Boolean> migratedMap = Map.of("OU1", false);
+        final Map<String, Boolean> migratedMap = Map.of(OU1_2, false);
         final RotaFileProcessHistory history = new RotaFileProcessHistory();
 
         when(courtScheduleJudiciaryService.deleteUnAllocatedCourtScheduleJudiciariesEntriesForRotaPeriod(eq(startDate), eq(endDate), anyList())).thenReturn(0);
@@ -222,9 +227,9 @@ class RotaFilePartialProcessorTest {
                 START_DATE.getLabel(), LocalDate.of(2024, 1, 1),
                 END_DATE.getLabel(), LocalDate.of(2024, 1, 7)
         );
-        final List<String> ouCodes = List.of("OU1");
+        final List<String> ouCodes = List.of(OU1_2);
         final Map<String, BusinessType> businessTypeMap = new HashMap<>();
-        final Map<String, Boolean> migratedMap = Map.of("OU1", false);
+        final Map<String, Boolean> migratedMap = Map.of(OU1_2, false);
         final RotaFileProcessHistory history = new RotaFileProcessHistory();
 
         when(courtScheduleJudiciaryService.deleteUnAllocatedCourtScheduleJudiciariesEntriesForRotaPeriod(any(LocalDate.class), any(LocalDate.class), anyList())).thenReturn(0);
@@ -277,7 +282,7 @@ class RotaFilePartialProcessorTest {
                 .withCourtScheduleId(scheduleId)
                 .withListingProfileId(profileId)
                 .withSessionDate(parse(sessionDate))
-                .withOuCode("CABC90")
+                .withOuCode(CABC90_2)
                 .withCourtRoomId("001c067d-eaca-4ce5-ad90-a366ef3e4bb6")
                 .withCourtRoomNumber(1234)
                 .withCourtHouseName("Liverpool Mags Court")

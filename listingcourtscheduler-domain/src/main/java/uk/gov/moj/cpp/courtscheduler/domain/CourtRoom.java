@@ -89,68 +89,68 @@ public class CourtRoom {
             return new CourtRoomBuilder();
         }
 
-        public CourtRoomBuilder withId(String id) {
+        public CourtRoomBuilder withId(final String id) {
             this.id = id;
             return this;
         }
 
-        public CourtRoomBuilder withRotaLocationId(Integer rotaLocationId) {
+        public CourtRoomBuilder withRotaLocationId(final Integer rotaLocationId) {
             this.rotaLocationId = rotaLocationId;
             return this;
         }
 
-        public CourtRoomBuilder withRotaVenueName(String rotaVenueName) {
+        public CourtRoomBuilder withRotaVenueName(final String rotaVenueName) {
             this.rotaVenueName = rotaVenueName;
             return this;
         }
 
-        public CourtRoomBuilder withCppCourtRoomId(Integer cppCourtRoomId) {
+        public CourtRoomBuilder withCppCourtRoomId(final Integer cppCourtRoomId) {
             this.cppCourtRoomId = cppCourtRoomId;
             return this;
         }
 
-        public CourtRoomBuilder withRotaVenueId(Integer rotaVenueId) {
+        public CourtRoomBuilder withRotaVenueId(final Integer rotaVenueId) {
             this.rotaVenueId = rotaVenueId;
             return this;
         }
 
-        public CourtRoomBuilder withOucode(String oucode) {
+        public CourtRoomBuilder withOucode(final String oucode) {
             this.oucode = oucode;
             return this;
         }
 
-        public CourtRoomBuilder withOucodeL3Name(String oucodeL3Name) {
+        public CourtRoomBuilder withOucodeL3Name(final String oucodeL3Name) {
             this.oucodeL3Name = oucodeL3Name;
             return this;
         }
 
-        public CourtRoomBuilder withOucodeL2Name(String oucodeL2Name) {
+        public CourtRoomBuilder withOucodeL2Name(final String oucodeL2Name) {
             this.oucodeL2Name = oucodeL2Name;
             return this;
         }
 
-        public CourtRoomBuilder withOucodeL2Code(String oucodeL2Code) {
+        public CourtRoomBuilder withOucodeL2Code(final String oucodeL2Code) {
             this.oucodeL2Code = oucodeL2Code;
             return this;
         }
 
-        public CourtRoomBuilder withOucodeUUID(String oucodeUUID) {
+        public CourtRoomBuilder withOucodeUUID(final String oucodeUUID) {
             this.oucodeUUID = oucodeUUID;
             return this;
         }
 
-        public CourtRoomBuilder withCourtRoomName(String courtroomName) {
+        public CourtRoomBuilder withCourtRoomName(final String courtroomName) {
             this.courtroomName = courtroomName;
             return this;
         }
 
-        public CourtRoomBuilder withCourtRoomId(String courtroomId) {
+        public CourtRoomBuilder withCourtRoomId(final String courtroomId) {
             this.courtroomId = courtroomId;
             return this;
         }
 
         public CourtRoom build() {
-            CourtRoom courtRoom = new CourtRoom();
+            final CourtRoom courtRoom = new CourtRoom();
             courtRoom.rotaVenueName = this.rotaVenueName;
             courtRoom.oucodeL2Name = this.oucodeL2Name;
             courtRoom.rotaLocationId = this.rotaLocationId;

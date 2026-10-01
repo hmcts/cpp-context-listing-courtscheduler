@@ -2,7 +2,7 @@ package uk.gov.moj.cpp.courtscheduler.repository;
 
 import uk.gov.moj.cpp.courtscheduler.persist.entity.RotaFileProcessHistory;
 
-import java.sql.Timestamp;
+import java.time.Instant;
 import java.util.List;
 
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -19,13 +19,13 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface RotaFileProcessHistoryRepository extends JpaRepository<RotaFileProcessHistory, String> {
 
-    RotaFileProcessHistory findByFileDateGreaterThan(Timestamp fileDate);
+    RotaFileProcessHistory findByFileDateGreaterThan(Instant fileDate);
 
-    @Query(value = "from RotaFileProcessHistory where fileNamePrefix=:filePrefix and fileDate > :fileDate")
-    List<RotaFileProcessHistory> findByFileNamePrefixAndFileDateGreaterThan(@Param("filePrefix") final String filePrefix,
-                                                                            @Param("fileDate") final Timestamp fileDate);
+    @Query("from RotaFileProcessHistory where fileNamePrefix=:filePrefix and fileDate > :fileDate")
+    List<RotaFileProcessHistory> findByFileNamePrefixAndFileDateGreaterThan(@Param("filePrefix") String filePrefix,
+                                                                            @Param("fileDate") Instant fileDate);
 
     @Modifying
-    @Query(value = "DELETE RotaFileProcessHistory rf WHERE rf.fileNamePrefix = :fileNamePrefix AND rf.fileDate <= :fileDate")
-    void deleteByFileNamePrefixAndFileDate(@Param("fileNamePrefix") String fileNamePrefix, @Param("fileDate") Timestamp fileDate);
+    @Query("DELETE RotaFileProcessHistory rf WHERE rf.fileNamePrefix = :fileNamePrefix AND rf.fileDate <= :fileDate")
+    void deleteByFileNamePrefixAndFileDate(@Param("fileNamePrefix") String fileNamePrefix, @Param("fileDate") Instant fileDate);
 }

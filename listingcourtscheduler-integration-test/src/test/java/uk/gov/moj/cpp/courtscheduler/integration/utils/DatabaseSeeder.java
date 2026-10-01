@@ -22,9 +22,11 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.sql.Types;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
+import java.util.Locale;
 
 public class DatabaseSeeder {
 
@@ -103,6 +105,11 @@ public class DatabaseSeeder {
     private static final String COURT_SCHEDULE_SET_LISTING_PROFILE_ID_AS_NULL_SQL = "UPDATE court_schedule SET court_listing_profile_id = null WHERE oucode = ?";
     private static final String UPDATE_AVAILABLE_SLOT_FOR_COURT_SCHEDULE = "UPDATE court_schedule SET available_slot = available_slot - 1 WHERE court_listing_profile_id = ?";
 
+    private static final String UPDATE_SESSION_TYPE_SQL = "UPDATE judiciary_availability_rule SET session_type = ? WHERE id = ?";
+
+    // Process in chunks to avoid memory issues with very large batches
+    private static final int BATCH_SIZE = 5000;
+
     private final ConnectionProvider connectionProvider = new ConnectionProvider();
 
     public Connection getNewConnection() throws SQLException {
@@ -110,74 +117,76 @@ public class DatabaseSeeder {
     }
 
     public void cleanCourtScheduleTable() throws SQLException {
-        try (final Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
-             final PreparedStatement preparedStatement = connection.prepareStatement(COURT_SCHEDULE_DELETE_SQL)) {
+        try (Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
+             PreparedStatement preparedStatement = connection.prepareStatement(COURT_SCHEDULE_DELETE_SQL)) {
             preparedStatement.executeUpdate();
         }
     }
 
     public void cleanAllocatedListingTable() throws SQLException {
-        try (final Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
-             final PreparedStatement preparedStatement = connection.prepareStatement(ALLOCATED_LISTING_DELETE_SQL)) {
+        try (Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
+             PreparedStatement preparedStatement = connection.prepareStatement(ALLOCATED_LISTING_DELETE_SQL)) {
             preparedStatement.executeUpdate();
         }
     }
 
     public void cleanProvisionalBookingTable() throws SQLException {
-        try (final Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
-             final PreparedStatement preparedStatement = connection.prepareStatement(PROVISIONAL_BOOKING_DELETE_SQL)) {
+        try (Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
+             PreparedStatement preparedStatement = connection.prepareStatement(PROVISIONAL_BOOKING_DELETE_SQL)) {
             preparedStatement.executeUpdate();
         }
     }
 
     public void cleanCourtScheduleJudiciaryTable() throws SQLException {
-        try (final Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
-             final PreparedStatement preparedStatement = connection.prepareStatement(COURT_SCHEDULE_JUDICIARY_DELETE_SQL)) {
+        try (Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
+             PreparedStatement preparedStatement = connection.prepareStatement(COURT_SCHEDULE_JUDICIARY_DELETE_SQL)) {
             preparedStatement.executeUpdate();
         }
     }
 
     public void deleteJudiciaryByProfileId(final String listingProfileId) throws SQLException {
-        try (final Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
-             final PreparedStatement preparedStatement = connection.prepareStatement(COURT_SCHEDULE_JUDICIARY_DELETE_BY_PROFILE_ID_SQL)) {
+        try (Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
+             PreparedStatement preparedStatement = connection.prepareStatement(COURT_SCHEDULE_JUDICIARY_DELETE_BY_PROFILE_ID_SQL)) {
             preparedStatement.setString(1, listingProfileId);
             preparedStatement.executeUpdate();
         }
     }
 
     public void cleanMigrationStatusTable() throws SQLException {
-        try (final Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
-             final PreparedStatement preparedStatement = connection.prepareStatement(MIGRATION_STATUS_DELETE_SQL)) {
+        try (Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
+             PreparedStatement preparedStatement = connection.prepareStatement(MIGRATION_STATUS_DELETE_SQL)) {
             preparedStatement.executeUpdate();
         }
     }
 
     public void cleanRotaFileProcessHistoryTable() throws SQLException {
-        try (final Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
-             final PreparedStatement preparedStatement = connection.prepareStatement(ROTA_FILE_PROCESS_HISTORY_DELETE_SQL)) {
+        try (Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
+             PreparedStatement preparedStatement = connection.prepareStatement(ROTA_FILE_PROCESS_HISTORY_DELETE_SQL)) {
             preparedStatement.executeUpdate();
         }
     }
 
         public void cleanRotaProcessLogTable() throws SQLException {
-            try (final Connection connection = connectionProvider.getNewConnection(DatabaseSeeder.USERNAME, DatabaseSeeder.PASSWORD, DatabaseSeeder.DATABASE);
-                 final PreparedStatement preparedStatement = connection.prepareStatement(DatabaseSeeder.ROTA_LOG_PROCESS_DELETE_SQL)) {
+            try (Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
+                 PreparedStatement preparedStatement = connection.prepareStatement(ROTA_LOG_PROCESS_DELETE_SQL)) {
                 preparedStatement.executeUpdate();
             }
         }
 
 
-    private static String normalizeJurisdiction(String j) {
-        if (j == null) return MAGISTRATES.getJurisdiction();
-        String up = j.trim().toUpperCase();
+    private static String normalizeJurisdiction(final String j) {
+        if (j == null) {
+            return MAGISTRATES.getJurisdiction();
+        }
+        final String up = j.trim().toUpperCase(Locale.ROOT);
         return ALLOWED_JURISDICTIONS.contains(up) ? up : MAGISTRATES.getJurisdiction();
     }
 
-    public void insertCourtSchedule(CourtSchedule courtSchedule) throws SQLException {
+    public void insertCourtSchedule(final CourtSchedule courtSchedule) throws SQLException {
 
 
-        try (final Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
-             final PreparedStatement preparedStatement = connection.prepareStatement(COURT_SCHEDULE_INSERT_SQL)) {
+        try (Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
+             PreparedStatement preparedStatement = connection.prepareStatement(COURT_SCHEDULE_INSERT_SQL)) {
 
             preparedStatement.setObject(1, courtSchedule.getCourtScheduleId());
             preparedStatement.setString(2, courtSchedule.getListingProfileId());
@@ -197,31 +206,31 @@ public class DatabaseSeeder {
             preparedStatement.setInt(16, courtSchedule.getMaxDuration());
             preparedStatement.setInt(17, courtSchedule.getAvailableSlots());
             preparedStatement.setInt(18, courtSchedule.getAvailableDuration());
-            preparedStatement.setBoolean(19, courtSchedule.getSupportAdSplit());
+            preparedStatement.setBoolean(19, courtSchedule.isSupportAdSplit());
             preparedStatement.setInt(20, courtSchedule.getMaxAdMorningDuration());
             preparedStatement.setInt(21, courtSchedule.getMaxAdAfternoonDuration());
-            preparedStatement.setTimestamp(22, new Timestamp(courtSchedule.getSessionStartTime().getTime()));
-            preparedStatement.setTimestamp(23, new Timestamp(courtSchedule.getSessionEndTime().getTime()));
-            preparedStatement.setTimestamp(24, new Timestamp(courtSchedule.getNationalBreakTime().getTime()));
-            preparedStatement.setBoolean(25, courtSchedule.getIsOverbookingAllowed());
-            preparedStatement.setBoolean(26, courtSchedule.getIsDraft());
+            preparedStatement.setTimestamp(22, Timestamp.from(courtSchedule.getSessionStartTime()));
+            preparedStatement.setTimestamp(23, Timestamp.from(courtSchedule.getSessionEndTime()));
+            preparedStatement.setTimestamp(24, Timestamp.from(courtSchedule.getNationalBreakTime()));
+            preparedStatement.setBoolean(25, courtSchedule.isOverbookingAllowed());
+            preparedStatement.setBoolean(26, courtSchedule.isDraft());
             preparedStatement.setString(27, normalizeJurisdiction(courtSchedule.getJurisdiction()));
 
             preparedStatement.executeUpdate();
         }
     }
 
-    public void insertCourtSchedulesBatch(List<CourtSchedule> courtSchedules) throws SQLException {
+    public void insertCourtSchedulesBatch(final List<CourtSchedule> courtSchedules) throws SQLException {
         if (courtSchedules.isEmpty()) {
             return;
         }
 
-        try (final Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
-             final PreparedStatement preparedStatement = connection.prepareStatement(COURT_SCHEDULE_INSERT_SQL)) {
+        try (Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
+             PreparedStatement preparedStatement = connection.prepareStatement(COURT_SCHEDULE_INSERT_SQL)) {
 
             connection.setAutoCommit(false);
 
-            for (CourtSchedule courtSchedule : courtSchedules) {
+            for (final CourtSchedule courtSchedule : courtSchedules) {
                 preparedStatement.setObject(1, courtSchedule.getCourtScheduleId());
                 preparedStatement.setString(2, courtSchedule.getListingProfileId());
                 preparedStatement.setString(3, courtSchedule.getOuCode());
@@ -240,14 +249,14 @@ public class DatabaseSeeder {
                 preparedStatement.setInt(16, courtSchedule.getMaxDuration());
                 preparedStatement.setInt(17, courtSchedule.getAvailableSlots());
                 preparedStatement.setInt(18, courtSchedule.getAvailableDuration());
-                preparedStatement.setBoolean(19, courtSchedule.getSupportAdSplit());
+                preparedStatement.setBoolean(19, courtSchedule.isSupportAdSplit());
                 preparedStatement.setInt(20, courtSchedule.getMaxAdMorningDuration());
                 preparedStatement.setInt(21, courtSchedule.getMaxAdAfternoonDuration());
-                preparedStatement.setTimestamp(22, new Timestamp(courtSchedule.getSessionStartTime().getTime()));
-                preparedStatement.setTimestamp(23, new Timestamp(courtSchedule.getSessionEndTime().getTime()));
-                preparedStatement.setTimestamp(24, new Timestamp(courtSchedule.getNationalBreakTime().getTime()));
-                preparedStatement.setBoolean(25, courtSchedule.getIsOverbookingAllowed());
-                preparedStatement.setBoolean(26, courtSchedule.getIsDraft());
+                preparedStatement.setTimestamp(22, Timestamp.from(courtSchedule.getSessionStartTime()));
+                preparedStatement.setTimestamp(23, Timestamp.from(courtSchedule.getSessionEndTime()));
+                preparedStatement.setTimestamp(24, Timestamp.from(courtSchedule.getNationalBreakTime()));
+                preparedStatement.setBoolean(25, courtSchedule.isOverbookingAllowed());
+                preparedStatement.setBoolean(26, courtSchedule.isDraft());
                 preparedStatement.setString(27, normalizeJurisdiction(courtSchedule.getJurisdiction()));
                 preparedStatement.addBatch();
             }
@@ -257,22 +266,22 @@ public class DatabaseSeeder {
         }
     }
 
-    public void updateSessionEndTime(String courtScheduleId, java.util.Date sessionEndTime) throws SQLException {
-        try (final Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
-             final PreparedStatement ps = connection.prepareStatement(UPDATE_SESSION_END_TIME_SQL)) {
+    public void updateSessionEndTime(final String courtScheduleId, final Instant sessionEndTime) throws SQLException {
+        try (Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
+             PreparedStatement ps = connection.prepareStatement(UPDATE_SESSION_END_TIME_SQL)) {
 
-            ps.setTimestamp(1, new java.sql.Timestamp(sessionEndTime.getTime()));
+            ps.setTimestamp(1, Timestamp.from(sessionEndTime));
             ps.setString(2, courtScheduleId);
 
             ps.executeUpdate();
         }
     }
 
-    public void insertAllocatedListing(AllocatedListing allocatedListing) throws SQLException {
+    public void insertAllocatedListing(final AllocatedListing allocatedListing) throws SQLException {
 
 
-        try (final Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
-             final PreparedStatement preparedStatement = connection.prepareStatement(ALLOCATED_LISTING_INSERT_SQL)) {
+        try (Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
+             PreparedStatement preparedStatement = connection.prepareStatement(ALLOCATED_LISTING_INSERT_SQL)) {
 
             preparedStatement.setObject(1, allocatedListing.getId());
             preparedStatement.setString(2, allocatedListing.getCourtScheduleId());
@@ -283,42 +292,41 @@ public class DatabaseSeeder {
             preparedStatement.setString(7, allocatedListing.getRotaBusinessType());
             preparedStatement.setInt(8, allocatedListing.getDuration());
             if (isNull(allocatedListing.getHearingStartTime())) {
-                preparedStatement.setTimestamp(9, new Timestamp(System.currentTimeMillis()));
+                preparedStatement.setTimestamp(9, Timestamp.from(Instant.now()));
             } else {
-                preparedStatement.setTimestamp(9, new Timestamp(allocatedListing.getHearingStartTime().getTime()));
+                preparedStatement.setTimestamp(9, Timestamp.from(allocatedListing.getHearingStartTime()));
             }
 
-            preparedStatement.setTimestamp(10, new Timestamp(System.currentTimeMillis()));
-            preparedStatement.setTimestamp(11, new Timestamp(System.currentTimeMillis()));
+            preparedStatement.setTimestamp(10, Timestamp.from(Instant.now()));
+            preparedStatement.setTimestamp(11, Timestamp.from(Instant.now()));
             preparedStatement.executeUpdate();
         }
     }
 
-    public void insertAllocatedListingsBatch(List<AllocatedListing> allocatedListings) throws SQLException {
+    public void insertAllocatedListingsBatch(final List<AllocatedListing> allocatedListings) throws SQLException {
         insertAllocatedListingsBatch(allocatedListings, null);
     }
 
-    public void insertAllocatedListingsBatch(List<AllocatedListing> allocatedListings, Connection existingConnection) throws SQLException {
+    public void insertAllocatedListingsBatch(final List<AllocatedListing> allocatedListings, final Connection existingConnection) throws SQLException {
         if (allocatedListings.isEmpty()) {
             return;
         }
 
-        boolean isExternalConnection = existingConnection != null;
-        Connection connection = existingConnection;
-        PreparedStatement preparedStatement = null;
+        if (existingConnection != null) {
+            addAllocatedListingsBatch(allocatedListings, existingConnection);
+            return;
+        }
 
-        try {
-            if (!isExternalConnection) {
-                connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
-            }
+        try (Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE)) {
+            connection.setAutoCommit(false);
+            addAllocatedListingsBatch(allocatedListings, connection);
+            connection.commit();
+        }
+    }
 
-            preparedStatement = connection.prepareStatement(ALLOCATED_LISTING_INSERT_SQL);
-
-            if (!isExternalConnection) {
-                connection.setAutoCommit(false);
-            }
-
-            for (AllocatedListing allocatedListing : allocatedListings) {
+    private static void addAllocatedListingsBatch(final List<AllocatedListing> allocatedListings, final Connection connection) throws SQLException {
+        try (PreparedStatement preparedStatement = connection.prepareStatement(ALLOCATED_LISTING_INSERT_SQL)) {
+            for (final AllocatedListing allocatedListing : allocatedListings) {
                 preparedStatement.setObject(1, allocatedListing.getId());
                 preparedStatement.setString(2, allocatedListing.getCourtScheduleId());
                 preparedStatement.setString(3, allocatedListing.getBookingId());
@@ -328,78 +336,66 @@ public class DatabaseSeeder {
                 preparedStatement.setString(7, allocatedListing.getRotaBusinessType());
                 preparedStatement.setInt(8, allocatedListing.getDuration());
                 if (isNull(allocatedListing.getHearingStartTime())) {
-                    preparedStatement.setTimestamp(9, new Timestamp(System.currentTimeMillis()));
+                    preparedStatement.setTimestamp(9, Timestamp.from(Instant.now()));
                 } else {
-                    preparedStatement.setTimestamp(9, new Timestamp(allocatedListing.getHearingStartTime().getTime()));
+                    preparedStatement.setTimestamp(9, Timestamp.from(allocatedListing.getHearingStartTime()));
                 }
 
-                preparedStatement.setTimestamp(10, new Timestamp(System.currentTimeMillis()));
-                preparedStatement.setTimestamp(11, new Timestamp(System.currentTimeMillis()));
+                preparedStatement.setTimestamp(10, Timestamp.from(Instant.now()));
+                preparedStatement.setTimestamp(11, Timestamp.from(Instant.now()));
                 preparedStatement.addBatch();
             }
 
             preparedStatement.executeBatch();
-
-            if (!isExternalConnection) {
-                connection.commit();
-            }
-        } finally {
-            if (preparedStatement != null && !isExternalConnection) {
-                preparedStatement.close();
-            }
-            if (!isExternalConnection && connection != null) {
-                connection.close();
-            }
         }
     }
 
-    public void insertProvisionalBooking(ProvisionalBooking provisionalBooking) throws SQLException {
+    public void insertProvisionalBooking(final ProvisionalBooking provisionalBooking) throws SQLException {
 
 
-        try (final Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
-             final PreparedStatement preparedStatement = connection.prepareStatement(PROVISIONAL_BOOKING_INSERT_SQL)) {
+        try (Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
+             PreparedStatement preparedStatement = connection.prepareStatement(PROVISIONAL_BOOKING_INSERT_SQL)) {
 
             preparedStatement.setObject(1, provisionalBooking.getProvisionalBookingKey().getCourtSchedule().getCourtScheduleId());
             preparedStatement.setString(2, provisionalBooking.getProvisionalBookingKey().getBookingId());
-            preparedStatement.setBoolean(3, provisionalBooking.getActive());
-            preparedStatement.setTimestamp(4, new Timestamp(System.currentTimeMillis()));
-            preparedStatement.setTimestamp(5, new Timestamp(System.currentTimeMillis()));
-            preparedStatement.setTimestamp(6, new Timestamp(System.currentTimeMillis()));
+            preparedStatement.setBoolean(3, provisionalBooking.isActive());
+            preparedStatement.setTimestamp(4, Timestamp.from(Instant.now()));
+            preparedStatement.setTimestamp(5, Timestamp.from(Instant.now()));
+            preparedStatement.setTimestamp(6, Timestamp.from(Instant.now()));
             preparedStatement.executeUpdate();
         }
     }
 
     public Integer saveJudiciarySchedule(final CourtScheduleJudiciary mapping) throws Exception {
-        try (final Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
-             final PreparedStatement stmt = connection.prepareStatement(UPSERT_CSJ_QRY)) {
-            int idx = 0;
-            stmt.setString(++idx, mapping.getId().getCourtScheduleId());
-            stmt.setString(++idx, mapping.getCourtListingProfileId());
-            stmt.setString(++idx, mapping.getId().getJudiciaryId());
-            stmt.setString(++idx, mapping.getRotaJudiciaryId());
-            stmt.setString(++idx, mapping.getTitle());
-            stmt.setString(++idx, mapping.getForenames());
-            stmt.setString(++idx, mapping.getSurname());
-            stmt.setString(++idx, mapping.getEmail());
-            stmt.setString(++idx, mapping.getJudiciaryType());
-            stmt.setObject(++idx, mapping.getBenchChairman(), Types.BIT);
-            stmt.setObject(++idx, mapping.getDeputy(), Types.BIT);
-            stmt.setString(++idx, mapping.getPosition());
+        try (Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
+             PreparedStatement stmt = connection.prepareStatement(UPSERT_CSJ_QRY)) {
+            stmt.setString(1, mapping.getId().getCourtScheduleId());
+            stmt.setString(2, mapping.getCourtListingProfileId());
+            stmt.setString(3, mapping.getId().getJudiciaryId());
+            stmt.setString(4, mapping.getRotaJudiciaryId());
+            stmt.setString(5, mapping.getTitle());
+            stmt.setString(6, mapping.getForenames());
+            stmt.setString(7, mapping.getSurname());
+            stmt.setString(8, mapping.getEmail());
+            stmt.setString(9, mapping.getJudiciaryType());
+            stmt.setObject(10, mapping.isBenchChairman(), Types.BIT);
+            stmt.setObject(11, mapping.isDeputy(), Types.BIT);
+            stmt.setString(12, mapping.getPosition());
 
-            stmt.setString(++idx, mapping.getCourtListingProfileId());
-            stmt.setString(++idx, mapping.getId().getJudiciaryId());
-            stmt.setString(++idx, mapping.getRotaJudiciaryId());
-            stmt.setString(++idx, mapping.getTitle());
-            stmt.setString(++idx, mapping.getForenames());
-            stmt.setString(++idx, mapping.getSurname());
-            stmt.setString(++idx, mapping.getEmail());
-            stmt.setString(++idx, mapping.getJudiciaryType());
-            stmt.setObject(++idx, mapping.getBenchChairman(), Types.BIT);
-            stmt.setObject(++idx, mapping.getDeputy(), Types.BIT);
-            stmt.setString(++idx, mapping.getPosition());
+            stmt.setString(13, mapping.getCourtListingProfileId());
+            stmt.setString(14, mapping.getId().getJudiciaryId());
+            stmt.setString(15, mapping.getRotaJudiciaryId());
+            stmt.setString(16, mapping.getTitle());
+            stmt.setString(17, mapping.getForenames());
+            stmt.setString(18, mapping.getSurname());
+            stmt.setString(19, mapping.getEmail());
+            stmt.setString(20, mapping.getJudiciaryType());
+            stmt.setObject(21, mapping.isBenchChairman(), Types.BIT);
+            stmt.setObject(22, mapping.isDeputy(), Types.BIT);
+            stmt.setString(23, mapping.getPosition());
 
-            stmt.setString(++idx, mapping.getId().getCourtScheduleId());
-            stmt.setString(++idx, mapping.getId().getJudiciaryId());
+            stmt.setString(24, mapping.getId().getCourtScheduleId());
+            stmt.setString(25, mapping.getId().getJudiciaryId());
 
             stmt.addBatch();
             return stmt.executeBatch().length;
@@ -409,8 +405,8 @@ public class DatabaseSeeder {
     }
 
     public void updateCourtScheduleSetListingProfileIdAsNull(final String ouCode) throws SQLException {
-        try (final Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
-             final PreparedStatement preparedStatement = connection.prepareStatement(COURT_SCHEDULE_SET_LISTING_PROFILE_ID_AS_NULL_SQL)) {
+        try (Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
+             PreparedStatement preparedStatement = connection.prepareStatement(COURT_SCHEDULE_SET_LISTING_PROFILE_ID_AS_NULL_SQL)) {
 
             preparedStatement.setString(1, ouCode);
             preparedStatement.executeUpdate();
@@ -418,29 +414,29 @@ public class DatabaseSeeder {
     }
 
     public void setUpdateAvailableSlotForCourtSchedule(final String listingProfileId) throws SQLException {
-        try (final Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
-             final PreparedStatement preparedStatement = connection.prepareStatement(UPDATE_AVAILABLE_SLOT_FOR_COURT_SCHEDULE)) {
+        try (Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
+             PreparedStatement preparedStatement = connection.prepareStatement(UPDATE_AVAILABLE_SLOT_FOR_COURT_SCHEDULE)) {
 
             preparedStatement.setString(1, listingProfileId);
             preparedStatement.executeUpdate();
         }
     }
 
-    public void insertCourtScheduleMigrationStatus(CourtSchedulerMigrationStatus courtSchedulerMigrationStatus) throws SQLException {
-        try (final Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
-             final PreparedStatement preparedStatement = connection.prepareStatement(COURT_SCHEDULE_MIGRATION_STATUS_INSERT_SQL)) {
+    public void insertCourtScheduleMigrationStatus(final CourtSchedulerMigrationStatus courtSchedulerMigrationStatus) throws SQLException {
+        try (Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
+             PreparedStatement preparedStatement = connection.prepareStatement(COURT_SCHEDULE_MIGRATION_STATUS_INSERT_SQL)) {
 
             preparedStatement.setObject(1, courtSchedulerMigrationStatus.getOuCode());
             preparedStatement.setString(2, courtSchedulerMigrationStatus.getCourtCentreId());
             preparedStatement.setBoolean(3, courtSchedulerMigrationStatus.isMigrated());
-            preparedStatement.setTimestamp(4, new Timestamp(System.currentTimeMillis()));
+            preparedStatement.setTimestamp(4, Timestamp.from(Instant.now()));
             preparedStatement.executeUpdate();
         }
     }
 
     public void bookSlots(final Collection<ProvisionalSlot> provisionalSlots, final String bookingId) {
-        try (final Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
-             final PreparedStatement stmt = connection.prepareStatement(INSERT_PROVISIONAL_SLOTS_QRY)) {
+        try (Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
+             PreparedStatement stmt = connection.prepareStatement(INSERT_PROVISIONAL_SLOTS_QRY)) {
             for (final ProvisionalSlot provisionalSlot : provisionalSlots) {
                 stmt.setString(1, bookingId);
                 stmt.setString(2, provisionalSlot.getCourtScheduleId());
@@ -455,8 +451,8 @@ public class DatabaseSeeder {
     }
 
     public void cleanJudiciaryAvailabilityRuleTable() throws SQLException {
-        try (final Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
-             final PreparedStatement preparedStatement = connection.prepareStatement(JUDICIARY_AVAILABILITY_RULE_DELETE_SQL)) {
+        try (Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
+             PreparedStatement preparedStatement = connection.prepareStatement(JUDICIARY_AVAILABILITY_RULE_DELETE_SQL)) {
             preparedStatement.executeUpdate();
         }
     }
@@ -469,11 +465,11 @@ public class DatabaseSeeder {
             final LocalDate fromDate,
             final LocalDate toDate,
             final List<AvailabilityDayOfWeek> repeatDays) throws SQLException {
-        try (final Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE)) {
+        try (Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE)) {
             connection.setAutoCommit(false);
-            try (final PreparedStatement ruleStmt = connection.prepareStatement(JUDICIARY_AVAILABILITY_RULE_INSERT_SQL);
-                 final PreparedStatement repeatDaysStmt = connection.prepareStatement(JUDICIARY_AVAILABILITY_RULE_REPEAT_DAYS_INSERT_SQL);
-                 final PreparedStatement unavailabilityStmt = connection.prepareStatement(JUDICIARY_UNAVAILABILITY_INSERT_SQL)) {
+            try (PreparedStatement ruleStmt = connection.prepareStatement(JUDICIARY_AVAILABILITY_RULE_INSERT_SQL);
+                 PreparedStatement repeatDaysStmt = connection.prepareStatement(JUDICIARY_AVAILABILITY_RULE_REPEAT_DAYS_INSERT_SQL);
+                 PreparedStatement unavailabilityStmt = connection.prepareStatement(JUDICIARY_UNAVAILABILITY_INSERT_SQL)) {
 
                 // Always insert the rule (recurring_type column removed)
                 ruleStmt.setString(1, ruleId);
@@ -485,9 +481,9 @@ public class DatabaseSeeder {
                 ruleStmt.executeUpdate();
 
                 // Insert repeat days
-                for (AvailabilityDayOfWeek dayOfWeek : repeatDays) {
+                for (final AvailabilityDayOfWeek dayOfWeek : repeatDays) {
                     repeatDaysStmt.setString(1, ruleId);
-                    repeatDaysStmt.setString(2, dayOfWeek.name());
+                    repeatDaysStmt.setString(2, dayOfWeek.getWireValue());
                     repeatDaysStmt.addBatch();
                 }
                 repeatDaysStmt.executeBatch();
@@ -520,9 +516,8 @@ public class DatabaseSeeder {
     }
 
     public void updateJudiciaryAvailabilityRuleSessionType(final String ruleId, final String sessionType) throws SQLException {
-        final String UPDATE_SESSION_TYPE_SQL = "UPDATE judiciary_availability_rule SET session_type = ? WHERE id = ?";
-        try (final Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
-             final PreparedStatement stmt = connection.prepareStatement(UPDATE_SESSION_TYPE_SQL)) {
+        try (Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
+             PreparedStatement stmt = connection.prepareStatement(UPDATE_SESSION_TYPE_SQL)) {
             stmt.setString(1, sessionType);
             stmt.setString(2, ruleId);
             stmt.executeUpdate();
@@ -531,16 +526,14 @@ public class DatabaseSeeder {
 
     public void insertJudiciaryAvailabilityRulesBatch(
             final List<RuleData> rules) throws SQLException {
-        // Process in chunks to avoid memory issues with very large batches
-        final int BATCH_SIZE = 5000;
-        try (final Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE)) {
+        try (Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE)) {
             connection.setAutoCommit(false);
-            try (final PreparedStatement ruleStmt = connection.prepareStatement(JUDICIARY_AVAILABILITY_RULE_INSERT_SQL);
-                 final PreparedStatement repeatDaysStmt = connection.prepareStatement(JUDICIARY_AVAILABILITY_RULE_REPEAT_DAYS_INSERT_SQL);
-                 final PreparedStatement unavailabilityStmt = connection.prepareStatement(JUDICIARY_UNAVAILABILITY_INSERT_SQL)) {
+            try (PreparedStatement ruleStmt = connection.prepareStatement(JUDICIARY_AVAILABILITY_RULE_INSERT_SQL);
+                 PreparedStatement repeatDaysStmt = connection.prepareStatement(JUDICIARY_AVAILABILITY_RULE_REPEAT_DAYS_INSERT_SQL);
+                 PreparedStatement unavailabilityStmt = connection.prepareStatement(JUDICIARY_UNAVAILABILITY_INSERT_SQL)) {
 
                 int processedCount = 0;
-                for (RuleData rule : rules) {
+                for (final RuleData rule : rules) {
                     // Insert rule (availability_type column removed)
                     ruleStmt.setString(1, rule.ruleId);
                     ruleStmt.setString(2, rule.judiciaryId);
@@ -551,10 +544,10 @@ public class DatabaseSeeder {
                     ruleStmt.addBatch();
 
                     // Prepare repeat days for batch
-                    for (String dayOfWeek : rule.repeatDays) {
+                    for (final String dayOfWeek : rule.repeatDays) {
                         repeatDaysStmt.setString(1, rule.ruleId);
                         // Convert to title case to match enum (e.g., "Friday" not "FRIDAY")
-                        final String dayOfWeekTitleCase = dayOfWeek.substring(0, 1).toUpperCase() + dayOfWeek.substring(1).toLowerCase();
+                        final String dayOfWeekTitleCase = dayOfWeek.substring(0, 1).toUpperCase(Locale.ROOT) + dayOfWeek.substring(1).toLowerCase(Locale.ROOT);
                         repeatDaysStmt.setString(2, dayOfWeekTitleCase);
                         repeatDaysStmt.addBatch();
                     }
@@ -608,17 +601,17 @@ public class DatabaseSeeder {
     }
 
     public static class RuleData {
-        final String ruleId;
-        final String judiciaryId;
-        final String courtHouseId;
-        final List<JudiciaryUnavailabilityRequest> unavailabilities;
-        final LocalDate fromDate;
-        final LocalDate toDate;
-        final List<String> repeatDays;
+        private final String ruleId;
+        private final String judiciaryId;
+        private final String courtHouseId;
+        private final List<JudiciaryUnavailabilityRequest> unavailabilities;
+        private final LocalDate fromDate;
+        private final LocalDate toDate;
+        private final List<String> repeatDays;
 
-        public RuleData(String ruleId, String judiciaryId, String courtHouseId, List<JudiciaryUnavailabilityRequest> unavailabilities,
-                        LocalDate fromDate, LocalDate toDate,
-                        List<String> repeatDays) {
+        public RuleData(final String ruleId, final String judiciaryId, final String courtHouseId, final List<JudiciaryUnavailabilityRequest> unavailabilities,
+                        final LocalDate fromDate, final LocalDate toDate,
+                        final List<String> repeatDays) {
             this.ruleId = ruleId;
             this.judiciaryId = judiciaryId;
             this.courtHouseId = courtHouseId;
@@ -672,24 +665,5 @@ public class DatabaseSeeder {
             }
         }
         throw last;
-    }
-
-    // Simple Pair class for internal use
-    public static class Pair<T, U> {
-        private final T first;
-        private final U second;
-
-        public Pair(T first, U second) {
-            this.first = first;
-            this.second = second;
-        }
-
-        public T getFirst() {
-            return this.first;
-        }
-
-        public U getSecond() {
-            return this.second;
-        }
     }
 }

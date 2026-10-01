@@ -12,10 +12,14 @@ public record CourtScheduleRequestParam(String courtCentreId,
                                         String pageNumber
 ) {
     @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        CourtScheduleRequestParam that = (CourtScheduleRequestParam) o;
+    public boolean equals(final Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        final CourtScheduleRequestParam that = (CourtScheduleRequestParam) o;
         return Objects.equals(courtCentreId, that.courtCentreId) && Objects.equals(courtRoomId, that.courtRoomId)
                 && Objects.equals(businessType, that.businessType) && Objects.equals(sessionStartDate, that.sessionStartDate)
                 && Objects.equals(sessionEndDate, that.sessionEndDate) && Objects.equals(isDraft, that.isDraft)

@@ -54,7 +54,7 @@ class ProvisionalDataProducerTest {
         final LocalDate provisionalEndDate = LocalDate.of(2020, 9, 30);
         final int cyclesToPopulate = 10;
 
-        final List<CourtSchedule> extractedSchedules = new ArrayList<CourtSchedule>();
+        final List<CourtSchedule> extractedSchedules = new ArrayList<>();
         for (int i = 0; i < 28; i++) {
             extractedSchedules.add(courtSchedule(extractStartDate.plusDays(i).toString()));
         }
@@ -84,7 +84,7 @@ class ProvisionalDataProducerTest {
     }
 
     private CourtSchedule courtSchedule(final String sessionDate) {
-        final List<CourtScheduleJudiciary> judiciaries = new ArrayList<CourtScheduleJudiciary>();
+        final List<CourtScheduleJudiciary> judiciaries = new ArrayList<>();
         judiciaries.add(judiciary().withRotaJudiciaryId("123").withPosition("CHAIR").build());
 
         return new CourtSchedule.CourtScheduleBuilder()

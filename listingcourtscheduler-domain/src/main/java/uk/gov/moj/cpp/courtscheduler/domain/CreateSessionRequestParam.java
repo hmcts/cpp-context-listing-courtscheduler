@@ -41,17 +41,17 @@ public class CreateSessionRequestParam {
             return new CreateSessionRequestParamBuilder();
         }
 
-        public CreateSessionRequestParamBuilder withSessionList(List<Session> sessionList) {
+        public CreateSessionRequestParamBuilder withSessionList(final List<Session> sessionList) {
             this.sessionList = sessionList;
             return this;
         }
 
-        public CreateSessionRequestParamBuilder withRepeatPattern(RepeatPattern repeatPattern) {
+        public CreateSessionRequestParamBuilder withRepeatPattern(final RepeatPattern repeatPattern) {
             this.repeatPattern = repeatPattern;
             return this;
         }
 
-        public CreateSessionRequestParamBuilder withSessionToBeAdded(Session sessionToBeAdded) {
+        public CreateSessionRequestParamBuilder withSessionToBeAdded(final Session sessionToBeAdded) {
             this.sessionToBeAdded = sessionToBeAdded;
             return this;
         }
@@ -63,8 +63,12 @@ public class CreateSessionRequestParam {
 
     @Override
     public boolean equals(final Object o) {
-        if (this == o) return true;
-        if (!(o instanceof final CreateSessionRequestParam that)) return false;
+        if (this == o) {
+            return true;
+        }
+        if (!(o instanceof final CreateSessionRequestParam that)) {
+            return false;
+        }
         return Objects.equals(sessionList, that.sessionList) && Objects.equals(repeatPattern, that.repeatPattern) && Objects.equals(sessionToBeAdded, that.sessionToBeAdded);
     }
 

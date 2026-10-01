@@ -16,14 +16,14 @@ import org.mockito.InjectMocks;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
-public class ProvisionalSlotConverterTest {
+class ProvisionalSlotConverterTest {
 
     @InjectMocks
     private ProvisionalSlotConverter provisionalSlotConverter;
 
 
     @Test
-    public void shouldConvertProvisionalSlot() {
+    void shouldConvertProvisionalSlot() {
         final String payload = fileToString("/test-data/courtscheduler.book.provisional.hearing.slots.json");
 
         final ProvisionalBookingSlots provisionalBookingSlots = provisionalSlotConverter.convert(payload);
@@ -37,7 +37,7 @@ public class ProvisionalSlotConverterTest {
     }
 
     @Test
-    public void shouldConvertProvisionalSlotWithEmptyArray() {
+    void shouldConvertProvisionalSlotWithEmptyArray() {
         final String payload = fileToString("/test-data/courtscheduler.book.provisional.hearing.slots-empty-array-payload.json");
 
         final ProvisionalBookingSlots provisionalBookingSlots = provisionalSlotConverter.convert(payload);
@@ -47,7 +47,7 @@ public class ProvisionalSlotConverterTest {
     }
 
     @Test
-    public void shouldThrowJsonProcessingException() {
+    void shouldThrowJsonProcessingException() {
         Assertions.assertThrows(ConverterException.class, () -> {
             provisionalSlotConverter.convert("nonJson");
         });

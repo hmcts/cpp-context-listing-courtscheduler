@@ -19,7 +19,7 @@ class ProvisionalDataLookUpKeyTest {
         final ProvisionalDataLookUpKey key1 = new ProvisionalDataLookUpKey(10, LocalDate.of(2024, 10, 10));
         final ProvisionalDataLookUpKey key2 = new ProvisionalDataLookUpKey(10, LocalDate.of(2024, 10, 10));
 
-        int result = key1.compareTo(key2);
+        final int result = key1.compareTo(key2);
 
         assertEquals(0, result);
     }
@@ -29,7 +29,7 @@ class ProvisionalDataLookUpKeyTest {
         final ProvisionalDataLookUpKey key1 = new ProvisionalDataLookUpKey(10, LocalDate.of(2024, 10, 10));
         final ProvisionalDataLookUpKey key2 = new ProvisionalDataLookUpKey(10, LocalDate.of(2024, 10, 10));
 
-        boolean result = key1.equals(key2);
+        final boolean result = key1.equals(key2);
 
         assertTrue(result);
     }
@@ -38,7 +38,7 @@ class ProvisionalDataLookUpKeyTest {
     void shouldBeEqualForTheSameObject() {
         final ProvisionalDataLookUpKey key1 = new ProvisionalDataLookUpKey(10, LocalDate.of(2024, 10, 10));
 
-        boolean result = key1.equals(key1);
+        final boolean result = key1.equals(key1);
 
         assertTrue(result);
     }
@@ -48,16 +48,18 @@ class ProvisionalDataLookUpKeyTest {
         final ProvisionalDataLookUpKey key1 = new ProvisionalDataLookUpKey(18, LocalDate.of(2024, 10, 10));
         final ProvisionalDataLookUpKey key2 = new ProvisionalDataLookUpKey(10, LocalDate.of(2024, 10, 10));
 
-        boolean result = key1.equals(key2);
+        final boolean result = key1.equals(key2);
 
         assertFalse(result);
     }
 
     @Test
+    // Deliberate: this test verifies the equals(null) contract, so calling equals with null is the point
+    @SuppressWarnings("PMD.EqualsNull")
     void shouldNotBeEqualForNullObject() {
         final ProvisionalDataLookUpKey key1 = new ProvisionalDataLookUpKey(18, LocalDate.of(2024, 10, 10));
 
-        boolean result = key1.equals(null);
+        final boolean result = key1.equals(null);
 
         assertFalse(result);
     }
@@ -67,7 +69,7 @@ class ProvisionalDataLookUpKeyTest {
         final ProvisionalDataLookUpKey key1 = new ProvisionalDataLookUpKey(10, LocalDate.of(2024, 10, 10));
         final ProvisionalDataLookUpKey key2 = new ProvisionalDataLookUpKey(10, LocalDate.of(2024, 11, 10));
 
-        boolean result = key1.equals(key2);
+        final boolean result = key1.equals(key2);
 
         assertFalse(result);
     }
@@ -77,7 +79,7 @@ class ProvisionalDataLookUpKeyTest {
         final ProvisionalDataLookUpKey key1 = new ProvisionalDataLookUpKey(10, LocalDate.of(2024, 10, 10));
         final ProvisionalDataLookUpKey key2 = new ProvisionalDataLookUpKey(10, null);
 
-        boolean result = key1.equals(key2);
+        final boolean result = key1.equals(key2);
 
         assertFalse(result);
     }
@@ -87,8 +89,8 @@ class ProvisionalDataLookUpKeyTest {
         final ProvisionalDataLookUpKey key1 = new ProvisionalDataLookUpKey(10, LocalDate.of(2024, 10, 10));
         final ProvisionalDataLookUpKey key2 = new ProvisionalDataLookUpKey(10, LocalDate.of(2024, 10, 10));
 
-        int hashCodeOfKey1 = key1.hashCode();
-        int hashCodeOfKey2 = key2.hashCode();
+        final int hashCodeOfKey1 = key1.hashCode();
+        final int hashCodeOfKey2 = key2.hashCode();
 
         assertEquals(hashCodeOfKey1, hashCodeOfKey2);
     }

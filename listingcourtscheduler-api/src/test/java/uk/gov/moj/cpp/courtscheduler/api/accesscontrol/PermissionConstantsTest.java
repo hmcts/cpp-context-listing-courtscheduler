@@ -20,15 +20,15 @@ class PermissionConstantsTest {
 
     @Test
     void shouldCreateSchedulePermission() throws JsonProcessingException {
-        JsonNode actual = mapper.readTree(createCourtSchedulePermission());
-        JsonNode expected = mapper.readTree(getPayload("create-court-schedule-permission.json"));
+        final JsonNode actual = mapper.readTree(createCourtSchedulePermission());
+        final JsonNode expected = mapper.readTree(getPayload("create-court-schedule-permission.json"));
         assertThat(actual, is(expected));
     }
 
     @Test
     void shouldGetSchedulePermission() throws JsonProcessingException {
-        JsonNode actual = mapper.readTree(getCourtSchedulePermission());
-        JsonNode expected = mapper.readTree(getPayload("get-court-schedule-permission.json"));
+        final JsonNode actual = mapper.readTree(getCourtSchedulePermission());
+        final JsonNode expected = mapper.readTree(getPayload("get-court-schedule-permission.json"));
         assertThat(actual, is(expected));
     }
 }

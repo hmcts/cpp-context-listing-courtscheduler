@@ -31,15 +31,15 @@ public class BusinessTypeKey implements Serializable {
         return id;
     }
 
-    public void setId(UUID id) {
+    public void setId(final UUID id) {
         this.id = id;
     }
 
-    public Boolean getActive() {
+    public Boolean isActive() {
         return active;
     }
 
-    public void setActive(Boolean active) {
+    public void setActive(final Boolean active) {
         this.active = active;
     }
 

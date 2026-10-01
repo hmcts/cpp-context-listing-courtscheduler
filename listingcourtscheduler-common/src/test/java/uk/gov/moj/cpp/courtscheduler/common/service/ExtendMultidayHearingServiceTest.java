@@ -225,8 +225,8 @@ class ExtendMultidayHearingServiceTest {
         al.setCourtRoomId(COURT_ROOM_ID);
         al.setRotaBusinessType(BUSINESS_TYPE);
         al.setDuration(360);
-        al.setHearingStartTime(java.util.Date.from(
-                sessionDate.atTime(10, 0).atZone(java.time.ZoneId.systemDefault()).toInstant()));
+        al.setHearingStartTime(
+                sessionDate.atTime(10, 0).atZone(java.time.ZoneId.systemDefault()).toInstant());
         al.setSource("MULTIDAY");
         return al;
     }
@@ -234,7 +234,7 @@ class ExtendMultidayHearingServiceTest {
     private static List<CourtSchedule> buildHydratedSchedules(final List<AllocatedListing> allocations) {
         final List<CourtSchedule> out = new ArrayList<>();
         for (final AllocatedListing al : allocations) {
-            final LocalDate date = al.getHearingStartTime().toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDate();
+            final LocalDate date = al.getHearingStartTime().atZone(java.time.ZoneId.systemDefault()).toLocalDate();
             out.add(new CourtSchedule.CourtScheduleBuilder()
                     .withCourtScheduleId(al.getCourtScheduleId())
                     .withSessionDate(date)
@@ -257,8 +257,8 @@ class ExtendMultidayHearingServiceTest {
                 .withCourtSession("AD")
                 .withMaxDuration(availableMins)
                 .withTotalBooked(0)
-                .withSessionStartTime(java.util.Date.from(
-                        date.atTime(10, 0).atZone(java.time.ZoneId.systemDefault()).toInstant()))
+                .withSessionStartTime(
+                        date.atTime(10, 0).atZone(java.time.ZoneId.systemDefault()).toInstant())
                 .build();
     }
 }

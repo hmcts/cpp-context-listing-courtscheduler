@@ -41,6 +41,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class ProvisionalBookingServiceTest {
+    private static final String BOOKING_ID = "bookingId";
+    private static final String PROVISIONAL_SLOTS = "provisionalSlots";
+
 
     private static final String JUDICIARIES = "judiciaries";
 
@@ -53,19 +56,19 @@ class ProvisionalBookingServiceTest {
 
     @Test
     void shouldProcessProvisionalBookingRequestSuccessfully() {
-        ProvisionalBookingSlots provisionalBookingSlots = new ProvisionalBookingSlots();
-        List<ProvisionalSlot> provisionalSlotList = new ArrayList<>();
-        ProvisionalSlot provisionalSlot = new ProvisionalSlot("2523432432");
+        final ProvisionalBookingSlots provisionalBookingSlots = new ProvisionalBookingSlots();
+        final List<ProvisionalSlot> provisionalSlotList = new ArrayList<>();
+        final ProvisionalSlot provisionalSlot = new ProvisionalSlot("2523432432");
         provisionalSlotList.add(provisionalSlot);
         provisionalBookingSlots.setProvisionalSlots(provisionalSlotList);
 
         when(courtScheduleRepository.findBy(anyString())).thenReturn(new CourtSchedule());
         doNothing().when(provisionalBookingRepository).saveProvisionalBooking(any(), anyString(), any());
 
-        JsonObject response = provisionalBookingService.bookProvisionalSlots(provisionalBookingSlots);
+        final JsonObject response = provisionalBookingService.bookProvisionalSlots(provisionalBookingSlots);
 
         assertNotNull(response);
-        assertNotNull(response.getString("bookingId"));
+        assertNotNull(response.getString(BOOKING_ID));
     }
 
     @Test
@@ -74,9 +77,9 @@ class ProvisionalBookingServiceTest {
         final String bookingId2 = randomUUID().toString();
         final String courtScheduleId = randomUUID().toString();
         final String bookedSlots = bookingId1+","+bookingId2;
-        ProvisionalBooking provisionalBooking1 = prepareProvisionalBooking(bookingId1, courtScheduleId);
-        ProvisionalBooking provisionalBooking2 = prepareProvisionalBooking(bookingId2, courtScheduleId);
-        List<ProvisionalBooking> provisionalBookingList = new ArrayList<>();
+        final ProvisionalBooking provisionalBooking1 = prepareProvisionalBooking(bookingId1, courtScheduleId);
+        final ProvisionalBooking provisionalBooking2 = prepareProvisionalBooking(bookingId2, courtScheduleId);
+        final List<ProvisionalBooking> provisionalBookingList = new ArrayList<>();
         provisionalBookingList.add(provisionalBooking1);
         provisionalBookingList.add(provisionalBooking2);
 
@@ -84,20 +87,20 @@ class ProvisionalBookingServiceTest {
 
         final JsonObject actualProvisionalSlots = provisionalBookingService.fetchProvisionalSlots(bookedSlots);
 
-        assertThat(actualProvisionalSlots.getJsonArray("provisionalSlots"), notNullValue());
-        assertThat(actualProvisionalSlots.getJsonArray("provisionalSlots").size(), is(2));
+        assertThat(actualProvisionalSlots.getJsonArray(PROVISIONAL_SLOTS), notNullValue());
+        assertThat(actualProvisionalSlots.getJsonArray(PROVISIONAL_SLOTS).size(), is(2));
 
-        final JsonValue provisionalSlot1 = actualProvisionalSlots.getJsonArray("provisionalSlots").get(0);
+        final JsonValue provisionalSlot1 = actualProvisionalSlots.getJsonArray(PROVISIONAL_SLOTS).get(0);
 
         assertThat(provisionalSlot1, notNullValue());
-        assertThat(provisionalSlot1.asJsonObject().getString("bookingId"), is(bookingId1));
+        assertThat(provisionalSlot1.asJsonObject().getString(BOOKING_ID), is(bookingId1));
         assertThat(provisionalSlot1.asJsonObject().getString("courtScheduleId"), is(courtScheduleId));
         assertThat(provisionalSlot1.asJsonObject().get(JUDICIARIES).asJsonArray().size(), is(0));
 
-        final JsonValue provisionalSlot2 = actualProvisionalSlots.getJsonArray("provisionalSlots").get(1);
+        final JsonValue provisionalSlot2 = actualProvisionalSlots.getJsonArray(PROVISIONAL_SLOTS).get(1);
 
         assertThat(provisionalSlot2, notNullValue());
-        assertThat(provisionalSlot2.asJsonObject().getString("bookingId"), is(bookingId2));
+        assertThat(provisionalSlot2.asJsonObject().getString(BOOKING_ID), is(bookingId2));
         assertThat(provisionalSlot2.asJsonObject().getString("courtScheduleId"), is(courtScheduleId));
         assertThat(provisionalSlot2.asJsonObject().get(JUDICIARIES).asJsonArray().size(), is(0));
     }
@@ -106,19 +109,19 @@ class ProvisionalBookingServiceTest {
      void shouldFetchProvisionalSlots() {
         final String bookingId = randomUUID().toString();
         final String courtScheduleId = randomUUID().toString();
-        ProvisionalBooking provisionalBooking = prepareProvisionalBooking(bookingId, courtScheduleId);
-        List<ProvisionalBooking> provisionalBookingList = new ArrayList<>();
+        final ProvisionalBooking provisionalBooking = prepareProvisionalBooking(bookingId, courtScheduleId);
+        final List<ProvisionalBooking> provisionalBookingList = new ArrayList<>();
         provisionalBookingList.add(provisionalBooking);
 
         doReturn(provisionalBookingList).when(provisionalBookingRepository).findByBookingIdIn(anyList());
 
         final JsonObject actualProvisionalSlots = provisionalBookingService.fetchProvisionalSlots(bookingId);
 
-        final JsonValue provisionalSlot = actualProvisionalSlots.getJsonArray("provisionalSlots").get(0);
+        final JsonValue provisionalSlot = actualProvisionalSlots.getJsonArray(PROVISIONAL_SLOTS).get(0);
 
-        assertThat(actualProvisionalSlots.getJsonArray("provisionalSlots"), notNullValue());
+        assertThat(actualProvisionalSlots.getJsonArray(PROVISIONAL_SLOTS), notNullValue());
         assertThat(provisionalSlot, notNullValue());
-        assertThat(provisionalSlot.asJsonObject().getString("bookingId"), is(bookingId));
+        assertThat(provisionalSlot.asJsonObject().getString(BOOKING_ID), is(bookingId));
         assertThat(provisionalSlot.asJsonObject().getString("courtScheduleId"), is(courtScheduleId));
     }
 
@@ -130,21 +133,21 @@ class ProvisionalBookingServiceTest {
         final String judiciaryId = randomUUID().toString();
         final String expectedEmail = "judge@example.com";
 
-        ProvisionalBooking provisionalBooking =
+        final ProvisionalBooking provisionalBooking =
                 prepareProvisionalBookingWithListingProfile(bookingId, courtScheduleId, listingProfileId);
-        CourtScheduleJudiciary judiciaryEntity =
+        final CourtScheduleJudiciary judiciaryEntity =
                 judiciaryEntity(courtScheduleId, judiciaryId, listingProfileId, expectedEmail);
 
         doReturn(List.of(provisionalBooking)).when(provisionalBookingRepository).findByBookingIdIn(anyList());
         doReturn(List.of(judiciaryEntity)).when(courtScheduleRepository)
                 .getCourtScheduleJudiciariesForProvisionalBooking(anyList());
 
-        JsonObject actual = provisionalBookingService.fetchProvisionalSlots(bookingId);
+        final JsonObject actual = provisionalBookingService.fetchProvisionalSlots(bookingId);
 
         verify(courtScheduleRepository).getCourtScheduleJudiciariesForProvisionalBooking(anyList());
-        assertThat(actual.getJsonArray("provisionalSlots").size(), is(1));
-        JsonObject slot = actual.getJsonArray("provisionalSlots").get(0).asJsonObject();
-        assertThat(slot.getString("bookingId"), is(bookingId));
+        assertThat(actual.getJsonArray(PROVISIONAL_SLOTS).size(), is(1));
+        final JsonObject slot = actual.getJsonArray(PROVISIONAL_SLOTS).get(0).asJsonObject();
+        assertThat(slot.getString(BOOKING_ID), is(bookingId));
         assertThat(slot.getJsonArray(JUDICIARIES).size(), is(1));
         assertThat(slot.getJsonArray(JUDICIARIES).get(0).asJsonObject().getString("emailAddress"), is(expectedEmail));
     }
@@ -155,20 +158,20 @@ class ProvisionalBookingServiceTest {
         final String courtScheduleId = randomUUID().toString();
         final String listingProfileId = randomUUID().toString();
 
-        ProvisionalBooking provisionalBooking =
+        final ProvisionalBooking provisionalBooking =
                 prepareProvisionalBookingWithListingProfile(bookingId, courtScheduleId, listingProfileId);
-        CourtScheduleJudiciary first =
+        final CourtScheduleJudiciary first =
                 judiciaryEntity(courtScheduleId, randomUUID().toString(), listingProfileId, "first@example.com");
-        CourtScheduleJudiciary second =
+        final CourtScheduleJudiciary second =
                 judiciaryEntity(courtScheduleId, randomUUID().toString(), listingProfileId, "second@example.com");
 
         doReturn(List.of(provisionalBooking)).when(provisionalBookingRepository).findByBookingIdIn(anyList());
         doReturn(List.of(first, second)).when(courtScheduleRepository)
                 .getCourtScheduleJudiciariesForProvisionalBooking(anyList());
 
-        JsonObject actual = provisionalBookingService.fetchProvisionalSlots(bookingId);
+        final JsonObject actual = provisionalBookingService.fetchProvisionalSlots(bookingId);
 
-        JsonObject slot = actual.getJsonArray("provisionalSlots").get(0).asJsonObject();
+        final JsonObject slot = actual.getJsonArray(PROVISIONAL_SLOTS).get(0).asJsonObject();
         assertThat(slot.getJsonArray(JUDICIARIES).size(), is(2));
     }
 
@@ -177,7 +180,7 @@ class ProvisionalBookingServiceTest {
             final String judiciaryId,
             final String listingProfileId,
             final String email) {
-        CourtScheduleJudiciary entity = new CourtScheduleJudiciary();
+        final CourtScheduleJudiciary entity = new CourtScheduleJudiciary();
         entity.setId(new CourtScheduleJudiciaryKey(courtScheduleId, judiciaryId));
         entity.setCourtListingProfileId(listingProfileId);
         entity.setEmail(email);
@@ -195,8 +198,8 @@ class ProvisionalBookingServiceTest {
 
     @Test
     void shouldThrowSlotsBookExceptionWhenSaveProvisionalBookingFails() {
-        ProvisionalBookingSlots provisionalBookingSlots = new ProvisionalBookingSlots();
-        ProvisionalSlot provisionalSlot = new ProvisionalSlot("2523432432");
+        final ProvisionalBookingSlots provisionalBookingSlots = new ProvisionalBookingSlots();
+        final ProvisionalSlot provisionalSlot = new ProvisionalSlot("2523432432");
         provisionalBookingSlots.setProvisionalSlots(List.of(provisionalSlot));
 
         when(courtScheduleRepository.findBy(anyString())).thenReturn(new CourtSchedule());
@@ -207,23 +210,23 @@ class ProvisionalBookingServiceTest {
     }
 
     private ProvisionalBooking prepareProvisionalBookingWithListingProfile(
-            String bookingId, String courtScheduleId, String listingProfileId) {
-        ProvisionalBooking provisionalBooking = new ProvisionalBooking();
-        CourtSchedule courtSchedule = new CourtSchedule();
+            final String bookingId, final String courtScheduleId, final String listingProfileId) {
+        final ProvisionalBooking provisionalBooking = new ProvisionalBooking();
+        final CourtSchedule courtSchedule = new CourtSchedule();
         courtSchedule.setCourtScheduleId(courtScheduleId);
         courtSchedule.setListingProfileId(listingProfileId);
-        ProvisionalBookingKey provisionalBookingKey = new ProvisionalBookingKey();
+        final ProvisionalBookingKey provisionalBookingKey = new ProvisionalBookingKey();
         provisionalBookingKey.setBookingId(bookingId);
         provisionalBookingKey.setCourtSchedule(courtSchedule);
         provisionalBooking.setProvisionalBookingKey(provisionalBookingKey);
         return provisionalBooking;
     }
 
-    private ProvisionalBooking prepareProvisionalBooking(String bookingId, String courtScheduleId) {
-        ProvisionalBooking provisionalBooking = new ProvisionalBooking();
-        CourtSchedule courtSchedule = new CourtSchedule();
+    private ProvisionalBooking prepareProvisionalBooking(final String bookingId, final String courtScheduleId) {
+        final ProvisionalBooking provisionalBooking = new ProvisionalBooking();
+        final CourtSchedule courtSchedule = new CourtSchedule();
         courtSchedule.setCourtScheduleId(courtScheduleId);
-        ProvisionalBookingKey provisionalBookingKey = new ProvisionalBookingKey();
+        final ProvisionalBookingKey provisionalBookingKey = new ProvisionalBookingKey();
         provisionalBookingKey.setBookingId(bookingId);
         provisionalBookingKey.setCourtSchedule(courtSchedule);
         provisionalBooking.setProvisionalBookingKey(provisionalBookingKey);

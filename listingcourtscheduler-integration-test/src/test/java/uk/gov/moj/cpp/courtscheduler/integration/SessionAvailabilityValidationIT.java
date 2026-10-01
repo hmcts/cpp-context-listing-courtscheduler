@@ -11,9 +11,8 @@ import static org.hamcrest.Matchers.not;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 
-import java.sql.Timestamp;
 import java.time.LocalDate;
-import java.util.Date;
+import java.time.Instant;
 import java.util.UUID;
 
 import jakarta.ws.rs.core.Response;
@@ -21,6 +20,11 @@ import jakarta.ws.rs.core.Response;
 import org.junit.jupiter.api.Test;
 
 class SessionAvailabilityValidationIT extends AbstractIT {
+    private static final String LITERAL = "\"}";
+    private static final String CENTRE_1 = "centre-1";
+    private static final String COURT_SCHEDULE_ID_LIST = "{\"courtScheduleIdList\":[";
+    private static final String COURT_SCHEDULE_ID = "{\"courtScheduleId\":\"";
+
 
     private static final String VALIDATE_URL = "/validate-session-availability";
     private static final String CONTENT_TYPE =
@@ -31,7 +35,7 @@ class SessionAvailabilityValidationIT extends AbstractIT {
         final String payload =
                 "{\"courtScheduleIdList\":[{\"courtScheduleId\":\"00000000-0000-0000-0000-000000000001\"}],\"duration\":30}";
 
-        Response response = postCommand(VALIDATE_URL, CONTENT_TYPE, SYSTEM_USER_ID, payload);
+        final Response response = postCommand(VALIDATE_URL, CONTENT_TYPE, SYSTEM_USER_ID, payload);
 
         assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
         final String body = response.readEntity(String.class);
@@ -42,25 +46,25 @@ class SessionAvailabilityValidationIT extends AbstractIT {
     void shouldReturn400WhenCourtScheduleIdListIsMissing() {
         final String payload = "{\"duration\":30}";
 
-        Response response = postCommand(VALIDATE_URL, CONTENT_TYPE, SYSTEM_USER_ID, payload);
+        final Response response = postCommand(VALIDATE_URL, CONTENT_TYPE, SYSTEM_USER_ID, payload);
 
         assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
     }
 
     @Test
     void shouldReturn400WhenMultipleSchedulesHaveDifferentJurisdictions() throws Exception {
-        String id1 = UUID.randomUUID().toString();
-        String id2 = UUID.randomUUID().toString();
+        final String id1 = UUID.randomUUID().toString();
+        final String id2 = UUID.randomUUID().toString();
 
-        databaseSeeder.insertCourtSchedule(buildCourtSchedule(id1, true, 10, false, "CROWN", "centre-1"));
-        databaseSeeder.insertCourtSchedule(buildCourtSchedule(id2, true, 10, false, "MAGISTRATES", "centre-1"));
+        databaseSeeder.insertCourtSchedule(buildCourtSchedule(id1, true, 10, false, "CROWN", CENTRE_1));
+        databaseSeeder.insertCourtSchedule(buildCourtSchedule(id2, true, 10, false, "MAGISTRATES", CENTRE_1));
 
-        final String payload = "{\"courtScheduleIdList\":["
-                + "{\"courtScheduleId\":\"" + id1 + "\"},"
-                + "{\"courtScheduleId\":\"" + id2 + "\"}"
+        final String payload = COURT_SCHEDULE_ID_LIST
+                + COURT_SCHEDULE_ID + id1 + "\"},"
+                + COURT_SCHEDULE_ID + id2 + LITERAL
                 + "],\"duration\":30}";
 
-        Response response = postCommand(VALIDATE_URL, CONTENT_TYPE, SYSTEM_USER_ID, payload);
+        final Response response = postCommand(VALIDATE_URL, CONTENT_TYPE, SYSTEM_USER_ID, payload);
 
         assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
         final String body = response.readEntity(String.class);
@@ -69,8 +73,8 @@ class SessionAvailabilityValidationIT extends AbstractIT {
 
     @Test
     void shouldReturn400WhenSlotBasedScheduleIsFullyBookedIgnoringDuration() throws Exception {
-        String courtScheduleId = UUID.randomUUID().toString();
-        CourtSchedule cs = buildCourtSchedule(courtScheduleId, true, 2, false, "MAGISTRATES", "centre-1");
+        final String courtScheduleId = UUID.randomUUID().toString();
+        final CourtSchedule cs = buildCourtSchedule(courtScheduleId, true, 2, false, "MAGISTRATES", CENTRE_1);
         databaseSeeder.insertCourtSchedule(cs);
 
         for (int i = 0; i < 2; i++) {
@@ -78,11 +82,11 @@ class SessionAvailabilityValidationIT extends AbstractIT {
         }
 
         // Large duration value — must be ignored for slot-based sessions (SPRDT-725 bug)
-        final String payload = "{\"courtScheduleIdList\":["
-                + "{\"courtScheduleId\":\"" + courtScheduleId + "\"}"
+        final String payload = COURT_SCHEDULE_ID_LIST
+                + COURT_SCHEDULE_ID + courtScheduleId + LITERAL
                 + "],\"duration\":9999}";
 
-        Response response = postCommand(VALIDATE_URL, CONTENT_TYPE, SYSTEM_USER_ID, payload);
+        final Response response = postCommand(VALIDATE_URL, CONTENT_TYPE, SYSTEM_USER_ID, payload);
 
         assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
         final String body = response.readEntity(String.class);
@@ -91,14 +95,14 @@ class SessionAvailabilityValidationIT extends AbstractIT {
 
     @Test
     void shouldReturn400WhenSlotBasedScheduleHasZeroMaxSlotsAndNoAllocations() throws Exception {
-        String courtScheduleId = UUID.randomUUID().toString();
-        databaseSeeder.insertCourtSchedule(buildCourtSchedule(courtScheduleId, true, 0, false, "MAGISTRATES", "centre-1"));
+        final String courtScheduleId = UUID.randomUUID().toString();
+        databaseSeeder.insertCourtSchedule(buildCourtSchedule(courtScheduleId, true, 0, false, "MAGISTRATES", CENTRE_1));
 
-        final String payload = "{\"courtScheduleIdList\":["
-                + "{\"courtScheduleId\":\"" + courtScheduleId + "\"}"
+        final String payload = COURT_SCHEDULE_ID_LIST
+                + COURT_SCHEDULE_ID + courtScheduleId + LITERAL
                 + "],\"duration\":100}";
 
-        Response response = postCommand(VALIDATE_URL, CONTENT_TYPE, SYSTEM_USER_ID, payload);
+        final Response response = postCommand(VALIDATE_URL, CONTENT_TYPE, SYSTEM_USER_ID, payload);
 
         assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
         final String body = response.readEntity(String.class);
@@ -107,18 +111,18 @@ class SessionAvailabilityValidationIT extends AbstractIT {
 
     @Test
     void shouldReturn200WhenSlotBasedScheduleHasAvailableSlots() throws Exception {
-        String courtScheduleId = UUID.randomUUID().toString();
-        databaseSeeder.insertCourtSchedule(buildCourtSchedule(courtScheduleId, true, 5, false, "CROWN", "centre-1"));
+        final String courtScheduleId = UUID.randomUUID().toString();
+        databaseSeeder.insertCourtSchedule(buildCourtSchedule(courtScheduleId, true, 5, false, "CROWN", CENTRE_1));
 
         for (int i = 0; i < 2; i++) {
             databaseSeeder.insertAllocatedListing(buildAllocatedListing(courtScheduleId));
         }
 
-        final String payload = "{\"courtScheduleIdList\":["
-                + "{\"courtScheduleId\":\"" + courtScheduleId + "\"}"
+        final String payload = COURT_SCHEDULE_ID_LIST
+                + COURT_SCHEDULE_ID + courtScheduleId + LITERAL
                 + "],\"duration\":999}";
 
-        Response response = postCommand(VALIDATE_URL, CONTENT_TYPE, SYSTEM_USER_ID, payload);
+        final Response response = postCommand(VALIDATE_URL, CONTENT_TYPE, SYSTEM_USER_ID, payload);
 
         assertThat(response.getStatus(), is(OK.getStatusCode()));
     }
@@ -135,11 +139,11 @@ class SessionAvailabilityValidationIT extends AbstractIT {
      */
     @Test
     void shouldAcceptLegacyApplicationJsonAcceptHeader() throws Exception {
-        String courtScheduleId = UUID.randomUUID().toString();
-        databaseSeeder.insertCourtSchedule(buildCourtSchedule(courtScheduleId, true, 5, false, "CROWN", "centre-1"));
+        final String courtScheduleId = UUID.randomUUID().toString();
+        databaseSeeder.insertCourtSchedule(buildCourtSchedule(courtScheduleId, true, 5, false, "CROWN", CENTRE_1));
 
-        final String payload = "{\"courtScheduleIdList\":["
-                + "{\"courtScheduleId\":\"" + courtScheduleId + "\"}"
+        final String payload = COURT_SCHEDULE_ID_LIST
+                + COURT_SCHEDULE_ID + courtScheduleId + LITERAL
                 + "],\"duration\":30}";
 
         final Response response = postCommandWithAccept(VALIDATE_URL, CONTENT_TYPE, "application/json", SYSTEM_USER_ID, payload);
@@ -149,10 +153,10 @@ class SessionAvailabilityValidationIT extends AbstractIT {
         assertThat(response.getStatus(), is(OK.getStatusCode()));
     }
 
-    private static CourtSchedule buildCourtSchedule(String id, boolean slotBased, int maxSlots,
-                                                     boolean overbookingAllowed, String jurisdiction, String courtHouseId) {
-        Date now = new Date();
-        CourtSchedule cs = new CourtSchedule();
+    private static CourtSchedule buildCourtSchedule(final String id, final boolean slotBased, final int maxSlots,
+                                                     final boolean overbookingAllowed, final String jurisdiction, final String courtHouseId) {
+        final Instant now = Instant.now();
+        final CourtSchedule cs = new CourtSchedule();
         cs.setCourtScheduleId(id);
         cs.setListingProfileId(UUID.randomUUID().toString());
         cs.setOuCode("B01LY");
@@ -184,8 +188,8 @@ class SessionAvailabilityValidationIT extends AbstractIT {
         return cs;
     }
 
-    private static AllocatedListing buildAllocatedListing(String courtScheduleId) {
-        AllocatedListing al = new AllocatedListing();
+    private static AllocatedListing buildAllocatedListing(final String courtScheduleId) {
+        final AllocatedListing al = new AllocatedListing();
         al.setId(UUID.randomUUID().toString());
         al.setCourtScheduleId(courtScheduleId);
         al.setBookingId(UUID.randomUUID().toString());

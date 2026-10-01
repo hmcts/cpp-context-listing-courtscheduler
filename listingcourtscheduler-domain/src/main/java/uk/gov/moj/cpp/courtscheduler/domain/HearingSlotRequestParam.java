@@ -54,8 +54,12 @@ public record HearingSlotRequestParam(String panel,
 
     @Override
     public boolean equals(final Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
         final HearingSlotRequestParam that = (HearingSlotRequestParam) o;
         return Objects.equals(panel(), that.panel()) && Objects.equals(sessionStartDate(),
                 that.sessionStartDate()) && Objects.equals(sessionEndDate(),

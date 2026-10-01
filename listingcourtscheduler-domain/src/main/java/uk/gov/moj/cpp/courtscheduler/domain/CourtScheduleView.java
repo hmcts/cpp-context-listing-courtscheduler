@@ -6,7 +6,7 @@ import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-@SuppressWarnings({"PMD.BeanMembersShouldSerialize", "squid:S2384"})
+@SuppressWarnings("squid:S2384")
 public class CourtScheduleView {
 
     private String courtScheduleId;
@@ -45,7 +45,7 @@ public class CourtScheduleView {
     private String sessionEndTime;
     @JsonProperty("isOverbookingAllowed")
     private boolean overbookingAllowed;
-    private Boolean isDraft;
+    private Boolean draft;
     private String jurisdiction;
 
     protected CourtScheduleView(final CourtScheduleViewBuilder builder) {
@@ -84,7 +84,7 @@ public class CourtScheduleView {
         this.sessionStartTime = builder.sessionStartTime;
         this.sessionEndTime = builder.sessionEndTime;
         this.overbookingAllowed = builder.isOverbookingAllowed;
-        this.isDraft = builder.isDraft;
+        this.draft = builder.isDraft;
         this.jurisdiction = builder.jurisdictionType;
     }
 
@@ -243,7 +243,7 @@ public class CourtScheduleView {
         return businessDescription;
     }
 
-    public void setBusinessDescription(String businessDescription) {
+    public void setBusinessDescription(final String businessDescription) {
         this.businessDescription = businessDescription;
     }
 
@@ -251,7 +251,7 @@ public class CourtScheduleView {
         return courtRoomId;
     }
 
-    public void setCourtRoomId(String courtRoomId) {
+    public void setCourtRoomId(final String courtRoomId) {
         this.courtRoomId = courtRoomId;
     }
 
@@ -259,11 +259,11 @@ public class CourtScheduleView {
         return courtRoomName;
     }
 
-    public void setCourtRoomName(String courtRoomName) {
+    public void setCourtRoomName(final String courtRoomName) {
         this.courtRoomName = courtRoomName;
     }
 
-    public void setActive(boolean active) {
+    public void setActive(final boolean active) {
         this.active = active;
     }
 
@@ -343,12 +343,13 @@ public class CourtScheduleView {
         this.overbookingAllowed = isOverbookingAllowed;
     }
 
-    public Boolean getIsDraft() {
-        return isDraft;
+    @JsonProperty("isDraft")
+    public Boolean isDraft() {
+        return draft;
     }
 
     public void setIsDraft(final Boolean isDraft) {
-        this.isDraft = isDraft;
+        this.draft = isDraft;
     }
 
     public String getJurisdiction() {

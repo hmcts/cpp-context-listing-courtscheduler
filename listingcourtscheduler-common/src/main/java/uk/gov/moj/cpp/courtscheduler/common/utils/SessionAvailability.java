@@ -14,7 +14,7 @@ public final class SessionAvailability {
 
     public static int getEffectiveAvailableDuration(final CourtSchedule cs) {
         if (cs.isAllDaySplit()) {
-            return (cs.getMaxDurationForMorning() + cs.getMaxDurationForAfternoon())
+            return cs.getMaxDurationForMorning() + cs.getMaxDurationForAfternoon()
                     - (cs.getTotalBookedForMorning() + cs.getTotalBookedForAfternoon());
         }
         return cs.getMaxDuration() - cs.getTotalBooked();

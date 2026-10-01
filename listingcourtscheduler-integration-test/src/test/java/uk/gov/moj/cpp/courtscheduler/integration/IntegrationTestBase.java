@@ -20,7 +20,7 @@ import org.springframework.web.client.RestTemplate;
  *   <li>{@code wiremock.baseUrl} – {@code http://localhost:8189}</li>
  * </ul>
  */
-public abstract class AbstractIntegrationTest {
+public class IntegrationTestBase {
 
     public static final String BASE_URL = System.getProperty(
             "app.baseUrl",
@@ -39,6 +39,11 @@ public abstract class AbstractIntegrationTest {
     public static final UUID DENIED_USER_ID         = UUID.fromString("33333333-3333-3333-3333-333333333333");
 
     protected final RestTemplate rest = newRestTemplate();
+
+    /** Base class only: not meant to be instantiated directly. */
+    protected IntegrationTestBase() {
+        super();
+    }
 
     private static RestTemplate newRestTemplate() {
         final RestTemplate template = new RestTemplate();
