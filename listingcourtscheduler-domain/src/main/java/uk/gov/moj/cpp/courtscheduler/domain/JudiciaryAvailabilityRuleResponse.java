@@ -15,14 +15,11 @@ public class JudiciaryAvailabilityRuleResponse {
     private SessionType sessionType;
     private List<JudiciaryUnavailabilityResponse> unavailabilities;
 
-    public JudiciaryAvailabilityRuleResponse() {
-    }
-
     public String getId() {
         return this.id;
     }
 
-    public void setId(String id) {
+    public void setId(final String id) {
         this.id = id;
     }
 
@@ -30,7 +27,7 @@ public class JudiciaryAvailabilityRuleResponse {
         return this.judiciaryId;
     }
 
-    public void setJudiciaryId(String judiciaryId) {
+    public void setJudiciaryId(final String judiciaryId) {
         this.judiciaryId = judiciaryId;
     }
 
@@ -38,7 +35,7 @@ public class JudiciaryAvailabilityRuleResponse {
         return this.courtHouseId;
     }
 
-    public void setCourtHouseId(String courtHouseId) {
+    public void setCourtHouseId(final String courtHouseId) {
         this.courtHouseId = courtHouseId;
     }
 
@@ -46,7 +43,7 @@ public class JudiciaryAvailabilityRuleResponse {
         return this.startDate;
     }
 
-    public void setStartDate(LocalDate startDate) {
+    public void setStartDate(final LocalDate startDate) {
         this.startDate = startDate;
     }
 
@@ -54,7 +51,7 @@ public class JudiciaryAvailabilityRuleResponse {
         return this.endDate;
     }
 
-    public void setEndDate(LocalDate endDate) {
+    public void setEndDate(final LocalDate endDate) {
         this.endDate = endDate;
     }
 
@@ -62,7 +59,7 @@ public class JudiciaryAvailabilityRuleResponse {
         return this.repeatDays;
     }
 
-    public void setRepeatDays(List<AvailabilityDayOfWeek> repeatDays) {
+    public void setRepeatDays(final List<AvailabilityDayOfWeek> repeatDays) {
         this.repeatDays = repeatDays;
     }
 
@@ -70,7 +67,7 @@ public class JudiciaryAvailabilityRuleResponse {
         return this.sessionType;
     }
 
-    public void setSessionType(SessionType sessionType) {
+    public void setSessionType(final SessionType sessionType) {
         this.sessionType = sessionType;
     }
 
@@ -78,12 +75,12 @@ public class JudiciaryAvailabilityRuleResponse {
         return unavailabilities;
     }
 
-    public void setUnavailabilities(List<JudiciaryUnavailabilityResponse> unavailabilities) {
+    public void setUnavailabilities(final List<JudiciaryUnavailabilityResponse> unavailabilities) {
         this.unavailabilities = unavailabilities;
     }
 
     @Override
-    public boolean equals(Object o) {
+    public boolean equals(final Object o) {
         if (this == o) {
             return true;
         }

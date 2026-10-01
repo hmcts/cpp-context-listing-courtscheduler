@@ -90,12 +90,13 @@ public class ExtendMultidayHearingService {
 
         final List<CourtSchedule> currentSchedules = hydrateSchedules(existing);
         final LocalDate minDate = currentSchedules.get(0).getSessionDate();
-        final LocalDate maxDate = currentSchedules.get(currentSchedules.size() - 1).getSessionDate();
 
         if (!newStart.equals(minDate)) {
             throw new ExtendMultidayHearingException(START_DATE_CHANGE_NOT_ALLOWED,
                     "newStart " + newStart + " does not match current MIN(date) " + minDate);
         }
+
+        final LocalDate maxDate = currentSchedules.get(currentSchedules.size() - 1).getSessionDate();
 
         if (newEnd.equals(maxDate)) {
             LOGGER.info("[EXTEND-MULTIDAY] hearingId: {}, NO_CHANGE (newEnd == MAX)", hearingId);
@@ -220,12 +221,12 @@ public class ExtendMultidayHearingService {
         row.setRotaBusinessType(session.getBusinessType());
         row.setDuration(perDayMinutes);
         if (userStartTime != null) {
-            row.setHearingStartTime(java.util.Date.from(
-                    session.getSessionDate().atTime(userStartTime).atZone(java.time.ZoneOffset.UTC).toInstant()));
+            row.setHearingStartTime(
+                    session.getSessionDate().atTime(userStartTime).atZone(java.time.ZoneOffset.UTC).toInstant());
         } else {
             row.setHearingStartTime(session.getSessionStartTime() != null
                     ? session.getSessionStartTime()
-                    : java.util.Date.from(session.getSessionDate().atStartOfDay(ZoneId.systemDefault()).toInstant()));
+                    : session.getSessionDate().atStartOfDay(ZoneId.systemDefault()).toInstant());
         }
         row.setSource(EXTEND_SOURCE);
         allocatedListingRepository.save(row);

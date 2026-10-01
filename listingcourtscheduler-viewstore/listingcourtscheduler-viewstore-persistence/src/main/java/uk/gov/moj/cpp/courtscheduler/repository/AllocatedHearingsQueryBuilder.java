@@ -8,7 +8,6 @@ import static uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant.COUR
 import static uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant.EXACT_HEARING_START_DATETIME;
 import static uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant.OU_CODE;
 import static uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant.OU_LEVEL2;
-import static uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant.PAGE_NUMBER;
 import static uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant.PAGE_SIZE;
 import static uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant.PANEL;
 import static uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant.SESSION_END_DATE;
@@ -24,11 +23,15 @@ import org.apache.commons.lang3.StringUtils;
 
 public class AllocatedHearingsQueryBuilder {
 
+    private static final String STATUS_DRAFT = "DRAFT";
+    private static final String STATUS_FINAL = "FINAL";
+    private static final int QUERY_INITIAL_CAPACITY = 900;
+
     private Map<String, Object> pagedQueryParamMap;
     private String allocatedHearingsQuery;
     private HearingSlotRequestParam hearingIdsReq;
 
-    public AllocatedHearingsQueryBuilder(HearingSlotRequestParam hearingIdsReq) {
+    public AllocatedHearingsQueryBuilder(final HearingSlotRequestParam hearingIdsReq) {
         this.hearingIdsReq = hearingIdsReq;
         bindQueryParamsFromHearingReq(hearingIdsReq);
         generateAllocatedHearingsQuery();
@@ -43,14 +46,15 @@ public class AllocatedHearingsQueryBuilder {
     }
 
     private void generateAllocatedHearingsQuery() {
-        final StringBuilder queryStrBuilder = new StringBuilder("select al.hearing_id, al.court_schedule_id, cast(al.hearing_start_time as date), ");
-        queryStrBuilder.append("(select count(1) from allocated_listings al2 where al2.hearing_id =al.hearing_id) as hearing_day_count, ");
-        queryStrBuilder.append("DENSE_RANK() OVER (  PARTITION BY al.hearing_id ORDER BY cast(al.hearing_start_time as date)) AS hearing_day_position, ");
-        queryStrBuilder.append(" count(*) over() as totalCount from allocated_listings al, court_schedule cs ");
-        queryStrBuilder.append("where al.court_schedule_id = cs.id and cs.active = true ");
-        queryStrBuilder.append("and cs.panel in (:panel) ");
-        queryStrBuilder.append("and cs.session_start >= :sessionStartDate ");
-        queryStrBuilder.append("and cs.session_start <= :sessionEndDate ");
+        final StringBuilder queryStrBuilder = new StringBuilder(QUERY_INITIAL_CAPACITY)
+                .append("select al.hearing_id, al.court_schedule_id, cast(al.hearing_start_time as date), "
+                        + "(select count(1) from allocated_listings al2 where al2.hearing_id =al.hearing_id) as hearing_day_count, "
+                        + "DENSE_RANK() OVER (  PARTITION BY al.hearing_id ORDER BY cast(al.hearing_start_time as date)) AS hearing_day_position, "
+                        + " count(*) over() as totalCount from allocated_listings al, court_schedule cs "
+                        + "where al.court_schedule_id = cs.id and cs.active = true "
+                        + "and cs.panel in (:panel) "
+                        + "and cs.session_start >= :sessionStartDate "
+                        + "and cs.session_start <= :sessionEndDate ");
         addCondition(OU_LEVEL2.getLabel(), "and cs.operational_unit = :oucodeL2Code ", queryStrBuilder);
         addCondition(OU_CODE.getLabel(), "and cs.oucode = :ouCode ", queryStrBuilder);
         addCondition(COURT_ROOM.getLabel(), "and cs.court_room_id = :courtRoomId ", queryStrBuilder);
@@ -60,27 +64,26 @@ public class AllocatedHearingsQueryBuilder {
         addCondition(EXACT_HEARING_START_DATETIME.getLabel(), "and DATE_TRUNC('minute', al.hearing_start_time) = DATE_TRUNC('minute', CAST(:exactHearingStartDateTime as timestamptz)) ", queryStrBuilder);
 
         if (StringUtils.isNotBlank(hearingIdsReq.status())) {
-            if ("DRAFT".equalsIgnoreCase(hearingIdsReq.status())) {
+            if (STATUS_DRAFT.equalsIgnoreCase(hearingIdsReq.status())) {
                 queryStrBuilder.append("and cs.is_draft = true ");
-            } else if ("FINAL".equalsIgnoreCase(hearingIdsReq.status())) {
+            } else if (STATUS_FINAL.equalsIgnoreCase(hearingIdsReq.status())) {
                 queryStrBuilder.append("and cs.is_draft = false ");
             }
             // ALL / anything else -> no filter
         }
 
-        queryStrBuilder.append("order by cs.session_start, " +
-                "cs.court_house_name, " +
-                "cs.court_room_name, " +
-                "cs.court_session, " +
-                "al.hearing_start_time ");
-
-        queryStrBuilder.append("LIMIT :pageSize ");
-        queryStrBuilder.append("OFFSET :offset ");
+        queryStrBuilder.append("order by cs.session_start, "
+                + "cs.court_house_name, "
+                + "cs.court_room_name, "
+                + "cs.court_session, "
+                + "al.hearing_start_time "
+                + "LIMIT :pageSize "
+                + "OFFSET :offset ");
 
         allocatedHearingsQuery = queryStrBuilder.toString();
     }
 
-    private void bindQueryParamsFromHearingReq(HearingSlotRequestParam hearingIdsReq) {
+    private void bindQueryParamsFromHearingReq(final HearingSlotRequestParam hearingIdsReq) {
         pagedQueryParamMap = new HashMap<>();
         pagedQueryParamMap.put(PANEL.getLabel(), stream(hearingIdsReq.panel().split(",")).map(String::trim).toList());
         pagedQueryParamMap.put(SESSION_START_DATE.getLabel(), LocalDate.parse(hearingIdsReq.sessionStartDate()));
@@ -98,13 +101,13 @@ public class AllocatedHearingsQueryBuilder {
         addOptionalParam(EXACT_HEARING_START_DATETIME.getLabel(), hearingIdsReq.exactHearingStartDateTime());
     }
 
-    private void addOptionalParam(String name, String val) {
+    private void addOptionalParam(final String name, final String val) {
         if (StringUtils.isNotBlank(val)) {
             pagedQueryParamMap.put(name, val);
         }
     }
 
-    private void addCondition(String name, String condition, StringBuilder queryBuilder) {
+    private void addCondition(final String name, final String condition, final StringBuilder queryBuilder) {
         if (pagedQueryParamMap.containsKey(name)) {
             queryBuilder.append(condition);
         }

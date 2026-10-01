@@ -19,9 +19,11 @@ final class CachedBodyHttpServletRequest extends HttpServletRequestWrapper {
 
     private final byte[] body;
 
-    CachedBodyHttpServletRequest(final HttpServletRequest request, final byte[] body) {
+    /* package */ CachedBodyHttpServletRequest(final HttpServletRequest request, final byte[] body) {
         super(request);
-        this.body = body;
+        // Defensive copy: don't let a caller-held reference to the array mutate this request's
+        // cached body after construction.
+        this.body = body.clone();
     }
 
     @Override

@@ -28,6 +28,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class AssignJudiciariesApiValidatorTest {
+    private static final String ERROR_MESSAGE = "errorMessage";
+    private static final String JUDICIARY_1 = "judiciary-1";
+    private static final String NOT_A_UUID = "not-a-uuid";
+
 
     @Mock
     private ReferenceDataMapperService referenceDataMapperService;
@@ -40,7 +44,7 @@ class AssignJudiciariesApiValidatorTest {
 
     @Test
     void shouldReturnEmptyWhenValid() {
-        final String judiciaryId = "judiciary-1";
+        final String judiciaryId = JUDICIARY_1;
         final String sessionId = UUID.randomUUID().toString();
         final JudiciaryAssignment assignment = JudiciaryAssignment.builder()
                 .withJudiciaryId(judiciaryId)
@@ -72,7 +76,7 @@ class AssignJudiciariesApiValidatorTest {
     void shouldReturnErrorsWhenMissingData() {
         final JudiciaryAssignment assignment = JudiciaryAssignment.builder()
                 .withJudiciaryId("")
-                .withSessionIds(List.of("not-a-uuid"))
+                .withSessionIds(List.of(NOT_A_UUID))
                 .withIsDeputy(false)
                 .withIsBenchChairman(true)
                 .build();
@@ -82,16 +86,16 @@ class AssignJudiciariesApiValidatorTest {
 
         final JsonObject result = validator.validate(request);
 
-        assertTrue(result.containsKey("errorMessage"));
-        final String message = result.getString("errorMessage");
+        assertTrue(result.containsKey(ERROR_MESSAGE));
+        final String message = result.getString(ERROR_MESSAGE);
         assertTrue(message.contains("Judiciary id is mandatory"));
-        assertTrue(message.contains("not-a-uuid"));
+        assertTrue(message.contains(NOT_A_UUID));
     }
 
     @Test
     void shouldRequireAssignments() {
         final JsonObject result = validator.validate(null);
-        assertEquals("At least one judiciary assignment must be supplied", result.getString("errorMessage"));
+        assertEquals("At least one judiciary assignment must be supplied", result.getString(ERROR_MESSAGE));
     }
 
     @Test
@@ -99,7 +103,7 @@ class AssignJudiciariesApiValidatorTest {
         // Even with invalid assignment (empty judiciaryId), validation should pass when skipValidations is true
         final JudiciaryAssignment assignment = JudiciaryAssignment.builder()
                 .withJudiciaryId("")
-                .withSessionIds(List.of("not-a-uuid"))
+                .withSessionIds(List.of(NOT_A_UUID))
                 .build();
         final AssignJudiciariesRequest request = AssignJudiciariesRequest.builder()
                 .addJudiciary(assignment)
@@ -116,7 +120,7 @@ class AssignJudiciariesApiValidatorTest {
         // With invalid assignment and skipValidations false, validation should fail
         final JudiciaryAssignment assignment = JudiciaryAssignment.builder()
                 .withJudiciaryId("")
-                .withSessionIds(List.of("not-a-uuid"))
+                .withSessionIds(List.of(NOT_A_UUID))
                 .withIsDeputy(false)
                 .withIsBenchChairman(true)
                 .build();
@@ -127,8 +131,8 @@ class AssignJudiciariesApiValidatorTest {
 
         final JsonObject result = validator.validate(request);
 
-        assertTrue(result.containsKey("errorMessage"));
-        final String message = result.getString("errorMessage");
+        assertTrue(result.containsKey(ERROR_MESSAGE));
+        final String message = result.getString(ERROR_MESSAGE);
         assertTrue(message.contains("Judiciary id is mandatory"));
     }
 
@@ -137,7 +141,7 @@ class AssignJudiciariesApiValidatorTest {
         // When skipValidations is not set, should default to false and perform validation
         final JudiciaryAssignment assignment = JudiciaryAssignment.builder()
                 .withJudiciaryId("")
-                .withSessionIds(List.of("not-a-uuid"))
+                .withSessionIds(List.of(NOT_A_UUID))
                 .withIsDeputy(false)
                 .withIsBenchChairman(true)
                 .build();
@@ -147,14 +151,14 @@ class AssignJudiciariesApiValidatorTest {
 
         final JsonObject result = validator.validate(request);
 
-        assertTrue(result.containsKey("errorMessage"));
-        final String message = result.getString("errorMessage");
+        assertTrue(result.containsKey(ERROR_MESSAGE));
+        final String message = result.getString(ERROR_MESSAGE);
         assertTrue(message.contains("Judiciary id is mandatory"));
     }
 
     @Test
     void shouldAcceptNullIsDeputy() {
-        final String judiciaryId = "judiciary-1";
+        final String judiciaryId = JUDICIARY_1;
         final String sessionId = UUID.randomUUID().toString();
         final JudiciaryAssignment assignment = JudiciaryAssignment.builder()
                 .withJudiciaryId(judiciaryId)
@@ -183,7 +187,7 @@ class AssignJudiciariesApiValidatorTest {
 
     @Test
     void shouldAcceptNullIsBenchChairman() {
-        final String judiciaryId = "judiciary-1";
+        final String judiciaryId = JUDICIARY_1;
         final String sessionId = UUID.randomUUID().toString();
         final JudiciaryAssignment assignment = JudiciaryAssignment.builder()
                 .withJudiciaryId(judiciaryId)
@@ -212,7 +216,7 @@ class AssignJudiciariesApiValidatorTest {
 
     @Test
     void shouldAcceptNullIsDeputyAndIsBenchChairman() {
-        final String judiciaryId = "judiciary-1";
+        final String judiciaryId = JUDICIARY_1;
         final String sessionId = UUID.randomUUID().toString();
         final JudiciaryAssignment assignment = JudiciaryAssignment.builder()
                 .withJudiciaryId(judiciaryId)
@@ -260,14 +264,14 @@ class AssignJudiciariesApiValidatorTest {
 
         final JsonObject result = validator.validate(request);
 
-        assertTrue(result.containsKey("errorMessage"));
-        final String message = result.getString("errorMessage");
+        assertTrue(result.containsKey(ERROR_MESSAGE));
+        final String message = result.getString(ERROR_MESSAGE);
         assertTrue(message.contains("Judiciary not found: " + judiciaryId));
     }
 
     @Test
     void shouldReturnErrorWhenSessionNotFound() {
-        final String judiciaryId = "judiciary-1";
+        final String judiciaryId = JUDICIARY_1;
         final String sessionId = UUID.randomUUID().toString();
         final JudiciaryAssignment assignment = JudiciaryAssignment.builder()
                 .withJudiciaryId(judiciaryId)
@@ -288,8 +292,8 @@ class AssignJudiciariesApiValidatorTest {
 
         final JsonObject result = validator.validate(request);
 
-        assertTrue(result.containsKey("errorMessage"));
-        final String message = result.getString("errorMessage");
+        assertTrue(result.containsKey(ERROR_MESSAGE));
+        final String message = result.getString(ERROR_MESSAGE);
         assertTrue(message.contains("Session not found: " + sessionId));
     }
 
@@ -312,8 +316,8 @@ class AssignJudiciariesApiValidatorTest {
 
         final JsonObject result = validator.validate(request);
 
-        assertTrue(result.containsKey("errorMessage"));
-        final String message = result.getString("errorMessage");
+        assertTrue(result.containsKey(ERROR_MESSAGE));
+        final String message = result.getString(ERROR_MESSAGE);
         assertTrue(message.contains("Judiciary not found: " + judiciaryId));
         assertTrue(message.contains("Session not found: " + sessionId));
     }

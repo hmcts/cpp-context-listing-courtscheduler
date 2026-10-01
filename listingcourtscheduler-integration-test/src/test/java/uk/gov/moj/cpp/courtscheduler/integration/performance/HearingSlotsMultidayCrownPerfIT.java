@@ -129,7 +129,9 @@ class HearingSlotsMultidayCrownPerfIT extends AbstractIT {
                 if (isWeekend(d)) {
                     continue;
                 }
-                if (weekdayIx++ % 3 != 0) {
+                final int currentWeekdayIx = weekdayIx;
+                weekdayIx++;
+                if (currentWeekdayIx % 3 != 0) {
                     continue;
                 }
                 schedules.add(buildSchedule(roomId, NUM_CANDIDATE_ROOMS + roomIx + 1, "ADULT", d));
@@ -213,9 +215,9 @@ class HearingSlotsMultidayCrownPerfIT extends AbstractIT {
         cs.setIsOverbookingAllowed(false);
         cs.setIsDraft(false);
         cs.setJurisdiction("CROWN");
-        cs.setSessionStartTime(combineDateAndTime(sessionDate, "09:00"));
-        cs.setSessionEndTime(combineDateAndTime(sessionDate, "17:00"));
-        cs.setNationalBreakTime(TimezoneUtils.calculateNationalBreakTime(sessionDate));
+        cs.setSessionStartTime(combineDateAndTime(sessionDate, "09:00").toInstant());
+        cs.setSessionEndTime(combineDateAndTime(sessionDate, "17:00").toInstant());
+        cs.setNationalBreakTime(TimezoneUtils.calculateNationalBreakTime(sessionDate).toInstant());
         return cs;
     }
 
@@ -227,7 +229,7 @@ class HearingSlotsMultidayCrownPerfIT extends AbstractIT {
         al.setCourtRoomId(cs.getCourtRoomNumber());
         al.setRotaBusinessType(cs.getBusinessType());
         al.setDuration(durationMins);
-        al.setHearingStartTime(combineDateAndTime(cs.getSessionDate(), "10:00"));
+        al.setHearingStartTime(combineDateAndTime(cs.getSessionDate(), "10:00").toInstant());
         al.setBookingId(randomUUID().toString());
         al.setHearingId(randomUUID().toString());
         return al;

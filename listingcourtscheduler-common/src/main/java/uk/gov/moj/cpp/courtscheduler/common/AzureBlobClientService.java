@@ -58,14 +58,14 @@ public class AzureBlobClientService {
     @Inject
     private StorageApplicationParameters storageApplicationParameters;
 
-    private BlobContainerClient blobContainerClient = null;
+    private BlobContainerClient blobContainerClient;
 
     public static final String AZURE_CLIENT_ID = "AZURE_CLIENT_ID";
     public static final String AZURE_TENANT_ID = "AZURE_TENANT_ID";
     public static final Duration TIMEOUT_DURATION_FOR_BLOB_STORAGE = Duration.ofMinutes(10);
 
     @PostConstruct
-    void init() {
+    /* package */ void init() {
         checkNotNull(rotaslInputContainerName,
                 format(ERROR_MSG, "input container name", "courtscheduler.rotaslInputContainerName"));
         checkNotNull(rotaslArchiveContainerName,
@@ -85,7 +85,7 @@ public class AzureBlobClientService {
             LOGGER.info("Connecting to azure blob storage to download files from : {} on {}", rotaslInputContainerName, now());
             connect(rotaslInputContainerName);
             final String blobName = blobItem.getName();
-            byte[] blobByteArray = blobContainerClient.getBlobClient(blobName).downloadContent().toBytes();
+            final byte[] blobByteArray = blobContainerClient.getBlobClient(blobName).downloadContent().toBytes();
 
             LOGGER.info("Total time taken for all the blobs to be downloaded from {} is : {} : seconds", rotaslInputContainerName, stopwatch.elapsed(SECONDS));
 
@@ -99,7 +99,7 @@ public class AzureBlobClientService {
         connect(containerName);
 
         final ListBlobsOptions listBlobsOptions = new ListBlobsOptions().setPrefix(blobNameOfFileToBeDeleted);
-        for(BlobItem blobItem : blobContainerClient.listBlobs(listBlobsOptions, TIMEOUT_DURATION_FOR_BLOB_STORAGE)) {
+        for(final BlobItem blobItem : blobContainerClient.listBlobs(listBlobsOptions, TIMEOUT_DURATION_FOR_BLOB_STORAGE)) {
             final String blobName = blobItem.getName();
             if (blobNameOfFileToBeDeleted.contains(blobName)) {
                 blobContainerClient.getBlobClient(blobName).delete();
@@ -133,43 +133,53 @@ public class AzureBlobClientService {
         connect(rotaslInputContainerName);
 
         final ListBlobsOptions listBlobsOptions = new ListBlobsOptions().setPrefix(blobFilePrefix);
-        for(BlobItem blobItem : blobContainerClient.listBlobs(listBlobsOptions, TIMEOUT_DURATION_FOR_BLOB_STORAGE)) {
+        for(final BlobItem blobItem : blobContainerClient.listBlobs(listBlobsOptions, TIMEOUT_DURATION_FOR_BLOB_STORAGE)) {
             final String blobName = blobItem.getName();
             if(!blobName.contains("failed")) {
                 final BlobClient blob = blobContainerClient.getBlobClient(blobName);
                 // Try to acquire a lease. If successful, it means the file is available.
-                BlobLeaseClient leaseClient = new BlobLeaseClientBuilder()
+                // Suppressed: the lease client is bound to this iteration's specific blob,
+                // so it must be created fresh per blob and cannot be hoisted out of the loop.
+                @SuppressWarnings("PMD.AvoidInstantiatingObjectsInLoops")
+                final BlobLeaseClient leaseClient = new BlobLeaseClientBuilder()
                         .blobClient(blob)
                         .buildClient();
                 try {
                     LOGGER.info(blobName + " Acquiring lease");
-                    String leaseId = leaseClient.acquireLease(-1);
-                    return Optional.of(new AbstractMap.SimpleEntry<>(leaseId, blobItem));
+                    final String leaseId = leaseClient.acquireLease(-1);
+                    // Suppressed: the entry captures loop-scoped values (leaseId, blobItem)
+                    // that differ per iteration, so it cannot be hoisted out of the loop.
+                    @SuppressWarnings("PMD.AvoidInstantiatingObjectsInLoops")
+                    final Map.Entry<String, BlobItem> availableEntry = new AbstractMap.SimpleEntry<>(leaseId, blobItem);
+                    return Optional.of(availableEntry);
                 } catch (BlobStorageException storageException) {
                     LOGGER.info(blobName + " blob is already acquired lease");
                 }
             }
         }
 
-        return Optional.empty();
+        return empty();
     }
 
-    public void releaseLease(String releaseBlobName, final String leaseId, boolean failed) {
+    public void releaseLease(final String releaseBlobName, final String leaseId, final boolean failed) {
         connect(rotaslInputContainerName);
         final ListBlobsOptions listBlobsOptions = new ListBlobsOptions().setPrefix(releaseBlobName);
-        for(BlobItem blobItem : blobContainerClient.listBlobs(listBlobsOptions, TIMEOUT_DURATION_FOR_BLOB_STORAGE)) {
+        for(final BlobItem blobItem : blobContainerClient.listBlobs(listBlobsOptions, TIMEOUT_DURATION_FOR_BLOB_STORAGE)) {
             final String blobName = blobItem.getName();
             if (releaseBlobName.contains(blobName)) {
                 LOGGER.info(blobName + " Releasing lease");
                 final BlobClient blobClient = blobContainerClient.getBlobClient(blobName);
                 // Try to acquire a lease. If successful, it means the file is available.
-                BlobLeaseClient leaseClient = new BlobLeaseClientBuilder()
+                // Suppressed: the lease client is bound to this iteration's specific blob,
+                // so it must be created fresh per blob and cannot be hoisted out of the loop.
+                @SuppressWarnings("PMD.AvoidInstantiatingObjectsInLoops")
+                final BlobLeaseClient leaseClient = new BlobLeaseClientBuilder()
                         .blobClient(blobClient)
                         .leaseId(leaseId)
                         .buildClient();
                 leaseClient.releaseLease();
                 if(failed) {
-                    String newBlobName = blobName+"_failed";
+                    final String newBlobName = blobName+"_failed";
                     final BlobClient newBlobclient = blobContainerClient.getBlobClient(newBlobName);
                     newBlobclient.copyFromUrl(blobClient.getBlobUrl());
                     deleteFile(blobName, empty());

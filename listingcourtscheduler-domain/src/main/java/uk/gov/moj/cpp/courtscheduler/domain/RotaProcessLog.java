@@ -1,6 +1,6 @@
 package uk.gov.moj.cpp.courtscheduler.domain;
 
-import java.util.Date;
+import java.time.Instant;
 import java.util.Objects;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -11,7 +11,7 @@ public class RotaProcessLog {
 
     private String executionId;
 
-    private Date timestamp;
+    private Instant timestamp;
 
     private String errorCode;
 
@@ -37,11 +37,11 @@ public class RotaProcessLog {
         this.executionId = executionId;
     }
 
-    public Date getTimestamp() {
+    public Instant getTimestamp() {
         return timestamp;
     }
 
-    public void setTimestamp(final Date timestamp) {
+    public void setTimestamp(final Instant timestamp) {
         this.timestamp = timestamp;
     }
 
@@ -67,8 +67,12 @@ public class RotaProcessLog {
 
     @Override
     public boolean equals(final Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
         final RotaProcessLog that = (RotaProcessLog) o;
         return Objects.equals(executionId, that.executionId) && Objects.equals(timestamp, that.timestamp) && Objects.equals(errorCode, that.errorCode) && Objects.equals(errorText, that.errorText);
     }
@@ -92,7 +96,7 @@ public class RotaProcessLog {
 
         private String executionId;
 
-        private Date timestamp;
+        private Instant timestamp;
 
         private String errorCode;
 
@@ -103,7 +107,7 @@ public class RotaProcessLog {
             return this;
         }
 
-        public Builder withTimestamp(final Date timestamp) {
+        public Builder withTimestamp(final Instant timestamp) {
             this.timestamp = timestamp;
             return this;
         }

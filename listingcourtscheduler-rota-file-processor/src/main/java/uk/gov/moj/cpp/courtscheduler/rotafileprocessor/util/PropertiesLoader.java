@@ -18,7 +18,7 @@ public class PropertiesLoader {
     private final Properties properties = new Properties();
 
     public Map<String, String> getXmlProperties(final String propertiesFile) {
-        try (final InputStream inputStream = PropertiesLoader.class.getClassLoader().getResourceAsStream(propertiesFile)) {
+        try (InputStream inputStream = Thread.currentThread().getContextClassLoader().getResourceAsStream(propertiesFile)) {
             if (nonNull(inputStream)) {
                 properties.load(inputStream);
             }

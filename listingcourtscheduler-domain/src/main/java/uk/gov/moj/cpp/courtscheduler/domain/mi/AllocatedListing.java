@@ -2,7 +2,7 @@ package uk.gov.moj.cpp.courtscheduler.domain.mi;
 
 import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
 
-import java.util.Date;
+import java.time.Instant;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -28,67 +28,63 @@ public class AllocatedListing {
 
     private String id;
 
-    private String court_schedule_id;
+    private String courtScheduleId;
 
-    private String booking_id;
+    private String bookingId;
 
 
-    private String hearing_id;
+    private String hearingId;
 
     private String oucode;
 
-    private Integer court_room_id;
+    private Integer courtRoomId;
 
-    private String rota_business_type;
+    private String rotaBusinessType;
 
     private Integer duration;
 
-    private Date hearing_start_time;
+    private Instant hearingStartTime;
 
-    private Date updated_on;
+    private Instant updatedOn;
 
-    private Date created_on;
+    private Instant createdOn;
 
-    private Boolean is_overbooking_exempt;
-
-    public AllocatedListing() {
-        //For JPA
-    }
+    private Boolean overbookingExempt;
 
     @JsonProperty("id")
     public String getId() {
         return id;
     }
 
-    public void setId(String id) {
+    public void setId(final String id) {
         this.id = id;
     }
 
     @JsonProperty("court_schedule_id")
     public String getCourtScheduleId() {
-        return court_schedule_id;
+        return courtScheduleId;
     }
 
-    public void setCourtScheduleId(String courtScheduleId) {
-        this.court_schedule_id = courtScheduleId;
+    public void setCourtScheduleId(final String courtScheduleId) {
+        this.courtScheduleId = courtScheduleId;
     }
 
     @JsonProperty("booking_id")
     public String getBookingId() {
-        return booking_id;
+        return bookingId;
     }
 
-    public void setBookingId(String bookingId) {
-        this.booking_id = bookingId;
+    public void setBookingId(final String bookingId) {
+        this.bookingId = bookingId;
     }
 
     @JsonProperty("hearing_id")
     public String getHearingId() {
-        return hearing_id;
+        return hearingId;
     }
 
-    public void setHearingId(String hearingId) {
-        this.hearing_id = hearingId;
+    public void setHearingId(final String hearingId) {
+        this.hearingId = hearingId;
     }
 
     @JsonProperty("oucode")
@@ -96,26 +92,26 @@ public class AllocatedListing {
         return oucode;
     }
 
-    public void setOucode(String oucode) {
+    public void setOucode(final String oucode) {
         this.oucode = oucode;
     }
 
     @JsonProperty("court_room_id")
     public Integer getCourtRoomId() {
-        return court_room_id;
+        return courtRoomId;
     }
 
-    public void setCourtRoomId(Integer courtRoomId) {
-        this.court_room_id = courtRoomId;
+    public void setCourtRoomId(final Integer courtRoomId) {
+        this.courtRoomId = courtRoomId;
     }
 
     @JsonProperty("rota_business_type")
     public String getRotaBusinessType() {
-        return rota_business_type;
+        return rotaBusinessType;
     }
 
-    public void setRotaBusinessType(String rotaBusinessType) {
-        this.rota_business_type = rotaBusinessType;
+    public void setRotaBusinessType(final String rotaBusinessType) {
+        this.rotaBusinessType = rotaBusinessType;
     }
 
     @JsonProperty("duration")
@@ -123,43 +119,43 @@ public class AllocatedListing {
         return duration;
     }
 
-    public void setDuration(Integer duration) {
+    public void setDuration(final Integer duration) {
         this.duration = duration;
     }
 
     @JsonProperty("created_on")
     public String getCreatedOn() {
-        return created_on == null ? null : DateUtils.toIsoString(created_on);
+        return createdOn == null ? null : DateUtils.toIsoString(createdOn);
     }
 
-    public void setCreatedOn(Date createdOn) {
-        this.created_on = createdOn;
+    public void setCreatedOn(final Instant createdOn) {
+        this.createdOn = createdOn;
     }
 
     @JsonProperty("updated_on")
     public String getUpdatedOn() {
-        return updated_on == null ? null : DateUtils.toIsoString(updated_on);
+        return updatedOn == null ? null : DateUtils.toIsoString(updatedOn);
     }
 
-    public void setUpdatedOn(Date updatedOn) {
-        this.updated_on = updatedOn;
+    public void setUpdatedOn(final Instant updatedOn) {
+        this.updatedOn = updatedOn;
     }
 
     @JsonProperty("hearing_start_time")
     public String getHearingStartTime() {
-        return hearing_start_time == null ? null : DateUtils.toIsoString(hearing_start_time);
+        return hearingStartTime == null ? null : DateUtils.toIsoString(hearingStartTime);
     }
 
-    public void setHearingStartTime(Date hearingStartTime) {
-        this.hearing_start_time = hearingStartTime;
+    public void setHearingStartTime(final Instant hearingStartTime) {
+        this.hearingStartTime = hearingStartTime;
     }
 
     @JsonProperty("is_overbooking_exempt")
-    public Boolean getIs_overbooking_exempt() {
-        return is_overbooking_exempt;
+    public Boolean isOverbookingExempt() {
+        return overbookingExempt;
     }
 
-    public void setIs_overbooking_exempt(Boolean is_overbooking_exempt) {
-        this.is_overbooking_exempt = is_overbooking_exempt;
+    public void setOverbookingExempt(final Boolean overbookingExempt) {
+        this.overbookingExempt = overbookingExempt;
     }
 }

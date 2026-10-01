@@ -1,7 +1,6 @@
 package uk.gov.moj.cpp.courtscheduler.api;
 
 public class ApiConstants {
-    private ApiConstants() {}
     public static final String START_DATE_IS_IN_BAD_FORMAT = "Start Date: %s is in bad format";
     public static final String START_DATE_IS_INVALID = "Start Date: %s is invalid";
     public static final String END_DATE_IS_IN_BAD_FORMAT = "End Date: %s is in bad format";
@@ -15,4 +14,6 @@ public class ApiConstants {
     public static final String PAYLOAD_CANNOT_EMPTY = "Request body cannot be empty";
     public static final String BOOKING_IDS = "bookingIds";
     public static final String ERROR = "error";
+
+    private ApiConstants() {}
 }

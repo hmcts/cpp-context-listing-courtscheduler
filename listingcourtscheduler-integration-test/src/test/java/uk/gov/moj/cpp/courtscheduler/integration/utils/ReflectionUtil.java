@@ -12,6 +12,8 @@ public final class ReflectionUtil {
     private ReflectionUtil() {
     }
 
+    // Deliberate: this helper exists to inject values into private fields of test beans
+    @SuppressWarnings("PMD.AvoidAccessibilityAlteration")
     public static void setField(final Object target, final String fieldName, final Object value) {
         Class<?> type = target.getClass();
         while (type != null) {

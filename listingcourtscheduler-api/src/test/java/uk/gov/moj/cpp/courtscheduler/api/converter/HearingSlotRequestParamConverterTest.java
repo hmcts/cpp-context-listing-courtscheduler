@@ -23,14 +23,19 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class HearingSlotRequestParamConverterTest {
+    private static final String DATE_2025_07_28 = "2025-07-28";
+    private static final String DATE_2025_07_30 = "2025-07-30";
+    private static final String ADULT_2 = "ADULT";
+    private static final String OU1_2 = "OU1";
+
 
     @InjectMocks
-    HearingSlotRequestParamConverter hearingSlotRequestParamConverter;
+    private HearingSlotRequestParamConverter hearingSlotRequestParamConverter;
 
     @Test
-    public void shouldConvertJsonObjectToRequestParam() {
-        JsonObject jsonObject = toJsonObject();
-        HearingSlotRequestParam hearingSlotRequestParam = hearingSlotRequestParamConverter.convert(jsonObject);
+    void shouldConvertJsonObjectToRequestParam() {
+        final JsonObject jsonObject = toJsonObject();
+        final HearingSlotRequestParam hearingSlotRequestParam = hearingSlotRequestParamConverter.convert(jsonObject);
 
         assertNotNull(hearingSlotRequestParam);
         assertEquals("BA124", hearingSlotRequestParam.ouCode());
@@ -38,18 +43,18 @@ class HearingSlotRequestParamConverterTest {
     }
 
     @Test
-    public void shouldConvertJsonObjectToRequestParam_withEmptyValues() {
-        JsonObject jsonObject = toJsonObject_WithSomeEmptyValues();
-        HearingSlotRequestParam hearingSlotRequestParam = hearingSlotRequestParamConverter.convert(jsonObject);
+    void shouldConvertJsonObjectToRequestParam_withEmptyValues() {
+        final JsonObject jsonObject = toJsonObject_WithSomeEmptyValues();
+        final HearingSlotRequestParam hearingSlotRequestParam = hearingSlotRequestParamConverter.convert(jsonObject);
 
         assertNotNull(hearingSlotRequestParam);
         assertEquals(StringUtils.EMPTY, hearingSlotRequestParam.ouCode());
     }
 
     @Test
-    public void shouldConvertJsonObjectToRequestParam_withFieldsNotPresent() {
-        JsonObject jsonObject = toJsonObject_WithFieldsNotPresent();
-        HearingSlotRequestParam hearingSlotRequestParam = hearingSlotRequestParamConverter.convert(jsonObject);
+    void shouldConvertJsonObjectToRequestParam_withFieldsNotPresent() {
+        final JsonObject jsonObject = toJsonObject_WithFieldsNotPresent();
+        final HearingSlotRequestParam hearingSlotRequestParam = hearingSlotRequestParamConverter.convert(jsonObject);
 
         assertNotNull(hearingSlotRequestParam);
         assertNull(hearingSlotRequestParam.ouCode());
@@ -87,18 +92,18 @@ class HearingSlotRequestParamConverterTest {
 
     @Test
     void shouldMapStatusAndJurisdictionFromJson() {
-        JsonObject json = Json.createObjectBuilder()
-                .add(RequestParameterConstant.PANEL.getLabel(), "ADULT")
-                .add(RequestParameterConstant.SESSION_START_DATE.getLabel(), "2025-07-28")
-                .add(RequestParameterConstant.SESSION_END_DATE.getLabel(), "2025-07-30")
-                .add(RequestParameterConstant.OU_CODE.getLabel(), "OU1")
+        final JsonObject json = Json.createObjectBuilder()
+                .add(RequestParameterConstant.PANEL.getLabel(), ADULT_2)
+                .add(RequestParameterConstant.SESSION_START_DATE.getLabel(), DATE_2025_07_28)
+                .add(RequestParameterConstant.SESSION_END_DATE.getLabel(), DATE_2025_07_30)
+                .add(RequestParameterConstant.OU_CODE.getLabel(), OU1_2)
                 .add(RequestParameterConstant.PAGE_SIZE.getLabel(), "10")
                 .add(RequestParameterConstant.PAGE_NUMBER.getLabel(), "1")
                 .add(RequestParameterConstant.STATUS.getLabel(), "DRAFT")
                 .add(RequestParameterConstant.JURISDICTION.getLabel(), "CROWN")
                 .build();
 
-        HearingSlotRequestParam param = hearingSlotRequestParamConverter.convert(json);
+        final HearingSlotRequestParam param = hearingSlotRequestParamConverter.convert(json);
 
         assertNotNull(param);
         assertEquals("DRAFT", param.status());
@@ -107,11 +112,11 @@ class HearingSlotRequestParamConverterTest {
 
     @Test
     void shouldConvertWithAllOptionalFieldsPresent() {
-        JsonObject json = Json.createObjectBuilder()
-                .add(RequestParameterConstant.PANEL.getLabel(), "ADULT")
-                .add(RequestParameterConstant.SESSION_START_DATE.getLabel(), "2025-07-28")
-                .add(RequestParameterConstant.SESSION_END_DATE.getLabel(), "2025-07-30")
-                .add(RequestParameterConstant.OU_CODE.getLabel(), "OU1")
+        final JsonObject json = Json.createObjectBuilder()
+                .add(RequestParameterConstant.PANEL.getLabel(), ADULT_2)
+                .add(RequestParameterConstant.SESSION_START_DATE.getLabel(), DATE_2025_07_28)
+                .add(RequestParameterConstant.SESSION_END_DATE.getLabel(), DATE_2025_07_30)
+                .add(RequestParameterConstant.OU_CODE.getLabel(), OU1_2)
                 .add(RequestParameterConstant.PAGE_SIZE.getLabel(), "10")
                 .add(RequestParameterConstant.PAGE_NUMBER.getLabel(), "1")
                 .add(RequestParameterConstant.EXACT_HEARING_START_DATETIME.getLabel(), "2025-07-28T10:00:00Z")
@@ -126,7 +131,7 @@ class HearingSlotRequestParamConverterTest {
                 .add(RequestParameterConstant.AVAILABLE_DURATION_MINS.getLabel(), "60")
                 .build();
 
-        HearingSlotRequestParam param = hearingSlotRequestParamConverter.convert(json);
+        final HearingSlotRequestParam param = hearingSlotRequestParamConverter.convert(json);
 
         assertNotNull(param);
         assertEquals("2025-07-28T10:00:00Z", param.exactHearingStartDateTime());
@@ -143,16 +148,16 @@ class HearingSlotRequestParamConverterTest {
 
     @Test
     void shouldConvertJurisdictionNullWhenAbsent() {
-        JsonObject json = Json.createObjectBuilder()
-                .add(RequestParameterConstant.PANEL.getLabel(), "ADULT")
-                .add(RequestParameterConstant.SESSION_START_DATE.getLabel(), "2025-07-28")
-                .add(RequestParameterConstant.SESSION_END_DATE.getLabel(), "2025-07-30")
-                .add(RequestParameterConstant.OU_CODE.getLabel(), "OU1")
+        final JsonObject json = Json.createObjectBuilder()
+                .add(RequestParameterConstant.PANEL.getLabel(), ADULT_2)
+                .add(RequestParameterConstant.SESSION_START_DATE.getLabel(), DATE_2025_07_28)
+                .add(RequestParameterConstant.SESSION_END_DATE.getLabel(), DATE_2025_07_30)
+                .add(RequestParameterConstant.OU_CODE.getLabel(), OU1_2)
                 .add(RequestParameterConstant.PAGE_SIZE.getLabel(), "10")
                 .add(RequestParameterConstant.PAGE_NUMBER.getLabel(), "1")
                 .build();
 
-        HearingSlotRequestParam param = hearingSlotRequestParamConverter.convert(json);
+        final HearingSlotRequestParam param = hearingSlotRequestParamConverter.convert(json);
 
         assertNotNull(param);
         assertNull(param.jurisdiction());
@@ -160,16 +165,16 @@ class HearingSlotRequestParamConverterTest {
 
     @Test
     void shouldConvertShowOverbookingSlotsFalseWhenAbsent() {
-        JsonObject json = Json.createObjectBuilder()
-                .add(RequestParameterConstant.PANEL.getLabel(), "ADULT")
-                .add(RequestParameterConstant.SESSION_START_DATE.getLabel(), "2025-07-28")
-                .add(RequestParameterConstant.SESSION_END_DATE.getLabel(), "2025-07-30")
-                .add(RequestParameterConstant.OU_CODE.getLabel(), "OU1")
+        final JsonObject json = Json.createObjectBuilder()
+                .add(RequestParameterConstant.PANEL.getLabel(), ADULT_2)
+                .add(RequestParameterConstant.SESSION_START_DATE.getLabel(), DATE_2025_07_28)
+                .add(RequestParameterConstant.SESSION_END_DATE.getLabel(), DATE_2025_07_30)
+                .add(RequestParameterConstant.OU_CODE.getLabel(), OU1_2)
                 .add(RequestParameterConstant.PAGE_SIZE.getLabel(), "10")
                 .add(RequestParameterConstant.PAGE_NUMBER.getLabel(), "1")
                 .build();
 
-        HearingSlotRequestParam param = hearingSlotRequestParamConverter.convert(json);
+        final HearingSlotRequestParam param = hearingSlotRequestParamConverter.convert(json);
 
         assertNotNull(param);
         assertFalse(param.showOverbookedSlots());
@@ -177,17 +182,17 @@ class HearingSlotRequestParamConverterTest {
 
     @Test
     void shouldMapAvailableDurationMinsToDuration() {
-        JsonObject json = Json.createObjectBuilder()
-                .add(RequestParameterConstant.PANEL.getLabel(), "ADULT")
-                .add(RequestParameterConstant.SESSION_START_DATE.getLabel(), "2025-07-28")
-                .add(RequestParameterConstant.SESSION_END_DATE.getLabel(), "2025-07-30")
-                .add(RequestParameterConstant.OU_CODE.getLabel(), "OU1")
+        final JsonObject json = Json.createObjectBuilder()
+                .add(RequestParameterConstant.PANEL.getLabel(), ADULT_2)
+                .add(RequestParameterConstant.SESSION_START_DATE.getLabel(), DATE_2025_07_28)
+                .add(RequestParameterConstant.SESSION_END_DATE.getLabel(), DATE_2025_07_30)
+                .add(RequestParameterConstant.OU_CODE.getLabel(), OU1_2)
                 .add(RequestParameterConstant.PAGE_SIZE.getLabel(), "10")
                 .add(RequestParameterConstant.PAGE_NUMBER.getLabel(), "1")
                 .add(RequestParameterConstant.AVAILABLE_DURATION_MINS.getLabel(), "3600")
                 .build();
 
-        HearingSlotRequestParam param = hearingSlotRequestParamConverter.convert(json);
+        final HearingSlotRequestParam param = hearingSlotRequestParamConverter.convert(json);
 
         assertNotNull(param);
         assertEquals("3600", param.duration());
@@ -195,16 +200,16 @@ class HearingSlotRequestParamConverterTest {
 
     @Test
     void shouldReturnNullDurationWhenAvailableDurationMinsAbsent() {
-        JsonObject json = Json.createObjectBuilder()
-                .add(RequestParameterConstant.PANEL.getLabel(), "ADULT")
-                .add(RequestParameterConstant.SESSION_START_DATE.getLabel(), "2025-07-28")
-                .add(RequestParameterConstant.SESSION_END_DATE.getLabel(), "2025-07-30")
-                .add(RequestParameterConstant.OU_CODE.getLabel(), "OU1")
+        final JsonObject json = Json.createObjectBuilder()
+                .add(RequestParameterConstant.PANEL.getLabel(), ADULT_2)
+                .add(RequestParameterConstant.SESSION_START_DATE.getLabel(), DATE_2025_07_28)
+                .add(RequestParameterConstant.SESSION_END_DATE.getLabel(), DATE_2025_07_30)
+                .add(RequestParameterConstant.OU_CODE.getLabel(), OU1_2)
                 .add(RequestParameterConstant.PAGE_SIZE.getLabel(), "10")
                 .add(RequestParameterConstant.PAGE_NUMBER.getLabel(), "1")
                 .build();
 
-        HearingSlotRequestParam param = hearingSlotRequestParamConverter.convert(json);
+        final HearingSlotRequestParam param = hearingSlotRequestParamConverter.convert(json);
 
         assertNotNull(param);
         assertNull(param.duration());
@@ -212,43 +217,43 @@ class HearingSlotRequestParamConverterTest {
 
     @Test
     void shouldConvertIsSlotBasedFromStringTrueOrFalse() {
-        JsonObject jsonTrue = Json.createObjectBuilder()
-                .add(RequestParameterConstant.PANEL.getLabel(), "ADULT")
-                .add(RequestParameterConstant.SESSION_START_DATE.getLabel(), "2025-07-28")
-                .add(RequestParameterConstant.SESSION_END_DATE.getLabel(), "2025-07-30")
-                .add(RequestParameterConstant.OU_CODE.getLabel(), "OU1")
+        final JsonObject jsonTrue = Json.createObjectBuilder()
+                .add(RequestParameterConstant.PANEL.getLabel(), ADULT_2)
+                .add(RequestParameterConstant.SESSION_START_DATE.getLabel(), DATE_2025_07_28)
+                .add(RequestParameterConstant.SESSION_END_DATE.getLabel(), DATE_2025_07_30)
+                .add(RequestParameterConstant.OU_CODE.getLabel(), OU1_2)
                 .add(RequestParameterConstant.PAGE_SIZE.getLabel(), "10")
                 .add(RequestParameterConstant.PAGE_NUMBER.getLabel(), "1")
                 .add(RequestParameterConstant.IS_SLOT_BASED.getLabel(), "true")
                 .build();
-        HearingSlotRequestParam paramTrue = hearingSlotRequestParamConverter.convert(jsonTrue);
+        final HearingSlotRequestParam paramTrue = hearingSlotRequestParamConverter.convert(jsonTrue);
         assertTrue(paramTrue.isSlotBased());
 
-        JsonObject jsonFalse = Json.createObjectBuilder()
-                .add(RequestParameterConstant.PANEL.getLabel(), "ADULT")
-                .add(RequestParameterConstant.SESSION_START_DATE.getLabel(), "2025-07-28")
-                .add(RequestParameterConstant.SESSION_END_DATE.getLabel(), "2025-07-30")
-                .add(RequestParameterConstant.OU_CODE.getLabel(), "OU1")
+        final JsonObject jsonFalse = Json.createObjectBuilder()
+                .add(RequestParameterConstant.PANEL.getLabel(), ADULT_2)
+                .add(RequestParameterConstant.SESSION_START_DATE.getLabel(), DATE_2025_07_28)
+                .add(RequestParameterConstant.SESSION_END_DATE.getLabel(), DATE_2025_07_30)
+                .add(RequestParameterConstant.OU_CODE.getLabel(), OU1_2)
                 .add(RequestParameterConstant.PAGE_SIZE.getLabel(), "10")
                 .add(RequestParameterConstant.PAGE_NUMBER.getLabel(), "1")
                 .add(RequestParameterConstant.IS_SLOT_BASED.getLabel(), "false")
                 .build();
-        HearingSlotRequestParam paramFalse = hearingSlotRequestParamConverter.convert(jsonFalse);
+        final HearingSlotRequestParam paramFalse = hearingSlotRequestParamConverter.convert(jsonFalse);
         assertFalse(paramFalse.isSlotBased());
     }
 
     private JsonObject toJsonObject() {
-        StringToJsonObjectConverter stringToJsonObjectConverter = new StringToJsonObjectConverter();
+        final StringToJsonObjectConverter stringToJsonObjectConverter = new StringToJsonObjectConverter();
         return stringToJsonObjectConverter.convert(fileToString("/test-data/courtscheduler.get.hearing.slots.json"));
     }
 
     private JsonObject toJsonObject_WithSomeEmptyValues() {
-        StringToJsonObjectConverter stringToJsonObjectConverter = new StringToJsonObjectConverter();
+        final StringToJsonObjectConverter stringToJsonObjectConverter = new StringToJsonObjectConverter();
         return stringToJsonObjectConverter.convert(fileToString("/test-data/courtscheduler.empty.values.get.hearing.slots.json"));
     }
 
     private JsonObject toJsonObject_WithFieldsNotPresent() {
-        StringToJsonObjectConverter stringToJsonObjectConverter = new StringToJsonObjectConverter();
+        final StringToJsonObjectConverter stringToJsonObjectConverter = new StringToJsonObjectConverter();
         return stringToJsonObjectConverter.convert(fileToString("/test-data/courtscheduler.no.fields.get.hearing.slots.json"));
     }
 }

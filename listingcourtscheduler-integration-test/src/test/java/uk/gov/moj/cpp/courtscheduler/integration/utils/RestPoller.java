@@ -8,6 +8,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.client.ClientHttpResponse;
 import org.springframework.web.client.DefaultResponseErrorHandler;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
 /**
@@ -34,7 +35,7 @@ public final class RestPoller {
         private final RequestParams params;
         private long timeoutMillis = TimeUnit.SECONDS.toMillis(30);
         private long pollIntervalMillis = 50L;
-        private long pollDelayMillis = 0L;
+        private long pollDelayMillis;
 
         private Builder(final RequestParams params) {
             this.params = params;
@@ -78,9 +79,8 @@ public final class RestPoller {
             }
 
             final long deadline = System.currentTimeMillis() + timeoutMillis;
-            ResponseData last = null;
             while (true) {
-                last = doGet();
+                final ResponseData last = doGet();
                 final int code = last.getStatus().getStatusCode();
                 if (code != 0 && code < 500) {
                     return last;
@@ -110,7 +110,7 @@ public final class RestPoller {
                 final ResponseEntity<String> response = REST.exchange(
                         URI.create(params.getUrl()), HttpMethod.GET, entity, String.class);
                 return new ResponseData(response.getStatusCode().value(), response.getBody());
-            } catch (Exception e) {
+            } catch (RestClientException e) {
                 return new ResponseData(0, e.getMessage());
             }
         }

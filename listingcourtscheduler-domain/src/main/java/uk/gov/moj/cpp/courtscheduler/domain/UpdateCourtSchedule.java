@@ -1,6 +1,6 @@
 package uk.gov.moj.cpp.courtscheduler.domain;
 
-@SuppressWarnings({"PMD.BeanMembersShouldSerialize", "squid:S2384"})
+@SuppressWarnings("squid:S2384")
 public class UpdateCourtSchedule {
 
     private String courtScheduleId;
@@ -19,9 +19,9 @@ public class UpdateCourtSchedule {
     private boolean allDaySplit;
     private String sessionStartTime;
     private String sessionEndTime;
-    private boolean isOverbookingAllowed;
+    private boolean overbookingAllowed;
     private String jurisdiction;
-    private Boolean isDraft;
+    private Boolean draft;
 
     protected UpdateCourtSchedule(final UpdateCourtScheduleBuilder builder) {
         this.courtScheduleId = builder.courtScheduleId;
@@ -38,9 +38,9 @@ public class UpdateCourtSchedule {
         this.allDaySplit = builder.allDaySplit;
         this.sessionStartTime = builder.sessionStartTime;
         this.sessionEndTime = builder.sessionEndTime;
-        this.isOverbookingAllowed = builder.isOverbookingAllowed;
+        this.overbookingAllowed = builder.isOverbookingAllowed;
         this.jurisdiction = builder.jurisdiction;
-        this.isDraft = builder.isDraft;
+        this.draft = builder.isDraft;
     }
 
     public UpdateCourtSchedule() {
@@ -168,11 +168,11 @@ public class UpdateCourtSchedule {
     }
 
     public boolean isOverbookingAllowed() {
-        return isOverbookingAllowed;
+        return overbookingAllowed;
     }
 
     public void setIsOverbookingAllowed(final boolean isOverbookingAllowed) {
-        this.isOverbookingAllowed = isOverbookingAllowed;
+        this.overbookingAllowed = isOverbookingAllowed;
     }
 
     public String getJurisdiction() {
@@ -183,12 +183,12 @@ public class UpdateCourtSchedule {
         this.jurisdiction = jurisdiction;
     }
 
-    public Boolean getIsDraft() {
-        return isDraft;
+    public Boolean isDraft() {
+        return draft;
     }
 
     public void setIsDraft(final Boolean isDraft) {
-        this.isDraft = isDraft;
+        this.draft = isDraft;
     }
 
     public static final class UpdateCourtScheduleBuilder {
@@ -204,7 +204,7 @@ public class UpdateCourtSchedule {
         private Integer maxDuration = 0;
         private Integer maxDurationForMorning = 0;
         private Integer maxDurationForAfternoon = 0;
-        private boolean allDaySplit = false;
+        private boolean allDaySplit;
         private String sessionStartTime;
         private String sessionEndTime;
         private boolean isOverbookingAllowed;

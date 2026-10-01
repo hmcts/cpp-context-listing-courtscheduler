@@ -20,21 +20,21 @@ public abstract class BaseJudiciaryAvailabilityRuleWithDetailsRequest extends Ba
      * Use setRepeatDays to modify the list.
      */
     public List<AvailabilityDayOfWeek> getRepeatDays() {
-        return repeatDays == null ? null : Collections.unmodifiableList(repeatDays);
+        return repeatDays == null ? Collections.emptyList() : Collections.unmodifiableList(repeatDays);
     }
 
     /**
      * Sets the repeat days list. Creates a defensive copy to prevent external modification.
      */
-    public void setRepeatDays(List<AvailabilityDayOfWeek> repeatDays) {
-        this.repeatDays = repeatDays == null ? null : new ArrayList<>(repeatDays);
+    public void setRepeatDays(final List<AvailabilityDayOfWeek> repeatDays) {
+        this.repeatDays = repeatDays == null ? Collections.emptyList() : new ArrayList<>(repeatDays);
     }
 
     public SessionType getSessionType() {
         return sessionType;
     }
 
-    public void setSessionType(SessionType sessionType) {
+    public void setSessionType(final SessionType sessionType) {
         this.sessionType = sessionType;
     }
 
@@ -43,13 +43,13 @@ public abstract class BaseJudiciaryAvailabilityRuleWithDetailsRequest extends Ba
      * Use setUnavailabilities to modify the list.
      */
     public List<JudiciaryUnavailabilityRequest> getUnavailabilities() {
-        return unavailabilities == null ? null : Collections.unmodifiableList(unavailabilities);
+        return unavailabilities == null ? Collections.emptyList() : Collections.unmodifiableList(unavailabilities);
     }
 
     /**
      * Sets the unavailabilities list. Creates a defensive copy to prevent external modification.
      */
-    public void setUnavailabilities(List<JudiciaryUnavailabilityRequest> unavailabilities) {
-        this.unavailabilities = unavailabilities == null ? null : new ArrayList<>(unavailabilities);
+    public void setUnavailabilities(final List<JudiciaryUnavailabilityRequest> unavailabilities) {
+        this.unavailabilities = unavailabilities == null ? Collections.emptyList() : new ArrayList<>(unavailabilities);
     }
 }

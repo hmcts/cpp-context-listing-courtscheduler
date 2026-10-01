@@ -16,7 +16,7 @@ import org.springframework.http.ResponseEntity;
  *       based on the user's permissions/groups.</li>
  * </ul>
  */
-class AuthorizationIntegrationTest extends AbstractIntegrationTest {
+class AuthorizationIntegrationTest extends IntegrationTestBase {
 
     private static final String GET_COURT_SCHEDULE_QUERY =
             "/courtschedule?courtCentreId=" + UUID.randomUUID()

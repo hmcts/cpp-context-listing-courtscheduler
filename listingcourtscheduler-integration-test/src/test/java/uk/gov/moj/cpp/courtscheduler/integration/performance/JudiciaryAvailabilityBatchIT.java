@@ -28,11 +28,17 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.RestPoller.poll;
 
 class JudiciaryAvailabilityBatchIT extends AbstractIT {
+    private static final String FRIDAY = "Friday";
+    private static final String MONDAY = "Monday";
+    private static final String THURSDAY = "Thursday";
+    private static final String TUESDAY = "Tuesday";
+    private static final String WEDNESDAY = "Wednesday";
+
 
     private static final String JUDICIARIES_AVAILABILITY = "/judiciaries";
     private static final String RESPONSE_TYPE = "application/json";
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ISO_DATE;
-    private static final int TOTAL_JUDICIARIES = 10000;
+    private static final int TOTAL_JUDICIARIES = 10_000;
     private static final int EXPECTED_RESULTS = 20;
 
     @Test
@@ -60,7 +66,7 @@ class JudiciaryAvailabilityBatchIT extends AbstractIT {
                     Collections.emptyList(),
                     availableStart1,
                     availableEnd1,
-                    List.of("Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
+                    List.of(MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY)
             ));
 
             final LocalDate availableStart2 = LocalDate.of(2026, 2, 1);
@@ -72,7 +78,7 @@ class JudiciaryAvailabilityBatchIT extends AbstractIT {
                     Collections.emptyList(),
                     availableStart2,
                     availableEnd2,
-                    List.of("Monday", "Tuesday", "Wednesday")
+                    List.of(MONDAY, TUESDAY, WEDNESDAY)
             ));
 
             final LocalDate availableStart3 = LocalDate.of(2026, 3, 1);
@@ -84,17 +90,13 @@ class JudiciaryAvailabilityBatchIT extends AbstractIT {
                     Collections.emptyList(),
                     availableStart3,
                     availableEnd3,
-                    List.of("Thursday", "Friday")
+                    List.of(THURSDAY, FRIDAY)
             ));
 
             // Create at least 1 unavailable rule (but not affecting the query range)
             final LocalDate unavailableStart = LocalDate.of(2026, 1, 20);
             final LocalDate unavailableEnd = LocalDate.of(2026, 1, 25);
-            final JudiciaryUnavailabilityRequest unavail = new JudiciaryUnavailabilityRequest();
-            unavail.setStartDate(unavailableStart);
-            unavail.setEndDate(unavailableEnd);
-            List<JudiciaryUnavailabilityRequest> unavailabilities = new ArrayList<>();
-            unavailabilities.add(unavail);
+            final List<JudiciaryUnavailabilityRequest> unavailabilities = unavailabilityBetween(unavailableStart, unavailableEnd);
             allRules.add(new RuleData(
                     randomUUID().toString(),
                     judiciaryId,
@@ -102,7 +104,7 @@ class JudiciaryAvailabilityBatchIT extends AbstractIT {
                     unavailabilities,
                     unavailableStart,
                     unavailableEnd,
-                    List.of("Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
+                    List.of(MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY)
             ));
         }
 
@@ -121,7 +123,7 @@ class JudiciaryAvailabilityBatchIT extends AbstractIT {
                     new ArrayList<>(),
                     availableStart1,
                     availableEnd1,
-                    List.of("Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
+                    List.of(MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY)
             ));
 
             final LocalDate availableStart2 = LocalDate.of(2026, 3, 1);
@@ -133,7 +135,7 @@ class JudiciaryAvailabilityBatchIT extends AbstractIT {
                     new ArrayList<>(),
                     availableStart2,
                     availableEnd2,
-                    List.of("Monday", "Tuesday", "Wednesday")
+                    List.of(MONDAY, TUESDAY, WEDNESDAY)
             ));
 
             final LocalDate availableStart3 = LocalDate.of(2026, 4, 1);
@@ -145,13 +147,9 @@ class JudiciaryAvailabilityBatchIT extends AbstractIT {
                     new ArrayList<>(),
                     availableStart3,
                     availableEnd3,
-                    List.of("Thursday", "Friday")
+                    List.of(THURSDAY, FRIDAY)
             ));
-            final JudiciaryUnavailabilityRequest unavail = new JudiciaryUnavailabilityRequest();
-            unavail.setStartDate(queryStartDate);
-            unavail.setEndDate(queryEndDate);
-            List<JudiciaryUnavailabilityRequest> unavailabilities = new ArrayList<>();
-            unavailabilities.add(unavail);
+            final List<JudiciaryUnavailabilityRequest> unavailabilities = unavailabilityBetween(queryStartDate, queryEndDate);
             // Create 1 unavailable rule that makes them unavailable during the query range
             allRules.add(new RuleData(
                     randomUUID().toString(),
@@ -160,7 +158,7 @@ class JudiciaryAvailabilityBatchIT extends AbstractIT {
                     unavailabilities,
                     queryStartDate,
                     queryEndDate,
-                    List.of("Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
+                    List.of(MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY)
             ));
         }
 
@@ -191,7 +189,7 @@ class JudiciaryAvailabilityBatchIT extends AbstractIT {
                 "Should return exactly " + EXPECTED_RESULTS + " available judiciaries");
 
         // Verify all expected judiciaries are in the results
-        for (String expectedJudiciaryId : matchingJudiciaryIds) {
+        for (final String expectedJudiciaryId : matchingJudiciaryIds) {
             assertTrue(containsJudiciary(availableJudiciaries, expectedJudiciaryId),
                     "Should contain judiciary: " + expectedJudiciaryId);
         }
@@ -205,5 +203,13 @@ class JudiciaryAvailabilityBatchIT extends AbstractIT {
         }
         return false;
     }
-}
 
+    private static List<JudiciaryUnavailabilityRequest> unavailabilityBetween(final LocalDate startDate, final LocalDate endDate) {
+        final JudiciaryUnavailabilityRequest unavail = new JudiciaryUnavailabilityRequest();
+        unavail.setStartDate(startDate);
+        unavail.setEndDate(endDate);
+        final List<JudiciaryUnavailabilityRequest> unavailabilities = new ArrayList<>();
+        unavailabilities.add(unavail);
+        return unavailabilities;
+    }
+}

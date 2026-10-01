@@ -1,8 +1,6 @@
 package uk.gov.moj.cpp.courtscheduler.persist.entity;
 
-import static jakarta.persistence.TemporalType.TIMESTAMP;
-
-import java.util.Date;
+import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -11,28 +9,26 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import jakarta.persistence.Temporal;
 
 import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.GenericGenerator;
+import org.hibernate.annotations.UuidGenerator;
 
 @Entity
 @Table(name = "rota_process_log")
 public class RotaProcessLog {
 
     @Id
-    @GeneratedValue(generator = "uuid2")
-    @GenericGenerator(name = "uuid2", strategy = "org.hibernate.id.UUIDGenerator")
-    @Column(name = "id", columnDefinition = "uuid")
+    @GeneratedValue
+    @UuidGenerator
+    @Column(name = "id", nullable = false)
     private UUID id;
 
     @Column(name = "execution_id")
     private String executionId;
 
     @CreationTimestamp
-    @Temporal(TIMESTAMP)
     @Column(name = "timestamp", nullable = false)
-    private Date timestamp;
+    private Instant timestamp;
 
     @Column(name = "error_code", nullable = false)
     private String errorCode;
@@ -40,8 +36,11 @@ public class RotaProcessLog {
     @Column(name = "error_text", nullable = false)
     private String errorText;
 
-    public RotaProcessLog() {
-        //For JPA
+    protected RotaProcessLog() {
+    }
+
+    public UUID getId() {
+        return id;
     }
 
     public String getExecutionId() {
@@ -52,11 +51,11 @@ public class RotaProcessLog {
         this.executionId = executionId;
     }
 
-    public Date getTimestamp() {
+    public Instant getTimestamp() {
         return timestamp;
     }
 
-    public void setTimestamp(final Date timestamp) {
+    public void setTimestamp(final Instant timestamp) {
         this.timestamp = timestamp;
     }
 
@@ -76,18 +75,14 @@ public class RotaProcessLog {
         this.errorText = errorText;
     }
 
-    public UUID getId() {
-        return id;
-    }
-
-    public void setId(final UUID id) {
-        this.id = id;
-    }
-
     @Override
     public boolean equals(final Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
         final RotaProcessLog that = (RotaProcessLog) o;
         return Objects.equals(executionId, that.executionId) && Objects.equals(timestamp, that.timestamp) && Objects.equals(errorCode, that.errorCode) && Objects.equals(errorText, that.errorText);
     }
@@ -109,7 +104,7 @@ public class RotaProcessLog {
 
     public static final class RotaProcessLogBuilder {
         private String executionId;
-        private Date timestamp;
+        private Instant timestamp;
         private String errorCode;
         private String errorText;
 
@@ -120,28 +115,28 @@ public class RotaProcessLog {
             return new RotaProcessLogBuilder();
         }
 
-        public RotaProcessLogBuilder withExecutionId(String executionId) {
+        public RotaProcessLogBuilder withExecutionId(final String executionId) {
             this.executionId = executionId;
             return this;
         }
 
-        public RotaProcessLogBuilder withTimestamp(Date timestamp) {
+        public RotaProcessLogBuilder withTimestamp(final Instant timestamp) {
             this.timestamp = timestamp;
             return this;
         }
 
-        public RotaProcessLogBuilder withErrorCode(String errorCode) {
+        public RotaProcessLogBuilder withErrorCode(final String errorCode) {
             this.errorCode = errorCode;
             return this;
         }
 
-        public RotaProcessLogBuilder withErrorText(String errorText) {
+        public RotaProcessLogBuilder withErrorText(final String errorText) {
             this.errorText = errorText;
             return this;
         }
 
         public RotaProcessLog build() {
-            RotaProcessLog rotaProcessLog = new RotaProcessLog();
+            final RotaProcessLog rotaProcessLog = new RotaProcessLog();
             rotaProcessLog.setExecutionId(executionId);
             rotaProcessLog.setTimestamp(timestamp);
             rotaProcessLog.setErrorCode(errorCode);

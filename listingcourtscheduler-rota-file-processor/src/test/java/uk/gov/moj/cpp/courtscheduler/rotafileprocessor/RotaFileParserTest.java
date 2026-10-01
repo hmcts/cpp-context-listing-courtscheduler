@@ -134,7 +134,7 @@ class RotaFileParserTest {
     }
 
     private byte[] givenBlobContent(final String file) throws IOException {
-        try (final InputStream inputStream = RotaFileParserTest.class.getClassLoader().getResourceAsStream(file)) {
+        try (InputStream inputStream = RotaFileParserTest.class.getResourceAsStream("/" + file)) {
 
             return toByteArray(inputStream);
         }

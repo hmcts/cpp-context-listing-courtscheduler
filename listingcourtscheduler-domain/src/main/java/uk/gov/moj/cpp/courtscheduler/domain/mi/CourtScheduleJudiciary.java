@@ -2,7 +2,7 @@ package uk.gov.moj.cpp.courtscheduler.domain.mi;
 
 import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
 
-import java.util.Date;
+import java.time.Instant;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -28,9 +28,9 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
         "updated_on"})
 public class CourtScheduleJudiciary {
 
-    private String judiciary_id;
+    private String judiciaryId;
 
-    private String rota_judiciary_id;
+    private String rotaJudiciaryId;
 
     private String title;
 
@@ -40,21 +40,21 @@ public class CourtScheduleJudiciary {
 
     private String email;
 
-    private String court_schedule_id;
+    private String courtScheduleId;
 
-    private String court_listing_profile_id;
+    private String courtListingProfileId;
 
-    private String judiciary_type;
+    private String judiciaryType;
 
     private String position;
 
-    private Boolean is_bench_chairman;
+    private Boolean benchChairman;
 
-    private Boolean is_deputy;
+    private Boolean deputy;
 
     private Boolean active;
-    private Date created_on;
-    private Date updated_on;
+    private Instant createdOn;
+    private Instant updatedOn;
 
 
     @SuppressWarnings("squid:S1186")
@@ -63,31 +63,31 @@ public class CourtScheduleJudiciary {
     }
 
     public CourtScheduleJudiciary(final Builder builder) {
-        this.rota_judiciary_id = builder.rotaJudiciaryId;
+        this.rotaJudiciaryId = builder.rotaJudiciaryId;
         this.forenames = builder.forenames;
-        this.is_bench_chairman = builder.isBenchChairman;
-        this.is_deputy = builder.isDeputy;
-        this.judiciary_id = builder.judiciaryId;
-        this.judiciary_type = builder.judiciaryType;
+        this.benchChairman = builder.isBenchChairman;
+        this.deputy = builder.isDeputy;
+        this.judiciaryId = builder.judiciaryId;
+        this.judiciaryType = builder.judiciaryType;
         this.surname = builder.surname;
         this.title = builder.title;
         this.email = builder.emailAddress;
-        this.court_schedule_id = builder.courtScheduleId;
-        this.court_listing_profile_id = builder.courtListingProfileId;
+        this.courtScheduleId = builder.courtScheduleId;
+        this.courtListingProfileId = builder.courtListingProfileId;
         this.position = builder.position;
-        this.created_on = builder.createdOn;
-        this.updated_on = builder.updatedOn;
+        this.createdOn = builder.createdOn;
+        this.updatedOn = builder.updatedOn;
         this.active = builder.active;
     }
 
     @JsonProperty("judiciary_id")
     public String getJudiciaryId() {
-        return judiciary_id;
+        return judiciaryId;
     }
 
     @JsonProperty("rota_judiciary_id")
     public String getRotaJudiciaryId() {
-        return rota_judiciary_id;
+        return rotaJudiciaryId;
     }
 
     @JsonProperty("title")
@@ -112,17 +112,17 @@ public class CourtScheduleJudiciary {
 
     @JsonProperty("court_schedule_id")
     public String getCourtScheduleId() {
-        return court_schedule_id;
+        return courtScheduleId;
     }
 
     @JsonProperty("court_listing_profile_id")
     public String getCourtListingProfileId() {
-        return court_listing_profile_id;
+        return courtListingProfileId;
     }
 
     @JsonProperty("judiciary_type")
     public String getJudiciaryType() {
-        return judiciary_type;
+        return judiciaryType;
     }
 
     @JsonProperty("position")
@@ -131,13 +131,13 @@ public class CourtScheduleJudiciary {
     }
 
     @JsonProperty("is_bench_chairman")
-    public Boolean getBenchChairman() {
-        return is_bench_chairman;
+    public Boolean isBenchChairman() {
+        return benchChairman;
     }
 
     @JsonProperty("is_deputy")
-    public Boolean getDeputy() {
-        return is_deputy;
+    public Boolean isDeputy() {
+        return deputy;
     }
 
     @JsonProperty("active")
@@ -146,11 +146,11 @@ public class CourtScheduleJudiciary {
     }
 
     public void setJudiciaryId(final String judiciaryId) {
-        this.judiciary_id = judiciaryId;
+        this.judiciaryId = judiciaryId;
     }
 
     public void setRotaJudiciaryId(final String rotaJudiciaryId) {
-        this.rota_judiciary_id = rotaJudiciaryId;
+        this.rotaJudiciaryId = rotaJudiciaryId;
     }
 
     public void setTitle(final String title) {
@@ -170,15 +170,15 @@ public class CourtScheduleJudiciary {
     }
 
     public void setCourtScheduleId(final String courtScheduleId) {
-        this.court_schedule_id = courtScheduleId;
+        this.courtScheduleId = courtScheduleId;
     }
 
     public void setCourtListingProfileId(final String courtListingProfileId) {
-        this.court_listing_profile_id = courtListingProfileId;
+        this.courtListingProfileId = courtListingProfileId;
     }
 
     public void setJudiciaryType(final String judiciaryType) {
-        this.judiciary_type = judiciaryType;
+        this.judiciaryType = judiciaryType;
     }
 
     public void setPosition(final String position) {
@@ -186,29 +186,29 @@ public class CourtScheduleJudiciary {
     }
 
     public void setBenchChairman(final Boolean benchChairman) {
-        is_bench_chairman = benchChairman;
+        this.benchChairman = benchChairman;
     }
 
     public void setDeputy(final Boolean deputy) {
-        is_deputy = deputy;
+        this.deputy = deputy;
     }
 
     @JsonProperty("created_on")
     public String getCreatedOn() {
-        return created_on == null ? null : DateUtils.toIsoString(created_on);
+        return createdOn == null ? null : DateUtils.toIsoStringMinutes(createdOn);
     }
 
-    public void setCreatedOn(Date createdOn) {
-        this.created_on = createdOn;
+    public void setCreatedOn(final Instant createdOn) {
+        this.createdOn = createdOn;
     }
 
     @JsonProperty("updated_on")
     public String getUpdatedOn() {
-        return updated_on == null ? null : DateUtils.toIsoString(updated_on);
+        return updatedOn == null ? null : DateUtils.toIsoStringMinutes(updatedOn);
     }
 
-    public void setUpdatedOn(Date updatedOn) {
-        this.updated_on = updatedOn;
+    public void setUpdatedOn(final Instant updatedOn) {
+        this.updatedOn = updatedOn;
     }
 
     public static Builder judiciary() {
@@ -243,8 +243,8 @@ public class CourtScheduleJudiciary {
 
         private Boolean active = false;
 
-        private Date createdOn;
-        private Date updatedOn;
+        private Instant createdOn;
+        private Instant updatedOn;
 
         public Builder withActive(final Boolean active) {
             this.active = active;
@@ -312,12 +312,12 @@ public class CourtScheduleJudiciary {
         }
 
 
-        public Builder withCreatedOn(final Date createdOn) {
+        public Builder withCreatedOn(final Instant createdOn) {
             this.createdOn = createdOn;
             return this;
         }
 
-        public Builder withUpdatedOn(final Date updatedOn) {
+        public Builder withUpdatedOn(final Instant updatedOn) {
             this.updatedOn = updatedOn;
             return this;
         }

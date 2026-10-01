@@ -16,7 +16,7 @@ import uk.gov.moj.cpp.courtscheduler.domain.JudiciaryUnavailabilityResponse;
  * Base converter class for judiciary availability rule responses.
  * Contains common response conversion logic for converting domain objects to JSON.
  */
-public abstract class BaseJudiciaryAvailabilityRuleResponseConverter {
+public class BaseJudiciaryAvailabilityRuleResponseConverter {
 
     protected static final String START_DATE = "startDate";
     protected static final String END_DATE = "endDate";
@@ -25,11 +25,11 @@ public abstract class BaseJudiciaryAvailabilityRuleResponseConverter {
     /**
      * Converts list of repeat days (AvailabilityDayOfWeek enum) to JSON array of strings.
      */
-    protected JsonArray convertRepeatDaysToJson(List<AvailabilityDayOfWeek> repeatDays) {
-        JsonArrayBuilder repeatDaysArrayBuilder = Json.createArrayBuilder();
+    protected JsonArray convertRepeatDaysToJson(final List<AvailabilityDayOfWeek> repeatDays) {
+        final JsonArrayBuilder repeatDaysArrayBuilder = Json.createArrayBuilder();
         if (repeatDays != null) {
-            for (AvailabilityDayOfWeek repeatDay : repeatDays) {
-                repeatDaysArrayBuilder.add(repeatDay.name());
+            for (final AvailabilityDayOfWeek repeatDay : repeatDays) {
+                repeatDaysArrayBuilder.add(repeatDay.getWireValue());
             }
         }
         return repeatDaysArrayBuilder.build();
@@ -38,11 +38,11 @@ public abstract class BaseJudiciaryAvailabilityRuleResponseConverter {
     /**
      * Converts list of unavailabilities to JSON array.
      */
-    protected JsonArray convertUnavailabilitiesToJson(List<JudiciaryUnavailabilityResponse> unavailabilities) {
-        JsonArrayBuilder unavailabilitiesArrayBuilder = Json.createArrayBuilder();
+    protected JsonArray convertUnavailabilitiesToJson(final List<JudiciaryUnavailabilityResponse> unavailabilities) {
+        final JsonArrayBuilder unavailabilitiesArrayBuilder = Json.createArrayBuilder();
         if (unavailabilities != null) {
-            for (JudiciaryUnavailabilityResponse unavailability : unavailabilities) {
-                JsonObjectBuilder unavailabilityBuilder = Json.createObjectBuilder()
+            for (final JudiciaryUnavailabilityResponse unavailability : unavailabilities) {
+                final JsonObjectBuilder unavailabilityBuilder = Json.createObjectBuilder()
                         .add(START_DATE, unavailability.getStartDate().toString())
                         .add(END_DATE, unavailability.getEndDate().toString());
                 
@@ -59,7 +59,7 @@ public abstract class BaseJudiciaryAvailabilityRuleResponseConverter {
     /**
      * Adds optional enum field to JSON object builder if value is not null.
      */
-    protected void addOptionalEnumField(JsonObjectBuilder builder, String fieldName, Enum<?> value) {
+    protected void addOptionalEnumField(final JsonObjectBuilder builder, final String fieldName, final Enum<?> value) {
         if (value != null) {
             builder.add(fieldName, value.name());
         }
@@ -70,7 +70,7 @@ public abstract class BaseJudiciaryAvailabilityRuleResponseConverter {
      * This method is shared by both Find and Get converters.
      */
     protected JsonObject convertRule(final JudiciaryAvailabilityRuleResponse rule) {
-        JsonObjectBuilder ruleBuilder = Json.createObjectBuilder()
+        final JsonObjectBuilder ruleBuilder = Json.createObjectBuilder()
                 .add("id", rule.getId())
                 .add("judiciaryId", rule.getJudiciaryId())
                 .add("courtHouseId", rule.getCourtHouseId())

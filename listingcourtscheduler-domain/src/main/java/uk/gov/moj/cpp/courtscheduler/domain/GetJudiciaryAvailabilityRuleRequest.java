@@ -13,7 +13,7 @@ public class GetJudiciaryAvailabilityRuleRequest {
     public GetJudiciaryAvailabilityRuleRequest() {
     }
 
-    public GetJudiciaryAvailabilityRuleRequest(String ruleId, Boolean withJudiciary) {
+    public GetJudiciaryAvailabilityRuleRequest(final String ruleId, final Boolean withJudiciary) {
         this.ruleId = ruleId;
         this.withJudiciary = withJudiciary;
     }
@@ -22,20 +22,20 @@ public class GetJudiciaryAvailabilityRuleRequest {
         return ruleId;
     }
 
-    public void setRuleId(String ruleId) {
+    public void setRuleId(final String ruleId) {
         this.ruleId = ruleId;
     }
 
-    public Boolean getWithJudiciary() {
+    public Boolean isWithJudiciary() {
         return withJudiciary;
     }
 
-    public void setWithJudiciary(Boolean withJudiciary) {
+    public void setWithJudiciary(final Boolean withJudiciary) {
         this.withJudiciary = withJudiciary;
     }
 
     @Override
-    public boolean equals(Object o) {
+    public boolean equals(final Object o) {
         if (this == o) {
             return true;
         }

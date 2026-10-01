@@ -27,7 +27,7 @@ public class ProvisionalDataProducer {
 
     public List<CourtSchedule> produceProvisionalData(final LocalDate startDate, final LocalDate endDate, final int cyclesToPopulate, final List<String> ouCodes, final ProvisionalSessionDateProvider provisionalSessionDateProvider) {
         final List<CourtSchedule> courtSchedules = sessionsService.getExtractedCourtSchedulesForGhostRota(ouCodes, startDate, endDate);
-        final List<CourtSchedule> provisionalCourtList = new ArrayList();
+        final List<CourtSchedule> provisionalCourtList = new ArrayList<>();
 
         for (int cycleNo = 0; cycleNo < cyclesToPopulate; cycleNo++) {
             for (final CourtSchedule courtSchedule : courtSchedules) {

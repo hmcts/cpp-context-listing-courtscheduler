@@ -85,7 +85,7 @@ public class RotaJudiciaryHelper {
                                                  final String executionId) {
         if (RotaUtils.isEmptyRecords(records)) {
             logger.warn("No records provided to create judiciary map");
-            return Collections.emptyMap();
+            return emptyMap();
         }
 
         final Map<String, UUID> judiciaryMap = new ConcurrentHashMap<>();
@@ -124,12 +124,12 @@ public class RotaJudiciaryHelper {
 
         if (scheduleJudiciaryList == null || scheduleJudiciaryList.isEmpty()) {
             logger.debug("No schedule judiciary list created to create judiciary court schedule map");
-            return Collections.emptyMap();
+            return emptyMap();
         }
 
         if (courtScheduleMap == null || courtScheduleMap.isEmpty()) {
             logger.debug("No court schedule map provided to create judiciary court schedule map");
-            return Collections.emptyMap();
+            return emptyMap();
         }
 
         final Map<String, List<String>> judiciaryCourtListingProfileMap = 
@@ -170,7 +170,9 @@ public class RotaJudiciaryHelper {
                 if (shouldProcessSchedule(schedule, judiciaryMap, courtScheduleMap)) {
                     addCourtListingProfileToMap(judiciaryCourtListingProfileMap, schedule);
                 }
-            } catch (final Exception ex) {
+            } catch (final Exception ex) { // NOPMD(AvoidCatchingGenericException) - deliberate per-record
+                // fault isolation: one bad schedule entry in a whole rota-file batch must not abort
+                // processing of every other schedule.
                 logger.error("Error processing schedule for judiciary court schedule map: {}", ex.getMessage(), ex);
             }
         });
@@ -235,7 +237,7 @@ public class RotaJudiciaryHelper {
 
         logger.debug("Mapped judiciaryId {} to court schedule(s) with listingProfileId: {}, position: {}, isBenchChairman: {}, isDeputy: {}",
                 judiciaryId, courtListingProfileId,
-                schedule.getPosition(), schedule.getBenchChairman(), schedule.getDeputy());
+                schedule.getPosition(), schedule.isBenchChairman(), schedule.isDeputy());
     }
 
 
@@ -268,8 +270,8 @@ public class RotaJudiciaryHelper {
                 new ArrayList<>(scheduleIds),
                 schedule.getRotaJudiciaryId(),
                 schedule.getPosition(),
-                schedule.getBenchChairman(),
-                schedule.getDeputy()
+                schedule.isBenchChairman(),
+                schedule.isDeputy()
         );
     }
 
@@ -291,7 +293,7 @@ public class RotaJudiciaryHelper {
         final Map<String, List<JudiciaryCourtScheduleData>> resultMap = judiciaryCourtListingProfileScheduleMap.entrySet().stream()
                 .filter(entry -> {
                     final String compositeKey = entry.getKey();
-                    if (RotaUtils.parseCompositeKey(compositeKey) == null) {
+                    if (RotaUtils.parseCompositeKey(compositeKey).length == 0) {
                         logger.debug("Invalid or empty composite key format: {}", compositeKey);
                         return false;
                     }
@@ -376,7 +378,8 @@ public class RotaJudiciaryHelper {
             try {
                 processCourtListingProfileEntry(judiciaryId, courtListingProfileId, scheduleLookupMap, 
                         courtScheduleMap, resultMap);
-            } catch (final Exception ex) {
+            } catch (final Exception ex) { // NOPMD(AvoidCatchingGenericException) - deliberate per-record
+                // fault isolation: one bad entry must not abort processing of every other entry.
                 logger.error("Error creating composite key map entry for judiciaryId: {} and courtListingProfileId: {}: {}",
                         judiciaryId, courtListingProfileId, ex.getMessage(), ex);
             }
@@ -539,7 +542,8 @@ public class RotaJudiciaryHelper {
         schedules.forEach(schedule -> {
             try {
                 processSchedule(schedule, judiciariesMap, executionId, scheduleJudiciaryList, errors);
-            } catch (final Exception ex) {
+            } catch (final Exception ex) { // NOPMD(AvoidCatchingGenericException) - deliberate per-record
+                // fault isolation: one bad schedule must not abort processing of every other schedule.
                 logger.error("Error processing schedule: {}", ex.getMessage(), ex);
             }
         });

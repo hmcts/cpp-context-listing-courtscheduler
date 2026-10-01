@@ -31,6 +31,14 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class FindJudiciaryAvailabilityRuleResponseConverterTest {
+    private static final String END_DATE = "endDate";
+    private static final String REASON = "reason";
+    private static final String REPEAT_DAYS = "repeatDays";
+    private static final String RULES = "rules";
+    private static final String SESSION_TYPE = "sessionType";
+    private static final String START_DATE = "startDate";
+    private static final String UNAVAILABILITIES = "unavailabilities";
+
 
     private FindJudiciaryAvailabilityRuleResponseConverter converter;
 
@@ -47,7 +55,7 @@ class FindJudiciaryAvailabilityRuleResponseConverterTest {
         final LocalDate startDate = LocalDate.of(2026, 1, 1);
         final LocalDate endDate = LocalDate.of(2026, 1, 31);
 
-        final List<uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek> repeatDays = Arrays.asList(uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek.Monday, uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek.Tuesday);
+        final List<uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek> repeatDays = Arrays.asList(uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek.MONDAY, uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek.TUESDAY);
 
         final List<JudiciaryUnavailabilityResponse> unavailabilities = Arrays.asList(
                 new JudiciaryUnavailabilityResponse(
@@ -90,7 +98,7 @@ class FindJudiciaryAvailabilityRuleResponseConverterTest {
         assertThat(result.getInt("pageSize"), is(20));
 
         // Verify rules array
-        final JsonArray rulesArray = result.getJsonArray("rules");
+        final JsonArray rulesArray = result.getJsonArray(RULES);
         assertNotNull(rulesArray);
         assertThat(rulesArray.size(), is(1));
 
@@ -98,23 +106,23 @@ class FindJudiciaryAvailabilityRuleResponseConverterTest {
         assertThat(ruleObject.getString("id"), is(ruleId));
         assertThat(ruleObject.getString("judiciaryId"), is(judiciaryId));
         assertThat(ruleObject.getString("courtHouseId"), is(courtHouseId));
-        assertThat(ruleObject.getString("startDate"), is("2026-01-01"));
-        assertThat(ruleObject.getString("endDate"), is("2026-01-31"));
-        assertThat(ruleObject.getString("sessionType"), is("AM"));
+        assertThat(ruleObject.getString(START_DATE), is("2026-01-01"));
+        assertThat(ruleObject.getString(END_DATE), is("2026-01-31"));
+        assertThat(ruleObject.getString(SESSION_TYPE), is("AM"));
 
         // Verify repeatDays - simple string array
-        final JsonArray repeatDaysArray = ruleObject.getJsonArray("repeatDays");
+        final JsonArray repeatDaysArray = ruleObject.getJsonArray(REPEAT_DAYS);
         assertThat(repeatDaysArray.size(), is(2));
         assertThat(repeatDaysArray.getString(0), is("Monday"));
         assertThat(repeatDaysArray.getString(1), is("Tuesday"));
 
         // Verify unavailabilities
-        final JsonArray unavailabilitiesArray = ruleObject.getJsonArray("unavailabilities");
+        final JsonArray unavailabilitiesArray = ruleObject.getJsonArray(UNAVAILABILITIES);
         assertThat(unavailabilitiesArray.size(), is(1));
         final JsonObject unavailabilityObject = unavailabilitiesArray.getJsonObject(0);
-        assertThat(unavailabilityObject.getString("startDate"), is("2026-01-10"));
-        assertThat(unavailabilityObject.getString("endDate"), is("2026-01-12"));
-        assertThat(unavailabilityObject.getString("reason"), is("ANNUAL_LEAVE"));
+        assertThat(unavailabilityObject.getString(START_DATE), is("2026-01-10"));
+        assertThat(unavailabilityObject.getString(END_DATE), is("2026-01-12"));
+        assertThat(unavailabilityObject.getString(REASON), is("ANNUAL_LEAVE"));
 
         // Verify judiciaries array
         final JsonArray judiciariesArray = result.getJsonArray("judiciaries");
@@ -141,7 +149,7 @@ class FindJudiciaryAvailabilityRuleResponseConverterTest {
 
         assertNotNull(result);
         assertThat(result.getInt("totalCount"), is(0));
-        final JsonArray rulesArray = result.getJsonArray("rules");
+        final JsonArray rulesArray = result.getJsonArray(RULES);
         assertNotNull(rulesArray);
         assertThat(rulesArray.size(), is(0));
         final JsonArray judiciariesArray = result.getJsonArray("judiciaries");
@@ -152,7 +160,7 @@ class FindJudiciaryAvailabilityRuleResponseConverterTest {
     @Test
     void shouldConvertRepeatDaysAsStringArray() {
         final JudiciaryAvailabilityRuleResponse rule = createBasicRule();
-        rule.setRepeatDays(Arrays.asList(uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek.Monday, uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek.Tuesday, uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek.Friday));
+        rule.setRepeatDays(Arrays.asList(uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek.MONDAY, uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek.TUESDAY, uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek.FRIDAY));
 
         final FindJudiciaryAvailabilityRuleResponse response = new FindJudiciaryAvailabilityRuleResponse();
         response.setRules(Arrays.asList(rule));
@@ -161,9 +169,9 @@ class FindJudiciaryAvailabilityRuleResponseConverterTest {
         response.setPageSize(20);
 
         final JsonObject result = converter.convert(response);
-        final JsonArray rulesArray = result.getJsonArray("rules");
+        final JsonArray rulesArray = result.getJsonArray(RULES);
         final JsonObject ruleObject = rulesArray.getJsonObject(0);
-        final JsonArray repeatDaysArray = ruleObject.getJsonArray("repeatDays");
+        final JsonArray repeatDaysArray = ruleObject.getJsonArray(REPEAT_DAYS);
 
         assertThat(repeatDaysArray.size(), is(3));
         assertThat(repeatDaysArray.getString(0), is("Monday"));
@@ -189,15 +197,15 @@ class FindJudiciaryAvailabilityRuleResponseConverterTest {
         response.setPageSize(20);
 
         final JsonObject result = converter.convert(response);
-        final JsonArray rulesArray = result.getJsonArray("rules");
+        final JsonArray rulesArray = result.getJsonArray(RULES);
         final JsonObject ruleObject = rulesArray.getJsonObject(0);
-        final JsonArray unavailabilitiesArray = ruleObject.getJsonArray("unavailabilities");
+        final JsonArray unavailabilitiesArray = ruleObject.getJsonArray(UNAVAILABILITIES);
 
         assertThat(unavailabilitiesArray.size(), is(1));
         final JsonObject unavailabilityObject = unavailabilitiesArray.getJsonObject(0);
-        assertThat(unavailabilityObject.getString("startDate"), is("2026-02-01"));
-        assertThat(unavailabilityObject.getString("endDate"), is("2026-02-05"));
-        assertThat(unavailabilityObject.getString("reason"), is("TRAINING"));
+        assertThat(unavailabilityObject.getString(START_DATE), is("2026-02-01"));
+        assertThat(unavailabilityObject.getString(END_DATE), is("2026-02-05"));
+        assertThat(unavailabilityObject.getString(REASON), is("TRAINING"));
     }
 
     @Test
@@ -218,15 +226,15 @@ class FindJudiciaryAvailabilityRuleResponseConverterTest {
         response.setPageSize(20);
 
         final JsonObject result = converter.convert(response);
-        final JsonArray rulesArray = result.getJsonArray("rules");
+        final JsonArray rulesArray = result.getJsonArray(RULES);
         final JsonObject ruleObject = rulesArray.getJsonObject(0);
-        final JsonArray unavailabilitiesArray = ruleObject.getJsonArray("unavailabilities");
+        final JsonArray unavailabilitiesArray = ruleObject.getJsonArray(UNAVAILABILITIES);
 
         assertThat(unavailabilitiesArray.size(), is(1));
         final JsonObject unavailabilityObject = unavailabilitiesArray.getJsonObject(0);
-        assertThat(unavailabilityObject.getString("startDate"), is("2026-02-01"));
-        assertThat(unavailabilityObject.getString("endDate"), is("2026-02-05"));
-        assertTrue(!unavailabilityObject.containsKey("reason") || unavailabilityObject.isNull("reason"));
+        assertThat(unavailabilityObject.getString(START_DATE), is("2026-02-01"));
+        assertThat(unavailabilityObject.getString(END_DATE), is("2026-02-05"));
+        assertTrue(!unavailabilityObject.containsKey(REASON) || unavailabilityObject.isNull(REASON));
     }
 
     @Test
@@ -241,12 +249,12 @@ class FindJudiciaryAvailabilityRuleResponseConverterTest {
         response.setPageSize(20);
 
         final JsonObject result = converter.convert(response);
-        final JsonArray rulesArray = result.getJsonArray("rules");
+        final JsonArray rulesArray = result.getJsonArray(RULES);
         final JsonObject ruleObject = rulesArray.getJsonObject(0);
 
         assertThat(ruleObject.getString("id"), is(notNullValue()));
         assertThat(ruleObject.getString("judiciaryId"), is(notNullValue()));
-        assertTrue(!ruleObject.containsKey("sessionType") || ruleObject.isNull("sessionType"));
+        assertTrue(!ruleObject.containsKey(SESSION_TYPE) || ruleObject.isNull(SESSION_TYPE));
     }
 
     @Test
@@ -261,10 +269,10 @@ class FindJudiciaryAvailabilityRuleResponseConverterTest {
         response.setPageSize(20);
 
         final JsonObject result = converter.convert(response);
-        final JsonArray rulesArray = result.getJsonArray("rules");
+        final JsonArray rulesArray = result.getJsonArray(RULES);
         final JsonObject ruleObject = rulesArray.getJsonObject(0);
 
-        assertThat(ruleObject.getString("sessionType"), is("PM"));
+        assertThat(ruleObject.getString(SESSION_TYPE), is("PM"));
     }
 
     @Test
@@ -279,9 +287,9 @@ class FindJudiciaryAvailabilityRuleResponseConverterTest {
         response.setPageSize(20);
 
         final JsonObject result = converter.convert(response);
-        final JsonArray rulesArray = result.getJsonArray("rules");
+        final JsonArray rulesArray = result.getJsonArray(RULES);
         final JsonObject ruleObject = rulesArray.getJsonObject(0);
-        final JsonArray repeatDaysArray = ruleObject.getJsonArray("repeatDays");
+        final JsonArray repeatDaysArray = ruleObject.getJsonArray(REPEAT_DAYS);
 
         assertNotNull(repeatDaysArray);
         assertThat(repeatDaysArray.size(), is(0));
@@ -299,9 +307,9 @@ class FindJudiciaryAvailabilityRuleResponseConverterTest {
         response.setPageSize(20);
 
         final JsonObject result = converter.convert(response);
-        final JsonArray rulesArray = result.getJsonArray("rules");
+        final JsonArray rulesArray = result.getJsonArray(RULES);
         final JsonObject ruleObject = rulesArray.getJsonObject(0);
-        final JsonArray repeatDaysArray = ruleObject.getJsonArray("repeatDays");
+        final JsonArray repeatDaysArray = ruleObject.getJsonArray(REPEAT_DAYS);
 
         assertNotNull(repeatDaysArray);
         assertThat(repeatDaysArray.size(), is(0));
@@ -319,9 +327,9 @@ class FindJudiciaryAvailabilityRuleResponseConverterTest {
         response.setPageSize(20);
 
         final JsonObject result = converter.convert(response);
-        final JsonArray rulesArray = result.getJsonArray("rules");
+        final JsonArray rulesArray = result.getJsonArray(RULES);
         final JsonObject ruleObject = rulesArray.getJsonObject(0);
-        final JsonArray unavailabilitiesArray = ruleObject.getJsonArray("unavailabilities");
+        final JsonArray unavailabilitiesArray = ruleObject.getJsonArray(UNAVAILABILITIES);
 
         assertNotNull(unavailabilitiesArray);
         assertThat(unavailabilitiesArray.size(), is(0));
@@ -339,9 +347,9 @@ class FindJudiciaryAvailabilityRuleResponseConverterTest {
         response.setPageSize(20);
 
         final JsonObject result = converter.convert(response);
-        final JsonArray rulesArray = result.getJsonArray("rules");
+        final JsonArray rulesArray = result.getJsonArray(RULES);
         final JsonObject ruleObject = rulesArray.getJsonObject(0);
-        final JsonArray unavailabilitiesArray = ruleObject.getJsonArray("unavailabilities");
+        final JsonArray unavailabilitiesArray = ruleObject.getJsonArray(UNAVAILABILITIES);
 
         assertNotNull(unavailabilitiesArray);
         assertThat(unavailabilitiesArray.size(), is(0));
@@ -361,7 +369,7 @@ class FindJudiciaryAvailabilityRuleResponseConverterTest {
         response.setPageSize(20);
 
         final JsonObject result = converter.convert(response);
-        final JsonArray rulesArray = result.getJsonArray("rules");
+        final JsonArray rulesArray = result.getJsonArray(RULES);
 
         assertThat(rulesArray.size(), is(2));
         assertThat(result.getInt("totalCount"), is(2));
@@ -384,15 +392,15 @@ class FindJudiciaryAvailabilityRuleResponseConverterTest {
         response.setPageSize(20);
 
         final JsonObject result = converter.convert(response);
-        final JsonArray rulesArray = result.getJsonArray("rules");
+        final JsonArray rulesArray = result.getJsonArray(RULES);
         final JsonObject ruleObject = rulesArray.getJsonObject(0);
-        final JsonArray unavailabilitiesArray = ruleObject.getJsonArray("unavailabilities");
+        final JsonArray unavailabilitiesArray = ruleObject.getJsonArray(UNAVAILABILITIES);
 
         assertThat(unavailabilitiesArray.size(), is(4));
-        assertThat(unavailabilitiesArray.getJsonObject(0).getString("reason"), is("TRAINING"));
-        assertThat(unavailabilitiesArray.getJsonObject(1).getString("reason"), is("ANNUAL_LEAVE"));
-        assertThat(unavailabilitiesArray.getJsonObject(2).getString("reason"), is("OFFICIAL_BUSINESS"));
-        assertThat(unavailabilitiesArray.getJsonObject(3).getString("reason"), is("SICK_LEAVE"));
+        assertThat(unavailabilitiesArray.getJsonObject(0).getString(REASON), is("TRAINING"));
+        assertThat(unavailabilitiesArray.getJsonObject(1).getString(REASON), is("ANNUAL_LEAVE"));
+        assertThat(unavailabilitiesArray.getJsonObject(2).getString(REASON), is("OFFICIAL_BUSINESS"));
+        assertThat(unavailabilitiesArray.getJsonObject(3).getString(REASON), is("SICK_LEAVE"));
     }
 
     @Test

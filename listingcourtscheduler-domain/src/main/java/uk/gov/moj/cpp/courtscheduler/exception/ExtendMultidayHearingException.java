@@ -6,6 +6,8 @@ import java.util.List;
 
 public class ExtendMultidayHearingException extends RuntimeException {
 
+    private static final long serialVersionUID = 1L;
+
     public enum ErrorCode {
         NO_EXISTING_ALLOCATION,
         START_DATE_CHANGE_NOT_ALLOWED,

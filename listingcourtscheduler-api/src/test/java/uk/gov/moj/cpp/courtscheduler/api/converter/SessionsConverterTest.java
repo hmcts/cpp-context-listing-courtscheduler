@@ -19,16 +19,16 @@ class SessionsConverterTest {
     private SessionsConverter sessionsConverter;
 
     @Test
-    public void shouldConvertJsonObject_ToSessionsParam() {
+    void shouldConvertJsonObject_ToSessionsParam() {
 
-        JsonObject jsonObject = Json.createObjectBuilder()
+        final JsonObject jsonObject = Json.createObjectBuilder()
                 .add("sessions", Json.createArrayBuilder()
                         .add("550e8400-e29b-41d4-a716-446655440000")
                         .add("550e8400-e29b-41d4-a716-446655440001")
                         .add("550e8400-e29b-41d4-a716-446655440002"))
                 .build();
 
-        SessionsParam sessionsParam = sessionsConverter.convert(jsonObject.toString());
+        final SessionsParam sessionsParam = sessionsConverter.convert(jsonObject.toString());
 
         assertEquals("550e8400-e29b-41d4-a716-446655440000", sessionsParam.getSessions().get(0));
     }

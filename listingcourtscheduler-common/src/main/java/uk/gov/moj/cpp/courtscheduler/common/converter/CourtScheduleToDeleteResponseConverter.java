@@ -11,10 +11,10 @@ import java.util.List;
 
 public class CourtScheduleToDeleteResponseConverter implements Converter<List<CourtSchedule>, List<CourtScheduleDeleteResponse>> {
     @Override
-    public List<CourtScheduleDeleteResponse> convert(List<CourtSchedule> courtSchedules) {
-        List<CourtScheduleDeleteResponse> courtScheduleDeleteResponses = new ArrayList<>();
+    public List<CourtScheduleDeleteResponse> convert(final List<CourtSchedule> courtSchedules) {
+        final List<CourtScheduleDeleteResponse> courtScheduleDeleteResponses = new ArrayList<>();
         courtSchedules.forEach(courtSchedule -> {
-            CourtScheduleDeleteResponse courtScheduleView = new CourtScheduleDeleteResponse.CourtScheduleDeleteResponseBuilder()
+            final CourtScheduleDeleteResponse courtScheduleView = new CourtScheduleDeleteResponse.CourtScheduleDeleteResponseBuilder()
                     .withCourtScheduleId(courtSchedule.getCourtScheduleId())
                     .withActive(courtSchedule.isActive())
                     .withSlotBased(courtSchedule.isSlotBased())
@@ -42,8 +42,8 @@ public class CourtScheduleToDeleteResponseConverter implements Converter<List<Co
         return courtScheduleDeleteResponses;
     }
 
-    public static List<CourtScheduleDeleteResponse> convert(List<CourtSchedule> courtSchedules, final List<AllocatedListingEachBooked> allocatedListingEachBooked) {
-        List<CourtScheduleDeleteResponse> courtScheduleDeleteResponses = new ArrayList<>();
+    public static List<CourtScheduleDeleteResponse> convert(final List<CourtSchedule> courtSchedules, final List<AllocatedListingEachBooked> allocatedListingEachBooked) {
+        final List<CourtScheduleDeleteResponse> courtScheduleDeleteResponses = new ArrayList<>();
         courtSchedules.forEach(courtSchedule -> {
             final List<AllocatedListingEachBooked> allocatedListingEachBookedForThisSchedule = allocatedListingEachBooked.stream()
                     .filter(eachBooked -> eachBooked.getCourtScheduleId().equals(courtSchedule.getCourtScheduleId()))
@@ -51,7 +51,7 @@ public class CourtScheduleToDeleteResponseConverter implements Converter<List<Co
             final int totalBooked = allocatedListingEachBookedForThisSchedule.stream()
                     .mapToInt(AllocatedListingEachBooked::getDuration)
                     .sum();
-            CourtScheduleDeleteResponse courtScheduleView = new CourtScheduleDeleteResponse.CourtScheduleDeleteResponseBuilder()
+            final CourtScheduleDeleteResponse courtScheduleView = new CourtScheduleDeleteResponse.CourtScheduleDeleteResponseBuilder()
                     .withCourtScheduleId(courtSchedule.getCourtScheduleId())
                     .withActive(courtSchedule.isActive())
                     .withSlotBased(courtSchedule.isSlotBased())

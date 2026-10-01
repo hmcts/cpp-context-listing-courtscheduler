@@ -9,7 +9,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.platform.test.data.utils.FileUtil;
 
-import java.util.Date;
+import java.time.Instant;
 import java.util.UUID;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -53,8 +53,8 @@ class CourtScheduleJudiciaryMapperTest {
                 .withIsBenchChairman(false)
                 .withIsDeputy(false)
                 .withActive(true)
-                .withCreatedOn(new Date())
-                .withUpdatedOn(new Date())
+                .withCreatedOn(Instant.now())
+                .withUpdatedOn(Instant.now())
                 .build();
 
         final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary entity =

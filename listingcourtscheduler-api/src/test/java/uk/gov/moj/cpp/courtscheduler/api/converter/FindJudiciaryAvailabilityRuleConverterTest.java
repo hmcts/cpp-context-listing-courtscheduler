@@ -17,6 +17,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class FindJudiciaryAvailabilityRuleConverterTest {
+    private static final String DATE_2026_01_01 = "2026-01-01";
+    private static final String DATE_2026_01_31 = "2026-01-31";
+    private static final String END_DATE = "endDate";
+    private static final String START_DATE = "startDate";
+
 
     private final FindJudiciaryAvailabilityRuleConverter converter = new FindJudiciaryAvailabilityRuleConverter();
 
@@ -25,9 +30,9 @@ class FindJudiciaryAvailabilityRuleConverterTest {
         final String courtCentreId = randomUUID().toString();
         final String judiciaryId = randomUUID().toString();
         
-        JsonObject jsonObject = Json.createObjectBuilder()
-                .add("startDate", "2026-01-01")
-                .add("endDate", "2026-01-31")
+        final JsonObject jsonObject = Json.createObjectBuilder()
+                .add(START_DATE, DATE_2026_01_01)
+                .add(END_DATE, DATE_2026_01_31)
                 .add("courtCentreId", courtCentreId)
                 .add("judiciaryId", judiciaryId)
                 .add("pageSize", 10)
@@ -35,45 +40,45 @@ class FindJudiciaryAvailabilityRuleConverterTest {
                 .add("withJudiciary", true)
                 .build();
 
-        FindJudiciaryAvailabilityRuleRequest result = converter.convert(jsonObject);
+        final FindJudiciaryAvailabilityRuleRequest result = converter.convert(jsonObject);
 
         assertNotNull(result);
-        assertThat(result.getStartDate().toString(), is("2026-01-01"));
-        assertThat(result.getEndDate().toString(), is("2026-01-31"));
+        assertThat(result.getStartDate().toString(), is(DATE_2026_01_01));
+        assertThat(result.getEndDate().toString(), is(DATE_2026_01_31));
         assertThat(result.getCourtHouseId(), is(courtCentreId));
         assertThat(result.getJudiciaryId(), is(judiciaryId));
         assertThat(result.getPageSize(), is(10));
         assertThat(result.getPageNumber(), is(2));
-        assertThat(result.getWithJudiciary(), is(true));
+        assertThat(result.isWithJudiciary(), is(true));
     }
 
     @Test
     void shouldConvertJsonObjectWithOnlyRequiredParameters() {
-        JsonObject jsonObject = Json.createObjectBuilder()
-                .add("startDate", "2026-01-01")
-                .add("endDate", "2026-01-31")
+        final JsonObject jsonObject = Json.createObjectBuilder()
+                .add(START_DATE, DATE_2026_01_01)
+                .add(END_DATE, DATE_2026_01_31)
                 .build();
 
-        FindJudiciaryAvailabilityRuleRequest result = converter.convert(jsonObject);
+        final FindJudiciaryAvailabilityRuleRequest result = converter.convert(jsonObject);
 
         assertNotNull(result);
-        assertThat(result.getStartDate().toString(), is("2026-01-01"));
-        assertThat(result.getEndDate().toString(), is("2026-01-31"));
+        assertThat(result.getStartDate().toString(), is(DATE_2026_01_01));
+        assertThat(result.getEndDate().toString(), is(DATE_2026_01_31));
         assertThat(result.getCourtHouseId(), is(nullValue()));
         assertThat(result.getJudiciaryId(), is(nullValue()));
         assertThat(result.getPageSize(), is(20)); // Default value
         assertThat(result.getPageNumber(), is(1)); // Default value
-        assertThat(result.getWithJudiciary(), is(true)); // Default value
+        assertThat(result.isWithJudiciary(), is(true)); // Default value
     }
 
     @Test
     void shouldUseDefaultPaginationWhenNotProvided() {
-        JsonObject jsonObject = Json.createObjectBuilder()
-                .add("startDate", "2026-01-01")
-                .add("endDate", "2026-01-31")
+        final JsonObject jsonObject = Json.createObjectBuilder()
+                .add(START_DATE, DATE_2026_01_01)
+                .add(END_DATE, DATE_2026_01_31)
                 .build();
 
-        FindJudiciaryAvailabilityRuleRequest result = converter.convert(jsonObject);
+        final FindJudiciaryAvailabilityRuleRequest result = converter.convert(jsonObject);
 
         assertNotNull(result);
         assertThat(result.getPageSize(), is(20));
@@ -82,40 +87,40 @@ class FindJudiciaryAvailabilityRuleConverterTest {
 
     @Test
     void shouldUseDefaultWithJudiciaryWhenNotProvided() {
-        JsonObject jsonObject = Json.createObjectBuilder()
-                .add("startDate", "2026-01-01")
-                .add("endDate", "2026-01-31")
+        final JsonObject jsonObject = Json.createObjectBuilder()
+                .add(START_DATE, DATE_2026_01_01)
+                .add(END_DATE, DATE_2026_01_31)
                 .build();
 
-        FindJudiciaryAvailabilityRuleRequest result = converter.convert(jsonObject);
+        final FindJudiciaryAvailabilityRuleRequest result = converter.convert(jsonObject);
 
         assertNotNull(result);
-        assertThat(result.getWithJudiciary(), is(true));
+        assertThat(result.isWithJudiciary(), is(true));
     }
 
     @Test
     void shouldHandleNullWithJudiciary() {
-        JsonObject jsonObject = Json.createObjectBuilder()
-                .add("startDate", "2026-01-01")
-                .add("endDate", "2026-01-31")
+        final JsonObject jsonObject = Json.createObjectBuilder()
+                .add(START_DATE, DATE_2026_01_01)
+                .add(END_DATE, DATE_2026_01_31)
                 .addNull("withJudiciary")
                 .build();
 
-        FindJudiciaryAvailabilityRuleRequest result = converter.convert(jsonObject);
+        final FindJudiciaryAvailabilityRuleRequest result = converter.convert(jsonObject);
 
         assertNotNull(result);
-        assertThat(result.getWithJudiciary(), is(true));
+        assertThat(result.isWithJudiciary(), is(true));
     }
 
     @Test
     void shouldHandleNullPageSize() {
-        JsonObject jsonObject = Json.createObjectBuilder()
-                .add("startDate", "2026-01-01")
-                .add("endDate", "2026-01-31")
+        final JsonObject jsonObject = Json.createObjectBuilder()
+                .add(START_DATE, DATE_2026_01_01)
+                .add(END_DATE, DATE_2026_01_31)
                 .addNull("pageSize")
                 .build();
 
-        FindJudiciaryAvailabilityRuleRequest result = converter.convert(jsonObject);
+        final FindJudiciaryAvailabilityRuleRequest result = converter.convert(jsonObject);
 
         assertNotNull(result);
         assertThat(result.getPageSize(), is(20));
@@ -123,13 +128,13 @@ class FindJudiciaryAvailabilityRuleConverterTest {
 
     @Test
     void shouldHandleNullPageNumber() {
-        JsonObject jsonObject = Json.createObjectBuilder()
-                .add("startDate", "2026-01-01")
-                .add("endDate", "2026-01-31")
+        final JsonObject jsonObject = Json.createObjectBuilder()
+                .add(START_DATE, DATE_2026_01_01)
+                .add(END_DATE, DATE_2026_01_31)
                 .addNull("pageNumber")
                 .build();
 
-        FindJudiciaryAvailabilityRuleRequest result = converter.convert(jsonObject);
+        final FindJudiciaryAvailabilityRuleRequest result = converter.convert(jsonObject);
 
         assertNotNull(result);
         assertThat(result.getPageNumber(), is(1));
@@ -139,13 +144,13 @@ class FindJudiciaryAvailabilityRuleConverterTest {
     void shouldConvertJsonObjectWithOnlyCourtCentreId() {
         final String courtCentreId = randomUUID().toString();
         
-        JsonObject jsonObject = Json.createObjectBuilder()
-                .add("startDate", "2026-01-01")
-                .add("endDate", "2026-01-31")
+        final JsonObject jsonObject = Json.createObjectBuilder()
+                .add(START_DATE, DATE_2026_01_01)
+                .add(END_DATE, DATE_2026_01_31)
                 .add("courtCentreId", courtCentreId)
                 .build();
 
-        FindJudiciaryAvailabilityRuleRequest result = converter.convert(jsonObject);
+        final FindJudiciaryAvailabilityRuleRequest result = converter.convert(jsonObject);
 
         assertNotNull(result);
         assertThat(result.getCourtHouseId(), is(courtCentreId));
@@ -156,13 +161,13 @@ class FindJudiciaryAvailabilityRuleConverterTest {
     void shouldConvertJsonObjectWithOnlyJudiciaryId() {
         final String judiciaryId = randomUUID().toString();
         
-        JsonObject jsonObject = Json.createObjectBuilder()
-                .add("startDate", "2026-01-01")
-                .add("endDate", "2026-01-31")
+        final JsonObject jsonObject = Json.createObjectBuilder()
+                .add(START_DATE, DATE_2026_01_01)
+                .add(END_DATE, DATE_2026_01_31)
                 .add("judiciaryId", judiciaryId)
                 .build();
 
-        FindJudiciaryAvailabilityRuleRequest result = converter.convert(jsonObject);
+        final FindJudiciaryAvailabilityRuleRequest result = converter.convert(jsonObject);
 
         assertNotNull(result);
         assertThat(result.getCourtHouseId(), is(nullValue()));
@@ -171,16 +176,16 @@ class FindJudiciaryAvailabilityRuleConverterTest {
 
     @Test
     void shouldConvertJsonObjectWithWithJudiciaryFalse() {
-        JsonObject jsonObject = Json.createObjectBuilder()
-                .add("startDate", "2026-01-01")
-                .add("endDate", "2026-01-31")
+        final JsonObject jsonObject = Json.createObjectBuilder()
+                .add(START_DATE, DATE_2026_01_01)
+                .add(END_DATE, DATE_2026_01_31)
                 .add("withJudiciary", false)
                 .build();
 
-        FindJudiciaryAvailabilityRuleRequest result = converter.convert(jsonObject);
+        final FindJudiciaryAvailabilityRuleRequest result = converter.convert(jsonObject);
 
         assertNotNull(result);
-        assertThat(result.getWithJudiciary(), is(false));
+        assertThat(result.isWithJudiciary(), is(false));
     }
 
 }

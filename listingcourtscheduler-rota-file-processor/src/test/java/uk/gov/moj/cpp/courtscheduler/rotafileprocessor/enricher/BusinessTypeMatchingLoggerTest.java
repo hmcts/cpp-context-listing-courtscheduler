@@ -3,7 +3,6 @@ package uk.gov.moj.cpp.courtscheduler.rotafileprocessor.enricher;
 import static java.util.UUID.randomUUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.atLeastOnce;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.MissingDataError.BUSINESS_TYPES_NOT_FOUND;
 
@@ -48,12 +47,12 @@ class BusinessTypeMatchingLoggerTest {
         final String missingBusinessTypesAsStr = String.join(",", missingBusinessTypes);
 
         // verify saved to DB
-        ArgumentCaptor<RotaProcessLog> logCaptor = ArgumentCaptor.forClass(RotaProcessLog.class);
+        final ArgumentCaptor<RotaProcessLog> logCaptor = ArgumentCaptor.forClass(RotaProcessLog.class);
         verify(rotaProcessLogService, atLeastOnce()).saveRotaProcessLog(logCaptor.capture());
-        RotaProcessLog saved = logCaptor.getValue();
+        final RotaProcessLog saved = logCaptor.getValue();
         assertEquals(executionId, saved.getExecutionId());
         assertEquals(BUSINESS_TYPES_NOT_FOUND.code(), saved.getErrorCode());
-        String expectedText = BUSINESS_TYPES_NOT_FOUND.template().replace("{}", missingBusinessTypesAsStr);
+        final String expectedText = BUSINESS_TYPES_NOT_FOUND.template().replace("{}", missingBusinessTypesAsStr);
         assertEquals(expectedText, saved.getErrorText());
 
     }

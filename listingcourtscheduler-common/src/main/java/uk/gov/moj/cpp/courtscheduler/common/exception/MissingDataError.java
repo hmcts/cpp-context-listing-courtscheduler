@@ -45,32 +45,32 @@ public enum MissingDataError {
 
     public static final String DELIMITER = "%n%n------------------%n";
 
+    private final String errorCode;
+    private final String messageTemplate;
+
     private static final class Prefix {
         private static final String MONITORING = "SCSLMissingData: ";
     }
 
-    private final String code;
-    private final String template;
-
-    MissingDataError(String code, String template) {
-        this.code = code;
-        this.template = template;
+    MissingDataError(final String code, final String template) {
+        this.errorCode = code;
+        this.messageTemplate = template;
     }
 
     public String code() {
-        return code;
+        return errorCode;
     }
 
     public String template() {
-        return template;
+        return messageTemplate;
     }
 
-    public String format(Object... args) {
-        return String.format(template, args);
+    public String format(final Object... args) {
+        return String.format(messageTemplate, args);
     }
 
     @Override
     public String toString() {
-        return code;
+        return errorCode;
     }
 }

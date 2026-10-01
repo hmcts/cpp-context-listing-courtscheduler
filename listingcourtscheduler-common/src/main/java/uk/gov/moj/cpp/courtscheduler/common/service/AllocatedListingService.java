@@ -50,7 +50,7 @@ public class AllocatedListingService {
     }
 
 
-    public JsonObject getHearingIds(HearingSlotRequestParam hearingIdsRequest) {
+    public JsonObject getHearingIds(final HearingSlotRequestParam hearingIdsRequest) {
         final Pair<Integer, Set<IdResponse>> hearingIdsResult =
                 allocatedListingRepository.findHearingIdsBy(hearingIdsRequest);
         final long resultsCount = hearingIdsResult.getKey();
@@ -66,7 +66,7 @@ public class AllocatedListingService {
                                 convert(idResults)));
 
         final JsonArray hearingIdsJsonArray = jsonHearingIdsArrayBuilder.build();
-        final long pageCount = (long) Math.ceil((double) resultsCount / (double) pageSize);
+        final long pageCount = (long) Math.ceil((double) resultsCount / pageSize);
 
         return Json.createObjectBuilder()
                 .add(RequestParameterConstant.RESULTS.getLabel(), resultsCount)

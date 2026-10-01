@@ -50,7 +50,7 @@ import uk.gov.moj.cpp.platform.test.data.utils.FileUtil;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.sql.Timestamp;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -78,6 +78,17 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class RotaFileProcessorServiceTest {
+    private static final String VALUE_175 = "175";
+    private static final String VALUE_177 = "177";
+    private static final String CABC90_2 = "CABC90";
+    private static final String CHELTENHAM_MC = "Cheltenham MC";
+    private static final String GLOUCESTER_COUNTY_COURT = "Gloucester County Court";
+    private static final String LJA_AVONANDSOMERSET_ROTA_20240314_T160815_Z_XML = "lja_avonandsomerset_rota_20240314T160815Z.xml";
+    private static final String ROTA_CYCLE_TO_POPULATE_LENGTH = "rotaCycleToPopulateLength";
+    private static final String ROTA_PERIOD_END_DATE = "rotaPeriodEndDate";
+    private static final String ROTA_PERIOD_START_DATE = "rotaPeriodStartDate";
+    private static final String ROTAFILEPROCESSOR_ROTA_PAYLOAD_XML = "rotafileprocessor/rota_payload.xml";
+
 
     @InjectMocks
     @Spy
@@ -135,13 +146,13 @@ class RotaFileProcessorServiceTest {
     @BeforeEach
     public void setUp() {
         setField(rotaFileProcessorService, "rotaMonthsOfProvisionalDataToPopulate", "6");
-        setField(rotaFileProcessorService, "rotaCycleToPopulateLength", "28");
+        setField(rotaFileProcessorService, ROTA_CYCLE_TO_POPULATE_LENGTH, "28");
     }
 
     @Test
     void shouldCaptureMasterRotaFileAndProcess() throws IOException {
-        final String file = "rotafileprocessor/rota_payload.xml";
-        final String blobName = "lja_avonandsomerset_rota_20240314T160815Z.xml";
+        final String file = ROTAFILEPROCESSOR_ROTA_PAYLOAD_XML;
+        final String blobName = LJA_AVONANDSOMERSET_ROTA_20240314_T160815_Z_XML;
         final byte[] blobByteArray = givenBlobContent(file);
         final BlobContent blobContent = new BlobContent(blobByteArray);
         final String leaseId = RandomStringUtils.randomAlphabetic(10);
@@ -171,17 +182,17 @@ class RotaFileProcessorServiceTest {
         when(sessionsService.getExtractedCourtSchedules(anyList(), any(LocalDate.class), any(LocalDate.class))).thenReturn(extractedSchedules);
         when(referenceDataMapperService.getBusinessTypeMap()).thenReturn(getRotaBusinessTypes());
         doReturn(CompletableFuture.completedFuture(null)).when(rotaFilePartialProcessor).processFullRotaFile(anyMap(), anyMap(), anyCollection(), anyCollection(), any(LocalDate.class), any(LocalDate.class), anyList(), anyList(), anyMap(), anyMap(), anyString(), any(), anyBoolean());
-        mockMigratedMapByOuCode("CABC90", false);
+        mockMigratedMapByOuCode(CABC90_2, false);
 
         final Map<String, String> rotaDetails = new HashMap<>();
-        rotaDetails.putIfAbsent("rotaPeriodStartDate", rotaPeriodStartDate.toString());
-        rotaDetails.putIfAbsent("rotaPeriodEndDate", rotaPeriodEndDate.toString());
+        rotaDetails.putIfAbsent(ROTA_PERIOD_START_DATE, rotaPeriodStartDate.toString());
+        rotaDetails.putIfAbsent(ROTA_PERIOD_END_DATE, rotaPeriodEndDate.toString());
 
         rotaPeriodMap = new HashMap<>();
         rotaPeriodMap.putIfAbsent(RotaPayload.ROTA_PERIOD.toString(), rotaDetails);
 
         when(records.get(RotaPayload.ROTA_PERIOD)).thenReturn(rotaPeriodMap);
-        when(records.get(RotaPayload.LOCATION)).thenReturn(Map.of("175", Map.of("175", "Cheltenham MC"), "177", Map.of("177", "Gloucester County Court")));
+        when(records.get(RotaPayload.LOCATION)).thenReturn(Map.of(VALUE_175, Map.of(VALUE_175, CHELTENHAM_MC), VALUE_177, Map.of(VALUE_177, GLOUCESTER_COUNTY_COURT)));
 
         rotaFileProcessorService.downloadAndProcessForEachFile(blobContent, blobName, leaseId);
 
@@ -193,10 +204,10 @@ class RotaFileProcessorServiceTest {
 
     @Test
     void shouldCaptureMasterRotaFileAndProcessForDurationBasedSlots() throws IOException {
-        setField(rotaFileProcessorService, "rotaCycleToPopulateLength", "corrupted value-normally should be a number");
+        setField(rotaFileProcessorService, ROTA_CYCLE_TO_POPULATE_LENGTH, "corrupted value-normally should be a number");
 
-        final String file = "rotafileprocessor/rota_payload.xml";
-        final String blobName = "lja_avonandsomerset_rota_20240314T160815Z.xml";
+        final String file = ROTAFILEPROCESSOR_ROTA_PAYLOAD_XML;
+        final String blobName = LJA_AVONANDSOMERSET_ROTA_20240314_T160815_Z_XML;
         final byte[] blobByteArray = givenBlobContent(file);
         final BlobContent blobContent = new BlobContent(blobByteArray);
         final String leaseId = RandomStringUtils.randomAlphabetic(10);
@@ -227,17 +238,17 @@ class RotaFileProcessorServiceTest {
         when(sessionsService.getExtractedCourtSchedules(anyList(), any(LocalDate.class), any(LocalDate.class))).thenReturn(extractedSchedules);
         when(referenceDataMapperService.getBusinessTypeMap()).thenReturn(getRotaBusinessTypesAsHavingCJUandNCPTonly());
         doReturn(CompletableFuture.completedFuture(null)).when(rotaFilePartialProcessor).processFullRotaFile(anyMap(), anyMap(), anyCollection(), anyCollection(), any(LocalDate.class), any(LocalDate.class), anyList(), anyList(), anyMap(), anyMap(), anyString(), any(), anyBoolean());
-        mockMigratedMapByOuCode("CABC90", false);
+        mockMigratedMapByOuCode(CABC90_2, false);
 
         final Map<String, String> rotaDetails = new HashMap<>();
-        rotaDetails.putIfAbsent("rotaPeriodStartDate", rotaPeriodStartDate.toString());
-        rotaDetails.putIfAbsent("rotaPeriodEndDate", rotaPeriodEndDate.toString());
+        rotaDetails.putIfAbsent(ROTA_PERIOD_START_DATE, rotaPeriodStartDate.toString());
+        rotaDetails.putIfAbsent(ROTA_PERIOD_END_DATE, rotaPeriodEndDate.toString());
 
         rotaPeriodMap = new HashMap<>();
         rotaPeriodMap.putIfAbsent(RotaPayload.ROTA_PERIOD.toString(), rotaDetails);
 
         when(records.get(RotaPayload.ROTA_PERIOD)).thenReturn(rotaPeriodMap);
-        when(records.get(RotaPayload.LOCATION)).thenReturn(Map.of("175", Map.of("175", "Cheltenham MC"), "177", Map.of("177", "Gloucester County Court")));
+        when(records.get(RotaPayload.LOCATION)).thenReturn(Map.of(VALUE_175, Map.of(VALUE_175, CHELTENHAM_MC), VALUE_177, Map.of(VALUE_177, GLOUCESTER_COUNTY_COURT)));
 
         rotaFileProcessorService.downloadAndProcessForEachFile(blobContent, blobName, leaseId);
 
@@ -250,10 +261,10 @@ class RotaFileProcessorServiceTest {
 
     @Test
     void shouldCaptureMasterRotaFileAndProcessIfAlsoThereIsNoExistingSchedules() throws IOException {
-        setField(rotaFileProcessorService, "rotaCycleToPopulateLength", null);
+        setField(rotaFileProcessorService, ROTA_CYCLE_TO_POPULATE_LENGTH, null);
 
-        final String file = "rotafileprocessor/rota_payload.xml";
-        final String blobName = "lja_avonandsomerset_rota_20240314T160815Z.xml";
+        final String file = ROTAFILEPROCESSOR_ROTA_PAYLOAD_XML;
+        final String blobName = LJA_AVONANDSOMERSET_ROTA_20240314_T160815_Z_XML;
         final byte[] blobByteArray = givenBlobContent(file);
         final BlobContent blobContent = new BlobContent(blobByteArray);
         final String leaseId = RandomStringUtils.randomAlphabetic(10);
@@ -274,14 +285,14 @@ class RotaFileProcessorServiceTest {
         });
 
         final Map<String, String> rotaDetails = new HashMap<>();
-        rotaDetails.putIfAbsent("rotaPeriodStartDate", rotaPeriodStartDate.toString());
-        rotaDetails.putIfAbsent("rotaPeriodEndDate", rotaPeriodEndDate.toString());
+        rotaDetails.putIfAbsent(ROTA_PERIOD_START_DATE, rotaPeriodStartDate.toString());
+        rotaDetails.putIfAbsent(ROTA_PERIOD_END_DATE, rotaPeriodEndDate.toString());
 
         rotaPeriodMap = new HashMap<>();
         rotaPeriodMap.putIfAbsent(RotaPayload.ROTA_PERIOD.toString(), rotaDetails);
 
         when(records.get(RotaPayload.ROTA_PERIOD)).thenReturn(rotaPeriodMap);
-        when(records.get(RotaPayload.LOCATION)).thenReturn(Map.of("175", Map.of("175", "Cheltenham MC"), "177", Map.of("177", "Gloucester County Court")));
+        when(records.get(RotaPayload.LOCATION)).thenReturn(Map.of(VALUE_175, Map.of(VALUE_175, CHELTENHAM_MC), VALUE_177, Map.of(VALUE_177, GLOUCESTER_COUNTY_COURT)));
 
         doNothing().when(azureBlobClientService).uploadProcessedFile(any(InputStream.class), anyLong(), eq(blobName), eq(empty()));
         doNothing().when(azureBlobClientService).deleteFile(anyString(), eq(empty()));
@@ -293,7 +304,7 @@ class RotaFileProcessorServiceTest {
         when(sessionsService.getExtractedCourtSchedules(anyList(), any(LocalDate.class), any(LocalDate.class))).thenReturn(emptyList());
         when(referenceDataMapperService.getBusinessTypeMap()).thenReturn(getRotaBusinessTypes());
         doReturn(CompletableFuture.completedFuture(null)).when(rotaFilePartialProcessor).processFullRotaFile(anyMap(), anyMap(), anyCollection(), anyCollection(), any(LocalDate.class), any(LocalDate.class), anyList(), anyList(), anyMap(), anyMap(), anyString(), any(), anyBoolean());
-        mockMigratedMapByOuCode("CABC90", false);
+        mockMigratedMapByOuCode(CABC90_2, false);
 
         rotaFileProcessorService.downloadAndProcessForEachFile(blobContent, blobName, leaseId);
 
@@ -306,8 +317,8 @@ class RotaFileProcessorServiceTest {
 
     @Test
     void shouldBreakRotaFileProcessIfCourtRoomsMapIsEmpty() throws IOException {
-        final String file = "rotafileprocessor/rota_payload.xml";
-        final String blobName = "lja_avonandsomerset_rota_20240314T160815Z.xml";
+        final String file = ROTAFILEPROCESSOR_ROTA_PAYLOAD_XML;
+        final String blobName = LJA_AVONANDSOMERSET_ROTA_20240314_T160815_Z_XML;
         final byte[] blobByteArray = givenBlobContent(file);
         final BlobContent blobContent = new BlobContent(blobByteArray);
         final String leaseId = RandomStringUtils.randomAlphabetic(10);
@@ -330,8 +341,8 @@ class RotaFileProcessorServiceTest {
         when(referenceDataMapperService.getCourtRoomsMap()).thenReturn(emptyMap());
 
         final Map<String, String> rotaDetails = new HashMap<>();
-        rotaDetails.putIfAbsent("rotaPeriodStartDate", rotaPeriodStartDate.toString());
-        rotaDetails.putIfAbsent("rotaPeriodEndDate", rotaPeriodEndDate.toString());
+        rotaDetails.putIfAbsent(ROTA_PERIOD_START_DATE, rotaPeriodStartDate.toString());
+        rotaDetails.putIfAbsent(ROTA_PERIOD_END_DATE, rotaPeriodEndDate.toString());
 
         rotaPeriodMap = new HashMap<>();
         rotaPeriodMap.putIfAbsent(RotaPayload.ROTA_PERIOD.toString(), rotaDetails);
@@ -346,7 +357,7 @@ class RotaFileProcessorServiceTest {
 
     @Test
     void shouldNotProcessDummyFile() throws IOException {
-        final String file = "rotafileprocessor/rota_payload.xml";
+        final String file = ROTAFILEPROCESSOR_ROTA_PAYLOAD_XML;
         final String blobName = "dummysupport.xml";
         final byte[] blobByteArray = givenBlobContent(file);
         final BlobContent blobContent = new BlobContent(blobByteArray);
@@ -362,7 +373,7 @@ class RotaFileProcessorServiceTest {
 
     @Test
     void shouldCaptureSnapshotFileAndProcess() throws IOException {
-        final String file = "rotafileprocessor/rota_payload.xml";
+        final String file = ROTAFILEPROCESSOR_ROTA_PAYLOAD_XML;
         final String blobName = "lja_bedfordshire_snapshot_20240402T180039Z.xml";
         final byte[] blobByteArray = givenBlobContent(file);
         final BlobContent blobContent = new BlobContent(blobByteArray);
@@ -378,18 +389,18 @@ class RotaFileProcessorServiceTest {
         when(rotaDataEnricher.enrichCourtListings(eq(records), any(LocalDate.class), anyMap(), anyBoolean(), anyList(), anyString(), anyMap())).thenReturn(slotsMock);
         when(judiciaryScheduleEnricher.enrichJudiciarySchedules(eq(slotsMock), eq(records), eq(false), anyList(), anyString(), anyMap(), anyMap())).thenReturn(schedules);
         when(referenceDataMapperService.getCourtRoomsMap()).thenReturn(getCourtRoomsMap());
-        when(rotaFileProcessHistoryRepository.findByFileNamePrefixAndFileDateGreaterThan(anyString(), any(Timestamp.class))).thenReturn(emptyList());
+        when(rotaFileProcessHistoryRepository.findByFileNamePrefixAndFileDateGreaterThan(anyString(), any(Instant.class))).thenReturn(emptyList());
         doReturn(CompletableFuture.completedFuture(null)).when(rotaFilePartialProcessor).processSnapshotRotaFile(anyMap(), anyMap(), anyCollection(), anyCollection(), anyMap(), anyList(), anyList(), anyMap(), anyMap(), anyString(), any(), anyBoolean());
 
         final Map<String, String> rotaDetails = new HashMap<>();
-        rotaDetails.putIfAbsent("rotaPeriodStartDate", rotaPeriodStartDate.toString());
-        rotaDetails.putIfAbsent("rotaPeriodEndDate", rotaPeriodEndDate.toString());
+        rotaDetails.putIfAbsent(ROTA_PERIOD_START_DATE, rotaPeriodStartDate.toString());
+        rotaDetails.putIfAbsent(ROTA_PERIOD_END_DATE, rotaPeriodEndDate.toString());
 
         rotaPeriodMap = new HashMap<>();
         rotaPeriodMap.putIfAbsent(RotaPayload.ROTA_PERIOD.toString(), rotaDetails);
 
         when(records.get(RotaPayload.ROTA_PERIOD)).thenReturn(rotaPeriodMap);
-        when(records.get(RotaPayload.LOCATION)).thenReturn(Map.of("175", Map.of("175", "Cheltenham MC"), "177", Map.of("177", "Gloucester County Court")));
+        when(records.get(RotaPayload.LOCATION)).thenReturn(Map.of(VALUE_175, Map.of(VALUE_175, CHELTENHAM_MC), VALUE_177, Map.of(VALUE_177, GLOUCESTER_COUNTY_COURT)));
         when(rotaFileProcessHistoryService.save(anyString(), any(), any(byte[].class), anyString())).thenReturn(rotaFileProcessHistory);
 
         rotaFileProcessorService.downloadAndProcessForEachFile(blobContent, blobName, leaseId);
@@ -398,7 +409,7 @@ class RotaFileProcessorServiceTest {
         verify(rotaDataEnricher, atLeastOnce()).enrichCourtListings(eq(records), any(LocalDate.class), anyMap(), anyBoolean(), anyList(), anyString(), anyMap());
         verify(rotaFileParser, atLeastOnce()).parse(any(), any());
         verify(referenceDataMapperService, atLeastOnce()).getCourtRoomsMap();
-        verify(rotaFileProcessHistoryRepository, atLeastOnce()).findByFileNamePrefixAndFileDateGreaterThan(anyString(), any(Timestamp.class));
+        verify(rotaFileProcessHistoryRepository, atLeastOnce()).findByFileNamePrefixAndFileDateGreaterThan(anyString(), any(Instant.class));
         verify(rotaFileProcessHistoryService, atLeastOnce()).save(anyString(), any(), any(byte[].class), anyString());
 
         final ArgumentCaptor<RotaFileProcessHistory> historyCaptor = ArgumentCaptor.forClass(RotaFileProcessHistory.class);
@@ -413,7 +424,7 @@ class RotaFileProcessorServiceTest {
 
     @Test
     void shouldNotProcessSnapshotFileIfThereIsOneAlreadyProcessedHavingANewerFileDate() throws IOException {
-        final String file = "rotafileprocessor/rota_payload.xml";
+        final String file = ROTAFILEPROCESSOR_ROTA_PAYLOAD_XML;
         final String blobName = "lja_bedfordshire_snapshot_20240402T180039Z.xml";
         final byte[] blobByteArray = givenBlobContent(file);
         final BlobContent blobContent = new BlobContent(blobByteArray);
@@ -425,12 +436,12 @@ class RotaFileProcessorServiceTest {
         doNothing().when(azureBlobClientService).uploadProcessedFile(any(InputStream.class), anyLong(), eq(blobName), eq(empty()));
         doNothing().when(azureBlobClientService).deleteFile(anyString(), eq(empty()));
 
-        when(rotaFileProcessHistoryRepository.findByFileNamePrefixAndFileDateGreaterThan(anyString(), any(Timestamp.class)))
+        when(rotaFileProcessHistoryRepository.findByFileNamePrefixAndFileDateGreaterThan(anyString(), any(Instant.class)))
                 .thenReturn(List.of(new RotaFileProcessHistory()));
 
         final Map<String, String> rotaDetails = new HashMap<>();
-        rotaDetails.putIfAbsent("rotaPeriodStartDate", rotaPeriodStartDate.toString());
-        rotaDetails.putIfAbsent("rotaPeriodEndDate", rotaPeriodEndDate.toString());
+        rotaDetails.putIfAbsent(ROTA_PERIOD_START_DATE, rotaPeriodStartDate.toString());
+        rotaDetails.putIfAbsent(ROTA_PERIOD_END_DATE, rotaPeriodEndDate.toString());
 
         rotaPeriodMap = new HashMap<>();
         rotaPeriodMap.putIfAbsent(RotaPayload.ROTA_PERIOD.toString(), rotaDetails);
@@ -441,13 +452,13 @@ class RotaFileProcessorServiceTest {
         verify(rotaDataEnricher, never()).enrichCourtListings(eq(records), any(LocalDate.class), anyMap(), anyBoolean(), anyList(), anyString(), anyMap());
         verify(rotaFileParser, never()).parse(any(), any());
         verify(referenceDataMapperService, never()).getCourtRoomsMap();
-        verify(rotaFileProcessHistoryRepository, atLeastOnce()).findByFileNamePrefixAndFileDateGreaterThan(anyString(), any(Timestamp.class));
+        verify(rotaFileProcessHistoryRepository, atLeastOnce()).findByFileNamePrefixAndFileDateGreaterThan(anyString(), any(Instant.class));
         verify(rotaFileProcessHistoryService, never()).save(anyString(), any(), any(byte[].class), anyString());
     }
 
     @Test
     void shouldNotProcessSnapshotFileIfTheFileNameMissingFileDateTimePart() throws IOException {
-        final String file = "rotafileprocessor/rota_payload.xml";
+        final String file = ROTAFILEPROCESSOR_ROTA_PAYLOAD_XML;
         final String blobName = "lja_bedfordshire_snapshot_.xml";
         final byte[] blobByteArray = givenBlobContent(file);
         final BlobContent blobContent = new BlobContent(blobByteArray);
@@ -460,8 +471,8 @@ class RotaFileProcessorServiceTest {
         doNothing().when(azureBlobClientService).deleteFile(anyString(), eq(empty()));
 
         final Map<String, String> rotaDetails = new HashMap<>();
-        rotaDetails.putIfAbsent("rotaPeriodStartDate", rotaPeriodStartDate.toString());
-        rotaDetails.putIfAbsent("rotaPeriodEndDate", rotaPeriodEndDate.toString());
+        rotaDetails.putIfAbsent(ROTA_PERIOD_START_DATE, rotaPeriodStartDate.toString());
+        rotaDetails.putIfAbsent(ROTA_PERIOD_END_DATE, rotaPeriodEndDate.toString());
 
         rotaPeriodMap = new HashMap<>();
         rotaPeriodMap.putIfAbsent(RotaPayload.ROTA_PERIOD.toString(), rotaDetails);
@@ -473,7 +484,7 @@ class RotaFileProcessorServiceTest {
         verify(rotaDataEnricher, never()).enrichCourtListings(eq(records), any(LocalDate.class), anyMap(), anyBoolean(), anyList(), anyString(), anyMap());
         verify(rotaFileParser, never()).parse(any(), any());
         verify(referenceDataMapperService, never()).getCourtRoomsMap();
-        verify(rotaFileProcessHistoryRepository, never()).findByFileNamePrefixAndFileDateGreaterThan(anyString(), any(Timestamp.class));
+        verify(rotaFileProcessHistoryRepository, never()).findByFileNamePrefixAndFileDateGreaterThan(anyString(), any(Instant.class));
         verify(rotaFileProcessHistoryService, never()).save(anyString(), any(), any(byte[].class), anyString());
     }
 
@@ -482,7 +493,7 @@ class RotaFileProcessorServiceTest {
         final LocalDate startDate = LocalDate.of(2024, 4, 21);
         final LocalDate endDate = LocalDate.of(2024, 9, 30);
 
-        List<DateRange> dateRanges = rotaFileProcessorService.weeksCovering(startDate, endDate);
+        final List<DateRange> dateRanges = rotaFileProcessorService.weeksCovering(startDate, endDate);
 
         assertNotNull(dateRanges);
     }
@@ -492,7 +503,7 @@ class RotaFileProcessorServiceTest {
         final LocalDate startDate = LocalDate.of(2024, 9, 17);
         final LocalDate endDate = LocalDate.of(2025, 3, 31);
 
-        List<DateRange> dateRanges = rotaFileProcessorService.weeksCovering(startDate, endDate);
+        final List<DateRange> dateRanges = rotaFileProcessorService.weeksCovering(startDate, endDate);
 
         assertNotNull(dateRanges);
         IntStream.range(1, dateRanges.size()).forEach(index -> {
@@ -508,7 +519,7 @@ class RotaFileProcessorServiceTest {
         final LocalDate startDate = LocalDate.of(2024, 10, 1);
         final LocalDate endDate = LocalDate.of(2025, 3, 31);
 
-        List<DateRange> dateRanges = rotaFileProcessorService.weeksCovering(startDate, endDate);
+        final List<DateRange> dateRanges = rotaFileProcessorService.weeksCovering(startDate, endDate);
 
         assertNotNull(dateRanges);
         IntStream.range(1, dateRanges.size()).forEach(index -> {
@@ -521,7 +532,7 @@ class RotaFileProcessorServiceTest {
 
     @Test
     void shouldProcessSnapshotFileWithNewerVersionCheck() throws IOException {
-        final String file = "rotafileprocessor/rota_payload.xml";
+        final String file = ROTAFILEPROCESSOR_ROTA_PAYLOAD_XML;
         final String blobName = "lja_bedfordshire_snapshot_20240402T180039Z.xml";
         final byte[] blobByteArray = givenBlobContent(file);
         final BlobContent blobContent = new BlobContent(blobByteArray);
@@ -538,22 +549,22 @@ class RotaFileProcessorServiceTest {
         when(judiciaryScheduleEnricher.enrichJudiciarySchedules(eq(slotsMock), eq(records), eq(false), anyList(), anyString(), anyMap(), anyMap())).thenReturn(schedules);
         when(referenceDataMapperService.getCourtRoomsMap()).thenReturn(getCourtRoomsMap());
         when(rotaFileProcessHistoryService.save(anyString(), any(), any(byte[].class), anyString())).thenReturn(new RotaFileProcessHistory());
-        when(rotaFileProcessHistoryRepository.findByFileNamePrefixAndFileDateGreaterThan(anyString(), any(Timestamp.class))).thenReturn(emptyList());
+        when(rotaFileProcessHistoryRepository.findByFileNamePrefixAndFileDateGreaterThan(anyString(), any(Instant.class))).thenReturn(emptyList());
         doReturn(CompletableFuture.completedFuture(null)).when(rotaFilePartialProcessor).processSnapshotRotaFile(anyMap(), anyMap(), anyCollection(), anyCollection(), anyMap(), anyList(), anyList(), anyMap(), anyMap(), anyString(), any(), anyBoolean());
 
         final Map<String, String> rotaDetails = new HashMap<>();
-        rotaDetails.putIfAbsent("rotaPeriodStartDate", rotaPeriodStartDate.toString());
-        rotaDetails.putIfAbsent("rotaPeriodEndDate", rotaPeriodEndDate.toString());
+        rotaDetails.putIfAbsent(ROTA_PERIOD_START_DATE, rotaPeriodStartDate.toString());
+        rotaDetails.putIfAbsent(ROTA_PERIOD_END_DATE, rotaPeriodEndDate.toString());
 
         rotaPeriodMap = new HashMap<>();
         rotaPeriodMap.putIfAbsent(RotaPayload.ROTA_PERIOD.toString(), rotaDetails);
 
         when(records.get(RotaPayload.ROTA_PERIOD)).thenReturn(rotaPeriodMap);
-        when(records.get(RotaPayload.LOCATION)).thenReturn(Map.of("175", Map.of("175", "Cheltenham MC"), "177", Map.of("177", "Gloucester County Court")));
+        when(records.get(RotaPayload.LOCATION)).thenReturn(Map.of(VALUE_175, Map.of(VALUE_175, CHELTENHAM_MC), VALUE_177, Map.of(VALUE_177, GLOUCESTER_COUNTY_COURT)));
 
         rotaFileProcessorService.downloadAndProcessForEachFile(blobContent, blobName, leaseId);
 
-        verify(rotaFileProcessHistoryRepository).findByFileNamePrefixAndFileDateGreaterThan(anyString(), any(Timestamp.class));
+        verify(rotaFileProcessHistoryRepository).findByFileNamePrefixAndFileDateGreaterThan(anyString(), any(Instant.class));
         verify(rotaFileProcessHistoryService).save(anyString(), any(), any(byte[].class), anyString());
     }
 
@@ -569,7 +580,7 @@ class RotaFileProcessorServiceTest {
         slots.put("slot3", courtSchedule("2024-04-07", PSV_AS_EXISTING_BUSINESS_TYPE, true));
         slots.put("slot4", courtSchedule("2024-04-10", PSV_AS_EXISTING_BUSINESS_TYPE, true)); // Outside range
 
-        Map<String, CourtSchedule> filteredSlots = rotaFileProcessorService.filterSlots(slots, dateRange);
+        final Map<String, CourtSchedule> filteredSlots = rotaFileProcessorService.filterSlots(slots, dateRange);
 
         assertNotNull(filteredSlots);
         assertEquals(3, filteredSlots.size());
@@ -587,7 +598,7 @@ class RotaFileProcessorServiceTest {
 
         final Map<String, CourtSchedule> slots = new HashMap<>();
 
-        Map<String, CourtSchedule> filteredSlots = rotaFileProcessorService.filterSlots(slots, dateRange);
+        final Map<String, CourtSchedule> filteredSlots = rotaFileProcessorService.filterSlots(slots, dateRange);
 
         assertNotNull(filteredSlots);
         assertTrue(filteredSlots.isEmpty());
@@ -595,10 +606,10 @@ class RotaFileProcessorServiceTest {
 
     @Test
     void shouldProcessFileWithDifferentRotaCycleLengths() throws IOException {
-        setField(rotaFileProcessorService, "rotaCycleToPopulateLength", "14");
+        setField(rotaFileProcessorService, ROTA_CYCLE_TO_POPULATE_LENGTH, "14");
 
-        final String file = "rotafileprocessor/rota_payload.xml";
-        final String blobName = "lja_avonandsomerset_rota_20240314T160815Z.xml";
+        final String file = ROTAFILEPROCESSOR_ROTA_PAYLOAD_XML;
+        final String blobName = LJA_AVONANDSOMERSET_ROTA_20240314_T160815_Z_XML;
         final byte[] blobByteArray = givenBlobContent(file);
         final BlobContent blobContent = new BlobContent(blobByteArray);
         final String leaseId = RandomStringUtils.randomAlphabetic(10);
@@ -616,17 +627,17 @@ class RotaFileProcessorServiceTest {
         when(sessionsService.getExtractedCourtSchedules(anyList(), any(LocalDate.class), any(LocalDate.class))).thenReturn(emptyList());
         when(referenceDataMapperService.getBusinessTypeMap()).thenReturn(getRotaBusinessTypes());
         doReturn(CompletableFuture.completedFuture(null)).when(rotaFilePartialProcessor).processFullRotaFile(anyMap(), anyMap(), anyCollection(), anyCollection(), any(LocalDate.class), any(LocalDate.class), anyList(), anyList(), anyMap(), anyMap(), anyString(), any(), anyBoolean());
-        mockMigratedMapByOuCode("CABC90", false);
+        mockMigratedMapByOuCode(CABC90_2, false);
 
         final Map<String, String> rotaDetails = new HashMap<>();
-        rotaDetails.putIfAbsent("rotaPeriodStartDate", rotaPeriodStartDate.toString());
-        rotaDetails.putIfAbsent("rotaPeriodEndDate", rotaPeriodEndDate.toString());
+        rotaDetails.putIfAbsent(ROTA_PERIOD_START_DATE, rotaPeriodStartDate.toString());
+        rotaDetails.putIfAbsent(ROTA_PERIOD_END_DATE, rotaPeriodEndDate.toString());
 
         rotaPeriodMap = new HashMap<>();
         rotaPeriodMap.putIfAbsent(RotaPayload.ROTA_PERIOD.toString(), rotaDetails);
 
         when(records.get(RotaPayload.ROTA_PERIOD)).thenReturn(rotaPeriodMap);
-        when(records.get(RotaPayload.LOCATION)).thenReturn(Map.of("175", Map.of("175", "Cheltenham MC"), "177", Map.of("177", "Gloucester County Court")));
+        when(records.get(RotaPayload.LOCATION)).thenReturn(Map.of(VALUE_175, Map.of(VALUE_175, CHELTENHAM_MC), VALUE_177, Map.of(VALUE_177, GLOUCESTER_COUNTY_COURT)));
 
         rotaFileProcessorService.downloadAndProcessForEachFile(blobContent, blobName, leaseId);
 
@@ -636,8 +647,8 @@ class RotaFileProcessorServiceTest {
 
     @Test
     void shouldHandleExceptionInDownloadAndProcessForEachFile() throws IOException {
-        final String file = "rotafileprocessor/rota_payload.xml";
-        final String blobName = "lja_avonandsomerset_rota_20240314T160815Z.xml";
+        final String file = ROTAFILEPROCESSOR_ROTA_PAYLOAD_XML;
+        final String blobName = LJA_AVONANDSOMERSET_ROTA_20240314_T160815_Z_XML;
         final byte[] blobByteArray = givenBlobContent(file);
         final BlobContent blobContent = new BlobContent(blobByteArray);
         final String leaseId = RandomStringUtils.randomAlphabetic(10);
@@ -653,7 +664,7 @@ class RotaFileProcessorServiceTest {
 
     @Test
     void shouldProcessFileWithEmptyOuCodes() throws IOException {
-        final String file = "rotafileprocessor/rota_payload.xml";
+        final String file = ROTAFILEPROCESSOR_ROTA_PAYLOAD_XML;
         final String blobName = "lja_avonandsomerset_snapshot_20240314T160815Z.xml";
         final byte[] blobByteArray = givenBlobContent(file);
         final BlobContent blobContent = new BlobContent(blobByteArray);
@@ -669,14 +680,14 @@ class RotaFileProcessorServiceTest {
         when(referenceDataMapperService.getCourtRoomsMap()).thenReturn(emptyMap());
 
         final Map<String, String> rotaDetails = new HashMap<>();
-        rotaDetails.putIfAbsent("rotaPeriodStartDate", rotaPeriodStartDate.toString());
-        rotaDetails.putIfAbsent("rotaPeriodEndDate", rotaPeriodEndDate.toString());
+        rotaDetails.putIfAbsent(ROTA_PERIOD_START_DATE, rotaPeriodStartDate.toString());
+        rotaDetails.putIfAbsent(ROTA_PERIOD_END_DATE, rotaPeriodEndDate.toString());
 
         rotaPeriodMap = new HashMap<>();
         rotaPeriodMap.putIfAbsent(RotaPayload.ROTA_PERIOD.toString(), rotaDetails);
 
         when(records.get(RotaPayload.ROTA_PERIOD)).thenReturn(rotaPeriodMap);
-        when(records.get(RotaPayload.LOCATION)).thenReturn(Map.of("175", Map.of("175", "Cheltenham MC")));
+        when(records.get(RotaPayload.LOCATION)).thenReturn(Map.of(VALUE_175, Map.of(VALUE_175, CHELTENHAM_MC)));
         final RotaFileProcessHistory t = new RotaFileProcessHistory();
         t.setExecutionId(randomUUID().toString());
         when(rotaFileProcessHistoryService.save(anyString(), any(), any(byte[].class), anyString())).thenReturn(t);
@@ -690,8 +701,8 @@ class RotaFileProcessorServiceTest {
 
     @Test
     void shouldCreateAndUpdateRotaFileProcessHistoryForMasterRotaFile() throws IOException {
-        final String file = "rotafileprocessor/rota_payload.xml";
-        final String blobName = "lja_avonandsomerset_rota_20240314T160815Z.xml";
+        final String file = ROTAFILEPROCESSOR_ROTA_PAYLOAD_XML;
+        final String blobName = LJA_AVONANDSOMERSET_ROTA_20240314_T160815_Z_XML;
         final byte[] blobByteArray = givenBlobContent(file);
         final BlobContent blobContent = new BlobContent(blobByteArray);
         final String leaseId = RandomStringUtils.randomAlphabetic(10);
@@ -726,14 +737,14 @@ class RotaFileProcessorServiceTest {
         when(rotaFileProcessHistoryService.save(anyString(), any(), any(byte[].class), anyString())).thenReturn(savedHistory);
 
         final Map<String, String> rotaDetails = new HashMap<>();
-        rotaDetails.putIfAbsent("rotaPeriodStartDate", rotaPeriodStartDate.toString());
-        rotaDetails.putIfAbsent("rotaPeriodEndDate", rotaPeriodEndDate.toString());
+        rotaDetails.putIfAbsent(ROTA_PERIOD_START_DATE, rotaPeriodStartDate.toString());
+        rotaDetails.putIfAbsent(ROTA_PERIOD_END_DATE, rotaPeriodEndDate.toString());
 
         rotaPeriodMap = new HashMap<>();
         rotaPeriodMap.putIfAbsent(RotaPayload.ROTA_PERIOD.toString(), rotaDetails);
 
         when(records.get(RotaPayload.ROTA_PERIOD)).thenReturn(rotaPeriodMap);
-        when(records.get(RotaPayload.LOCATION)).thenReturn(Map.of("175", Map.of("175", "Cheltenham MC"), "177", Map.of("177", "Gloucester County Court")));
+        when(records.get(RotaPayload.LOCATION)).thenReturn(Map.of(VALUE_175, Map.of(VALUE_175, CHELTENHAM_MC), VALUE_177, Map.of(VALUE_177, GLOUCESTER_COUNTY_COURT)));
 
         rotaFileProcessorService.downloadAndProcessForEachFile(blobContent, blobName, leaseId);
 
@@ -747,7 +758,7 @@ class RotaFileProcessorServiceTest {
     }
 
     private byte[] givenBlobContent(final String file) throws IOException {
-        try (final InputStream inputStream = RotaFileProcessorServiceTest.class.getClassLoader().getResourceAsStream(file)) {
+        try (InputStream inputStream = RotaFileProcessorServiceTest.class.getResourceAsStream("/" + file)) {
 
             return toByteArray(inputStream);
         }
@@ -786,7 +797,7 @@ class RotaFileProcessorServiceTest {
                 .withCourtScheduleId(scheduleId)
                 .withListingProfileId(profileId)
                 .withSessionDate(parse(sessionDate))
-                .withOuCode("CABC90")
+                .withOuCode(CABC90_2)
                 .withCourtRoomId("001c067d-eaca-4ce5-ad90-a366ef3e4bb6")
                 .withCourtRoomNumber(1234)
                 .withCourtHouseName("Liverpool Mags Court")

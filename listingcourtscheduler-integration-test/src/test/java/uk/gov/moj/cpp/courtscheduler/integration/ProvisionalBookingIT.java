@@ -31,14 +31,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.json.JSONObject;
 import org.junit.jupiter.api.Test;
 
-public class ProvisionalBookingIT extends AbstractIT {
+class ProvisionalBookingIT extends AbstractIT {
 
-    private final String RELATIVE_PATH = "/provisionalBooking";
+    private static final String RELATIVE_PATH = "/provisionalBooking";
 
     @Test
     void shouldCreateProvisionalHearingSlot() throws SQLException {
-        String courtScheduleId = UUID.randomUUID().toString();
-        CourtSchedule courtSchedule = RANDOM.nextObject(CourtSchedule.class);
+        final String courtScheduleId = UUID.randomUUID().toString();
+        final CourtSchedule courtSchedule = RANDOM.nextObject(CourtSchedule.class);
         courtSchedule.setCourtScheduleId(courtScheduleId);
         databaseSeeder.insertCourtSchedule(courtSchedule);
 
@@ -49,8 +49,8 @@ public class ProvisionalBookingIT extends AbstractIT {
         final Response response = postCommand(RELATIVE_PATH, "application/vnd.courtscheduler.create.provisional.booking+json", SYSTEM_USER_ID, provisionalBookingPayload);
 
         assertThat(response.getStatus(), is(OK.getStatusCode()));
-        String responseString = response.readEntity(String.class); // Ensure to read the entity as String
-        JSONObject responseJson = new JSONObject(responseString);
+        final String responseString = response.readEntity(String.class); // Ensure to read the entity as String
+        final JSONObject responseJson = new JSONObject(responseString);
         assertThat(responseJson.get("bookingId"), notNullValue());
     }
 
@@ -65,12 +65,12 @@ public class ProvisionalBookingIT extends AbstractIT {
      */
     @Test
     void shouldAcceptLegacyApplicationJsonAcceptHeader() throws SQLException {
-        String courtScheduleId = UUID.randomUUID().toString();
-        CourtSchedule courtSchedule = RANDOM.nextObject(CourtSchedule.class);
+        final String courtScheduleId = UUID.randomUUID().toString();
+        final CourtSchedule courtSchedule = RANDOM.nextObject(CourtSchedule.class);
         courtSchedule.setCourtScheduleId(courtScheduleId);
         databaseSeeder.insertCourtSchedule(courtSchedule);
 
-        String provisionalBookingPayload = getPayload("courtscheduler.create.provisional.booking.json")
+        final String provisionalBookingPayload = getPayload("courtscheduler.create.provisional.booking.json")
                 .replace("COURTSCHEDULER_ID", courtScheduleId);
 
         final Response response = postCommandWithAccept(
@@ -94,12 +94,12 @@ public class ProvisionalBookingIT extends AbstractIT {
      */
     @Test
     void shouldAcceptHearingCallerWithNoAcceptHeader() throws SQLException {
-        String courtScheduleId = UUID.randomUUID().toString();
-        CourtSchedule courtSchedule = RANDOM.nextObject(CourtSchedule.class);
+        final String courtScheduleId = UUID.randomUUID().toString();
+        final CourtSchedule courtSchedule = RANDOM.nextObject(CourtSchedule.class);
         courtSchedule.setCourtScheduleId(courtScheduleId);
         databaseSeeder.insertCourtSchedule(courtSchedule);
 
-        String provisionalBookingPayload = getPayload("courtscheduler.create.provisional.booking.json")
+        final String provisionalBookingPayload = getPayload("courtscheduler.create.provisional.booking.json")
                 .replace("COURTSCHEDULER_ID", courtScheduleId);
 
         final Response response = postCommandWithoutAccept(
@@ -114,11 +114,11 @@ public class ProvisionalBookingIT extends AbstractIT {
 
     @Test
     void shouldRetrieveProvisionalBooking() throws Exception {
-        String courtScheduleId = UUID.randomUUID().toString();
-        String bookingId = UUID.randomUUID().toString();
+        final String courtScheduleId = UUID.randomUUID().toString();
+        final String bookingId = UUID.randomUUID().toString();
 
 
-        CourtSchedule courtSchedule = RANDOM.nextObject(CourtSchedule.class);
+        final CourtSchedule courtSchedule = RANDOM.nextObject(CourtSchedule.class);
         courtSchedule.setCourtScheduleId(courtScheduleId);
         databaseSeeder.insertCourtSchedule(courtSchedule);
 
@@ -136,8 +136,8 @@ public class ProvisionalBookingIT extends AbstractIT {
 
         String provisionalBooking = getPayload("courtscheduler.get.provisional.booking.json");
         provisionalBooking = provisionalBooking.replace("BOOKING_ID", bookingId);
-        ObjectMapper mapper = new ObjectMapper();
-        Map<String, Object> map = mapper.readValue(provisionalBooking, new TypeReference<>() {
+        final ObjectMapper mapper = new ObjectMapper();
+        final Map<String, Object> map = mapper.readValue(provisionalBooking, new TypeReference<>() {
         });
 
         final RequestParams requestParams = getRequestParams(RELATIVE_PATH, "application/vnd.courtscheduler.get.provisional.booking+json", SYSTEM_USER_ID, map);

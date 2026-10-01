@@ -8,13 +8,9 @@ import static org.apache.commons.lang3.StringUtils.isBlank;
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.CANNOT_BE_NULL;
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.ERROR_MESSAGE;
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.MANDATORY_SEARCH_CRITERIA;
-import static uk.gov.moj.cpp.courtscheduler.api.JudiciaryAvailabilityValidationMessages.ENTER_END_DATE;
-import static uk.gov.moj.cpp.courtscheduler.api.JudiciaryAvailabilityValidationMessages.ENTER_START_DATE;
-import static uk.gov.moj.cpp.courtscheduler.api.JudiciaryAvailabilityValidationMessages.SELECT_COURTHOUSE;
 import static uk.gov.moj.cpp.courtscheduler.api.JudiciaryAvailabilityValidationMessages.SELECT_DAY_OF_WEEK;
 import static uk.gov.moj.cpp.courtscheduler.api.JudiciaryAvailabilityValidationMessages.SELECT_JUDICIARY;
 import static uk.gov.moj.cpp.courtscheduler.api.JudiciaryAvailabilityValidationMessages.SELECT_REPEAT_DAYS;
-import static uk.gov.moj.cpp.courtscheduler.api.JudiciaryAvailabilityValidationMessages.START_DATE_MUST_BE_BEFORE_OR_EQUAL_TO_END_DATE;
 
 import uk.gov.moj.cpp.courtscheduler.domain.AddJudiciaryAvailabilityRuleRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.BaseJudiciaryAvailabilityRuleRequest;
@@ -114,7 +110,7 @@ public class JudiciaryAvailabilityRuleApiValidator {
 
         // Enum provides type safety - no need to validate individual values
         // Just check for null values in the list
-        for (uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek repeatDay : repeatDays) {
+        for (final uk.gov.moj.cpp.courtscheduler.domain.AvailabilityDayOfWeek repeatDay : repeatDays) {
             if (repeatDay == null) {
                 return buildErrorResponse(SELECT_DAY_OF_WEEK);
             }
@@ -127,7 +123,7 @@ public class JudiciaryAvailabilityRuleApiValidator {
         return buildErrorResponse(MANDATORY_SEARCH_CRITERIA + value + CANNOT_BE_NULL);
     }
 
-    private JsonObject buildErrorResponse(String errorMessage) {
+    private JsonObject buildErrorResponse(final String errorMessage) {
         return createObjectBuilder()
                 .add(ERROR_MESSAGE, errorMessage)
                 .build();
@@ -204,7 +200,7 @@ public class JudiciaryAvailabilityRuleApiValidator {
                                                                                     final JudiciaryAvailabilityService service) {
         LOGGER.info("Validating DeleteJudiciaryAvailabilityRule for validation endpoint: {}", request);
 
-        JsonObject validation = validateRequestNotNull(request);
+        final JsonObject validation = validateRequestNotNull(request);
         if (!validation.isEmpty()) {
             return validation;
         }

@@ -17,7 +17,7 @@ import org.springframework.http.ResponseEntity;
  * read-only endpoints with valid query params return 200. Either way the contract holds —
  * a 5xx would indicate an unhandled exception in the migration.</p>
  */
-class CourtScheduleApiContractIntegrationTest extends AbstractIntegrationTest {
+class CourtScheduleApiContractIntegrationTest extends IntegrationTestBase {
 
     @Test
     void postCourtschedule_doesNotBlowUp() {
@@ -34,7 +34,7 @@ class CourtScheduleApiContractIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
-    void getCourtschedule_returns200WithCourtSchedulesField() {
+    void fetchCourtschedule_returns200WithCourtSchedulesField() {
         final ResponseEntity<String> response = get(
                 "/courtschedule?courtCentreId=" + UUID.randomUUID()
                         + "&sessionStartDate=2026-01-01"
@@ -90,7 +90,7 @@ class CourtScheduleApiContractIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
-    void getCourtSchedulesByIds_returns200WithCourtSchedulesField() {
+    void fetchCourtSchedulesByIds_returns200WithCourtSchedulesField() {
         final ResponseEntity<String> response = get(
                 "/sessions?ids=" + UUID.randomUUID(),
                 SYSTEM_USER_ID,

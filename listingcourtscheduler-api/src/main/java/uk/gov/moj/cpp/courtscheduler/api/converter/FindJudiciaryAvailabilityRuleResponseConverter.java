@@ -10,7 +10,6 @@ import jakarta.json.Json;
 import jakarta.json.JsonArray;
 import jakarta.json.JsonArrayBuilder;
 import jakarta.json.JsonObject;
-import jakarta.json.JsonObjectBuilder;
 
 @Service
 public class FindJudiciaryAvailabilityRuleResponseConverter extends BaseJudiciaryAvailabilityRuleResponseConverter
@@ -26,7 +25,7 @@ public class FindJudiciaryAvailabilityRuleResponseConverter extends BaseJudiciar
     public JsonObject convert(final FindJudiciaryAvailabilityRuleResponse response) {
        final JsonArrayBuilder rulesArrayBuilder = Json.createArrayBuilder();
         if (response.getRules() != null) {
-            for (JudiciaryAvailabilityRuleResponse rule : response.getRules()) {
+            for (final JudiciaryAvailabilityRuleResponse rule : response.getRules()) {
                 rulesArrayBuilder.add(convertRule(rule));
             }
         }
