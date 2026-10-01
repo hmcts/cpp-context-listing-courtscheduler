@@ -118,6 +118,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class SessionsServiceTest {
+    private static final String JUDICIARY_TYPE_RECORDER = "Recorder";
+    private static final int SEQ_ID = 143_117;
+    private static final String TITLE_JUDICIAL_PREFIX = "His Honour Judge";
+    private static final String TITLE_JUDICIAL_PREFIX_WELSH = "Ei Anrhydedd y Barnwr";
+    private static final String PERSON_ID = "131172";
     private static final String VALUE_09_00 = "09:00";
     private static final String VALUE_10_00 = "10:00";
     private static final String VALUE_11_00 = "11:00";
@@ -587,16 +592,16 @@ class SessionsServiceTest {
         final uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule schedule =
                 new uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule();
         schedule.setCourtScheduleId(randomUUID().toString());
-        schedule.setBusinessType("TRL");
+        schedule.setBusinessType(TRL_2);
         schedule.getJudiciaries().add(dbJudiciary);
 
         final Judiciary refDataJudiciary = Judiciary.JudiciaryBuilder.aJudiciary()
                 .withId(judiciaryId)
-                .withJudiciaryType("Recorder")
-                .withSeqId(143117)
-                .withTitleJudicialPrefix("His Honour Judge")
-                .withTitleJudicialPrefixWelsh("Ei Anrhydedd y Barnwr")
-                .withPersonId("131172")
+                .withJudiciaryType(JUDICIARY_TYPE_RECORDER)
+                .withSeqId(SEQ_ID)
+                .withTitleJudicialPrefix(TITLE_JUDICIAL_PREFIX)
+                .withTitleJudicialPrefixWelsh(TITLE_JUDICIAL_PREFIX_WELSH)
+                .withPersonId(PERSON_ID)
                 .withSpecialisms(List.of(JudiciarySpecialismType.ATTEMPTED_MURDER, JudiciarySpecialismType.MURDER))
                 .withRequestedName("HIS HONOUR JUDGE MELBOURNE INMAN KC HONORARY RECORDER OF BIRMINGHAM")
                 .build();
@@ -604,19 +609,19 @@ class SessionsServiceTest {
         when(courtScheduleRepository.getCourtSchedulesBy(param)).thenReturn(List.of(schedule));
         when(referenceDataService.getJudiciariesWithSpecialismByIds(List.of(judiciaryId)))
                 .thenReturn(List.of(refDataJudiciary));
-        when(referenceDataCache.getRotaBusinessTypeByCode(eq("TRL")))
-                .thenReturn(returnBusinessTypeObject("TRL", true));
+        when(referenceDataCache.getRotaBusinessTypeByCode(eq(TRL_2)))
+                .thenReturn(returnBusinessTypeObject(TRL_2, true));
 
         final List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> result =
                 sessionsService.getCourtSchedules(param);
 
         assertThat(result.size(), is(1));
         final CourtScheduleJudiciary enriched = result.get(0).getJudiciaries().get(0);
-        assertThat(enriched.getJudiciaryType(), is("Recorder"));
-        assertThat(enriched.getSeqId(), is(143117));
-        assertThat(enriched.getTitleJudicialPrefix(), is("His Honour Judge"));
-        assertThat(enriched.getTitleJudicialPrefixWelsh(), is("Ei Anrhydedd y Barnwr"));
-        assertThat(enriched.getPersonId(), is("131172"));
+        assertThat(enriched.getJudiciaryType(), is(JUDICIARY_TYPE_RECORDER));
+        assertThat(enriched.getSeqId(), is(SEQ_ID));
+        assertThat(enriched.getTitleJudicialPrefix(), is(TITLE_JUDICIAL_PREFIX));
+        assertThat(enriched.getTitleJudicialPrefixWelsh(), is(TITLE_JUDICIAL_PREFIX_WELSH));
+        assertThat(enriched.getPersonId(), is(PERSON_ID));
         assertThat(enriched.getSpecialisms(), is(List.of(JudiciarySpecialismType.ATTEMPTED_MURDER, JudiciarySpecialismType.MURDER)));
         assertThat(enriched.getRequestedName(), is("HIS HONOUR JUDGE MELBOURNE INMAN KC HONORARY RECORDER OF BIRMINGHAM"));
         verify(referenceDataService).getJudiciariesWithSpecialismByIds(List.of(judiciaryId));
@@ -639,16 +644,16 @@ class SessionsServiceTest {
         final uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule schedule =
                 new uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule();
         schedule.setCourtScheduleId(courtScheduleId);
-        schedule.setBusinessType("TRL");
+        schedule.setBusinessType(TRL_2);
         schedule.getJudiciaries().add(dbJudiciary);
 
         final Judiciary refDataJudiciary = Judiciary.JudiciaryBuilder.aJudiciary()
                 .withId(judiciaryId)
-                .withJudiciaryType("Recorder")
-                .withSeqId(143117)
-                .withTitleJudicialPrefix("His Honour Judge")
-                .withTitleJudicialPrefixWelsh("Ei Anrhydedd y Barnwr")
-                .withPersonId("131172")
+                .withJudiciaryType(JUDICIARY_TYPE_RECORDER)
+                .withSeqId(SEQ_ID)
+                .withTitleJudicialPrefix(TITLE_JUDICIAL_PREFIX)
+                .withTitleJudicialPrefixWelsh(TITLE_JUDICIAL_PREFIX_WELSH)
+                .withPersonId(PERSON_ID)
                 .withSpecialisms(List.of(JudiciarySpecialismType.ATTEMPTED_MURDER, JudiciarySpecialismType.MURDER))
                 .withRequestedName("HIS HONOUR JUDGE MELBOURNE INMAN KC")
                 .build();
@@ -663,11 +668,11 @@ class SessionsServiceTest {
 
         assertThat(result.size(), is(1));
         final CourtScheduleJudiciary enriched = result.get(0).getJudiciaries().get(0);
-        assertThat(enriched.getJudiciaryType(), is("Recorder"));
-        assertThat(enriched.getSeqId(), is(143117));
-        assertThat(enriched.getTitleJudicialPrefix(), is("His Honour Judge"));
-        assertThat(enriched.getTitleJudicialPrefixWelsh(), is("Ei Anrhydedd y Barnwr"));
-        assertThat(enriched.getPersonId(), is("131172"));
+        assertThat(enriched.getJudiciaryType(), is(JUDICIARY_TYPE_RECORDER));
+        assertThat(enriched.getSeqId(), is(SEQ_ID));
+        assertThat(enriched.getTitleJudicialPrefix(), is(TITLE_JUDICIAL_PREFIX));
+        assertThat(enriched.getTitleJudicialPrefixWelsh(), is(TITLE_JUDICIAL_PREFIX_WELSH));
+        assertThat(enriched.getPersonId(), is(PERSON_ID));
         assertThat(enriched.getSpecialisms(), is(List.of(JudiciarySpecialismType.ATTEMPTED_MURDER, JudiciarySpecialismType.MURDER)));
         assertThat(enriched.getRequestedName(), is("HIS HONOUR JUDGE MELBOURNE INMAN KC"));
         // Verify enrichWithJudiciary is NOT called directly — it's called inside getCourtSchedulesByIdList

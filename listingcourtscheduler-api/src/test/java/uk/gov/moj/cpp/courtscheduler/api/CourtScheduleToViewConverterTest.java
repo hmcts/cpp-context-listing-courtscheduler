@@ -16,6 +16,12 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class CourtScheduleToViewConverterTest {
+    private static final String TITLE = "His Honour";
+    private static final String FORENAMES = "Mark J";
+    private static final String SURNAME = "Ainsworth";
+    private static final String EMAIL_ADDRESS = "mark.ainsworth@ejudiciary.net";
+    private static final String JUDICIARY_TYPE = "Recorder";
+    private static final int SEQ_ID = 143_117;
 
     @Test
     void shouldConvert() {
@@ -110,23 +116,23 @@ class CourtScheduleToViewConverterTest {
     }
 
     @Test
-    public void shouldGroupByCourtRoomIdNotCourtRoomName() {
+    void shouldGroupByCourtRoomIdNotCourtRoomName() {
         // Two schedules with the same courtRoomName but different courtRoomIds must NOT be merged
-        String sharedCourtRoomName = "Room A";
-        String courtRoomId1 = "room-id-unique-1";
-        String courtRoomId2 = "room-id-unique-2";
+        final String sharedCourtRoomName = "Room A";
+        final String courtRoomId1 = "room-id-unique-1";
+        final String courtRoomId2 = "room-id-unique-2";
 
-        CourtSchedule schedule1 = random(CourtSchedule.class);
+        final CourtSchedule schedule1 = random(CourtSchedule.class);
         schedule1.setCourtRoomId(courtRoomId1);
         schedule1.setCourtRoomName(sharedCourtRoomName);
         schedule1.setSessionDate(LocalDate.now());
 
-        CourtSchedule schedule2 = random(CourtSchedule.class);
+        final CourtSchedule schedule2 = random(CourtSchedule.class);
         schedule2.setCourtRoomId(courtRoomId2);
         schedule2.setCourtRoomName(sharedCourtRoomName);
         schedule2.setSessionDate(LocalDate.now().plusDays(1));
 
-        List<CourtSessionsView> result = CourtScheduleToViewConverter.getCourtSessionsViews(List.of(schedule1, schedule2));
+        final List<CourtSessionsView> result = CourtScheduleToViewConverter.getCourtSessionsViews(List.of(schedule1, schedule2));
 
         // Must have 2 courtRoom groups, not 1 (collision on name must not happen)
         assertThat(result.size(), is(2));
@@ -140,11 +146,11 @@ class CourtScheduleToViewConverterTest {
         final String judiciaryId = "9f39f876-3ff6-32b5-926e-c588e36a87b8";
         schedule.setJudiciaries(List.of(judiciary()
                 .withJudiciaryId(judiciaryId)
-                .withTitle("His Honour")
-                .withForenames("Mark J")
-                .withSurname("Ainsworth")
-                .withEmailAddress("mark.ainsworth@ejudiciary.net")
-                .withJudiciaryType("Recorder")
+                .withTitle(TITLE)
+                .withForenames(FORENAMES)
+                .withSurname(SURNAME)
+                .withEmailAddress(EMAIL_ADDRESS)
+                .withJudiciaryType(JUDICIARY_TYPE)
                 .withIsBenchChairman(true)
                 .withIsDeputy(false)
                 .build()));
@@ -157,11 +163,11 @@ class CourtScheduleToViewConverterTest {
         assertThat(sessions.getFirst().getJudiciaries().size(), is(1));
         final uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary result = sessions.getFirst().getJudiciaries().getFirst();
         assertThat(result.getJudiciaryId(), is(judiciaryId));
-        assertThat(result.getTitle(), is("His Honour"));
-        assertThat(result.getForenames(), is("Mark J"));
-        assertThat(result.getSurname(), is("Ainsworth"));
-        assertThat(result.getEmailAddress(), is("mark.ainsworth@ejudiciary.net"));
-        assertThat(result.getJudiciaryType(), is("Recorder"));
+        assertThat(result.getTitle(), is(TITLE));
+        assertThat(result.getForenames(), is(FORENAMES));
+        assertThat(result.getSurname(), is(SURNAME));
+        assertThat(result.getEmailAddress(), is(EMAIL_ADDRESS));
+        assertThat(result.getJudiciaryType(), is(JUDICIARY_TYPE));
         assertThat(result.isBenchChairman(), is(true));
         assertThat(result.isDeputy(), is(false));
     }
@@ -172,15 +178,15 @@ class CourtScheduleToViewConverterTest {
         final String judiciaryId = "9f39f876-3ff6-32b5-926e-c588e36a87b8";
         final uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary judiciary = judiciary()
                 .withJudiciaryId(judiciaryId)
-                .withTitle("His Honour")
-                .withForenames("Mark J")
-                .withSurname("Ainsworth")
-                .withEmailAddress("mark.ainsworth@ejudiciary.net")
-                .withJudiciaryType("Recorder")
+                .withTitle(TITLE)
+                .withForenames(FORENAMES)
+                .withSurname(SURNAME)
+                .withEmailAddress(EMAIL_ADDRESS)
+                .withJudiciaryType(JUDICIARY_TYPE)
                 .withIsBenchChairman(true)
                 .withIsDeputy(false)
                 .build();
-        judiciary.setSeqId(143117);
+        judiciary.setSeqId(SEQ_ID);
         judiciary.setTitleJudicialPrefix("His Honour Judge");
         judiciary.setTitleJudicialPrefixWelsh("Ei Anrhydedd y Barnwr");
         judiciary.setPersonId("131172");
@@ -191,16 +197,16 @@ class CourtScheduleToViewConverterTest {
 
         assertThat(courtSessionsViews.size(), is(1));
         final uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary result =
-                courtSessionsViews.get(0).getSessions().get(0).getJudiciaries().getFirst();
+                courtSessionsViews.getFirst().getSessions().getFirst().getJudiciaries().getFirst();
         assertThat(result.getJudiciaryId(), is(judiciaryId));
-        assertThat(result.getTitle(), is("His Honour"));
-        assertThat(result.getForenames(), is("Mark J"));
-        assertThat(result.getSurname(), is("Ainsworth"));
-        assertThat(result.getEmailAddress(), is("mark.ainsworth@ejudiciary.net"));
-        assertThat(result.getJudiciaryType(), is("Recorder"));
+        assertThat(result.getTitle(), is(TITLE));
+        assertThat(result.getForenames(), is(FORENAMES));
+        assertThat(result.getSurname(), is(SURNAME));
+        assertThat(result.getEmailAddress(), is(EMAIL_ADDRESS));
+        assertThat(result.getJudiciaryType(), is(JUDICIARY_TYPE));
         assertThat(result.isBenchChairman(), is(true));
         assertThat(result.isDeputy(), is(false));
-        assertThat(result.getSeqId(), is(143117));
+        assertThat(result.getSeqId(), is(SEQ_ID));
         assertThat(result.getTitleJudicialPrefix(), is("His Honour Judge"));
         assertThat(result.getTitleJudicialPrefixWelsh(), is("Ei Anrhydedd y Barnwr"));
         assertThat(result.getPersonId(), is("131172"));

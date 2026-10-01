@@ -88,6 +88,10 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 class CourtSchedulerIT extends AbstractIT {
+    private static final String P_TITLE_JUDICIAL_PREFIX_WELSH = "titleJudicialPrefixWelsh";
+    private static final String P_TITLE_JUDICIAL_PREFIX = "titleJudicialPrefix";
+    private static final String P_TITLE_PREFIX = "titlePrefix";
+    private static final String P_SPECIALISMS = "specialisms";
     private static final String VALUE_120 = "120";
     private static final String VALUE_15_00 = "15:00";
     private static final String VALUE_16_00 = "16:00";
@@ -1755,9 +1759,9 @@ class CourtSchedulerIT extends AbstractIT {
         assertThat(courtScheduleJsonObject.getJsonArray(JUDICIARIES).size(), is(1));
         final JsonObject judiciaryJsonObject = courtScheduleJsonObject.getJsonArray(JUDICIARIES).getJsonObject(0);
         assertThat(judiciaryJsonObject.getString("id"), is(courtScheduleJudiciary.getId().getJudiciaryId()));
-        assertThat(judiciaryJsonObject.containsKey("titlePrefix"), is(true));
-        assertThat(judiciaryJsonObject.getString("titlePrefix"), is(courtScheduleJudiciary.getTitle()));
-        assertThat(judiciaryJsonObject.containsKey("titleJudicialPrefix"), is(false));
+        assertThat(judiciaryJsonObject.containsKey(P_TITLE_PREFIX), is(true));
+        assertThat(judiciaryJsonObject.getString(P_TITLE_PREFIX), is(courtScheduleJudiciary.getTitle()));
+        assertThat(judiciaryJsonObject.containsKey(P_TITLE_JUDICIAL_PREFIX), is(false));
         assertThat(judiciaryJsonObject.getString("forenames"), is(courtScheduleJudiciary.getForenames()));
         assertThat(judiciaryJsonObject.getString("surname"), is(courtScheduleJudiciary.getSurname()));
         assertThat(judiciaryJsonObject.getString(P_JUDICIARY_TYPE), is("Recorder"));
@@ -1765,11 +1769,11 @@ class CourtSchedulerIT extends AbstractIT {
         assertThat(judiciaryJsonObject.getBoolean(P_IS_BENCH_CHAIRMAN), is(courtScheduleJudiciary.isBenchChairman()));
         assertThat(judiciaryJsonObject.getBoolean(P_IS_DEPUTY), is(courtScheduleJudiciary.isDeputy()));
         assertThat(judiciaryJsonObject.getInt("seqId"), is(1));
-        assertThat(judiciaryJsonObject.containsKey("titleJudicialPrefixWelsh"), is(false));
+        assertThat(judiciaryJsonObject.containsKey(P_TITLE_JUDICIAL_PREFIX_WELSH), is(false));
         assertThat(judiciaryJsonObject.getString("personId"), is("30644"));
         assertThat(judiciaryJsonObject.getString("requestedName"), is("HER HONOUR JUDGE K WANT QC, HONORARY RECORDER OF WALES"));
-        assertThat(judiciaryJsonObject.getJsonArray("specialisms").size(), is(1));
-        assertThat(judiciaryJsonObject.getJsonArray("specialisms").getString(0), is("ATTEMPTED_MURDER"));
+        assertThat(judiciaryJsonObject.getJsonArray(P_SPECIALISMS).size(), is(1));
+        assertThat(judiciaryJsonObject.getJsonArray(P_SPECIALISMS).getString(0), is("ATTEMPTED_MURDER"));
     }
 
     @Test
@@ -1781,7 +1785,7 @@ class CourtSchedulerIT extends AbstractIT {
         final String judiciaryIdWithOnlyJudicialPrefix = "9a9e1b6c-0d77-4f7e-9b2a-8c6d0aa13334";
         final String staleDbTitle = "His Honour Judge";
 
-        final UUID courtScheduleId = UUID.randomUUID();
+        final UUID courtScheduleId = randomUUID();
         final CourtSchedule expected = RANDOM.nextObject(CourtSchedule.class);
         final LocalDate fromDate = expected.getSessionDate().minusDays(1);
         final LocalDate toDate = expected.getSessionDate().plusDays(1);
@@ -1807,8 +1811,8 @@ class CourtSchedulerIT extends AbstractIT {
         final AllocatedListing allocatedListing = RANDOM.nextObject(AllocatedListing.class);
         allocatedListing.setId(randomUUID().toString());
         allocatedListing.setCourtScheduleId(expected.getCourtScheduleId());
-        allocatedListing.setHearingId(UUID.randomUUID().toString());
-        allocatedListing.setBookingId(UUID.randomUUID().toString());
+        allocatedListing.setHearingId(randomUUID().toString());
+        allocatedListing.setBookingId(randomUUID().toString());
         databaseSeeder.insertAllocatedListing(allocatedListing);
 
         String getCourtScheduleRequestParams = getPayload("courtscheduler.get.court_schedule_query.json");
@@ -1834,11 +1838,11 @@ class CourtSchedulerIT extends AbstractIT {
 
         assertThat(judiciaryJsonObject.getString("id"), is(judiciaryIdWithOnlyJudicialPrefix));
         // Stale DB title must NOT leak through when refdata's titlePrefix is blank.
-        assertThat(judiciaryJsonObject.containsKey("titlePrefix"), is(false));
-        assertThat(judiciaryJsonObject.containsKey("titleJudicialPrefix"), is(true));
-        assertThat(judiciaryJsonObject.getString("titleJudicialPrefix"), is("His Honour Judge"));
-        assertThat(judiciaryJsonObject.containsKey("titleJudicialPrefixWelsh"), is(true));
-        assertThat(judiciaryJsonObject.getString("titleJudicialPrefixWelsh"), is("Ei Anrhydedd y Barnwr"));
+        assertThat(judiciaryJsonObject.containsKey(P_TITLE_PREFIX), is(false));
+        assertThat(judiciaryJsonObject.containsKey(P_TITLE_JUDICIAL_PREFIX), is(true));
+        assertThat(judiciaryJsonObject.getString(P_TITLE_JUDICIAL_PREFIX), is("His Honour Judge"));
+        assertThat(judiciaryJsonObject.containsKey(P_TITLE_JUDICIAL_PREFIX_WELSH), is(true));
+        assertThat(judiciaryJsonObject.getString(P_TITLE_JUDICIAL_PREFIX_WELSH), is("Ei Anrhydedd y Barnwr"));
     }
 
     @Test
@@ -1988,9 +1992,9 @@ class CourtSchedulerIT extends AbstractIT {
         assertThat(courtSessionJson.getJsonArray(JUDICIARIES).size(), is(1));
         final JsonObject judiciaryJsonObject = courtSessionJson.getJsonArray(JUDICIARIES).getJsonObject(0);
         assertThat(judiciaryJsonObject.getString("id"), is(courtScheduleJudiciary.getId().getJudiciaryId()));
-        assertThat(judiciaryJsonObject.containsKey("titlePrefix"), is(true));
-        assertThat(judiciaryJsonObject.getString("titlePrefix"), is(courtScheduleJudiciary.getTitle()));
-        assertThat(judiciaryJsonObject.containsKey("titleJudicialPrefix"), is(false));
+        assertThat(judiciaryJsonObject.containsKey(P_TITLE_PREFIX), is(true));
+        assertThat(judiciaryJsonObject.getString(P_TITLE_PREFIX), is(courtScheduleJudiciary.getTitle()));
+        assertThat(judiciaryJsonObject.containsKey(P_TITLE_JUDICIAL_PREFIX), is(false));
         assertThat(judiciaryJsonObject.getString("forenames"), is(courtScheduleJudiciary.getForenames()));
         assertThat(judiciaryJsonObject.getString("surname"), is(courtScheduleJudiciary.getSurname()));
         assertThat(judiciaryJsonObject.getString(P_JUDICIARY_TYPE), is("Recorder"));
@@ -1998,11 +2002,11 @@ class CourtSchedulerIT extends AbstractIT {
         assertThat(judiciaryJsonObject.getBoolean(P_IS_BENCH_CHAIRMAN), is(courtScheduleJudiciary.isBenchChairman()));
         assertThat(judiciaryJsonObject.getBoolean(P_IS_DEPUTY), is(courtScheduleJudiciary.isDeputy()));
         assertThat(judiciaryJsonObject.getInt("seqId"), is(1));
-        assertThat(judiciaryJsonObject.containsKey("titleJudicialPrefixWelsh"), is(false));
+        assertThat(judiciaryJsonObject.containsKey(P_TITLE_JUDICIAL_PREFIX_WELSH), is(false));
         assertThat(judiciaryJsonObject.getString("personId"), is("30644"));
         assertThat(judiciaryJsonObject.getString("requestedName"), is("HER HONOUR JUDGE K WANT QC, HONORARY RECORDER OF WALES"));
-        assertThat(judiciaryJsonObject.getJsonArray("specialisms").size(), is(1));
-        assertThat(judiciaryJsonObject.getJsonArray("specialisms").getString(0), is("ATTEMPTED_MURDER"));
+        assertThat(judiciaryJsonObject.getJsonArray(P_SPECIALISMS).size(), is(1));
+        assertThat(judiciaryJsonObject.getJsonArray(P_SPECIALISMS).getString(0), is("ATTEMPTED_MURDER"));
 
         assertThat(courtSessionJson.getString(SESSION_START_TIME_3), is(sessionTimeFormatter(courtSchedule.getSessionStartTime())));
         assertThat(courtSessionJson.getString(SESSION_END_TIME_3), is(sessionTimeFormatter(courtSchedule.getSessionEndTime())));
