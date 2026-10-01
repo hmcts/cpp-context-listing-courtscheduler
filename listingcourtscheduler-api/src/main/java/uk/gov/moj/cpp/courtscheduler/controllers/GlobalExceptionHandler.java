@@ -186,6 +186,48 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(ex.getStatusCode()).body(body);
     }
 
+    /**
+     * A reservation refused because the bookingId already carries a confirmed allocation is a
+     * conflict with existing state, not a server fault. Unmapped it fell through to
+     * {@link #handleAny} as {@code 500 {"error":"Internal Server Error"}}, which told the caller
+     * nothing: hearing logged a bare 500, the public event carried no reason, and the clerk was
+     * shown "this session is fully booked" about a session that was perfectly free.
+     *
+     * <p>409 matches {@link uk.gov.moj.cpp.courtscheduler.exception.NoCapacityException}, which
+     * {@code CourtSchedulerApi#postCreateProvisionalBooking} already maps to CONFLICT.
+     */
+    @ExceptionHandler(uk.gov.moj.cpp.courtscheduler.exception.ConfirmedBookingExistsException.class)
+    public ResponseEntity<Map<String, Object>> handleConfirmedBookingExists(
+            final uk.gov.moj.cpp.courtscheduler.exception.ConfirmedBookingExistsException ex) {
+        LOG.warn("Reservation refused: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(errorBody(List.of(ex.getMessage())));
+    }
+
+    /**
+     * Same reasoning for a request naming a session that does not exist or is inactive: the
+     * request is well formed, so it is not a 400, but it cannot be processed — 422, matching
+     * {@link #handleUnprocessable}. Previously also a bare 500.
+     */
+    @ExceptionHandler(uk.gov.moj.cpp.courtscheduler.exception.NoSessionAvailableException.class)
+    public ResponseEntity<Map<String, Object>> handleNoSessionAvailable(
+            final uk.gov.moj.cpp.courtscheduler.exception.NoSessionAvailableException ex) {
+        LOG.warn("Reservation refused: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(errorBody(List.of(ex.getMessage())));
+    }
+
+    /**
+     * {@link uk.gov.moj.cpp.courtscheduler.exception.NoCapacityException} is caught and mapped to
+     * CONFLICT by {@code CourtSchedulerApi#postCreateProvisionalBooking}, but it is also thrown
+     * from paths that do not go through that catch. Map it here too so it can never reach
+     * {@link #handleAny}.
+     */
+    @ExceptionHandler(uk.gov.moj.cpp.courtscheduler.exception.NoCapacityException.class)
+    public ResponseEntity<Map<String, Object>> handleNoCapacity(
+            final uk.gov.moj.cpp.courtscheduler.exception.NoCapacityException ex) {
+        LOG.warn("Reservation refused: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(errorBody(List.of(ex.getMessage())));
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleAny(final Exception ex) {
         LOG.error("Unhandled exception", ex);
