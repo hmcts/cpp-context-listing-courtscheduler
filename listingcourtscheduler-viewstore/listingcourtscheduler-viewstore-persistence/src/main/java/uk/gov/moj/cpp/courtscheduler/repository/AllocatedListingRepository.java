@@ -1,6 +1,7 @@
 package uk.gov.moj.cpp.courtscheduler.repository;
 
-import uk.gov.moj.cpp.courtscheduler.domain.AllocatedListingEachBooked;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.AllocatedListingEachBooked;
+import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
 
 import java.time.Instant;
@@ -48,13 +49,22 @@ public interface AllocatedListingRepository
     Integer findTotalAllocatedDurationByCourtScheduleId(@Param("courtScheduleId") String courtScheduleId);
 
     @Query("""
-            SELECT new uk.gov.moj.cpp.courtscheduler.domain.AllocatedListingEachBooked(
-                       al.courtScheduleId, al.duration, al.hearingStartTime)
+            SELECT al.courtScheduleId, al.duration, al.hearingStartTime
               FROM AllocatedListing al
              WHERE al.courtScheduleId IN :courtScheduleIds
             """)
-    List<AllocatedListingEachBooked> getAllocatedListingsEachBookedByCourtScheduleId(
+    List<Object[]> findAllocatedListingsEachBookedRowsByCourtScheduleId(
             @Param("courtScheduleIds") List<String> courtScheduleIds);
+
+    default List<AllocatedListingEachBooked> getAllocatedListingsEachBookedByCourtScheduleId(
+            final List<String> courtScheduleIds) {
+        return findAllocatedListingsEachBookedRowsByCourtScheduleId(courtScheduleIds).stream()
+                .map(row -> new AllocatedListingEachBooked()
+                        .courtScheduleId((String) row[0])
+                        .duration((Integer) row[1])
+                        .hearingStartTime(DateUtils.toOffsetDateTime((Instant) row[2])))
+                .toList();
+    }
 
     @Modifying
     @Transactional

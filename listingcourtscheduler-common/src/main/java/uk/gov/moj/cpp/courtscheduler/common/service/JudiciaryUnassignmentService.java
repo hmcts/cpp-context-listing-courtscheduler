@@ -22,6 +22,7 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import org.springframework.transaction.annotation.Transactional;
 
+import org.owasp.encoder.Encode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -76,20 +77,20 @@ public class JudiciaryUnassignmentService {
 
                 if (!judiciaryExists) {
                     missingJudiciaryIds.add(judiciaryId);
-                    LOGGER.warn("unassignJudiciary: Judiciary ID {} not found for unassign judiciary operation", judiciaryId);
+                    LOGGER.warn("unassignJudiciary: Judiciary ID {} not found for unassign judiciary operation", Encode.forJava(judiciaryId));
                     continue;
                 }
             }
 
             final List<String> sessionIds = entry.getValue();
             for (final String courtScheduleId : sessionIds) {
-                LOGGER.info("unassignJudiciary: attempting to unassign judiciary {} from courtSchedule {}", judiciaryId, courtScheduleId);
+                LOGGER.info("unassignJudiciary: attempting to unassign judiciary {} from courtSchedule {}", Encode.forJava(judiciaryId), Encode.forJava(courtScheduleId));
 
                 // Check if session (court schedule) exists (skip if skipValidations is true)
                 final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule courtSchedule = courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId);
                 if (!skipValidations && courtSchedule == null) {
                     missingSessionIds.add(courtScheduleId);
-                    LOGGER.warn("unassignJudiciary: Session ID {} not found for unassign judiciary operation", courtScheduleId);
+                    LOGGER.warn("unassignJudiciary: Session ID {} not found for unassign judiciary operation", Encode.forJava(courtScheduleId));
                     continue;
                 }
 
@@ -115,7 +116,7 @@ public class JudiciaryUnassignmentService {
                     // Judiciary exists but not for this specific session - skip this assignment
                     final String identifier = String.format("%s-%s", judiciaryId, courtScheduleId);
                     missingCourtScheduleJudiciaryIds.add(identifier);
-                    LOGGER.info("unassignJudiciary: Judiciary {} not assigned to courtSchedule {}, skipping", judiciaryId, courtScheduleId);
+                    LOGGER.info("unassignJudiciary: Judiciary {} not assigned to courtSchedule {}, skipping", Encode.forJava(judiciaryId), Encode.forJava(courtScheduleId));
                     continue;
                 }
 
@@ -123,13 +124,13 @@ public class JudiciaryUnassignmentService {
                 try {
                     final CourtScheduleJudiciary managed = entityManager.merge(courtScheduleJudiciary);
                     entityManager.remove(managed);
-                    LOGGER.info("unassignJudiciary: successfully unassigned judiciary {} from courtSchedule {}", judiciaryId, courtScheduleId);
+                    LOGGER.info("unassignJudiciary: successfully unassigned judiciary {} from courtSchedule {}", Encode.forJava(judiciaryId), Encode.forJava(courtScheduleId));
                 } catch (@SuppressWarnings("PMD.AvoidCatchingGenericException") // Deliberate broad safety net:
                         // this loop must keep unassigning the remaining judiciary/session pairs even if one
                         // entityManager.merge/remove call fails, and the JPA provider can throw a variety of
                         // unchecked exceptions here. Narrowing would risk letting one bad pair abort the batch.
                         final Exception ex) {
-                    LOGGER.error("Unexpected error while unassigning judiciary {} from session {}", judiciaryId, courtScheduleId, ex);
+                    LOGGER.error("Unexpected error while unassigning judiciary {} from session {}", Encode.forJava(judiciaryId), Encode.forJava(courtScheduleId), ex);
                     // Continue processing other assignments
                 }
             }

@@ -5,8 +5,8 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
 
-import uk.gov.moj.cpp.courtscheduler.domain.AssignJudiciariesRequest;
-import uk.gov.moj.cpp.courtscheduler.domain.JudiciaryAssignment;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.AssignJudiciariesRequest;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.JudiciaryAssignment;
 
 import java.util.List;
 import java.util.UUID;
@@ -63,8 +63,8 @@ class JudiciaryAssignmentRequestHelperTest {
         assertThat(result.getJudiciaries().get(0).getSessionIds().size(), is(1));
         assertThat(result.getJudiciaries().get(0).getSessionIds().get(0), is(sessionId1.toString()));
         assertThat(result.getJudiciaries().get(0).getPosition(), is(CHAIR_2));
-        assertThat(result.getJudiciaries().get(0).isBenchChairman(), is(true));
-        assertThat(result.getJudiciaries().get(0).isDeputy(), is(false));
+        assertThat(result.getJudiciaries().get(0).getIsBenchChairman(), is(true));
+        assertThat(result.getJudiciaries().get(0).getIsDeputy(), is(false));
         assertThat(result.getJudiciaries().get(0).getRotaJudiciaryId(), is((String) null));
     }
 
@@ -88,8 +88,8 @@ class JudiciaryAssignmentRequestHelperTest {
         assertThat(result.getJudiciaries().get(0).getSessionIds().get(1), is(sessionId2.toString()));
         assertThat(result.getJudiciaries().get(0).getSessionIds().get(2), is(sessionId3.toString()));
         assertThat(result.getJudiciaries().get(0).getPosition(), is(LEFT_WINGER_2));
-        assertThat(result.getJudiciaries().get(0).isBenchChairman(), is(false));
-        assertThat(result.getJudiciaries().get(0).isDeputy(), is(true));
+        assertThat(result.getJudiciaries().get(0).getIsBenchChairman(), is(false));
+        assertThat(result.getJudiciaries().get(0).getIsDeputy(), is(true));
     }
 
     @Test
@@ -118,8 +118,8 @@ class JudiciaryAssignmentRequestHelperTest {
         assertThat(assignment1.getSessionIds().size(), is(1));
         assertThat(assignment1.getSessionIds().get(0), is(sessionId1.toString()));
         assertThat(assignment1.getPosition(), is(CHAIR_2));
-        assertThat(assignment1.isBenchChairman(), is(true));
-        assertThat(assignment1.isDeputy(), is(false));
+        assertThat(assignment1.getIsBenchChairman(), is(true));
+        assertThat(assignment1.getIsDeputy(), is(false));
 
         // Verify second judiciary
         final JudiciaryAssignment assignment2 = result.getJudiciaries().stream()
@@ -130,8 +130,8 @@ class JudiciaryAssignmentRequestHelperTest {
         assertThat(assignment2.getSessionIds().size(), is(1));
         assertThat(assignment2.getSessionIds().get(0), is(sessionId2.toString()));
         assertThat(assignment2.getPosition(), is("RIGHT_WINGER"));
-        assertThat(assignment2.isBenchChairman(), is(false));
-        assertThat(assignment2.isDeputy(), is(true));
+        assertThat(assignment2.getIsBenchChairman(), is(false));
+        assertThat(assignment2.getIsDeputy(), is(true));
     }
 
     @Test
@@ -161,8 +161,8 @@ class JudiciaryAssignmentRequestHelperTest {
         assertThat(assignment1.getSessionIds().contains(sessionId1.toString()), is(true));
         assertThat(assignment1.getSessionIds().contains(sessionId2.toString()), is(true));
         assertThat(assignment1.getPosition(), is(CHAIR_2));
-        assertThat(assignment1.isBenchChairman(), is(true));
-        assertThat(assignment1.isDeputy(), is(false));
+        assertThat(assignment1.getIsBenchChairman(), is(true));
+        assertThat(assignment1.getIsDeputy(), is(false));
 
         // Verify second judiciary
         final JudiciaryAssignment assignment2 = result.getJudiciaries().stream()
@@ -173,8 +173,8 @@ class JudiciaryAssignmentRequestHelperTest {
         assertThat(assignment2.getSessionIds().size(), is(1));
         assertThat(assignment2.getSessionIds().get(0), is(sessionId3.toString()));
         assertThat(assignment2.getPosition(), is(LEFT_WINGER_2));
-        assertThat(assignment2.isBenchChairman(), is(false));
-        assertThat(assignment2.isDeputy(), is(true));
+        assertThat(assignment2.getIsBenchChairman(), is(false));
+        assertThat(assignment2.getIsDeputy(), is(true));
     }
 
     @Test
@@ -194,8 +194,8 @@ class JudiciaryAssignmentRequestHelperTest {
         assertThat(result.getJudiciaries().get(0).getJudiciaryId(), is(judiciaryId1));
         assertThat(result.getJudiciaries().get(0).getSessionIds().size(), is(0));
         assertThat(result.getJudiciaries().get(0).getPosition(), is(CHAIR_2));
-        assertThat(result.getJudiciaries().get(0).isBenchChairman(), is(true));
-        assertThat(result.getJudiciaries().get(0).isDeputy(), is(false));
+        assertThat(result.getJudiciaries().get(0).getIsBenchChairman(), is(true));
+        assertThat(result.getJudiciaries().get(0).getIsDeputy(), is(false));
     }
 
     @Test
@@ -255,7 +255,7 @@ class JudiciaryAssignmentRequestHelperTest {
 
         // then
         assertThat(result, is(notNullValue()));
-        assertThat(result.isSkipValidations(), is(true));
+        assertThat(result.getSkipValidations(), is(true));
     }
 
     @Test

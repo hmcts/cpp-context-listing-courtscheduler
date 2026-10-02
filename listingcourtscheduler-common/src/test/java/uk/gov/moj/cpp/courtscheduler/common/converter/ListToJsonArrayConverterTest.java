@@ -3,7 +3,7 @@ package uk.gov.moj.cpp.courtscheduler.common.converter;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import uk.gov.moj.cpp.courtscheduler.domain.SlotStartTime;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.SlotStartTime;
 
 import java.io.StringReader;
 import java.util.List;
@@ -49,8 +49,7 @@ class ListToJsonArrayConverterTest {
      */
     @Test
     void plainObjectMapperWithoutNonNullInclusion_reproducesApiTestClassCastException() {
-        final SlotStartTime slotWithoutHearing = new SlotStartTime(
-                VALUE_2026_06_28_T09_00, VALUE_2026_06_28_T10_00, null, 0L);
+        final SlotStartTime slotWithoutHearing = new SlotStartTime().sessionStartTime(VALUE_2026_06_28_T09_00).sessionEndTime(VALUE_2026_06_28_T10_00).hearingStartTime(null).count(0L);
 
         final ObjectMapper legacyMapper = new ObjectMapper();
         final String json;
@@ -83,8 +82,7 @@ class ListToJsonArrayConverterTest {
     @Test
     void converter_omitsNullFields_soApiTestPatternIsSafe() {
         final ListToJsonArrayConverter<SlotStartTime> converter = new ListToJsonArrayConverter<>();
-        final SlotStartTime slotWithoutHearing = new SlotStartTime(
-                VALUE_2026_06_28_T09_00, VALUE_2026_06_28_T10_00, null, 0L);
+        final SlotStartTime slotWithoutHearing = new SlotStartTime().sessionStartTime(VALUE_2026_06_28_T09_00).sessionEndTime(VALUE_2026_06_28_T10_00).hearingStartTime(null).count(0L);
 
         final JsonArray arr = converter.convert(List.of(slotWithoutHearing));
         final JsonObject slotJson = arr.getJsonObject(0);
@@ -103,8 +101,7 @@ class ListToJsonArrayConverterTest {
     @Test
     void converter_keepsPopulatedHearingStartTime() {
         final ListToJsonArrayConverter<SlotStartTime> converter = new ListToJsonArrayConverter<>();
-        final SlotStartTime slot = new SlotStartTime(
-                VALUE_2026_06_28_T09_00, VALUE_2026_06_28_T10_00, "2026-06-28T09:30", 1L);
+        final SlotStartTime slot = new SlotStartTime().sessionStartTime(VALUE_2026_06_28_T09_00).sessionEndTime(VALUE_2026_06_28_T10_00).hearingStartTime("2026-06-28T09:30").count(1L);
 
         final JsonObject slotJson = converter.convert(List.of(slot)).getJsonObject(0);
 
@@ -121,8 +118,8 @@ class ListToJsonArrayConverterTest {
     void hearingSlotsHelperPattern_doesNotThrowAfterFix() {
         final ListToJsonArrayConverter<SlotStartTime> converter = new ListToJsonArrayConverter<>();
         final JsonArray slotStartTimes = converter.convert(List.of(
-                new SlotStartTime(VALUE_2026_06_28_T09_00, VALUE_2026_06_28_T10_00, null, 0L),
-                new SlotStartTime(VALUE_2026_06_28_T10_00, "2026-06-28T11:00", "2026-06-28T10:30", 1L)
+                new SlotStartTime().sessionStartTime(VALUE_2026_06_28_T09_00).sessionEndTime(VALUE_2026_06_28_T10_00).hearingStartTime(null).count(0L),
+                new SlotStartTime().sessionStartTime(VALUE_2026_06_28_T10_00).sessionEndTime("2026-06-28T11:00").hearingStartTime("2026-06-28T10:30").count(1L)
         ));
 
         // Replicate HearingSlotsHelper.hasSlot exactly.

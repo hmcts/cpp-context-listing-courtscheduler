@@ -6,8 +6,8 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static uk.gov.moj.cpp.platform.test.data.utils.FileUtil.fileToString;
 
-import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalBookingSlots;
-import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalSlot;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.ProvisionalBookingSlots;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.ProvisionalSlot;
 
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
