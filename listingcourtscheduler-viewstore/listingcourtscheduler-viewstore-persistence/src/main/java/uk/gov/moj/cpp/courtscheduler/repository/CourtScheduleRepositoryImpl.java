@@ -471,8 +471,8 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
                 .surname(entity.getSurname())
                 .emailAddress(entity.getEmail())
                 .judiciaryType(entity.getJudiciaryType())
-                .benchChairman(entity.isBenchChairman())
-                .deputy(entity.isDeputy())
+                .isBenchChairman(entity.isBenchChairman())
+                .isDeputy(entity.isDeputy())
                 .position(entity.getPosition())
                 .active(entity.isActive())
                 .createdOn(toOffsetDateTime(entity.getCreatedOn()))
@@ -1937,7 +1937,7 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
             final LocalDateTime sessionFromHearingStartTime = StringUtils.isNotBlank(allocatedSlot.getHearingStartTime()) ? ZonedDateTime.parse(allocatedSlot.getHearingStartTime()).toLocalDateTime() : null;
             final LocalDate hearingSessionSearchCutOff = StringUtils.isNotBlank(allocatedSlot.getHearingSessionDateSearchCutOff()) ? LocalDate.parse(allocatedSlot.getHearingSessionDateSearchCutOff()) : null;
             final CourtSchedule courtScheduleFound = searchListHearingSlotFilterCriteria(allocatedSlot.getCourtCentreId(), LocalDate.parse(
-                    allocatedSlot.getSessionDate()), hearingSessionSearchCutOff ,sessionFromHearingStartTime, allocatedSlot.getCourtRoomUUId(), allocatedSlot.getIsPolice());
+                    allocatedSlot.getSessionDate()), hearingSessionSearchCutOff ,sessionFromHearingStartTime, allocatedSlot.getCourtRoomUUId(), allocatedSlot.getPolice());
 
             if (courtScheduleFound != null) {
                 final List<CourtScheduleJudiciary> judiciaryList = getCourtScheduleJudiciaries(List.of(courtScheduleFound));
@@ -1947,12 +1947,12 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
                 allocatedSlot.setCourtRoom(courtScheduleFound.getCourtRoomName());
                 allocatedSlot.setOuCode(courtScheduleFound.getOuCode());
                 allocatedSlot.setHearingStartTime(toIsoStringExtended(getAdjustedHearingStartTime(allocatedSlot.getHearingStartTime(),courtScheduleFound)));
-                allocatedSlot.setIsSlotBased(courtScheduleFound.isSlotBased());
+                allocatedSlot.setSlotBased(courtScheduleFound.isSlotBased());
                 allocatedSlot.setJudiciaries(
                         judiciaryList.stream()
                                 .map(CourtScheduleRepositoryImpl::mapJudiciaryEntityToDomain)
                                 .toList());
-                allocatedSlot.setSource(Boolean.TRUE.equals(allocatedSlot.getIsPolice()) ? "POLICE" : "NONPOLICE");
+                allocatedSlot.setSource(Boolean.TRUE.equals(allocatedSlot.getPolice()) ? "POLICE" : "NONPOLICE");
                 matchedSlots.add(allocatedSlot);
             } else {
                 LOGGER.error(format("Could not update slot as court schedule id not found for combination %s, %s, %s, %s",
@@ -1998,7 +1998,7 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
         if (courtSchedule.isPresent()) {
             allocatedSlot.setCourtScheduleId(courtSchedule.get());
             final boolean isSlotBased = pair.getValue();
-            allocatedSlot.setIsSlotBased(isSlotBased);
+            allocatedSlot.setSlotBased(isSlotBased);
         }
     }
 
@@ -2386,7 +2386,7 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
                 allocatedListing.setOucode(allocatedSlot.getOuCode());
                 allocatedListing.setCourtRoomId(Integer.parseInt(allocatedSlot.getCourtRoomId()));
                 allocatedListing.setRotaBusinessType(courtSchedule.getBusinessType());
-                allocatedListing.setDuration(Boolean.TRUE.equals(allocatedSlot.getIsSlotBased()) ? SLOT_DEFAULT : allocatedSlot.getDuration());
+                allocatedListing.setDuration(Boolean.TRUE.equals(allocatedSlot.getSlotBased()) ? SLOT_DEFAULT : allocatedSlot.getDuration());
                 allocatedListing.setHearingStartTime(toExactTimestamp(allocatedSlot.getHearingStartTime()).toInstant());
                 allocatedListing.setSource(allocatedSlot.getSource());
                 LOGGER.info("bookSlotsWithoutCourtScheduleId saveAllocatedListing {}", allocatedListing);

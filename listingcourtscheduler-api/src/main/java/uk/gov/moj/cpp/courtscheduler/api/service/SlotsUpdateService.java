@@ -557,7 +557,7 @@ public class SlotsUpdateService {
         slot.setHearingStartTime(request.getHearingStartTime());
         slot.setHearingSessionDateSearchCutOff(request.getHearingSessionDateSearchCutOff());
         slot.setDuration(request.getDurationInMinutes());
-        slot.setIsPolice(request.getIsPolice());
+        slot.setPolice(request.getIsPolice());
 
         final List<AllocatedSlot> slots = new ArrayList<>(List.of(slot));
         final boolean booked = courtScheduleRepository.searchBookHearingSlots(slots);

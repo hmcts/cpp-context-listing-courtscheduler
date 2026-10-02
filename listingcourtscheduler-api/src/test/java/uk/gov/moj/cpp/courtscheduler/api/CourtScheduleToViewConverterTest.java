@@ -120,8 +120,8 @@ class CourtScheduleToViewConverterTest {
                 .surname("Ainsworth")
                 .emailAddress("mark.ainsworth@ejudiciary.net")
                 .judiciaryType("Recorder")
-                .benchChairman(true)
-                .deputy(false)));
+                .isBenchChairman(true)
+                .isDeputy(false)));
 
         final List<CourtSessionsView> courtSessionsViews = CourtScheduleToViewConverter.getCourtSessionsViews(List.of(schedule));
 
@@ -130,7 +130,7 @@ class CourtScheduleToViewConverterTest {
         assertThat(sessions.size(), is(1));
         assertThat(sessions.getFirst().getJudiciaries().size(), is(1));
         assertThat(sessions.getFirst().getJudiciaries().getFirst().getJudiciaryId(), is(judiciaryId));
-        assertThat(sessions.getFirst().getJudiciaries().getFirst().getBenchChairman(), is(true));
-        assertThat(sessions.getFirst().getJudiciaries().getFirst().getDeputy(), is(false));
+        assertThat(sessions.getFirst().getJudiciaries().getFirst().getIsBenchChairman(), is(true));
+        assertThat(sessions.getFirst().getJudiciaries().getFirst().getIsDeputy(), is(false));
     }
 }

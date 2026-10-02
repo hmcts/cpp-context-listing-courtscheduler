@@ -38,8 +38,8 @@ public class JudiciaryBuilder {
                 .emailAddress(schedule.get(EMAIL_ADDRESS))
                 .judiciaryType(schedule.get(JUDICIARY_TYPE))
                 .position(schedule.get(POSITION))
-                .benchChairman(isBenchChairman)
-                .deputy(!isBenchChairman)
+                .isBenchChairman(isBenchChairman)
+                .isDeputy(!isBenchChairman)
                 .createdOn(DateUtils.toOffsetDateTime(Instant.now()))
                 .updatedOn(DateUtils.toOffsetDateTime(Instant.now()))
                 .active(true);

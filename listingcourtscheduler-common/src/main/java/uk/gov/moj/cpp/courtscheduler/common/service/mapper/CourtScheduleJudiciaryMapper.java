@@ -21,10 +21,10 @@ public class CourtScheduleJudiciaryMapper {
         final CourtScheduleJudiciary entity = new CourtScheduleJudiciary();
         entity.setId(new CourtScheduleJudiciaryKey(domain.getCourtScheduleId(), domain.getJudiciaryId()));
         entity.setJudiciaryType(domain.getJudiciaryType());
-        entity.setDeputy(domain.getDeputy());
+        entity.setDeputy(domain.getIsDeputy());
         entity.setEmail(domain.getEmailAddress());
         entity.setCourtListingProfileId(domain.getCourtListingProfileId());
-        entity.setBenchChairman(domain.getBenchChairman());
+        entity.setBenchChairman(domain.getIsBenchChairman());
         entity.setSurname(domain.getSurname());
         entity.setForenames(domain.getForenames());
         entity.setPosition(domain.getPosition());
@@ -50,10 +50,10 @@ public class CourtScheduleJudiciaryMapper {
                 .forenames(entity.getForenames())
                 .position(entity.getPosition())
                 .courtListingProfileId(entity.getCourtListingProfileId())
-                .benchChairman(entity.isBenchChairman())
+                .isBenchChairman(entity.isBenchChairman())
                 .rotaJudiciaryId(entity.getRotaJudiciaryId())
                 .title(entity.getTitle())
-                .deputy(entity.isDeputy())
+                .isDeputy(entity.isDeputy())
                 .emailAddress(entity.getEmail())
                 .createdOn(toOffsetDateTime(entity.getCreatedOn()))
                 .updatedOn(toOffsetDateTime(entity.getUpdatedOn()))

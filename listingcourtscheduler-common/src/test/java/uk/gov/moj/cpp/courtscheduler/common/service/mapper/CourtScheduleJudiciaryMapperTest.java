@@ -50,8 +50,8 @@ class CourtScheduleJudiciaryMapperTest {
                 .surname("Judge")
                 .emailAddress("test.judge@example.com")
                 .judiciaryType("DJ")
-                .benchChairman(false)
-                .deputy(false)
+                .isBenchChairman(false)
+                .isDeputy(false)
                 .active(true)
                 .createdOn(uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toOffsetDateTime(Instant.now()))
                 .updatedOn(uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toOffsetDateTime(Instant.now()));

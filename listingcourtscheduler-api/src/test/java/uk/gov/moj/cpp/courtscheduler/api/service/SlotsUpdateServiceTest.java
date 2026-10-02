@@ -1677,7 +1677,7 @@ class SlotsUpdateServiceTest {
             verify(courtScheduleRepository).searchBookHearingSlots(captor.capture());
             final AllocatedSlot booked = captor.getValue().get(0);
             assertEquals(courtCentreId, booked.getCourtCentreId());
-            assertTrue(booked.getIsPolice());
+            assertTrue(booked.getPolice());
             assertEquals(1, response.sessions().size());
         }
 

@@ -237,7 +237,7 @@ public class RotaJudiciaryHelper {
 
         logger.debug("Mapped judiciaryId {} to court schedule(s) with listingProfileId: {}, position: {}, isBenchChairman: {}, isDeputy: {}",
                 judiciaryId, courtListingProfileId,
-                schedule.getPosition(), schedule.getBenchChairman(), schedule.getDeputy());
+                schedule.getPosition(), schedule.getIsBenchChairman(), schedule.getIsDeputy());
     }
 
 
@@ -270,8 +270,8 @@ public class RotaJudiciaryHelper {
                 new ArrayList<>(scheduleIds),
                 schedule.getRotaJudiciaryId(),
                 schedule.getPosition(),
-                schedule.getBenchChairman(),
-                schedule.getDeputy()
+                schedule.getIsBenchChairman(),
+                schedule.getIsDeputy()
         );
     }
 

@@ -1,6 +1,7 @@
 package uk.gov.moj.cpp.courtscheduler.api;
 
 import static java.util.Arrays.stream;
+import static uk.gov.moj.cpp.courtscheduler.common.Jurisdiction.MAGISTRATES;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -57,6 +58,7 @@ import uk.gov.moj.cpp.courtscheduler.openapi.model.AssignCourtroomResponse;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.AssignJudiciariesRequest;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.AssignJudiciaryToSessionsRequest;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.CreateSessionRequestParam;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.Session;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.SessionsParam;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtScheduleDeleteResponse;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerGetCourtSchedule;
@@ -130,7 +132,9 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
     // CourtSchedule serializes overbookingAllowed/draft with no "is" prefix (see the yml comment
     // on CourtSchedule), which CourtScheduleGroupedSession's isOverbookingAllowed/isDraft fields
     // don't recognise - toGroupedSession() overrides both explicitly after conversion, so the
-    // intermediate convertValue must tolerate (not fail on) those two unknown keys.
+    // intermediate convertValue must tolerate (not fail on) those two unknown keys. Also used to
+    // bind the Map-typed request bodies (assign-judiciary, validate): the legacy converters ignored
+    // keys they didn't know, so extra caller fields must not start failing with a 400.
     private final ObjectMapper lenientObjectMapper;
     private final HttpServletRequest request;
 
@@ -229,6 +233,7 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
     @Override
     public ResponseEntity<Void> postCourtschedulerCreateCourtschedule(final CreateSessionRequestParam body) {
         LOG.info("courtscheduler.create requested: {}", body);
+        applyLegacyCreateDefaults(body);
 
         final JsonObject validate = sessionsApiValidator.getSessionsCreateValidation(body);
         if (!validate.isEmpty()) {
@@ -237,6 +242,43 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
 
         sessionsService.create(body);
         return ResponseEntity.status(HttpStatus.ACCEPTED).build();
+    }
+
+    /**
+     * Re-applies the defaults the legacy CreateSessionsRequestParamConverter filled in for fields
+     * the caller omitted, so requests that relied on them keep validating and persisting the same
+     * way: sessions[] entries default allDaySplit=false and maxDurationFor*=0, sessionToBeAdded
+     * defaults maxDurationFor*=-1 (flagged by validation as "not supplied"), and both default the
+     * jurisdiction to MAGISTRATES.
+     */
+    private static CreateSessionRequestParam applyLegacyCreateDefaults(final CreateSessionRequestParam param) {
+        if (param == null) {
+            return null;
+        }
+        if (param.getSessions() != null) {
+            param.getSessions().forEach(session -> {
+                if (session.getAllDaySplit() == null) {
+                    session.setAllDaySplit(false);
+                }
+                applyLegacySessionDefaults(session, 0);
+            });
+        }
+        if (param.getSessionToBeAdded() != null) {
+            applyLegacySessionDefaults(param.getSessionToBeAdded(), -1);
+        }
+        return param;
+    }
+
+    private static void applyLegacySessionDefaults(final Session session, final int defaultMaxDuration) {
+        if (session.getMaxDurationForMorning() == null) {
+            session.setMaxDurationForMorning(defaultMaxDuration);
+        }
+        if (session.getMaxDurationForAfternoon() == null) {
+            session.setMaxDurationForAfternoon(defaultMaxDuration);
+        }
+        if (session.getJurisdiction() == null) {
+            session.setJurisdiction(MAGISTRATES.getJurisdiction());
+        }
     }
 
     @Override
@@ -395,7 +437,7 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
     }
 
     private ResponseEntity<Void> assignJudiciary(final Map<String, Object> body) {
-        final AssignJudiciariesRequest dto = objectMapper.convertValue(body, AssignJudiciariesRequest.class);
+        final AssignJudiciariesRequest dto = lenientObjectMapper.convertValue(body, AssignJudiciariesRequest.class);
         final JsonObject validate = assignJudiciariesApiValidator.validate(dto);
         if (!validate.isEmpty()) {
             throw new ValidationException(validate);
@@ -757,14 +799,14 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
         final JsonObject validate;
         if (contentType.startsWith(CREATE_MT.substring(0, CREATE_MT.indexOf('+')))) {
             validate = sessionsApiValidator.getSessionsCreateValidation(
-                    objectMapper.convertValue(body, CreateSessionRequestParam.class));
+                    applyLegacyCreateDefaults(lenientObjectMapper.convertValue(body, CreateSessionRequestParam.class)));
         } else if (contentType.startsWith(UPDATE_MT.substring(0, UPDATE_MT.indexOf('+')))) {
             validate = sessionsApiValidator.getSessionsUpdateValidation(
-                    objectMapper.convertValue(body, UpdateCourtSchedule.class));
+                    lenientObjectMapper.convertValue(body, UpdateCourtSchedule.class));
         } else if (contentType.startsWith(DELETE_MT.substring(0, DELETE_MT.indexOf('+')))) {
             // Jackson deserialization into SessionsParam is the "well-formed" check.
             // Empty JsonObject indicates pass.
-            objectMapper.convertValue(body, SessionsParam.class);
+            lenientObjectMapper.convertValue(body, SessionsParam.class);
             validate = Json.createObjectBuilder().build();
         } else {
             throw new ResponseStatusException(HttpStatus.UNSUPPORTED_MEDIA_TYPE,

@@ -74,6 +74,10 @@ public class ProvisionalBookingService {
                 final uk.gov.moj.cpp.courtscheduler.openapi.model.CourtScheduleJudiciary mapped =
                         modelMapper.map(courtScheduleJudiciary, uk.gov.moj.cpp.courtscheduler.openapi.model.CourtScheduleJudiciary.class);
                 mapped.setEmailAddress(courtScheduleJudiciary.getEmail());
+                // ModelMapper can't pair the entity's benchChairman/deputy with the model's
+                // is-prefixed isBenchChairman/isDeputy properties, so copy them explicitly.
+                mapped.setIsBenchChairman(courtScheduleJudiciary.isBenchChairman());
+                mapped.setIsDeputy(courtScheduleJudiciary.isDeputy());
                 courtScheduleJudiciariesArrayList.add(mapped);
             });
         }

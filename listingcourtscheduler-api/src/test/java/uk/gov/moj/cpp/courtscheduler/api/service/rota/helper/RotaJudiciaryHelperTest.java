@@ -308,8 +308,8 @@ class RotaJudiciaryHelperTest {
                 .judiciaryId(judiciaryId)
                 .courtListingProfileId(courtListingProfileId)
                 .position(CHAIR_2)
-                .benchChairman(true)
-                .deputy(false);
+                .isBenchChairman(true)
+                .isDeputy(false);
 
         when(judiciaryBuilder.build(anyMap(), anyString())).thenReturn(courtScheduleJudiciary);
 
@@ -440,15 +440,15 @@ class RotaJudiciaryHelperTest {
                 .judiciaryId(judiciaryId)
                 .courtListingProfileId(courtListingProfileId1)
                 .position(CHAIR_2)
-                .benchChairman(true)
-                .deputy(false);
+                .isBenchChairman(true)
+                .isDeputy(false);
 
         final CourtScheduleJudiciary courtScheduleJudiciary2 = new CourtScheduleJudiciary()
                 .judiciaryId(judiciaryId)
                 .courtListingProfileId(courtListingProfileId2)
                 .position("LEFT_WINGER")
-                .benchChairman(false)
-                .deputy(true);
+                .isBenchChairman(false)
+                .isDeputy(true);
 
         when(judiciaryBuilder.build(anyMap(), anyString()))
                 .thenReturn(courtScheduleJudiciary1)
@@ -643,15 +643,15 @@ class RotaJudiciaryHelperTest {
                 .judiciaryId(judiciaryId)
                 .courtListingProfileId(courtListingProfileId1)
                 .position(CHAIR_2)
-                .benchChairman(true)
-                .deputy(false);
+                .isBenchChairman(true)
+                .isDeputy(false);
 
         final CourtScheduleJudiciary courtScheduleJudiciary2 = new CourtScheduleJudiciary()
                 .judiciaryId(judiciaryId)
                 .courtListingProfileId(courtListingProfileId2)
                 .position("LEFT_WINGER")
-                .benchChairman(false)
-                .deputy(true);
+                .isBenchChairman(false)
+                .isDeputy(true);
 
         when(judiciaryBuilder.build(anyMap(), anyString()))
                 .thenReturn(courtScheduleJudiciary1)
@@ -718,8 +718,8 @@ class RotaJudiciaryHelperTest {
                 .judiciaryId(judiciaryId)
                 .courtListingProfileId(courtListingProfileId)
                 .position(CHAIR_2)
-                .benchChairman(true)
-                .deputy(false);
+                .isBenchChairman(true)
+                .isDeputy(false);
 
         when(judiciaryBuilder.build(anyMap(), anyString())).thenReturn(courtScheduleJudiciary);
 

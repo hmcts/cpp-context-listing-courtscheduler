@@ -224,8 +224,8 @@ public class JudiciaryAssignmentService {
                 .emailAddress(nonNullOrDefault(judiciary.getEmailAddress()))
                 .judiciaryType(judiciaryType)
                 .position(null)
-                .benchChairman(Boolean.TRUE.equals(sessionJudiciary.getIsBenchChairman()))
-                .deputy(Boolean.TRUE.equals(sessionJudiciary.getIsDeputy()))
+                .isBenchChairman(Boolean.TRUE.equals(sessionJudiciary.getIsBenchChairman()))
+                .isDeputy(Boolean.TRUE.equals(sessionJudiciary.getIsDeputy()))
                 .createdOn(uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toOffsetDateTime(timestamp))
                 .updatedOn(uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toOffsetDateTime(timestamp))
                 .active(true);
@@ -450,8 +450,8 @@ public class JudiciaryAssignmentService {
                 .emailAddress(nonNullOrDefault(judiciary.getEmailAddress()))
                 .judiciaryType(nonNullOrDefault(judiciary.getJudiciaryType()))
                 .position(assignment.getPosition())
-                .benchChairman(assignment.getIsBenchChairman() != null ? assignment.getIsBenchChairman() : false)
-                .deputy(assignment.getIsDeputy() != null ? assignment.getIsDeputy() : false)
+                .isBenchChairman(assignment.getIsBenchChairman() != null ? assignment.getIsBenchChairman() : false)
+                .isDeputy(assignment.getIsDeputy() != null ? assignment.getIsDeputy() : false)
                 .createdOn(uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toOffsetDateTime(timestamp))
                 .updatedOn(uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toOffsetDateTime(timestamp))
                 .active(true);

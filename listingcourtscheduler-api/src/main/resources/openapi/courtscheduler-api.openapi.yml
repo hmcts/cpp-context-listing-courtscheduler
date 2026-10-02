@@ -798,9 +798,13 @@ components:
           type: array
           nullable: true
           items: { type: string }
+        # allDaySplit/maxDurationFor*/jurisdiction deliberately have no schema default: the legacy
+        # CreateSessionsRequestParamConverter defaulted them differently for sessions[] entries
+        # (false / 0 / MAGISTRATES) and for sessionToBeAdded (null / -1 / MAGISTRATES), so absence
+        # must stay distinguishable - see CourtSchedulerApi#applyLegacyCreateDefaults.
         allDaySplit: { type: boolean, nullable: true }
-        maxDurationForMorning: { type: integer, default: 0 }
-        maxDurationForAfternoon: { type: integer, default: 0 }
+        maxDurationForMorning: { type: integer, nullable: true }
+        maxDurationForAfternoon: { type: integer, nullable: true }
         sessionStartTime: { type: string, nullable: true }
         sessionEndTime: { type: string, nullable: true }
         isOverbookingAllowed: { type: boolean, nullable: true }
@@ -923,8 +927,12 @@ components:
         courtListingProfileId: { type: string, nullable: true }
         judiciaryType: { type: string, nullable: true }
         position: { type: string, nullable: true }
-        benchChairman: { type: boolean, nullable: true }
-        deputy: { type: boolean, nullable: true }
+        # NOT benchChairman/deputy: the old domain.CourtScheduleJudiciary annotated its getters
+        # @JsonProperty("isBenchChairman")/@JsonProperty("isDeputy"), so every response embedding
+        # judiciaries (get court schedule, court-schedules-by-id, hearing slots, provisional
+        # booking) and the PUT /hearingslots request use the is-prefixed wire keys.
+        isBenchChairman: { type: boolean, nullable: true }
+        isDeputy: { type: boolean, nullable: true }
         active: { type: boolean, default: false }
         createdOn: { type: string, format: date-time, nullable: true }
         updatedOn: { type: string, format: date-time, nullable: true }
@@ -1055,8 +1063,10 @@ components:
           type: array
           default: []
           items: { $ref: '#/components/schemas/SlotStartTime' }
-        createdOn: { type: string, format: date-time, nullable: true }
-        updatedOn: { type: string, format: date-time, nullable: true }
+        # Same legacy "yyyy-MM-dd'T'HH:mm:ss.SSSxxx" UTC wire format as CourtSchedule - these were
+        # copied straight from the CourtSchedule serialization in the old grouped response.
+        createdOn: { type: string, format: date-time, nullable: true, x-field-extra-annotation: '@com.fasterxml.jackson.annotation.JsonFormat(shape = com.fasterxml.jackson.annotation.JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd''T''HH:mm:ss.SSSxxx", timezone = "UTC")' }
+        updatedOn: { type: string, format: date-time, nullable: true, x-field-extra-annotation: '@com.fasterxml.jackson.annotation.JsonFormat(shape = com.fasterxml.jackson.annotation.JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd''T''HH:mm:ss.SSSxxx", timezone = "UTC")' }
         allDaySplit: { type: boolean, default: false }
         maxDurationForMorning: { type: integer, default: 0 }
         maxDurationForAfternoon: { type: integer, default: 0 }
@@ -1071,7 +1081,7 @@ components:
         # "HH:mm" UTC-formatted strings, not OffsetDateTime — see reshaping comment above.
         sessionStartTime: { type: string, nullable: true }
         sessionEndTime: { type: string, nullable: true }
-        nationalBreakTime: { type: string, format: date-time, nullable: true }
+        nationalBreakTime: { type: string, format: date-time, nullable: true, x-field-extra-annotation: '@com.fasterxml.jackson.annotation.JsonFormat(shape = com.fasterxml.jackson.annotation.JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd''T''HH:mm:ss.SSSxxx", timezone = "UTC")' }
         minHearingTime: { type: string, nullable: true }
         maxHearingTime: { type: string, nullable: true }
 
@@ -1106,8 +1116,12 @@ components:
           type: array
           default: []
           items: { $ref: '#/components/schemas/SlotStartTime' }
-        createdOn: { type: string, format: date-time, nullable: true }
-        updatedOn: { type: string, format: date-time, nullable: true }
+        # The old domain.CourtSchedule serialized every Instant field with
+        # @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss.SSSxxx", timezone = "UTC"), i.e.
+        # "2020-12-01T10:00:00.000+00:00" - keep that wire format rather than OffsetDateTime's
+        # default ISO output ("2020-12-01T10:00:00Z").
+        createdOn: { type: string, format: date-time, nullable: true, x-field-extra-annotation: '@com.fasterxml.jackson.annotation.JsonFormat(shape = com.fasterxml.jackson.annotation.JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd''T''HH:mm:ss.SSSxxx", timezone = "UTC")' }
+        updatedOn: { type: string, format: date-time, nullable: true, x-field-extra-annotation: '@com.fasterxml.jackson.annotation.JsonFormat(shape = com.fasterxml.jackson.annotation.JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd''T''HH:mm:ss.SSSxxx", timezone = "UTC")' }
         allDaySplit: { type: boolean, default: false }
         maxDurationForMorning: { type: integer, default: 0 }
         maxDurationForAfternoon: { type: integer, default: 0 }
@@ -1126,9 +1140,9 @@ components:
         overbookingAllowed: { type: boolean, default: false }
         draft: { type: boolean, default: false }
         jurisdiction: { type: string, nullable: true }
-        sessionStartTime: { type: string, format: date-time, nullable: true }
-        sessionEndTime: { type: string, format: date-time, nullable: true }
-        nationalBreakTime: { type: string, format: date-time, nullable: true }
+        sessionStartTime: { type: string, format: date-time, nullable: true, x-field-extra-annotation: '@com.fasterxml.jackson.annotation.JsonFormat(shape = com.fasterxml.jackson.annotation.JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd''T''HH:mm:ss.SSSxxx", timezone = "UTC")' }
+        sessionEndTime: { type: string, format: date-time, nullable: true, x-field-extra-annotation: '@com.fasterxml.jackson.annotation.JsonFormat(shape = com.fasterxml.jackson.annotation.JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd''T''HH:mm:ss.SSSxxx", timezone = "UTC")' }
+        nationalBreakTime: { type: string, format: date-time, nullable: true, x-field-extra-annotation: '@com.fasterxml.jackson.annotation.JsonFormat(shape = com.fasterxml.jackson.annotation.JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd''T''HH:mm:ss.SSSxxx", timezone = "UTC")' }
         minHearingTime: { type: string, nullable: true }
         maxHearingTime: { type: string, nullable: true }
 
@@ -1237,12 +1251,15 @@ components:
         ouCode: { type: string, nullable: true }
         hearingId: { type: string, nullable: true }
         courtScheduleId: { type: string, nullable: true }
-        isSlotBased: { type: boolean, default: false }
+        # NOT isSlotBased/isPolice: the old domain.AllocatedSlot had primitive-boolean
+        # isSlotBased()/isPolice() getters with setSlotBased()/setPolice(), which Jackson binds
+        # as "slotBased"/"police" - the keys AllocatedSlotConverter actually accepted.
+        slotBased: { type: boolean, default: false }
         bookingId: { type: string, nullable: true }
         prosecutor: { type: string, nullable: true }
         courtRoom: { type: string, nullable: true }
         hearingSessionDateSearchCutOff: { type: string, nullable: true }
-        isPolice: { type: boolean, default: false }
+        police: { type: boolean, default: false }
         judiciaries:
           type: array
           default: []
@@ -1402,7 +1419,9 @@ components:
     # domain.mi.* — distinct from the top-level domain classes of the same simple name
     # (already schema'd above as CourtSchedule/CourtScheduleJudiciary). All wire fields are
     # snake_case (@JsonProperty on the hand-written getters); date fields are pre-formatted
-    # ISO strings on the wire via DateUtils.toIsoString(), modeled here as format: date-time.
+    # strings on the wire (DateUtils.toIsoString()/toIsoStringMinutes(), session_start as
+    # "<date>T00:00Z"), so they are modeled as plain strings - NOT format: date-time, which would
+    # round-trip them through OffsetDateTime and change the wire format.
     MiCourtSchedule:
       type: object
       properties:
@@ -1420,13 +1439,13 @@ components:
         court_session: { type: string, nullable: true }
         is_slot_based: { type: boolean, nullable: true }
         active: { type: boolean, nullable: true }
-        session_start: { type: string, format: date-time, nullable: true }
+        session_start: { type: string, nullable: true }
         max_slot: { type: integer, nullable: true }
         available_slot: { type: integer, nullable: true }
         max_duration_mins: { type: integer, nullable: true }
         available_duration_mins: { type: integer, nullable: true }
-        created_on: { type: string, format: date-time, nullable: true }
-        updated_on: { type: string, format: date-time, nullable: true }
+        created_on: { type: string, nullable: true }
+        updated_on: { type: string, nullable: true }
 
     MiCourtScheduleJudiciary:
       type: object
@@ -1444,8 +1463,8 @@ components:
         is_bench_chairman: { type: boolean, nullable: true }
         is_deputy: { type: boolean, nullable: true }
         active: { type: boolean, nullable: true }
-        created_on: { type: string, format: date-time, nullable: true }
-        updated_on: { type: string, format: date-time, nullable: true }
+        created_on: { type: string, nullable: true }
+        updated_on: { type: string, nullable: true }
 
     MiAllocatedListing:
       type: object
@@ -1458,9 +1477,9 @@ components:
         court_room_id: { type: integer, nullable: true }
         rota_business_type: { type: string, nullable: true }
         duration: { type: integer, nullable: true }
-        hearing_start_time: { type: string, format: date-time, nullable: true }
-        updated_on: { type: string, format: date-time, nullable: true }
-        created_on: { type: string, format: date-time, nullable: true }
+        hearing_start_time: { type: string, nullable: true }
+        updated_on: { type: string, nullable: true }
+        created_on: { type: string, nullable: true }
         is_overbooking_exempt: { type: boolean, nullable: true }
 
     CourtschedulerRotaslProcessRotaFiles:         { $ref: '#/components/schemas/PassthroughObject' }
@@ -1778,6 +1797,24 @@ components:
         availableDuration: { type: integer, default: 0 }
         maxSlots: { type: integer, default: 0 }
         maxDuration: { type: integer, default: 0 }
+        # The old domain.ProvisionalBookingInfo extended CourtSchedule, so these inherited fields
+        # were always serialized with their (never-overridden) defaults - kept for wire parity.
+        slotBased: { type: boolean, default: false }
+        active: { type: boolean, default: false }
+        allDaySplit: { type: boolean, default: false }
+        maxDurationForMorning: { type: integer, default: 0 }
+        maxDurationForAfternoon: { type: integer, default: 0 }
+        totalBooked: { type: integer, default: 0 }
+        availableDurationForMorning: { type: integer, default: 0 }
+        availableDurationForAfternoon: { type: integer, default: 0 }
+        totalBookedForMorning: { type: integer, default: 0 }
+        totalBookedForAfternoon: { type: integer, default: 0 }
+        overbookingAllowed: { type: boolean, default: false }
+        draft: { type: boolean, default: false }
+        slotStartTimes:
+          type: array
+          default: []
+          items: { $ref: '#/components/schemas/SlotStartTime' }
         judiciaries:
           type: array
           default: []
