@@ -662,7 +662,7 @@ public class JudiciaryAvailabilityService {
             return error;
         }
 
-        error = validateFutureDatesForCreation(request.getStartDate(), request.getEndDate());
+        error = validateFutureDatesForCreation(request);
         if (error != null) {
             return error;
         }
@@ -697,12 +697,12 @@ public class JudiciaryAvailabilityService {
         return null;
     }
 
-    private String validateFutureDatesForCreation(final LocalDate startDate, final LocalDate endDate) {
+    private String validateFutureDatesForCreation(final AddJudiciaryAvailabilityRuleRequest request) {
         final LocalDate today = LocalDate.now();
-        if (startDate != null && startDate.isBefore(today)) {
+        if (request.getStartDate() != null && request.getStartDate().isBefore(today)) {
             return START_DATE_MUST_BE_IN_FUTURE;
         }
-        if (endDate != null && endDate.isBefore(today)) {
+        if (request.getEndDate() != null && request.getEndDate().isBefore(today)) {
             return END_DATE_MUST_BE_IN_FUTURE;
         }
         return null;
