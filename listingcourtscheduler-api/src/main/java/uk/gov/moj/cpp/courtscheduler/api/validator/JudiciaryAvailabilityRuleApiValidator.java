@@ -32,7 +32,7 @@ public class JudiciaryAvailabilityRuleApiValidator {
     private static final String RULE_ID_FIELD = "ruleId";
 
     public JsonObject validateAddJudiciaryAvailabilityRule(final AddJudiciaryAvailabilityRuleRequest request) {
-        LOGGER.info("Validating AddJudiciaryAvailabilityRule input : {}", request);
+        LOGGER.info("Validating AddJudiciaryAvailabilityRule input");
         if (request == null) {
             return getMessage(REQUEST_FIELD);
         }
@@ -47,7 +47,7 @@ public class JudiciaryAvailabilityRuleApiValidator {
     }
 
     public JsonObject validateUpdateJudiciaryAvailabilityRule(final UpdateJudiciaryAvailabilityRuleRequest request) {
-        LOGGER.info("Validating UpdateJudiciaryAvailabilityRule input : {}", request);
+        LOGGER.info("Validating UpdateJudiciaryAvailabilityRule input");
         if (request == null) {
             return getMessage(REQUEST_FIELD);
         }
@@ -65,7 +65,7 @@ public class JudiciaryAvailabilityRuleApiValidator {
     }
 
     public JsonObject validateDeleteJudiciaryAvailabilityRule(final DeleteJudiciaryAvailabilityRuleRequest request) {
-        LOGGER.info("Validating DeleteJudiciaryAvailabilityRule input : {}", request);
+        LOGGER.info("Validating DeleteJudiciaryAvailabilityRule input");
         if (request == null) {
             return getMessage(REQUEST_FIELD);
         }

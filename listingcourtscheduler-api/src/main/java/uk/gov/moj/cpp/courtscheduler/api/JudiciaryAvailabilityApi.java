@@ -68,7 +68,7 @@ public class JudiciaryAvailabilityApi implements JudiciaryAvailabilityOpenApi {
     // ----- POST /judiciaries/availability-rules/add -----
     @Override
     public ResponseEntity<Void> addJudiciaryAvailabilityRule(final AddJudiciaryAvailabilityRuleRequest request) {
-        LOG.info("courtscheduler.judiciary.add.availability.rule: {}", sanitizeForLog(request));
+        LOG.info("courtscheduler.judiciary.add.availability.rule");
         final JsonObject errors = validator.validateAddJudiciaryAvailabilityRule(request);
         if (!errors.isEmpty()) {
             throw new UnprocessableEntityException(errors);
@@ -80,7 +80,7 @@ public class JudiciaryAvailabilityApi implements JudiciaryAvailabilityOpenApi {
     // ----- POST /judiciaries/availability-rules/update -----
     @Override
     public ResponseEntity<Void> updateJudiciaryAvailabilityRule(final UpdateJudiciaryAvailabilityRuleRequest request) {
-        LOG.info("courtscheduler.judiciary.update.availability.rule: {}", sanitizeForLog(request));
+        LOG.info("courtscheduler.judiciary.update.availability.rule");
         final JsonObject errors = validator.validateUpdateJudiciaryAvailabilityRule(request);
         if (!errors.isEmpty()) {
             throw new UnprocessableEntityException(errors);
@@ -92,7 +92,7 @@ public class JudiciaryAvailabilityApi implements JudiciaryAvailabilityOpenApi {
     // ----- POST /judiciaries/availability-rules/delete -----
     @Override
     public ResponseEntity<Void> deleteJudiciaryAvailabilityRule(final DeleteJudiciaryAvailabilityRuleRequest request) {
-        LOG.info("courtscheduler.judiciary.delete.availability.rule: {}", request);
+        LOG.info("courtscheduler.judiciary.delete.availability.rule");
         final JsonObject errors = validator.validateDeleteJudiciaryAvailabilityRule(request);
         if (!errors.isEmpty()) {
             throw new UnprocessableEntityException(errors);
