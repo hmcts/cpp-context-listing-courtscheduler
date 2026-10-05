@@ -378,9 +378,18 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
         return session;
     }
 
+    private String sanitizeForLog(final Object value) {
+        if (value == null) {
+            return null;
+        }
+        return String.valueOf(value)
+                .replace("\r", "\\r")
+                .replace("\n", "\\n");
+    }
+
     @Override
     public ResponseEntity<AssignCourtroomResponse> postCourtschedulerAssignCourtroom(final AssignCourtroomRequest courtschedulerAssignCourtroom) {
-        LOG.info("courtscheduler.assign.courtroom requested: {}", courtschedulerAssignCourtroom);
+        LOG.info("courtscheduler.assign.courtroom requested: {}", sanitizeForLog(courtschedulerAssignCourtroom));
 
         final JsonObject validate = sessionsApiValidator.getAssignCourtroomValidation(courtschedulerAssignCourtroom);
         if (!validate.isEmpty()) {
