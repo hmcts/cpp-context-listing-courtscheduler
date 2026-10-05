@@ -269,11 +269,4 @@ public class JudiciaryAvailabilityApi implements JudiciaryAvailabilityOpenApi {
             return body;
         }
     }
-    }
-
-    private String sanitizeForLog(final Object value) {
-    if (value == null) {
-        return "null";
-    }
-    return value.toString().replaceAll("[\\r\\n\\t\\f\\u0000-\\u001F\\u007F]", " ");
-    }
+}

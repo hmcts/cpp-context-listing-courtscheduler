@@ -23,6 +23,7 @@ import java.util.Map;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.owasp.encoder.Encode;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
@@ -378,18 +379,9 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
         return session;
     }
 
-    private String sanitizeForLog(final Object value) {
-        if (value == null) {
-            return null;
-        }
-        return String.valueOf(value)
-                .replace("\r", "\\r")
-                .replace("\n", "\\n");
-    }
-
     @Override
     public ResponseEntity<AssignCourtroomResponse> postCourtschedulerAssignCourtroom(final AssignCourtroomRequest courtschedulerAssignCourtroom) {
-        LOG.info("courtscheduler.assign.courtroom requested: {}", sanitizeForLog(courtschedulerAssignCourtroom));
+        LOG.info("courtscheduler.assign.courtroom requested: {}", Encode.forJava(String.valueOf(courtschedulerAssignCourtroom)));
 
         final JsonObject validate = sessionsApiValidator.getAssignCourtroomValidation(courtschedulerAssignCourtroom);
         if (!validate.isEmpty()) {
@@ -486,17 +478,10 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
      *  SessionOpenApi — SPRDT-1089 additions on /sessions/*
      * ============================================================ */
 
-    private static String sanitizeForLog(final Object value) {
-        if (value == null) {
-            return "null";
-        }
-        return value.toString().replaceAll("[\\r\\n\\t\\f\\u0000-\\u001F\\u007F]", "_");
-    }
-
     /** POST /sessions/bulk-assign-judiciaries — replace-all judiciary assignment. */
     @Override
     public ResponseEntity<Void> postBulkAssignJudiciaries(final AssignJudiciaryToSessionsRequest dto) {
-        LOG.info("courtscheduler.assign-judiciary-to-sessions requested: {}", sanitizeForLog(dto));
+        LOG.info("courtscheduler.assign-judiciary-to-sessions requested: {}", Encode.forJava(String.valueOf(dto)));
         try {
             judiciaryAssignmentService.assignJudiciaryToSessions(dto, UUID.randomUUID().toString());
         } catch (final IllegalArgumentException e) {
