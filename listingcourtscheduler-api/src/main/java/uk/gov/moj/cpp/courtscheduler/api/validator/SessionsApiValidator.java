@@ -12,9 +12,11 @@ import static java.time.format.DateTimeFormatter.ofPattern;
 import static java.util.Comparator.comparing;
 import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
+import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.END_DATE_IS_IN_BAD_FORMAT;
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.ERROR_MESSAGE;
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.START_DATE_AFTER_END_DATE;
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.START_DATE_IS_INVALID;
+import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.START_DATE_IS_IN_BAD_FORMAT;
 import static uk.gov.moj.cpp.courtscheduler.common.Jurisdiction.CROWN;
 import static uk.gov.moj.cpp.courtscheduler.common.Jurisdiction.MAGISTRATES;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.AM_SESSION_END_TIME_CANNOT_EXCEED;
@@ -35,6 +37,9 @@ import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.PM_SE
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.BookingUtils.updateTotalBooked;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.DEFAULT_AFTERNOON_START_TIME;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.combineDateAndTime;
+import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.normaliseRepeatPatternEndDate;
+import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.parseRepeatPatternDate;
+import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toOffsetDateTime;
 
 // (removed) replaced by Spring CommonPlatformQueryClient
 import uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages;
@@ -42,15 +47,16 @@ import uk.gov.moj.cpp.courtscheduler.common.service.AllocatedListingService;
 import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataCache;
 import uk.gov.moj.cpp.courtscheduler.common.service.RotaProcessLogService;
 import uk.gov.moj.cpp.courtscheduler.common.service.SessionsService;
-import uk.gov.moj.cpp.courtscheduler.domain.AllocatedListingEachBooked;
-import uk.gov.moj.cpp.courtscheduler.domain.AssignCourtroomRequest;
-import uk.gov.moj.cpp.courtscheduler.domain.BusinessType;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
-import uk.gov.moj.cpp.courtscheduler.domain.CreateSessionRequestParam;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.AllocatedListingEachBooked;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.AssignCourtroomRequest;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.BusinessType;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtRoom;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CreateSessionRequestParam;
+import uk.gov.moj.cpp.courtscheduler.domain.utils.DayOfWeekConverter;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.Session;
 import uk.gov.moj.cpp.courtscheduler.domain.RepeatFrequency;
-import uk.gov.moj.cpp.courtscheduler.domain.Session;
-import uk.gov.moj.cpp.courtscheduler.domain.SessionValidationParams;
-import uk.gov.moj.cpp.courtscheduler.domain.UpdateCourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.SessionValidationParams;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.UpdateCourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.ValidateSessionAvailabilityRequestParam;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog;
@@ -69,6 +75,7 @@ import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -113,9 +120,24 @@ public class SessionsApiValidator {
     public JsonObject getSessionsCreateValidation(final CreateSessionRequestParam createSessionRequestParam) {
         final long totalStartTime = System.currentTimeMillis();
 
-        final LocalDate patternStartDate = createSessionRequestParam.getRepeatPattern().getStartDate();
-        final LocalDate patternEndDate = createSessionRequestParam.getRepeatPattern().getEndDate();
-        final RepeatFrequency repeatFrequency = createSessionRequestParam.getRepeatPattern().getFrequency();
+        final String startDateStr = createSessionRequestParam.getRepeatPattern().getStartDate();
+        final String endDateStr = normaliseRepeatPatternEndDate(createSessionRequestParam.getRepeatPattern().getEndDate());
+        final LocalDate patternStartDate;
+        try {
+            patternStartDate = parseRepeatPatternDate(startDateStr);
+        } catch (DateTimeParseException e) {
+            return buildErrorResponse(String.format(START_DATE_IS_IN_BAD_FORMAT, startDateStr));
+        }
+        LocalDate patternEndDate = null;
+        if (endDateStr != null) {
+            try {
+                patternEndDate = parseRepeatPatternDate(endDateStr);
+            } catch (DateTimeParseException e) {
+                return buildErrorResponse(String.format(END_DATE_IS_IN_BAD_FORMAT, endDateStr));
+            }
+        }
+        final String frequencyStr = createSessionRequestParam.getRepeatPattern().getFrequency();
+        final RepeatFrequency repeatFrequency = frequencyStr == null ? null : RepeatFrequency.valueOf(frequencyStr.trim().toUpperCase(Locale.ROOT));
 
         LOGGER.info("Validating CREATE Sessions input : {}", createSessionRequestParam);
 
@@ -186,7 +208,7 @@ public class SessionsApiValidator {
     }
 
     private JsonObject validateSessionsBasicRules(final CreateSessionRequestParam createSessionRequestParam) {
-        final JsonObject result = validateSessionStartEndTime(createSessionRequestParam.getSessionList());
+        final JsonObject result = validateSessionStartEndTime(createSessionRequestParam.getSessions());
         if (result != null) {
             return result;
         }
@@ -226,7 +248,7 @@ public class SessionsApiValidator {
     }
 
     private JsonObject validateBusinessTypesAndCourtRooms(final CreateSessionRequestParam requestParam) {
-        for (final Session session : requestParam.getSessionList()) {
+        for (final Session session : requestParam.getSessions()) {
             final JsonObject error = validateSessionBusinessTypeAndCourtRoom(session);
             if (error != EMPTY_JSON_OBJECT) {
                 return error;
@@ -275,7 +297,7 @@ public class SessionsApiValidator {
     }
 
     private JsonObject validateAllDaySplitForSession(final Session session) {
-        if (ALL_DAY.equals(session.getSessionType()) && isNull(session.isAllDaySplit())) {
+        if (ALL_DAY.equals(session.getSessionType()) && isNull(session.getAllDaySplit())) {
             return buildErrorResponse(ErrorMessages.ALL_DAY_SPLIT_MANDATORY_FOR_AD_SESSION);
         }
         return EMPTY_JSON_OBJECT;
@@ -359,19 +381,19 @@ public class SessionsApiValidator {
 
     private static boolean isDurationBasedWithValidDuration(final Session session, final BusinessType businessType) {
         //if slot based based, then its ok. otherwise if its all day split, morning/afternoon duration should be supplied,for regular allday duraton should be supplied
-        return businessType.isSlot() || allDaySplitWithValidDuration(session) || hasValidDuration(session);
+        return TRUE.equals(businessType.getSlot()) || allDaySplitWithValidDuration(session) || hasValidDuration(session);
     }
 
     private static boolean hasValidDuration(final Session session) {
-        return nonNull(session.getSlotsOrDuration()) && (session.getSlotsOrDuration() >= 0);
+        return nonNull(session.getDuration()) && (session.getDuration() >= 0);
     }
 
     private static boolean allDaySplitWithValidDuration(final Session session) {
-        return ALL_DAY.equals(session.getSessionType()) && session.isAllDaySplit() && nonNull(session.getMaxDurationForMorning()) && nonNull(session.getMaxDurationForAfternoon());
+        return ALL_DAY.equals(session.getSessionType()) && TRUE.equals(session.getAllDaySplit()) && nonNull(session.getMaxDurationForMorning()) && nonNull(session.getMaxDurationForAfternoon());
     }
 
     private JsonObject validateMonthlyCrownIndexForRequest(final CreateSessionRequestParam requestParam) {
-        for (final Session s : requestParam.getSessionList()) {
+        for (final Session s : requestParam.getSessions()) {
             final JsonObject err = validateMonthlyCrownIndex(s);
             if (!err.isEmpty()) {
                 return err;
@@ -482,7 +504,7 @@ public class SessionsApiValidator {
     private Optional<JsonObject> findDuplicateErrorForMonthlyPayload(final CreateSessionRequestParam createSessionRequestParam,
                                                                     final Session sessionToBeAdded) {
         final List<Session> matchingSessions = collectSessionsMatchingCourtCentreRoomAndBusinessType(
-                sessionToBeAdded, createSessionRequestParam.getSessionList());
+                sessionToBeAdded, createSessionRequestParam.getSessions());
         matchingSessions.add(sessionToBeAdded);
         final Map<String, Session> dayIndexToSession = new HashMap<>();
         for (final Session session : matchingSessions) {
@@ -509,12 +531,18 @@ public class SessionsApiValidator {
         return a.getCourtCentreId().equals(b.getCourtCentreId())
                 && a.getCourtRoomId().equals(b.getCourtRoomId())
                 && a.getBusinessType().equals(b.getBusinessType())
-                && Objects.equals(a.isDraft(), b.isDraft());
+                && Objects.equals(a.getIsDraft(), b.getIsDraft());
+    }
+
+    private static Set<DayOfWeek> repeatDaysOf(final Session session) {
+        return session.getRepeatDays() == null
+                ? EnumSet.noneOf(DayOfWeek.class)
+                : DayOfWeekConverter.convert(String.join(",", session.getRepeatDays()));
     }
 
     private Optional<JsonObject> checkMonthlySessionForDuplicate(final Map<String, Session> dayIndexToSession,
                                                                final Session session) {
-        for (final DayOfWeek day : session.getRepeatDays()) {
+        for (final DayOfWeek day : repeatDaysOf(session)) {
             final Integer index = session.getIndex();
             if (index == null) {
                 continue;
@@ -534,9 +562,8 @@ public class SessionsApiValidator {
 
     private Optional<JsonObject> findDuplicateErrorForWeeklyPayload(final CreateSessionRequestParam createSessionRequestParam,
                                                                     final Session sessionToBeAdded) {
-        final Set<DayOfWeek> repeatDaysToBeAdded = EnumSet.noneOf(DayOfWeek.class);
-        repeatDaysToBeAdded.addAll(sessionToBeAdded.getRepeatDays());
-        for (final Session session : createSessionRequestParam.getSessionList()) {
+        final Set<DayOfWeek> repeatDaysToBeAdded = repeatDaysOf(sessionToBeAdded);
+        for (final Session session : createSessionRequestParam.getSessions()) {
             LOGGER.info("getSessionsCreateValidation getSessionList not null");
             final boolean match = isSameCourtCentreRoomAndBusinessType(session, sessionToBeAdded);
             LOGGER.info("getSessionsCreateValidation match value : {}", match);
@@ -551,36 +578,34 @@ public class SessionsApiValidator {
     private boolean hasOverlappingDayWithDuplicateSessionType(final Set<DayOfWeek> repeatDaysToBeAdded,
                                                               final Session existingSession,
                                                               final Session sessionToBeAdded) {
-        final Set<DayOfWeek> existingRepeatDays = EnumSet.noneOf(DayOfWeek.class);
-        existingRepeatDays.addAll(existingSession.getRepeatDays());
+        final Set<DayOfWeek> existingRepeatDays = repeatDaysOf(existingSession);
         return repeatDaysToBeAdded.stream().anyMatch(existingRepeatDays::contains)
                 && isSessionTypeDuplicateOrNotValidForAllDay(existingSession, sessionToBeAdded);
     }
 
     private JsonObject validateSessionToBeAdded(final Session sessionToBeAdded) {
-        final SessionValidationParams params = new SessionValidationParams(
-                sessionToBeAdded.getMaxDurationForMorning(),
-                sessionToBeAdded.getMaxDurationForAfternoon(),
-                sessionToBeAdded.isAllDaySplit(),
-                sessionToBeAdded.getSessionType(),
-                sessionToBeAdded.getBusinessType(),
-                sessionToBeAdded.getSlotsOrDuration(),
-                null,
-                null,
-                null
-        );
+        final SessionValidationParams params = new SessionValidationParams()
+                .maxDurationForMorning(sessionToBeAdded.getMaxDurationForMorning())
+                .maxDurationForAfternoon(sessionToBeAdded.getMaxDurationForAfternoon())
+                .allDaySplit(sessionToBeAdded.getAllDaySplit())
+                .sessionType(sessionToBeAdded.getSessionType())
+                .businessType(sessionToBeAdded.getBusinessType())
+                .slotsOrDuration(sessionToBeAdded.getDuration())
+                .courtScheduleId(null)
+                .sessionStartTime(null)
+                .sessionEndTime(null);
         return validateSession(params, true);
     }
 
    /* package */ JsonObject validateSession(final SessionValidationParams params, final boolean sessionToBeAdded) {
-        if (ALL_DAY.equals(params.getSessionType()) && isNull(params.isAllDaySplit())) {
+        if (ALL_DAY.equals(params.getSessionType()) && isNull(params.getAllDaySplit())) {
             return buildErrorResponse(ErrorMessages.ALL_DAY_SPLIT_MANDATORY_FOR_AD_SESSION);
         }
         final JsonObject scheduleValidationResult = validateExistingSchedule(params);
         if (!scheduleValidationResult.equals(EMPTY_JSON_OBJECT)) {
             return scheduleValidationResult;
         }
-        if (TRUE.equals(params.isAllDaySplit())) {
+        if (TRUE.equals(params.getAllDaySplit())) {
             return validateAllDaySplit(params, sessionToBeAdded);
         } else if (sessionToBeAdded && ObjectUtils.isEmpty(params.getSlotsOrDuration())) {
             return buildErrorResponse(ErrorMessages.DURATION_NOT_FOUND_FOR_REGULAR_SESSION);
@@ -667,16 +692,16 @@ public class SessionsApiValidator {
     private LocalTime getMinHearingTime(final List<AllocatedListingEachBooked> allocatedListings) {
         return allocatedListings.stream()
                 .map(AllocatedListingEachBooked::getHearingStartTime)
-                .min(Instant::compareTo)
-                .map(instant -> instant.atZone(ZoneId.of(EUROPE_LONDON)).toLocalTime())
+                .min(java.time.OffsetDateTime::compareTo)
+                .map(dateTime -> dateTime.toInstant().atZone(ZoneId.of(EUROPE_LONDON)).toLocalTime())
                 .orElse(null);
     }
 
     private LocalTime getMaxHearingTime(final List<AllocatedListingEachBooked> allocatedListings) {
         return allocatedListings.stream()
                 .map(AllocatedListingEachBooked::getHearingStartTime)
-                .max(comparing(Instant::toEpochMilli))
-                .map(instant -> instant.atZone(ZoneId.of(EUROPE_LONDON)).toLocalTime())
+                .max(comparing(java.time.OffsetDateTime::toInstant))
+                .map(dateTime -> dateTime.toInstant().atZone(ZoneId.of(EUROPE_LONDON)).toLocalTime())
                 .orElse(null);
     }
 
@@ -701,7 +726,7 @@ public class SessionsApiValidator {
         if (businessTypeOptional.isEmpty()) {
             return buildErrorResponse(BUSINESS_TYPE_NOT_FOUND + params.getBusinessType());
         }
-        if (!businessTypeOptional.get().isDuration()) {
+        if (!TRUE.equals(businessTypeOptional.get().getDuration())) {
             return buildErrorResponse(ErrorMessages.SPLIT_ONLY_APPLIES_DURATION_BASED_SESSION);
         }
 
@@ -747,10 +772,12 @@ public class SessionsApiValidator {
     private boolean isMorningSession (final AllocatedListingEachBooked
                                               eachBooked, final CourtSchedule
                                               persistedCourtSchedule){
-        final Instant sessionStartInstant = persistedCourtSchedule.getSessionStartTime();
-        final Instant afternoonCutoffInstant = combineDateAndTime(persistedCourtSchedule.getSessionDate(), DEFAULT_AFTERNOON_START_TIME).toInstant();
-        return (eachBooked.getHearingStartTime().isAfter(sessionStartInstant) || eachBooked.getHearingStartTime().equals(sessionStartInstant)) &&
-                eachBooked.getHearingStartTime().isBefore(afternoonCutoffInstant);
+        final java.time.OffsetDateTime hearingStartTime = eachBooked.getHearingStartTime();
+        final java.time.OffsetDateTime sessionStartTime = toOffsetDateTime(persistedCourtSchedule.getSessionStartTime());
+        final java.time.OffsetDateTime afternoonStartTime = toOffsetDateTime(
+                combineDateAndTime(persistedCourtSchedule.getSessionDate(), DEFAULT_AFTERNOON_START_TIME));
+        return (hearingStartTime.isAfter(sessionStartTime) || hearingStartTime.isEqual(sessionStartTime))
+                && hearingStartTime.isBefore(afternoonStartTime);
     }
 
     //this should be called after we have a day match. This is to check if the session type is duplicate or not valid for all day
@@ -830,7 +857,7 @@ public class SessionsApiValidator {
     }
 
     private JsonObject validateUpdateIsDraft(final UpdateCourtSchedule updateCourtSchedule, final String jurisdiction) {
-        final Boolean isDraft = updateCourtSchedule.isDraft();
+        final Boolean isDraft = updateCourtSchedule.getIsDraft();
         
         final JsonObject crownMandatoryCheck = validateCrownIsDraftMandatory(jurisdiction, isDraft);
         if (crownMandatoryCheck != EMPTY_JSON_OBJECT) {
@@ -1006,16 +1033,16 @@ public class SessionsApiValidator {
                 ? updateCourtSchedule.getMaxDuration()
                 : updateCourtSchedule.getMaxSlots();
 
-        return new SessionValidationParams(
-                updateCourtSchedule.getMaxDurationForMorning(),
-                updateCourtSchedule.getMaxDurationForAfternoon(),
-                updateCourtSchedule.isAllDaySplit(),
-                updateCourtSchedule.getSessionType(),
-                updateCourtSchedule.getBusinessType(),
-                slotsOrDuration,
-                updateCourtSchedule.getCourtScheduleId(),
-                updateCourtSchedule.getSessionStartTime(),
-                updateCourtSchedule.getSessionEndTime());
+        return new SessionValidationParams()
+                .maxDurationForMorning(updateCourtSchedule.getMaxDurationForMorning())
+                .maxDurationForAfternoon(updateCourtSchedule.getMaxDurationForAfternoon())
+                .allDaySplit(updateCourtSchedule.getAllDaySplit())
+                .sessionType(updateCourtSchedule.getCourtSession())
+                .businessType(updateCourtSchedule.getBusinessType())
+                .slotsOrDuration(slotsOrDuration)
+                .courtScheduleId(updateCourtSchedule.getCourtScheduleId())
+                .sessionStartTime(updateCourtSchedule.getSessionStartTime())
+                .sessionEndTime(updateCourtSchedule.getSessionEndTime());
     }
 
     public JsonObject getAssignCourtroomValidation(final AssignCourtroomRequest request) {
@@ -1032,7 +1059,7 @@ public class SessionsApiValidator {
 
     private JsonObject validateIsDraftForJurisdiction(final CreateSessionRequestParam createSessionRequestParam) {
         // Validate sessions in the list
-        for (final Session session : createSessionRequestParam.getSessionList()) {
+        for (final Session session : createSessionRequestParam.getSessions()) {
             final JsonObject error = validateSessionIsDraft(session);
             if (error != EMPTY_JSON_OBJECT) {
                 return error;
@@ -1056,7 +1083,7 @@ public class SessionsApiValidator {
         }
 
         final String jurisdiction = nonNull(session.getJurisdiction()) ? session.getJurisdiction() : MAGISTRATES.getJurisdiction();
-        final Boolean isDraft = session.isDraft();
+        final Boolean isDraft = session.getIsDraft();
 
         // For CROWN jurisdiction, isDraft must be explicitly supplied (true or false)
         if (CROWN.equalsIgnoreCase(jurisdiction) && isNull(isDraft)) {
@@ -1073,7 +1100,7 @@ public class SessionsApiValidator {
 
     private JsonObject validatePanelForJurisdiction(final CreateSessionRequestParam createSessionRequestParam) {
         // Validate sessions in the list
-        for (final Session session : createSessionRequestParam.getSessionList()) {
+        for (final Session session : createSessionRequestParam.getSessions()) {
             final JsonObject error = validateSessionPanel(session);
             if (error != EMPTY_JSON_OBJECT) {
                 return error;
@@ -1097,7 +1124,7 @@ public class SessionsApiValidator {
         }
 
         final String jurisdiction = nonNull(session.getJurisdiction()) ? session.getJurisdiction() : MAGISTRATES.getJurisdiction();
-        final String panel = session.getPanelType();
+        final String panel = session.getPanel();
 
         // For MAGISTRATES jurisdiction, panel is mandatory
         if (MAGISTRATES.equalsIgnoreCase(jurisdiction)

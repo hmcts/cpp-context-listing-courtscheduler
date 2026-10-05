@@ -4,7 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule;
 
 import java.time.LocalDate;
 
@@ -15,7 +15,7 @@ class SessionAvailabilityTest {
     @Test
     void hasSufficientAvailabilityShouldReturnTrueWhenOverbookingAllowed() {
         final CourtSchedule session = new CourtSchedule();
-        session.setIsOverbookingAllowed(true);
+        session.setOverbookingAllowed(true);
         session.setMaxDuration(0);
         session.setTotalBooked(0);
 
@@ -25,7 +25,7 @@ class SessionAvailabilityTest {
     @Test
     void hasSufficientAvailabilityShouldReturnTrueWhenEffectiveDurationMeetsRequirement() {
         final CourtSchedule session = new CourtSchedule();
-        session.setIsOverbookingAllowed(false);
+        session.setOverbookingAllowed(false);
         session.setMaxDuration(360);
         session.setTotalBooked(0);
 
@@ -35,7 +35,7 @@ class SessionAvailabilityTest {
     @Test
     void hasSufficientAvailabilityShouldReturnFalseWhenEffectiveDurationBelowRequirement() {
         final CourtSchedule session = new CourtSchedule();
-        session.setIsOverbookingAllowed(false);
+        session.setOverbookingAllowed(false);
         session.setMaxDuration(300);
         session.setTotalBooked(0);
 

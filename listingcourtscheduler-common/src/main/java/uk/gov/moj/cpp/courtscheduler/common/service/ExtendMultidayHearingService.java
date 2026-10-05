@@ -8,7 +8,7 @@ import static uk.gov.moj.cpp.courtscheduler.exception.ExtendMultidayHearingExcep
 import static uk.gov.moj.cpp.courtscheduler.exception.ExtendMultidayHearingException.ErrorCode.NO_EXISTING_ALLOCATION;
 import static uk.gov.moj.cpp.courtscheduler.exception.ExtendMultidayHearingException.ErrorCode.START_DATE_CHANGE_NOT_ALLOWED;
 
-import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.exception.ExtendMultidayHearingException;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
 import uk.gov.moj.cpp.courtscheduler.repository.AllocatedListingRepository;
@@ -25,6 +25,7 @@ import java.util.UUID;
 
 import jakarta.inject.Inject;
 
+import org.owasp.encoder.Encode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -99,18 +100,18 @@ public class ExtendMultidayHearingService {
         final LocalDate maxDate = currentSchedules.get(currentSchedules.size() - 1).getSessionDate();
 
         if (newEnd.equals(maxDate)) {
-            LOGGER.info("[EXTEND-MULTIDAY] hearingId: {}, NO_CHANGE (newEnd == MAX)", hearingId);
+            LOGGER.info("[EXTEND-MULTIDAY] hearingId: {}, NO_CHANGE (newEnd == MAX)", Encode.forJava(hearingId));
             return currentSchedules;
         }
 
         if (newEnd.isBefore(maxDate)) {
-            LOGGER.info("[EXTEND-MULTIDAY] hearingId: {}, SHRINK from {} to {}", hearingId, maxDate, newEnd);
+            LOGGER.info("[EXTEND-MULTIDAY] hearingId: {}, SHRINK from {} to {}", Encode.forJava(hearingId), maxDate, newEnd);
             allocatedListingRepository.deleteByHearingIdAndSessionDateGreaterThan(hearingId, newEnd);
             return hydrateSchedules(allocatedListingRepository.findByHearingIdOrderBySessionDateAsc(hearingId));
         }
 
         LOGGER.info("[EXTEND-MULTIDAY] hearingId: {}, EXTEND from {} to {} (requested duration {} mins, requestedCourtRoomId {})",
-                hearingId, maxDate, newEnd, durationInMinutes, requestedCourtRoomId);
+                Encode.forJava(hearingId), maxDate, newEnd, durationInMinutes, Encode.forJava(requestedCourtRoomId));
         return doExtend(hearingId, currentSchedules, maxDate, newEnd, requestedCourtRoomId, earliestHearingTime,
                 perDayMinutes > 0 ? perDayMinutes : FULL_DAY_DURATION_MINS);
     }
@@ -139,7 +140,7 @@ public class ExtendMultidayHearingService {
         // The tail matches the block's own draft state: extending an ALLOCATED block must only book
         // FINAL sessions — a draft tail session has no confirmed room and, downstream, ADR-005 would
         // strip the courtroom from EVERY hearing day of the hearing.
-        final Boolean blockIsDraft = lastSession.isDraft();
+        final Boolean blockIsDraft = lastSession.getDraft();
         final List<CourtSchedule> candidates = courtScheduleRepository.findAdSessionsInRange(
                 ouCode, courtRoomId, businessType, tailDays.get(0), newEnd, blockIsDraft);
 
@@ -152,7 +153,7 @@ public class ExtendMultidayHearingService {
             }
         }
         if (!unavailable.isEmpty()) {
-            LOGGER.info("[EXTEND-MULTIDAY] hearingId: {}, NO_AVAILABILITY on {}", hearingId, unavailable);
+            LOGGER.info("[EXTEND-MULTIDAY] hearingId: {}, NO_AVAILABILITY on {}", Encode.forJava(hearingId), unavailable);
             throw new ExtendMultidayHearingException(NO_AVAILABILITY,
                     "Tail days unavailable: " + unavailable, unavailable);
         }
@@ -185,7 +186,7 @@ public class ExtendMultidayHearingService {
                 continue;
             }
             chosen.merge(cs.getSessionDate(), cs, (existing, incoming) ->
-                    existing.isOverbookingAllowed() ? incoming : existing);
+                    Boolean.TRUE.equals(existing.getOverbookingAllowed()) ? incoming : existing);
         }
         return chosen;
     }
@@ -225,7 +226,7 @@ public class ExtendMultidayHearingService {
                     session.getSessionDate().atTime(userStartTime).atZone(java.time.ZoneOffset.UTC).toInstant());
         } else {
             row.setHearingStartTime(session.getSessionStartTime() != null
-                    ? session.getSessionStartTime()
+                    ? session.getSessionStartTime().toInstant()
                     : session.getSessionDate().atStartOfDay(ZoneId.systemDefault()).toInstant());
         }
         row.setSource(EXTEND_SOURCE);

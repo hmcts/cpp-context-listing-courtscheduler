@@ -6,7 +6,7 @@ import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 
-import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.platform.test.data.utils.FileUtil;
 
 import java.time.Instant;
@@ -39,23 +39,22 @@ class CourtScheduleJudiciaryMapperTest {
     void shouldMapNullableRotaProfileAndPositionBetweenDomainAndEntity() {
         final String courtScheduleId = UUID.randomUUID().toString();
         final String judiciaryId = UUID.randomUUID().toString();
-        final CourtScheduleJudiciary domain = CourtScheduleJudiciary.judiciary()
-                .withCourtScheduleId(courtScheduleId)
-                .withJudiciaryId(judiciaryId)
-                .withRotaJudiciaryId(null)
-                .withCourtListingProfileId(null)
-                .withPosition(null)
-                .withTitle("Mr")
-                .withForenames("Test")
-                .withSurname("Judge")
-                .withEmailAddress("test.judge@example.com")
-                .withJudiciaryType("DJ")
-                .withIsBenchChairman(false)
-                .withIsDeputy(false)
-                .withActive(true)
-                .withCreatedOn(Instant.now())
-                .withUpdatedOn(Instant.now())
-                .build();
+        final CourtScheduleJudiciary domain = new CourtScheduleJudiciary()
+                .courtScheduleId(courtScheduleId)
+                .judiciaryId(judiciaryId)
+                .rotaJudiciaryId(null)
+                .courtListingProfileId(null)
+                .position(null)
+                .title("Mr")
+                .forenames("Test")
+                .surname("Judge")
+                .emailAddress("test.judge@example.com")
+                .judiciaryType("DJ")
+                .isBenchChairman(false)
+                .isDeputy(false)
+                .active(true)
+                .createdOn(uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toOffsetDateTime(Instant.now()))
+                .updatedOn(uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toOffsetDateTime(Instant.now()));
 
         final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary entity =
                 CourtScheduleJudiciaryMapper.toEntity(domain);

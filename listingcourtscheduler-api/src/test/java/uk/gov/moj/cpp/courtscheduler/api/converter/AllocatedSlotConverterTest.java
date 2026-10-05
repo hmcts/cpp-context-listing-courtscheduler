@@ -5,8 +5,8 @@ import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static uk.gov.moj.cpp.platform.test.data.utils.FileUtil.fileToString;
 
-import uk.gov.moj.cpp.courtscheduler.domain.AllocatedSlot;
-import uk.gov.moj.cpp.courtscheduler.domain.AllocatedSlots;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.AllocatedSlot;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.AllocatedSlots;
 
 import java.util.List;
 

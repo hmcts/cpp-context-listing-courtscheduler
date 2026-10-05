@@ -1,4 +1,4 @@
-package uk.gov.moj.cpp.courtscheduler.api.converter;
+package uk.gov.moj.cpp.courtscheduler.domain.utils;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;

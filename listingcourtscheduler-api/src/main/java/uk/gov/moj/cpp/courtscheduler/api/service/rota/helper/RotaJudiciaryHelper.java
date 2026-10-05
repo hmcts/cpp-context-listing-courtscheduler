@@ -29,8 +29,8 @@ import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload.SCHEDULE;
 // (removed) Requester replaced by Spring CommonPlatformQueryClient
 import uk.gov.moj.cpp.courtscheduler.api.service.rota.RotaReferenceDataService;
 import uk.gov.moj.cpp.courtscheduler.common.service.RotaProcessLogService;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
-import uk.gov.moj.cpp.courtscheduler.domain.Judiciary;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtScheduleJudiciary;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.Judiciary;
 import uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload;
 import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.enricher.JudiciaryBuilder;
 
@@ -237,7 +237,7 @@ public class RotaJudiciaryHelper {
 
         logger.debug("Mapped judiciaryId {} to court schedule(s) with listingProfileId: {}, position: {}, isBenchChairman: {}, isDeputy: {}",
                 judiciaryId, courtListingProfileId,
-                schedule.getPosition(), schedule.isBenchChairman(), schedule.isDeputy());
+                schedule.getPosition(), schedule.getIsBenchChairman(), schedule.getIsDeputy());
     }
 
 
@@ -270,8 +270,8 @@ public class RotaJudiciaryHelper {
                 new ArrayList<>(scheduleIds),
                 schedule.getRotaJudiciaryId(),
                 schedule.getPosition(),
-                schedule.isBenchChairman(),
-                schedule.isDeputy()
+                schedule.getIsBenchChairman(),
+                schedule.getIsDeputy()
         );
     }
 

@@ -28,9 +28,9 @@ import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.TITLE
 
 // (removed) replaced by Spring CommonPlatformQueryClient
 import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataMapperService;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
-import uk.gov.moj.cpp.courtscheduler.domain.Judiciary;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtScheduleJudiciary;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.Judiciary;
 import uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload;
 
 import java.util.ArrayList;

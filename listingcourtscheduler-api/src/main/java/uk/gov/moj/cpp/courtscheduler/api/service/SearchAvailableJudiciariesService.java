@@ -8,7 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataService;
 import uk.gov.moj.cpp.courtscheduler.domain.DateSessionType;
-import uk.gov.moj.cpp.courtscheduler.domain.Judiciary;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.Judiciary;
 import uk.gov.moj.cpp.courtscheduler.domain.SessionType;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;

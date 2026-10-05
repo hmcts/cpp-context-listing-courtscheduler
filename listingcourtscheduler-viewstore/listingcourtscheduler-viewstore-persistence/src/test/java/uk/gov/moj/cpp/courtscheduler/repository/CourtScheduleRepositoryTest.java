@@ -2,14 +2,16 @@ package uk.gov.moj.cpp.courtscheduler.repository;
 
 import static java.util.UUID.randomUUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.TimezoneUtils.LONDON_ZONE;
 
-import uk.gov.moj.cpp.courtscheduler.domain.AllocatedSlot;
-import uk.gov.moj.cpp.courtscheduler.domain.CrownFallbackRequest;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.AllocatedSlot;
 import uk.gov.moj.cpp.courtscheduler.domain.CrownFallbackSearchResult;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
-import uk.gov.moj.cpp.courtscheduler.domain.Result;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtScheduleMatcherInfo;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CrownFallbackRequest;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.Result;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.TimezoneUtils;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
@@ -17,15 +19,14 @@ import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciaryKey;
 
 import java.sql.Timestamp;
-import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZoneOffset;
 import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
@@ -70,7 +71,9 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
     @jakarta.persistence.PersistenceContext
     private jakarta.persistence.EntityManager em;
 
-    private static final SimpleDateFormat SIMPLE_DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.ROOT);
+    // Same output as the former SimpleDateFormat: literal 'Z' suffix, formatted in the JVM default zone.
+    private static final DateTimeFormatter SIMPLE_DATE_FORMAT =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.ROOT).withZone(ZoneId.systemDefault());
 
     // Behavioural coverage of getCourtSchedulesByIdList's aggregation semantics lives in the
     // integration tests (see CourtSchedulerIT). This unit test only covers the short-circuit
@@ -99,7 +102,7 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
                 null, null, null, null, null, null,
                 false, null, null, null);
 
-        final List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> result =
+        final List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> result =
                 courtScheduleRepository.getMultidayHearingSlotCandidates(requestParam, 2);
 
         assertTrue(result.isEmpty());
@@ -128,7 +131,7 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
                 null, null, null, null, null, null,
                 false, null, null, null);
 
-        final List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> result =
+        final List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> result =
                 courtScheduleRepository.getMultidayHearingSlotCandidates(requestParam, 2);
 
         assertTrue(result.isEmpty());
@@ -155,7 +158,7 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
                 null, null, null, null, null, null,
                 false, null, null, null);
 
-        final List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> result =
+        final List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> result =
                 courtScheduleRepository.getMultidayHearingSlotCandidates(requestParam, 2);
 
         assertTrue(result.isEmpty());
@@ -188,7 +191,7 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
                 null, null, null, "AD", false, null,
                 false, "720", null, CROWN_2);
 
-        final List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> result =
+        final List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> result =
                 courtScheduleRepository.getMultidayHearingSlotCandidates(requestParam, 2);
 
         assertEquals(2, result.size());
@@ -225,12 +228,12 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
                 null, null, TRF_2, "AD", false, null,
                 false, "720", null, CROWN_2);
 
-        final List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> result =
+        final List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> result =
                 courtScheduleRepository.getMultidayHearingSlotCandidates(requestParam, 2);
 
         assertEquals(2, result.size());
-        assertTrue(result.stream().noneMatch(uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule::isSlotBased));
-        assertTrue(result.stream().allMatch(cs -> CR01_2.equals(cs.getCourtRoomId())));
+        assertTrue(result.stream().noneMatch(uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule::getSlotBased));
+        assertTrue(result.stream().allMatch(cs -> "CR01".equals(cs.getCourtRoomId())));
     }
 
     @Test
@@ -436,6 +439,26 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
     }
 
     @Test
+    void findByCourtRoomIdAndSessionDateAndBusinessTypeAndCourtSessionReturnsGeneratedMatcherInfo() {
+        // Verifies the class-based (DTO) projection binds the raw JPQL column-select into the
+        // generated CourtScheduleMatcherInfo, including converting the entity's java.util.Date
+        // createdOn into the POJO's OffsetDateTime field.
+        final LocalDate sessionDate = LocalDate.of(2026, 9, 1);
+        final String ouCode = "B99MC10";
+        final CourtSchedule schedule = createCourtSchedule(ouCode, "ADULT", sessionDate, "CR10", "TRF", "AM");
+
+        courtScheduleRepository.saveAndFlush(schedule);
+
+        final CourtScheduleMatcherInfo matcherInfo = courtScheduleRepository
+                .findByCourtRoomIdAndSessionDateAndBusinessTypeAndCourtSession("CR10", sessionDate, "TRF", "AM");
+
+        assertNotNull(matcherInfo);
+        assertEquals(schedule.getCourtScheduleId(), matcherInfo.getCourtScheduleId());
+        assertEquals(ouCode, matcherInfo.getOuCode());
+        assertNotNull(matcherInfo.getCreatedOn());
+    }
+
+    @Test
     void saveBookedSlotsSkipsHearingWideReleaseWhenReleaseExistingHearingAllocationsIsFalse() {
         // SPRDT: ChangeCourtRoomForMultidayHearing regression guard. Booking day2 via the no-release
         // variant (releaseExistingHearingAllocations=false) must NOT wipe out day1's allocation for
@@ -456,7 +479,7 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
         final Result result = courtScheduleRepository.saveBookedSlots(
                 new ArrayList<>(List.of(day2Slot)), false, false, false);
 
-        assertTrue(result.isSuccess());
+        assertTrue(result.getSuccess());
 
         // @DataJpaTest runs in one rollback tx: flush pending persists/removes before
         // clearing, else clear() silently discards them (ccsph2 rig committed per call).
@@ -490,7 +513,7 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
         final Result result = courtScheduleRepository.saveBookedSlots(
                 new ArrayList<>(List.of(day2Slot)), false, false);
 
-        assertTrue(result.isSuccess());
+        assertTrue(result.getSuccess());
 
         // @DataJpaTest runs in one rollback tx: flush pending persists/removes before
         // clearing, else clear() silently discards them (ccsph2 rig committed per call).
@@ -509,7 +532,7 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
         slot.setCourtScheduleId(courtScheduleId);
         slot.setSessionDate(sessionDate.toString());
         slot.setHearingStartTime(SIMPLE_DATE_FORMAT.format(
-                Date.from(sessionDate.atTime(10, 0).atZone(ZoneId.of("UTC")).toInstant())));
+                sessionDate.atTime(10, 0).atZone(ZoneId.of("UTC")).toInstant()));
         slot.setSource("DEFAULT");
         return slot;
     }
@@ -577,20 +600,20 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
         courtScheduleRepository.save(template);
 
         final CrownFallbackRequest request = new CrownFallbackRequest()
-                .setHearingId(randomUUID().toString())
-                .setCourtCentreId(courtCentreId)
-                .setCourtRoomId(courtRoomId)
-                .setHearingDate(sessionDate)
-                .setEarliestHearingTime(sessionDate + "T12:30:00Z")
-                .setDurationInMinutes(10)
-                .setSource("CROWN_FB_LIST");
+                .hearingId(randomUUID().toString())
+                .courtCentreId(courtCentreId)
+                .courtRoomId(courtRoomId)
+                .hearingDate(sessionDate)
+                .earliestHearingTime(sessionDate + "T12:30:00Z")
+                .durationInMinutes(10)
+                .source("CROWN_FB_LIST");
 
         final Optional<CrownFallbackSearchResult> created = courtScheduleRepository.createCrownFallbackSession(request);
 
         assertTrue(created.isPresent());
-        final LocalTime startTime = created.get().session().getSessionStartTime()
+        final LocalTime startTime = created.get().session().getSessionStartTime().toInstant()
                 .atZone(ZoneOffset.UTC).toLocalTime();
-        final Instant sessionEnd = created.get().session().getSessionEndTime();
+        final Instant sessionEnd = created.get().session().getSessionEndTime().toInstant();
         assertEquals(LocalTime.of(12, 30), startTime);
         // 17:00 is a Europe/London wall-clock time, like every other session time in the viewstore
         // (DateUtils.combineDateAndTime, TimezoneUtils.calculateNationalBreakTime). 2026-08-28 is in

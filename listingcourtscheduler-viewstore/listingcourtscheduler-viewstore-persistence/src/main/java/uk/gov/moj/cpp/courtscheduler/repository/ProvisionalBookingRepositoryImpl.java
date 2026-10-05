@@ -1,6 +1,6 @@
 package uk.gov.moj.cpp.courtscheduler.repository;
 
-import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalSlot;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.ProvisionalSlot;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.ProvisionalBooking;
