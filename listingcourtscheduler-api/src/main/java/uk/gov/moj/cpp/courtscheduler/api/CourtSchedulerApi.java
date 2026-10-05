@@ -394,7 +394,10 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
 
     @Override
     public ResponseEntity<CourtScheduleDeleteResponse> postCourtschedulerDeleteCourtschedule(final SessionsParam courtschedulerDelete) {
-        LOG.info("courtscheduler.delete requested: {}", courtschedulerDelete);
+        final String safeCourtschedulerDelete = Encode.forJava(String.valueOf(courtschedulerDelete))
+                .replace('\n', '_')
+                .replace('\r', '_');
+        LOG.info("courtscheduler.delete requested: {}", safeCourtschedulerDelete);
 
         final CourtScheduleDeleteResponse response = sessionsService.deleteCourtScheduleSessions(courtschedulerDelete);
 
