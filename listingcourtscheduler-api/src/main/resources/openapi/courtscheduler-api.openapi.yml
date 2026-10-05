@@ -1498,7 +1498,7 @@ components:
     # Not a request/response body - the findJudiciaryAvailabilityRules GET endpoint takes these
     # as individual query params. This schema exists purely so the service layer has a generated
     # POJO to bundle them into, instead of a hand-crafted parameter object.
-    CourtschedulerFindJudiciaryAvailabilityRuleQuery:
+    FindJudiciaryAvailabilityRuleRequest:
       type: object
       properties:
         startDate: { type: string, format: date, nullable: true }
@@ -1508,6 +1508,26 @@ components:
         pageSize: { type: integer, nullable: true, default: 20 }
         pageNumber: { type: integer, nullable: true, default: 1 }
         withJudiciary: { type: boolean, nullable: true, default: true }
+
+    # Not a request body either - bundles the GET /judiciaries (find availability) query params
+    # for JudiciaryAvailabilityService#findJudiciaryAvailability, mirroring the legacy
+    # domain.FindJudiciaryAvailabilityRequest parameter object.
+    FindJudiciaryAvailabilityRequest:
+      type: object
+      properties:
+        startDate: { type: string, format: date, nullable: true }
+        endDate: { type: string, format: date, nullable: true }
+        courtHouseId: { type: string, nullable: true }
+        judiciaryId: { type: string, nullable: true }
+
+    # Not a request body either - bundles the GET /judiciaries/availability-rules/{ruleId} path and
+    # query params for JudiciaryAvailabilityService#getJudiciaryAvailabilityRule, mirroring the
+    # legacy domain.GetJudiciaryAvailabilityRuleRequest parameter object.
+    GetJudiciaryAvailabilityRuleRequest:
+      type: object
+      properties:
+        ruleId: { type: string, nullable: true }
+        withJudiciary: { type: boolean, nullable: true }
 
     # Matches domain.FindJudiciaryAvailabilityRuleResponse exactly: rules + pagination +
     # a SEPARATE top-level judiciaries list (not nested per-rule).
@@ -1569,7 +1589,7 @@ components:
     # Java inheritance, so the two generated types share no common supertype. This schema exists
     # purely so JudiciaryAvailabilityService#populateEntityFields has a single generated POJO to
     # take instead of five separate parameters.
-    CourtschedulerJudiciaryAvailabilityRuleDetails:
+    JudiciaryAvailabilityRuleDetails:
       type: object
       properties:
         judiciaryId: { type: string, nullable: true }
