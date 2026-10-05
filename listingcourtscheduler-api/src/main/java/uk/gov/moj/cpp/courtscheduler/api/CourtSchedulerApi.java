@@ -477,10 +477,17 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
      *  SessionOpenApi — SPRDT-1089 additions on /sessions/*
      * ============================================================ */
 
+    private static String sanitizeForLog(final Object value) {
+        if (value == null) {
+            return "null";
+        }
+        return value.toString().replaceAll("[\\r\\n\\t\\f\\u0000-\\u001F\\u007F]", "_");
+    }
+
     /** POST /sessions/bulk-assign-judiciaries — replace-all judiciary assignment. */
     @Override
     public ResponseEntity<Void> postBulkAssignJudiciaries(final AssignJudiciaryToSessionsRequest dto) {
-        LOG.info("courtscheduler.assign-judiciary-to-sessions requested: {}", dto);
+        LOG.info("courtscheduler.assign-judiciary-to-sessions requested: {}", sanitizeForLog(dto));
         try {
             judiciaryAssignmentService.assignJudiciaryToSessions(dto, UUID.randomUUID().toString());
         } catch (final IllegalArgumentException e) {
