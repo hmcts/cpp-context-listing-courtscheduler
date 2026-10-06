@@ -58,6 +58,10 @@ public class StubUtil {
     private static final String CP_COURTROOMS_QUERY_MEDIA_TYPE              = "application/vnd.referencedata.ou-courtrooms+json";
     private static final String USER_PERMISSIONS_MEDIA_TYPE                 = "application/vnd.usersgroups.get-logged-in-user-permissions+json";
 
+    private static final String LISTING_COMMAND_HEARINGS_PATH = "/listing-command-api/command/api/rest/listing/hearings";
+    private static final String CHANGE_JUDICIARY_FOR_HEARINGS_MEDIA_TYPE =
+            "application/vnd.listing.command.change-judiciary-for-hearings+json";
+
     public static void setupLoggedInUsersPermissionQueryStub(final String userId) {
         CLIENT.resetMappings();
 
@@ -170,10 +174,6 @@ public class StubUtil {
     public static int countRequests(final RequestPatternBuilder pattern) {
         return WireMock.findAll(pattern).size();
     }
-
-    private static final String LISTING_COMMAND_HEARINGS_PATH = "/listing-command-api/command/api/rest/listing/hearings";
-    private static final String CHANGE_JUDICIARY_FOR_HEARINGS_MEDIA_TYPE =
-            "application/vnd.listing.command.change-judiciary-for-hearings+json";
 
     /** Stubs the listing command API to accept change-judiciary-for-hearings commands with 202. */
     public static StubMapping stubChangeJudiciaryForHearingsCommand() {
