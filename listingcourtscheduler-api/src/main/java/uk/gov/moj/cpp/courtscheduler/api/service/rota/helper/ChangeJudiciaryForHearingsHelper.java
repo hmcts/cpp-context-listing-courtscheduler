@@ -88,6 +88,7 @@ public class ChangeJudiciaryForHearingsHelper {
      *                                           {@link #createChangeJudiciaryForHearingsPayloads}
      * @return the number of payloads sent successfully
      */
+    @SuppressWarnings("PMD.AvoidCatchingGenericException")
     public int sendChangeJudiciaryForHearingsCommands(final List<JsonObject> changeJudiciaryForHearingsPayloads) {
         if (changeJudiciaryForHearingsPayloads == null || changeJudiciaryForHearingsPayloads.isEmpty()) {
             logger.debug("No change-judiciary-for-hearings payloads to send");
@@ -133,7 +134,7 @@ public class ChangeJudiciaryForHearingsHelper {
         return scheduleDataByCourtScheduleId;
     }
 
-    private JsonObject buildJudicialRole(final String judiciaryId, final Object[] row) {
+    private JsonObject buildJudicialRole(final String judiciaryId, final Object... row) {
         // judicialRoleType is typed by listing's judicialRole.json as a judicialRoleType.json
         // object, not a bare string
         final JsonObjectBuilder judicialRoleBuilder = Json.createObjectBuilder()

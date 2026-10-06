@@ -82,6 +82,7 @@ public class RotaFileProcessor {
      * @return the court schedule IDs whose judiciaries changed while processing the blob,
      *         or an empty list when the file was skipped or processing failed
      */
+    @SuppressWarnings("PMD.AvoidCatchingGenericException")
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public List<String> downloadAndProcessForEachFile(final BlobContent blobContent, final String blobName, final String leaseId) {
         logger.info("downloadAndProcessForEachFile called for blob with name: {}", blobName);
@@ -130,7 +131,7 @@ public class RotaFileProcessor {
         logger.info("Resolved {} OU codes for blob: {}", ouCodes.size(), blobName);
 
         // Get rota period dates and delete unallocated court schedule judiciaries
-        final var rotaPeriodDateInfoProvider = rotaLocationPeriodHelper.getRotaPeriodDates(records);
+        final RotaPeriodDateInfoProvider rotaPeriodDateInfoProvider = rotaLocationPeriodHelper.getRotaPeriodDates(records);
 
         // Capture the unallocated court schedule judiciaries (keyed by courtScheduleId) before they are deleted
         final Map<String, List<CourtScheduleJudiciary>> preAssignmentCourtScheduleJudiciaryMap =

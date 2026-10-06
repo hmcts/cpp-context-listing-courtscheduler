@@ -48,7 +48,7 @@ public class RotaFileCaptureAndProcessTriggerService {
 
     @Async
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
-    public void captureRotaFilesAndProcessEach(boolean isForItTest, final String rotaProcess) {
+    public void captureRotaFilesAndProcessEach(final boolean isForItTest, final String rotaProcess) {
         logger.info("RotaFileCaptureAndProcessTriggerService.captureRotaFilesAndProcessEach called with rotaProcess: {}", rotaProcess);
         final String blobPrefix = isForItTest ? IT_TEST_BLOB_PREFIX : ORIGINAL_BLOB_PREFIX;
 
