@@ -46,7 +46,13 @@ class ChangeJudiciaryForHearingsHelperTest {
     @InjectMocks
     private ChangeJudiciaryForHearingsHelper changeJudiciaryForHearingsHelper;
 
-    @Nested
+    private static final String MAGISTRATE = "Magistrate";
+    private static final String HEARINGS = "hearings";
+    private static final String JUDICIARY = "judiciary";
+    private static final String JUDICIAL_ROLE_TYPE = "judicialRoleType";
+    private static final String JUDICIARY_TYPE = "judiciaryType";
+
+    /* default */ @Nested
     @DisplayName("Payload Building Tests")
     class PayloadBuildingTests {
 
@@ -64,11 +70,11 @@ class ChangeJudiciaryForHearingsHelperTest {
             // The join returns one row per (hearing, judiciary) combination - schedule A has
             // 2 hearings x 2 judiciaries = 4 rows, schedule B has 1 x 1.
             final List<Object[]> rows = List.<Object[]>of(
-                    new Object[]{courtScheduleIdA, hearingId1, "jud-1", "Magistrate", true, false},
+                    new Object[]{courtScheduleIdA, hearingId1, "jud-1", MAGISTRATE, true, false},
                     new Object[]{courtScheduleIdA, hearingId1, "jud-2", "District Judge", false, true},
-                    new Object[]{courtScheduleIdA, hearingId2, "jud-1", "Magistrate", true, false},
+                    new Object[]{courtScheduleIdA, hearingId2, "jud-1", MAGISTRATE, true, false},
                     new Object[]{courtScheduleIdA, hearingId2, "jud-2", "District Judge", false, true},
-                    new Object[]{courtScheduleIdB, hearingId3, "jud-3", "Magistrate", null, null});
+                    new Object[]{courtScheduleIdB, hearingId3, "jud-3", MAGISTRATE, null, null});
             when(courtScheduleJudiciaryService.getJudiciaryHearingInfoForCourtSchedules(eq(changedCourtScheduleIds)))
                     .thenReturn(rows);
 
@@ -80,26 +86,26 @@ class ChangeJudiciaryForHearingsHelperTest {
             assertEquals(2, payloads.size());
 
             final JsonObject payloadA = payloads.get(0);
-            final JsonArray hearingsA = payloadA.getJsonArray("hearings");
+            final JsonArray hearingsA = payloadA.getJsonArray(HEARINGS);
             assertEquals(List.of(hearingId1, hearingId2), toStringList(hearingsA));
 
-            final JsonArray judiciaryA = payloadA.getJsonArray("judiciary");
+            final JsonArray judiciaryA = payloadA.getJsonArray(JUDICIARY);
             assertEquals(2, judiciaryA.size());
             final Map<String, JsonObject> judiciaryAById = toJudicialRoleMap(judiciaryA);
             final JsonObject judicialRole1 = judiciaryAById.get("jud-1");
-            assertEquals("Magistrate", judicialRole1.getJsonObject("judicialRoleType").getString("judiciaryType"));
+            assertEquals(MAGISTRATE, judicialRole1.getJsonObject(JUDICIAL_ROLE_TYPE).getString(JUDICIARY_TYPE));
             assertTrue(judicialRole1.getBoolean("isBenchChairman"));
             assertFalse(judicialRole1.getBoolean("isDeputy"));
             final JsonObject judicialRole2 = judiciaryAById.get("jud-2");
-            assertEquals("District Judge", judicialRole2.getJsonObject("judicialRoleType").getString("judiciaryType"));
+            assertEquals("District Judge", judicialRole2.getJsonObject(JUDICIAL_ROLE_TYPE).getString(JUDICIARY_TYPE));
             assertFalse(judicialRole2.getBoolean("isBenchChairman"));
             assertTrue(judicialRole2.getBoolean("isDeputy"));
 
             final JsonObject payloadB = payloads.get(1);
-            assertEquals(List.of(hearingId3), toStringList(payloadB.getJsonArray("hearings")));
-            final JsonObject judicialRole3 = payloadB.getJsonArray("judiciary").getJsonObject(0);
+            assertEquals(List.of(hearingId3), toStringList(payloadB.getJsonArray(HEARINGS)));
+            final JsonObject judicialRole3 = payloadB.getJsonArray(JUDICIARY).getJsonObject(0);
             assertEquals("jud-3", judicialRole3.getString("judicialId"));
-            assertEquals("Magistrate", judicialRole3.getJsonObject("judicialRoleType").getString("judiciaryType"));
+            assertEquals(MAGISTRATE, judicialRole3.getJsonObject(JUDICIAL_ROLE_TYPE).getString(JUDICIARY_TYPE));
             // Optional booleans must be omitted when the columns are null
             assertFalse(judicialRole3.containsKey("isBenchChairman"));
             assertFalse(judicialRole3.containsKey("isDeputy"));
@@ -132,8 +138,8 @@ class ChangeJudiciaryForHearingsHelperTest {
             // clears the judiciary from the hearings
             assertEquals(1, payloads.size());
             final JsonObject payload = payloads.get(0);
-            assertEquals(List.of(hearingId1, hearingId2), toStringList(payload.getJsonArray("hearings")));
-            assertTrue(payload.getJsonArray("judiciary").isEmpty());
+            assertEquals(List.of(hearingId1, hearingId2), toStringList(payload.getJsonArray(HEARINGS)));
+            assertTrue(payload.getJsonArray(JUDICIARY).isEmpty());
             assertEquals("AUTO", payload.getString("judiciaryAssignmentSource"));
         }
 
@@ -169,7 +175,7 @@ class ChangeJudiciaryForHearingsHelperTest {
         }
     }
 
-    @Nested
+    /* default */ @Nested
     @DisplayName("Command Sending Tests")
     class CommandSendingTests {
 
@@ -221,12 +227,12 @@ class ChangeJudiciaryForHearingsHelperTest {
 
         private JsonObject payloadFor(final String hearingId) {
             return Json.createObjectBuilder()
-                    .add("hearings", Json.createArrayBuilder().add(hearingId))
-                    .add("judiciary", Json.createArrayBuilder()
+                    .add(HEARINGS, Json.createArrayBuilder().add(hearingId))
+                    .add(JUDICIARY, Json.createArrayBuilder()
                             .add(Json.createObjectBuilder()
                                     .add("judicialId", randomUUID().toString())
-                                    .add("judicialRoleType", Json.createObjectBuilder()
-                                            .add("judiciaryType", "Magistrate"))))
+                                    .add(JUDICIAL_ROLE_TYPE, Json.createObjectBuilder()
+                                            .add(JUDICIARY_TYPE, MAGISTRATE))))
                     .build();
         }
     }

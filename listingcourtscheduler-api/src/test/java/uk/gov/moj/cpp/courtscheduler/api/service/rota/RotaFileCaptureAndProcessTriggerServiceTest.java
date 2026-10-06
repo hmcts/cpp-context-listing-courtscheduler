@@ -37,6 +37,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class RotaFileCaptureAndProcessTriggerServiceTest {
 
+    private static final String LJA_PREFIX = "lja_";
+
     @InjectMocks
     @Spy
     private RotaFileCaptureAndProcessTriggerService rotaFileCaptureAndProcessTriggerService;
@@ -69,7 +71,7 @@ class RotaFileCaptureAndProcessTriggerServiceTest {
         final Optional<Map.Entry<String, BlobItem>> listBlobItemMap = Optional.of(new AbstractMap.SimpleEntry<>(blobName, blobItem));
         final String leaseId = RandomStringUtils.randomAlphabetic(10);
 
-        when(azureBlobClientService.findAvailableFile(eq("lja_"))).thenReturn(listBlobItemMap);
+        when(azureBlobClientService.findAvailableFile(eq(LJA_PREFIX))).thenReturn(listBlobItemMap);
         when(azureBlobClientService.downloadFiles(any(BlobItem.class))).thenReturn(blobContent);
         doNothing().when(rotaFileProcessorService).downloadAndProcessForEachFile(  eq(blobContent), eq(blobName), eq(leaseId));
         doNothing().when(referenceDataMapperService).loadJudiciaries();
@@ -78,7 +80,7 @@ class RotaFileCaptureAndProcessTriggerServiceTest {
 
         rotaFileCaptureAndProcessTriggerService.captureRotaFilesAndProcessEach(false, "new");
 
-        verify(azureBlobClientService, atLeastOnce()).findAvailableFile(eq("lja_"));
+        verify(azureBlobClientService, atLeastOnce()).findAvailableFile(eq(LJA_PREFIX));
         verify(rotaFileProcessorService, atLeastOnce()).downloadAndProcessForEachFile(  eq(blobContent), eq(blobName), eq(leaseId));
     }
 
@@ -100,7 +102,7 @@ class RotaFileCaptureAndProcessTriggerServiceTest {
                 .build();
 
         when(blobItem.getName()).thenReturn(blobName);
-        when(azureBlobClientService.findAvailableFile(eq("lja_")))
+        when(azureBlobClientService.findAvailableFile(eq(LJA_PREFIX)))
                 .thenReturn(availableFile)
                 .thenReturn(Optional.empty());
         when(azureBlobClientService.downloadFiles(any(BlobItem.class))).thenReturn(blobContent);
@@ -120,7 +122,7 @@ class RotaFileCaptureAndProcessTriggerServiceTest {
 
     @Test
     void shouldBuildAndSendNoCommandsWhenNoFilesWereProcessed() {
-        when(azureBlobClientService.findAvailableFile(eq("lja_"))).thenReturn(Optional.empty());
+        when(azureBlobClientService.findAvailableFile(eq(LJA_PREFIX))).thenReturn(Optional.empty());
         when(changeJudiciaryForHearingsHelper.createChangeJudiciaryForHearingsPayloads(eq(List.of())))
                 .thenReturn(List.of());
         when(changeJudiciaryForHearingsHelper.sendChangeJudiciaryForHearingsCommands(eq(List.of())))

@@ -1092,9 +1092,12 @@ class RotaFileProcessorTest {
     // Tests for Changed Court Schedule Detection (pre/post assignment hash compare)
     // ============================================================================
 
+    /* default */
     @Nested
     @DisplayName("Changed Court Schedule Detection Tests")
     class ChangedCourtScheduleDetectionTests {
+
+        private static final String JUD_1 = "jud-1";
 
         private final String courtScheduleIdA = randomUUID().toString();
         private final String courtScheduleIdB = randomUUID().toString();
@@ -1104,8 +1107,8 @@ class RotaFileProcessorTest {
         void shouldReturnNoChangedCourtScheduleIdsWhenJudiciariesUnchanged() {
             // given
             setupProcessingForChangeDetection(
-                    Map.of(courtScheduleIdA, List.of(judiciaryFor(courtScheduleIdA, "jud-1", "1"))),
-                    Map.of(courtScheduleIdA, List.of(judiciaryFor(courtScheduleIdA, "jud-1", "1"))));
+                    Map.of(courtScheduleIdA, List.of(judiciaryFor(courtScheduleIdA, JUD_1, "1"))),
+                    Map.of(courtScheduleIdA, List.of(judiciaryFor(courtScheduleIdA, JUD_1, "1"))));
 
             // when
             final List<String> changedCourtScheduleIds =
@@ -1120,8 +1123,8 @@ class RotaFileProcessorTest {
         void shouldReturnCourtScheduleIdWhenJudiciaryFieldChanged() {
             // given
             setupProcessingForChangeDetection(
-                    Map.of(courtScheduleIdA, List.of(judiciaryFor(courtScheduleIdA, "jud-1", "1"))),
-                    Map.of(courtScheduleIdA, List.of(judiciaryFor(courtScheduleIdA, "jud-1", "2"))));
+                    Map.of(courtScheduleIdA, List.of(judiciaryFor(courtScheduleIdA, JUD_1, "1"))),
+                    Map.of(courtScheduleIdA, List.of(judiciaryFor(courtScheduleIdA, JUD_1, "2"))));
 
             // when
             final List<String> changedCourtScheduleIds =
@@ -1136,7 +1139,7 @@ class RotaFileProcessorTest {
         void shouldReturnCourtScheduleIdsPresentInOnlyOneCapture() {
             // given - A only pre (judiciaries removed), B only post (judiciaries added)
             setupProcessingForChangeDetection(
-                    Map.of(courtScheduleIdA, List.of(judiciaryFor(courtScheduleIdA, "jud-1", "1"))),
+                    Map.of(courtScheduleIdA, List.of(judiciaryFor(courtScheduleIdA, JUD_1, "1"))),
                     Map.of(courtScheduleIdB, List.of(judiciaryFor(courtScheduleIdB, "jud-2", "1"))));
 
             // when
@@ -1155,11 +1158,11 @@ class RotaFileProcessorTest {
             // given
             setupProcessingForChangeDetection(
                     Map.of(courtScheduleIdA, List.of(
-                            judiciaryFor(courtScheduleIdA, "jud-1", "1"),
+                            judiciaryFor(courtScheduleIdA, JUD_1, "1"),
                             judiciaryFor(courtScheduleIdA, "jud-2", "2"))),
                     Map.of(courtScheduleIdA, List.of(
                             judiciaryFor(courtScheduleIdA, "jud-2", "2"),
-                            judiciaryFor(courtScheduleIdA, "jud-1", "1"))));
+                            judiciaryFor(courtScheduleIdA, JUD_1, "1"))));
 
             // when
             final List<String> changedCourtScheduleIds =
