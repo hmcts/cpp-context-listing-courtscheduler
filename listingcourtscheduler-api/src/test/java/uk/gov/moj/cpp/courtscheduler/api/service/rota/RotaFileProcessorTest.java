@@ -51,6 +51,7 @@ import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.Collections;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -129,7 +130,7 @@ class RotaFileProcessorTest {
         executionId = "execution-123";
         rotaFileProcessHistory = new RotaFileProcessHistory();
         rotaFileProcessHistory.setExecutionId(executionId);
-        records = new HashMap<>();
+        records = new EnumMap<>(RotaPayload.class);
 
         judiciary = Judiciary.JudiciaryBuilder.aJudiciary()
                 .withId(randomUUID().toString())
@@ -1245,7 +1246,7 @@ class RotaFileProcessorTest {
     }
 
     private RotaPeriodDateInfoProvider createMockRotaPeriodDateInfoProvider() {
-        final Map<RotaPayload, Map<String, Map<String, String>>> periodRecords = new HashMap<>();
+        final Map<RotaPayload, Map<String, Map<String, String>>> periodRecords = new EnumMap<>(RotaPayload.class);
         final Map<String, Map<String, String>> rotaPeriodMap = new HashMap<>();
         final Map<String, String> rotaPeriodData = new HashMap<>();
         rotaPeriodData.put("rotaPeriodStartDate", "2024-01-01");

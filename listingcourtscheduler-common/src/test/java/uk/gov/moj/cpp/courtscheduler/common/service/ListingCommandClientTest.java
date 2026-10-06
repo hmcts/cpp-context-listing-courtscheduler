@@ -10,13 +10,14 @@ import uk.gov.moj.cpp.courtscheduler.common.config.CourtSchedulerSystemUserConfi
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetSocketAddress;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 
 import jakarta.json.Json;
 import jakarta.json.JsonObject;
 
-import com.sun.net.httpserver.Headers;
 import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -34,7 +35,7 @@ class ListingCommandClientTest {
     private HttpServer server;
     private final AtomicReference<String> receivedPath = new AtomicReference<>();
     private final AtomicReference<String> receivedMethod = new AtomicReference<>();
-    private final AtomicReference<Headers> receivedHeaders = new AtomicReference<>();
+    private final AtomicReference<Map<String, List<String>>> receivedHeaders = new AtomicReference<>();
     private final AtomicReference<String> receivedBody = new AtomicReference<>();
     private int responseStatus = 202;
 
@@ -68,8 +69,8 @@ class ListingCommandClientTest {
 
         assertEquals("POST", receivedMethod.get());
         assertEquals(EXPECTED_PATH, receivedPath.get());
-        assertEquals(EXPECTED_CONTENT_TYPE, receivedHeaders.get().getFirst("Content-Type"));
-        assertEquals(systemUserId, receivedHeaders.get().getFirst("CJSCPPUID"));
+        assertEquals(EXPECTED_CONTENT_TYPE, receivedHeaders.get().get("Content-Type").getFirst());
+        assertEquals(systemUserId, receivedHeaders.get().get("CJSCPPUID").getFirst());
         assertEquals(payload.toString(), receivedBody.get());
     }
 
