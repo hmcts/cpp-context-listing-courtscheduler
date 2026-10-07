@@ -51,6 +51,7 @@ import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.Collections;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -129,7 +130,7 @@ class RotaFileProcessorTest {
         executionId = "execution-123";
         rotaFileProcessHistory = new RotaFileProcessHistory();
         rotaFileProcessHistory.setExecutionId(executionId);
-        records = new HashMap<>();
+        records = new EnumMap<>(RotaPayload.class);
 
         judiciary = Judiciary.JudiciaryBuilder.aJudiciary()
                 .withId(randomUUID().toString())
@@ -439,14 +440,14 @@ class RotaFileProcessorTest {
             final List<String> ouCodes = List.of("OU001", "OU002");
             when(rotaLocationPeriodHelper.getOuCodesFromCourtRoomMappingsByLocationId(anyList()))
                     .thenReturn(ouCodes);
-            when(rotaLocationPeriodHelper.deleteUnAllocatedCourtScheduleJudiciariesForRotaPeriod(any(), any(), eq(ouCodes)))
+            when(rotaLocationPeriodHelper.deleteCourtScheduleJudiciariesForRotaPeriod(any(), any(), eq(ouCodes)))
                     .thenReturn(5);
 
             // when
             rotaFileProcessor.downloadAndProcessForEachFile(blobContentWrapper, blobName, leaseId);
 
             // then
-            verify(rotaLocationPeriodHelper).deleteUnAllocatedCourtScheduleJudiciariesForRotaPeriod(any(), any(), eq(ouCodes));
+            verify(rotaLocationPeriodHelper).deleteCourtScheduleJudiciariesForRotaPeriod(any(), any(), eq(ouCodes));
         }
 
         @Test
@@ -1088,6 +1089,137 @@ class RotaFileProcessorTest {
         doNothing().when(azureBlobClientService).deleteFile(anyString(), any());
     }
 
+    // ============================================================================
+    // Tests for Changed Court Schedule Detection (pre/post assignment hash compare)
+    // ============================================================================
+
+    /* default */
+    @Nested
+    @DisplayName("Changed Court Schedule Detection Tests")
+    class ChangedCourtScheduleDetectionTests {
+
+        private static final String JUD_1 = "jud-1";
+
+        private final String courtScheduleIdA = randomUUID().toString();
+        private final String courtScheduleIdB = randomUUID().toString();
+
+        @Test
+        @DisplayName("Should return no changed court schedule IDs when judiciaries are unchanged")
+        void shouldReturnNoChangedCourtScheduleIdsWhenJudiciariesUnchanged() {
+            // given
+            setupProcessingForChangeDetection(
+                    Map.of(courtScheduleIdA, List.of(judiciaryFor(courtScheduleIdA, JUD_1, "1"))),
+                    Map.of(courtScheduleIdA, List.of(judiciaryFor(courtScheduleIdA, JUD_1, "1"))));
+
+            // when
+            final List<String> changedCourtScheduleIds =
+                    rotaFileProcessor.downloadAndProcessForEachFile(blobContentWrapper, blobName, leaseId);
+
+            // then
+            assertThat(changedCourtScheduleIds.isEmpty(), is(true));
+        }
+
+        @Test
+        @DisplayName("Should return court schedule ID when a judiciary field changed")
+        void shouldReturnCourtScheduleIdWhenJudiciaryFieldChanged() {
+            // given
+            setupProcessingForChangeDetection(
+                    Map.of(courtScheduleIdA, List.of(judiciaryFor(courtScheduleIdA, JUD_1, "1"))),
+                    Map.of(courtScheduleIdA, List.of(judiciaryFor(courtScheduleIdA, JUD_1, "2"))));
+
+            // when
+            final List<String> changedCourtScheduleIds =
+                    rotaFileProcessor.downloadAndProcessForEachFile(blobContentWrapper, blobName, leaseId);
+
+            // then
+            assertThat(changedCourtScheduleIds, is(List.of(courtScheduleIdA)));
+        }
+
+        @Test
+        @DisplayName("Should return court schedule IDs present in only one of the captures")
+        void shouldReturnCourtScheduleIdsPresentInOnlyOneCapture() {
+            // given - A only pre (judiciaries removed), B only post (judiciaries added)
+            setupProcessingForChangeDetection(
+                    Map.of(courtScheduleIdA, List.of(judiciaryFor(courtScheduleIdA, JUD_1, "1"))),
+                    Map.of(courtScheduleIdB, List.of(judiciaryFor(courtScheduleIdB, "jud-2", "1"))));
+
+            // when
+            final List<String> changedCourtScheduleIds =
+                    rotaFileProcessor.downloadAndProcessForEachFile(blobContentWrapper, blobName, leaseId);
+
+            // then
+            assertThat(changedCourtScheduleIds.size(), is(2));
+            assertThat(changedCourtScheduleIds.contains(courtScheduleIdA), is(true));
+            assertThat(changedCourtScheduleIds.contains(courtScheduleIdB), is(true));
+        }
+
+        @Test
+        @DisplayName("Should not flag change when the same judiciaries appear in a different order")
+        void shouldNotFlagChangeWhenJudiciaryOrderDiffers() {
+            // given
+            setupProcessingForChangeDetection(
+                    Map.of(courtScheduleIdA, List.of(
+                            judiciaryFor(courtScheduleIdA, JUD_1, "1"),
+                            judiciaryFor(courtScheduleIdA, "jud-2", "2"))),
+                    Map.of(courtScheduleIdA, List.of(
+                            judiciaryFor(courtScheduleIdA, "jud-2", "2"),
+                            judiciaryFor(courtScheduleIdA, JUD_1, "1"))));
+
+            // when
+            final List<String> changedCourtScheduleIds =
+                    rotaFileProcessor.downloadAndProcessForEachFile(blobContentWrapper, blobName, leaseId);
+
+            // then
+            assertThat(changedCourtScheduleIds.isEmpty(), is(true));
+        }
+
+        @Test
+        @DisplayName("Should return empty changed court schedule IDs when processing fails")
+        void shouldReturnEmptyChangedCourtScheduleIdsWhenProcessingFails() {
+            // given
+            when(rotaFileUtility.createAndSaveFileProcessHistory(anyString(), any(), any()))
+                    .thenReturn(rotaFileProcessHistory);
+            when(rotaFileParser.parse(anyString(), any())).thenThrow(new RuntimeException("Parsing error"));
+
+            // when
+            final List<String> changedCourtScheduleIds =
+                    rotaFileProcessor.downloadAndProcessForEachFile(blobContentWrapper, blobName, leaseId);
+
+            // then
+            assertThat(changedCourtScheduleIds.isEmpty(), is(true));
+        }
+
+        private void setupProcessingForChangeDetection(
+                final Map<String, List<uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary>> preAssignmentMap,
+                final Map<String, List<uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary>> postAssignmentMap) {
+            setupSuccessfulProcessing();
+            setupRecordsWithRotaPeriod();
+            setupEmptyProcessingMaps();
+            when(rotaLocationPeriodHelper.getCourtScheduleJudiciariesForRotaPeriod(any(), any(), anyList()))
+                    .thenReturn(preAssignmentMap)
+                    .thenReturn(postAssignmentMap);
+        }
+
+        private uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary judiciaryFor(
+                final String courtScheduleId, final String judiciaryId, final String position) {
+            return uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary.judiciary()
+                    .withCourtScheduleId(courtScheduleId)
+                    .withJudiciaryId(judiciaryId)
+                    .withRotaJudiciaryId("ROTA-" + judiciaryId)
+                    .withTitle("Mr")
+                    .withForenames("John")
+                    .withSurname("Doe")
+                    .withEmailAddress(judiciaryId + "@example.com")
+                    .withJudiciaryType("Magistrate")
+                    .withIsBenchChairman(true)
+                    .withIsDeputy(false)
+                    .withPosition(position)
+                    .withCourtListingProfileId("CLP-1")
+                    .withActive(true)
+                    .build();
+        }
+    }
+
     private void setupSuccessfulProcessing() {
         when(rotaFileUtility.createAndSaveFileProcessHistory(anyString(), any(), any()))
                 .thenReturn(rotaFileProcessHistory);
@@ -1109,12 +1241,12 @@ class RotaFileProcessorTest {
                 .thenReturn(List.of());
         final RotaPeriodDateInfoProvider mockPeriodProvider = createMockRotaPeriodDateInfoProvider();
         when(rotaLocationPeriodHelper.getRotaPeriodDates(anyMap())).thenReturn(mockPeriodProvider);
-        lenient().when(rotaLocationPeriodHelper.deleteUnAllocatedCourtScheduleJudiciariesForRotaPeriod(any(), any(), anyList()))
+        lenient().when(rotaLocationPeriodHelper.deleteCourtScheduleJudiciariesForRotaPeriod(any(), any(), anyList()))
                 .thenReturn(0);
     }
 
     private RotaPeriodDateInfoProvider createMockRotaPeriodDateInfoProvider() {
-        final Map<RotaPayload, Map<String, Map<String, String>>> periodRecords = new HashMap<>();
+        final Map<RotaPayload, Map<String, Map<String, String>>> periodRecords = new EnumMap<>(RotaPayload.class);
         final Map<String, Map<String, String>> rotaPeriodMap = new HashMap<>();
         final Map<String, String> rotaPeriodData = new HashMap<>();
         rotaPeriodData.put("rotaPeriodStartDate", "2024-01-01");

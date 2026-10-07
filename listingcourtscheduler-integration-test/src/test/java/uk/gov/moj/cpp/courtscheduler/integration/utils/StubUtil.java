@@ -1,5 +1,6 @@
 package uk.gov.moj.cpp.courtscheduler.integration.utils;
 
+import static java.lang.String.format;
 import static java.util.UUID.randomUUID;
 import static uk.gov.moj.cpp.platform.test.data.utils.FileUtil.getPayload;
 
@@ -22,6 +23,13 @@ public class StubUtil {
 
     private static final String WIREMOCK_BASE_URL =
             System.getProperty("wiremock.baseUrl", "http://localhost:8189");
+
+    static {
+        // WireMock.findAll / WireMock.verify (static methods) use a global "defaultInstance"
+        // that defaults to localhost:8080.  Align it with our configured server so that
+        // request-count queries in tests hit the right WireMock process.
+        WireMock.configureFor(extractHost(WIREMOCK_BASE_URL), extractPort(WIREMOCK_BASE_URL));
+    }
 
     private static final WireMock CLIENT = WireMock.create()
             .scheme(WIREMOCK_BASE_URL.startsWith("https") ? "https" : "http")
@@ -49,6 +57,10 @@ public class StubUtil {
     private static final String JUDICIARY_SPECIALISMS_QUERY_MEDIA_TYPE      = "application/vnd.referencedata.query.judiciary-specialisms+json";
     private static final String CP_COURTROOMS_QUERY_MEDIA_TYPE              = "application/vnd.referencedata.ou-courtrooms+json";
     private static final String USER_PERMISSIONS_MEDIA_TYPE                 = "application/vnd.usersgroups.get-logged-in-user-permissions+json";
+
+    private static final String LISTING_COMMAND_HEARINGS_PATH = "/listing-command-api/command/api/rest/listing/hearings";
+    private static final String CHANGE_JUDICIARY_FOR_HEARINGS_MEDIA_TYPE =
+            "application/vnd.listing.command.change-judiciary-for-hearings+json";
 
     public static void setupLoggedInUsersPermissionQueryStub(final String userId) {
         CLIENT.resetMappings();
@@ -160,7 +172,39 @@ public class StubUtil {
     }
 
     public static int countRequests(final RequestPatternBuilder pattern) {
-        return CLIENT.findAll(pattern).size();
+        return WireMock.findAll(pattern).size();
+    }
+
+    /** Stubs the listing command API to accept change-judiciary-for-hearings commands with 202. */
+    public static StubMapping stubChangeJudiciaryForHearingsCommand() {
+        return CLIENT.register(WireMock.post(WireMock.urlPathEqualTo(LISTING_COMMAND_HEARINGS_PATH))
+                .willReturn(WireMock.aResponse().withStatus(202)));
+    }
+
+    /** Counts the change-judiciary-for-hearings commands WireMock has received (across the whole run). */
+    public static int countChangeJudiciaryForHearingsRequests() {
+        return countRequests(WireMock.postRequestedFor(WireMock.urlPathEqualTo(LISTING_COMMAND_HEARINGS_PATH))
+                .withHeader(HttpHeaders.CONTENT_TYPE, WireMock.equalTo(CHANGE_JUDICIARY_FOR_HEARINGS_MEDIA_TYPE)));
+    }
+
+    /** Counts the change-judiciary-for-hearings commands whose body contains the given text (e.g. a hearing ID). */
+    public static int countChangeJudiciaryForHearingsRequestsContaining(final String bodySubstring) {
+        return countRequests(WireMock.postRequestedFor(WireMock.urlPathEqualTo(LISTING_COMMAND_HEARINGS_PATH))
+                .withRequestBody(WireMock.containing(bodySubstring)));
+    }
+
+    /**
+     * Counts the change-judiciary-for-hearings commands that carry the given hearing ID in the
+     * {@code hearings} array AND match the shape listing's JSON schema requires:
+     * {@code judiciary[0].judicialRoleType} must be an object with a {@code judiciaryType} field
+     * (a bare-string judicialRoleType is rejected by the listing command API), and
+     * {@code judiciaryAssignmentSource} must be {@code "AUTO"}.
+     */
+    public static int countSchemaShapedChangeJudiciaryForHearingsRequestsFor(final String hearingId) {
+        return countRequests(WireMock.postRequestedFor(WireMock.urlPathEqualTo(LISTING_COMMAND_HEARINGS_PATH))
+                .withRequestBody(WireMock.matchingJsonPath(format("$.hearings[?(@ == '%s')]", hearingId)))
+                .withRequestBody(WireMock.matchingJsonPath("$.judiciary[0].judicialRoleType.judiciaryType"))
+                .withRequestBody(WireMock.matchingJsonPath("$[?(@.judiciaryAssignmentSource == 'AUTO')]")));
     }
 
     private static String extractHost(final String url) {
