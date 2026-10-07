@@ -28,6 +28,10 @@ import org.junit.jupiter.api.Test;
 
 
 class MiExportIT extends AbstractIT {
+    private static final String MI_DATA_QUERY_PAYLOAD = "courtscheduler.export.mi_data_query.json";
+    private static final String FROM_DATE_2 = "FROM_DATE";
+    private static final String TO_DATE_2 = "TO_DATE";
+
 
     @Test
     void shouldExportCourtSchedules() throws SQLException, JsonProcessingException {
@@ -37,9 +41,9 @@ class MiExportIT extends AbstractIT {
         final CourtSchedule expected = RANDOM.nextObject(CourtSchedule.class);
         expected.setCourtScheduleId(courtScheduleId);
 
-        String exportMiDataRequestParams = getPayload("courtscheduler.export.mi_data_query.json");
-        exportMiDataRequestParams = exportMiDataRequestParams.replace("FROM_DATE", fromDate.toString());
-        exportMiDataRequestParams = exportMiDataRequestParams.replace("TO_DATE", toDate.toString());
+        String exportMiDataRequestParams = getPayload(MI_DATA_QUERY_PAYLOAD);
+        exportMiDataRequestParams = exportMiDataRequestParams.replace(FROM_DATE_2, fromDate.toString());
+        exportMiDataRequestParams = exportMiDataRequestParams.replace(TO_DATE_2, toDate.toString());
 
         final Map<String, Object> map = mapper.readValue(exportMiDataRequestParams, new TypeReference<>() {
         });
@@ -71,9 +75,9 @@ class MiExportIT extends AbstractIT {
         final CourtSchedule expected = RANDOM.nextObject(CourtSchedule.class);
         expected.setCourtScheduleId(courtScheduleId);
         expected.setBusinessType("FWT");
-        String exportMiDataRequestParams = getPayload("courtscheduler.export.mi_data_query.json");
-        exportMiDataRequestParams = exportMiDataRequestParams.replace("FROM_DATE", fromDate.toString());
-        exportMiDataRequestParams = exportMiDataRequestParams.replace("TO_DATE", toDate.toString());
+        String exportMiDataRequestParams = getPayload(MI_DATA_QUERY_PAYLOAD);
+        exportMiDataRequestParams = exportMiDataRequestParams.replace(FROM_DATE_2, fromDate.toString());
+        exportMiDataRequestParams = exportMiDataRequestParams.replace(TO_DATE_2, toDate.toString());
         final Map<String, Object> map = mapper.readValue(exportMiDataRequestParams, new TypeReference<>() {
         });
         final RequestParams requestParams = getRequestParams("/mi/court_schedules",
@@ -100,9 +104,9 @@ class MiExportIT extends AbstractIT {
         final CourtScheduleJudiciaryKey courtScheduleJudiciaryId = courtScheduleJudiciary.getId();
         courtScheduleJudiciaryId.setCourtScheduleId(courtScheduleId);
 
-        String exportMiDataRequestParams = getPayload("courtscheduler.export.mi_data_query.json");
-        exportMiDataRequestParams = exportMiDataRequestParams.replace("FROM_DATE", fromDate.toString());
-        exportMiDataRequestParams = exportMiDataRequestParams.replace("TO_DATE", toDate.toString());
+        String exportMiDataRequestParams = getPayload(MI_DATA_QUERY_PAYLOAD);
+        exportMiDataRequestParams = exportMiDataRequestParams.replace(FROM_DATE_2, fromDate.toString());
+        exportMiDataRequestParams = exportMiDataRequestParams.replace(TO_DATE_2, toDate.toString());
 
         final Map<String, Object> map = mapper.readValue(exportMiDataRequestParams, new TypeReference<>() {
         });
@@ -134,9 +138,9 @@ class MiExportIT extends AbstractIT {
         allocatedListing.setId(randomUUID().toString());
         allocatedListing.setCourtScheduleId(courtScheduleId);
 
-        String exportMiDataRequestParams = getPayload("courtscheduler.export.mi_data_query.json");
-        exportMiDataRequestParams = exportMiDataRequestParams.replace("FROM_DATE", fromDate.toString());
-        exportMiDataRequestParams = exportMiDataRequestParams.replace("TO_DATE", toDate.toString());
+        String exportMiDataRequestParams = getPayload(MI_DATA_QUERY_PAYLOAD);
+        exportMiDataRequestParams = exportMiDataRequestParams.replace(FROM_DATE_2, fromDate.toString());
+        exportMiDataRequestParams = exportMiDataRequestParams.replace(TO_DATE_2, toDate.toString());
 
         final Map<String, Object> map = mapper.readValue(exportMiDataRequestParams, new TypeReference<>() {
         });

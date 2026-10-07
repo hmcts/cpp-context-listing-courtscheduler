@@ -67,6 +67,8 @@ class SessionsApiValidatorTest {
     private static final String ONCE_2 = "ONCE";
 
     private static final String VALUE_10_00 = "10:00";
+    private static final String VALUE_17_00 = "17:00";
+    private static final String RETIRED_BT = "FWT";
     private static final String VALUE_13_00 = "13:00";
     private static final String ADULT_2 = "ADULT";
     private static final String BUSINESS_TYPE_2 = "BUSINESS_TYPE";
@@ -1082,7 +1084,7 @@ class SessionsApiValidatorTest {
 
     @Test
     void shouldReturnErrorWhenIsAllDaySplitIsTrueAndMaxDurationIsInvalid() {
-        final SessionValidationParams params = new SessionValidationParams().maxDurationForMorning(null).maxDurationForAfternoon(60).allDaySplit(true).sessionType(ALL_DAY).businessType(BUSINESS_TYPE_2).slotsOrDuration(null).courtScheduleId(null).sessionStartTime(VALUE_10_00).sessionEndTime("17:00");
+        final SessionValidationParams params = new SessionValidationParams().maxDurationForMorning(null).maxDurationForAfternoon(60).allDaySplit(true).sessionType(ALL_DAY).businessType(BUSINESS_TYPE_2).slotsOrDuration(null).courtScheduleId(null).sessionStartTime(VALUE_10_00).sessionEndTime(VALUE_17_00);
 
         final JsonObject result = sessionsApiValidator.validateSession(params, true);
         assertEquals(ErrorMessages.MAX_DURATION_AM_PM_PROVIDED_FOR_ALL_DAY_SPLIT_SESSION, result.getString(ERROR_MESSAGE));
@@ -1113,7 +1115,7 @@ class SessionsApiValidatorTest {
                 .courtCentreId(courtCentreId)
                 .courtRoomId(courtRoomId)
                 .sessionType("AM")
-                .businessType("FWT")
+                .businessType(RETIRED_BT)
                 .duration(20)
                 .panel(ADULT_2)
                 .repeatDays(toRepeatDayStrings(Set.of(DayOfWeek.MONDAY)))
@@ -1126,28 +1128,28 @@ class SessionsApiValidatorTest {
         when(repeatPattern.getEndDate()).thenReturn(futureDate.toString());
         when(repeatPattern.getFrequency()).thenReturn(ONCE_2);
         when(createSessionRequestParam.getSessions()).thenReturn(List.of(session));
-        when(referenceDataCache.getRotaBusinessTypeByCode(eq("FWT"))).thenReturn(Optional.empty());
+        when(referenceDataCache.getRotaBusinessTypeByCode(eq(RETIRED_BT))).thenReturn(Optional.empty());
 
         final JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam);
 
         assertTrue(result.containsKey(ERROR_MESSAGE));
-        assertEquals(ErrorMessages.BUSINESS_TYPE_NOT_FOUND + "FWT", result.getString(ERROR_MESSAGE));
+        assertEquals(ErrorMessages.BUSINESS_TYPE_NOT_FOUND + RETIRED_BT, result.getString(ERROR_MESSAGE));
     }
 
     @Test
     void shouldReturnBusinessTypeNotFoundWhenAnAllDaySplitNamesAnUnknownBusinessType() {
-        final SessionValidationParams params = new SessionValidationParams().maxDurationForMorning(60).maxDurationForAfternoon(60).allDaySplit(true).sessionType(ALL_DAY).businessType("FWT").slotsOrDuration(null).courtScheduleId(null).sessionStartTime(VALUE_10_00).sessionEndTime("17:00");
-        when(referenceDataCache.getRotaBusinessTypeByCode("FWT")).thenReturn(Optional.empty());
+        final SessionValidationParams params = new SessionValidationParams().maxDurationForMorning(60).maxDurationForAfternoon(60).allDaySplit(true).sessionType(ALL_DAY).businessType(RETIRED_BT).slotsOrDuration(null).courtScheduleId(null).sessionStartTime(VALUE_10_00).sessionEndTime(VALUE_17_00);
+        when(referenceDataCache.getRotaBusinessTypeByCode(RETIRED_BT)).thenReturn(Optional.empty());
 
         final JsonObject result = sessionsApiValidator.validateSession(params, true);
 
         assertTrue(result.containsKey(ERROR_MESSAGE));
-        assertEquals(ErrorMessages.BUSINESS_TYPE_NOT_FOUND + "FWT", result.getString(ERROR_MESSAGE));
+        assertEquals(ErrorMessages.BUSINESS_TYPE_NOT_FOUND + RETIRED_BT, result.getString(ERROR_MESSAGE));
     }
 
     @Test
     void shouldReturnErrorWhenIsAllDaySplitIsTrueAndBusinessTypeIsNotDurationBased() {
-        final SessionValidationParams params = new SessionValidationParams().maxDurationForMorning(60).maxDurationForAfternoon(60).allDaySplit(true).sessionType(ALL_DAY).businessType(BUSINESS_TYPE_2).slotsOrDuration(null).courtScheduleId(null).sessionStartTime(VALUE_10_00).sessionEndTime("17:00");
+        final SessionValidationParams params = new SessionValidationParams().maxDurationForMorning(60).maxDurationForAfternoon(60).allDaySplit(true).sessionType(ALL_DAY).businessType(BUSINESS_TYPE_2).slotsOrDuration(null).courtScheduleId(null).sessionStartTime(VALUE_10_00).sessionEndTime(VALUE_17_00);
         final BusinessType businessType = new BusinessType().id(BUSINESS_TYPE_2).seqNum(1).typeCode(DESCRIPTION).typeDescription(CATEGORY).slot(false).duration(false).jurisdiction(null);
         when(referenceDataCache.getRotaBusinessTypeByCode(BUSINESS_TYPE_2)).thenReturn(Optional.of(businessType));
 
@@ -1755,7 +1757,7 @@ class SessionsApiValidatorTest {
         updateCourtSchedule.setMaxDurationForMorning(120);
         updateCourtSchedule.setMaxDurationForAfternoon(180);
         updateCourtSchedule.setSessionStartTime(VALUE_10_00);
-        updateCourtSchedule.setSessionEndTime("17:00");
+        updateCourtSchedule.setSessionEndTime(VALUE_17_00);
         updateCourtSchedule.setAllDaySplit(true);
         updateCourtSchedule.setJurisdiction(MAGISTRATES.getJurisdiction());
 

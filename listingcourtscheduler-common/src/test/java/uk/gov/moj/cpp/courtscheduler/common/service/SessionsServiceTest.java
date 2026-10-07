@@ -140,6 +140,8 @@ class SessionsServiceTest {
     private static final String MAGISTRATES_2 = "MAGISTRATES";
     private static final String OU001_2 = "OU001";
     private static final String RETIRED_BT_2 = "RETIRED_BT";
+    private static final String PTPH_2 = "PTPH";
+    private static final String COURT_HOUSE_1 = "Court House 1";
     private static final String TRL_2 = "TRL";
     private static final String YOUTH_2 = "Youth";
     private static final String CENTRE_1 = "centre-1";
@@ -1274,7 +1276,7 @@ class SessionsServiceTest {
         final UpdateCourtSchedule updateCourtSchedule = random(UpdateCourtSchedule.class);
         updateCourtSchedule.setCourtScheduleId(courtScheduleId);
         updateCourtSchedule.setCourtRoomId(persistedCourtSchedule.getCourtRoomId());
-        updateCourtSchedule.setBusinessType("PTPH");
+        updateCourtSchedule.setBusinessType(PTPH_2);
         updateCourtSchedule.setPanel(persistedCourtSchedule.getPanel());
         updateCourtSchedule.setCourtSession(AM_SESSION);
         updateCourtSchedule.setSessionStartTime(VALUE_11_00);
@@ -1286,7 +1288,7 @@ class SessionsServiceTest {
 
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(anyString())).thenReturn(persistedCourtSchedule);
         when(referenceDataCache.getRotaBusinessTypeByCode(eq(RETIRED_BT_2))).thenReturn(Optional.empty());
-        when(referenceDataCache.getRotaBusinessTypeByCode(eq("PTPH"))).thenReturn(returnBusinessTypeObject("PTPH", true, CROWN_2));
+        when(referenceDataCache.getRotaBusinessTypeByCode(eq(PTPH_2))).thenReturn(returnBusinessTypeObject(PTPH_2, true, CROWN_2));
         when(allocatedListingRepository.findTotalAllocatedDurationByCourtScheduleId(anyString())).thenReturn(0);
         when(courtScheduleRepository.update(any(), any(), any())).thenReturn(new Result().success(true));
 
@@ -1312,7 +1314,7 @@ class SessionsServiceTest {
         final UpdateCourtSchedule updateCourtSchedule = random(UpdateCourtSchedule.class);
         updateCourtSchedule.setCourtScheduleId(courtScheduleId);
         updateCourtSchedule.setCourtRoomId(persistedCourtSchedule.getCourtRoomId());
-        updateCourtSchedule.setBusinessType("PTPH");
+        updateCourtSchedule.setBusinessType(PTPH_2);
         updateCourtSchedule.setPanel(persistedCourtSchedule.getPanel());
         updateCourtSchedule.setCourtSession(ALL_DAY);
         updateCourtSchedule.setSessionStartTime(VALUE_11_00);
@@ -1324,7 +1326,7 @@ class SessionsServiceTest {
 
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(anyString())).thenReturn(persistedCourtSchedule);
         when(referenceDataCache.getRotaBusinessTypeByCode(eq(RETIRED_BT_2))).thenReturn(Optional.empty());
-        when(referenceDataCache.getRotaBusinessTypeByCode(eq("PTPH"))).thenReturn(returnBusinessTypeObject("PTPH", true, CROWN_2));
+        when(referenceDataCache.getRotaBusinessTypeByCode(eq(PTPH_2))).thenReturn(returnBusinessTypeObject(PTPH_2, true, CROWN_2));
         lenient().when(allocatedListingRepository.findTotalAllocatedDurationByCourtScheduleId(anyString())).thenReturn(120);
         lenient().when(courtScheduleRepository.update(any(), any(), any())).thenReturn(new Result().success(true));
 
@@ -3537,7 +3539,7 @@ class SessionsServiceTest {
                 .courtroomName(COURTROOM_1)
                 .oucode(OU001_2)
                 .cppCourtRoomId(1)
-                .oucodeL3Name("Court House 1")
+                .oucodeL3Name(COURT_HOUSE_1)
                 .oucodeL2Code(OU001_2)
                 ;
 
@@ -3647,7 +3649,7 @@ class SessionsServiceTest {
                 .courtroomName(COURTROOM_1)
                 .oucode(OU001_2)
                 .cppCourtRoomId(1)
-                .oucodeL3Name("Court House 1")
+                .oucodeL3Name(COURT_HOUSE_1)
                 .oucodeL2Code(OU001_2)
                 ;
         final AssignCourtroomRequest request = new AssignCourtroomRequest()
@@ -3908,7 +3910,7 @@ class SessionsServiceTest {
                 .courtroomName(COURTROOM_1)
                 .oucode(OU001_2)
                 .cppCourtRoomId(1)
-                .oucodeL3Name("Court House 1")
+                .oucodeL3Name(COURT_HOUSE_1)
                 .oucodeL2Code(OU001_2)
                 ;
 
@@ -3961,7 +3963,7 @@ class SessionsServiceTest {
                 .courtroomName(COURTROOM_1)
                 .oucode(OU001_2)
                 .cppCourtRoomId(1)
-                .oucodeL3Name("Court House 1")
+                .oucodeL3Name(COURT_HOUSE_1)
                 .oucodeL2Code(OU001_2)
                 ;
 

@@ -750,7 +750,7 @@ class CourtSchedulerIT extends AbstractIT {
      */
     @Test
     void shouldValidateAnEveryMonthCreateOnACurrentCrownBusinessType() {
-        final LocalDate startDate = LocalDate.now().plusDays(1);
+        final LocalDate startDate = now().plusDays(1);
         final LocalDate endDate = startDate.plusMonths(3);
         final String createCourtSchedulePayload = getPayload("validate-create-court-schedule-frequency-every-month.json")
                 .replace(START_DATE_2, startDate.format(ofPattern(YYYY_MM_DD)))
