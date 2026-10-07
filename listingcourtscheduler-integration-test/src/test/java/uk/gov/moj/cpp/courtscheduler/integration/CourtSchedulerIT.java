@@ -743,6 +743,26 @@ class CourtSchedulerIT extends AbstractIT {
         assertThat(errorResponseMessage, containsString("Invalid combination of parameters"));
     }
 
+    /**
+     * SPRDT-1370 (C2-12). The EVERY_MONTH validate-create payload names a current CROWN business
+     * type; with its dates filled it must validate clean, which is the only proof the payload itself
+     * is well-formed (the missing-endDate test below rejects it before the type is ever looked at).
+     */
+    @Test
+    void shouldValidateAnEveryMonthCreateOnACurrentCrownBusinessType() {
+        final LocalDate startDate = LocalDate.now().plusDays(1);
+        final LocalDate endDate = startDate.plusMonths(3);
+        final String createCourtSchedulePayload = getPayload("validate-create-court-schedule-frequency-every-month.json")
+                .replace(START_DATE_2, startDate.format(ofPattern(YYYY_MM_DD)))
+                .replace(END_DATE_2, endDate.format(ofPattern(YYYY_MM_DD)));
+
+        final Response response = postCommand(VALIDATE_URL, COURT_SCHEDULE_VALIDATE_CREATE_CONTENT_TYPE, USER_ID, createCourtSchedulePayload);
+
+        final int status = response.getStatus();
+        assertThat("validate-create answered " + status + " with body " + response.readEntity(String.class),
+                status, is(OK.getStatusCode()));
+    }
+
     @Test
     void shouldReturn400WhenEveryMonthFrequencyMissingEndDateInValidateCreate() {
         // Given - EVERY_MONTH requires endDate
@@ -1002,6 +1022,87 @@ class CourtSchedulerIT extends AbstractIT {
         final Response response = postCommand(BASE_RESOURCE_URL + UPDATE_URL, COURT_SCHEDULE_UPDATE_CONTENT_TYPE, USER_ID, updateCourtSchedulePayload);
 
         assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
+    }
+
+    /**
+     * SPRDT-1351 / SPRDT-1370 (C2-11). The session's persisted business type is one the reference
+     * data stub does not carry, so the service cannot resolve its slot nature: the update onto a
+     * current duration type must still go through, and the row must read the new type and counters.
+     */
+    @Test
+    void shouldUpdateASessionWhosePersistedBusinessTypeHasBeenRetired() throws SQLException {
+        final UUID courtScheduleId = randomUUID();
+        final CourtSchedule expected = RANDOM.nextObject(CourtSchedule.class);
+        final String courtRoomId = UUID_3FC02C0F;
+        final String courtHouseId = UUID_785339C1;
+        expected.setCourtScheduleId(courtScheduleId.toString());
+        expected.setBusinessType("FWT");
+        expected.setSlotBased(false);
+        expected.setJurisdiction("MAGISTRATES");
+        expected.setSupportAdSplit(false);
+        expected.setSessionDate(now().with(TemporalAdjusters.next(DayOfWeek.MONDAY)));
+        expected.setCourtRoomId(courtRoomId);
+        expected.setCourtHouseId(courtHouseId);
+        databaseSeeder.insertCourtSchedule(expected);
+
+        String updateCourtSchedulePayload = getPayload(UPDATE_COURT_SCHEDULE_JSON);
+        updateCourtSchedulePayload = updateCourtSchedulePayload.replace(COURT_SCHEDULE_ID_4, expected.getCourtScheduleId());
+        updateCourtSchedulePayload = updateCourtSchedulePayload.replace(COURT_ROOM_ID_2, courtRoomId);
+        updateCourtSchedulePayload = updateCourtSchedulePayload.replace(BUSINESS_TYPE_2, TRL_2);
+        updateCourtSchedulePayload = updateCourtSchedulePayload.replace(SESSION_TYPE_2, "AM");
+        updateCourtSchedulePayload = updateCourtSchedulePayload.replace(PANEL_2, YOUTH_2);
+
+        final Response response = postCommand(BASE_RESOURCE_URL + UPDATE_URL, COURT_SCHEDULE_UPDATE_CONTENT_TYPE, USER_ID, updateCourtSchedulePayload);
+        assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
+
+        final CourtSchedule courtScheduleAfterUpdate = databaseReader.courtScheduleById(courtScheduleId.toString());
+        assertThat(courtScheduleAfterUpdate.getBusinessType(), is(TRL_2));
+        assertThat(courtScheduleAfterUpdate.isSlotBased(), is(false));
+        assertThat(courtScheduleAfterUpdate.getMaxDuration(), is(10));
+        assertThat(courtScheduleAfterUpdate.getAvailableDuration(), is(10));
+        assertThat(courtScheduleAfterUpdate.getMaxSlots(), is(0));
+        assertThat(courtScheduleAfterUpdate.getAvailableSlots(), is(0));
+    }
+
+    /**
+     * SPRDT-1370 (C2-11, API-07). The same retired-type session moved onto a slot type with nothing
+     * booked: the row must come back slot-based with the slot counters, not duration-based with
+     * the slot counters forced to zero.
+     */
+    @Test
+    void shouldSwitchARetiredDurationSessionToSlotNatureWhenMovedOntoASlotType() throws SQLException {
+        final UUID courtScheduleId = randomUUID();
+        final CourtSchedule expected = RANDOM.nextObject(CourtSchedule.class);
+        final String courtRoomId = UUID_3FC02C0F;
+        final String courtHouseId = UUID_785339C1;
+        expected.setCourtScheduleId(courtScheduleId.toString());
+        expected.setBusinessType("FWT");
+        expected.setSlotBased(false);
+        expected.setJurisdiction("MAGISTRATES");
+        expected.setSupportAdSplit(false);
+        expected.setSessionDate(now().with(TemporalAdjusters.next(DayOfWeek.MONDAY)));
+        expected.setCourtRoomId(courtRoomId);
+        expected.setCourtHouseId(courtHouseId);
+        databaseSeeder.insertCourtSchedule(expected);
+
+        String updateCourtSchedulePayload = getPayload(UPDATE_COURT_SCHEDULE_JSON);
+        updateCourtSchedulePayload = updateCourtSchedulePayload.replace(COURT_SCHEDULE_ID_4, expected.getCourtScheduleId());
+        updateCourtSchedulePayload = updateCourtSchedulePayload.replace(COURT_ROOM_ID_2, courtRoomId);
+        updateCourtSchedulePayload = updateCourtSchedulePayload.replace(BUSINESS_TYPE_2, DVLA_2);
+        updateCourtSchedulePayload = updateCourtSchedulePayload.replace(SESSION_TYPE_2, "AM");
+        updateCourtSchedulePayload = updateCourtSchedulePayload.replace(PANEL_2, YOUTH_2);
+        updateCourtSchedulePayload = updateCourtSchedulePayload.replace("\"maxDuration\": 10", "\"maxDuration\": 0, \"maxSlots\": 15");
+
+        final Response response = postCommand(BASE_RESOURCE_URL + UPDATE_URL, COURT_SCHEDULE_UPDATE_CONTENT_TYPE, USER_ID, updateCourtSchedulePayload);
+        assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
+
+        final CourtSchedule courtScheduleAfterUpdate = databaseReader.courtScheduleById(courtScheduleId.toString());
+        assertThat(courtScheduleAfterUpdate.getBusinessType(), is(DVLA_2));
+        assertThat(courtScheduleAfterUpdate.isSlotBased(), is(true));
+        assertThat(courtScheduleAfterUpdate.getMaxSlots(), is(15));
+        assertThat(courtScheduleAfterUpdate.getAvailableSlots(), is(15));
+        assertThat(courtScheduleAfterUpdate.getMaxDuration(), is(0));
+        assertThat(courtScheduleAfterUpdate.getAvailableDuration(), is(0));
     }
 
     @Test

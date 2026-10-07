@@ -1107,6 +1107,45 @@ class SessionsApiValidatorTest {
     }
 
     @Test
+    void shouldReturnBusinessTypeNotFoundWhenCreatingASessionOnAnUnknownBusinessType() {
+        final LocalDate futureDate = LocalDate.now().plusDays(1);
+        final Session session = new Session()
+                .courtCentreId(courtCentreId)
+                .courtRoomId(courtRoomId)
+                .sessionType("AM")
+                .businessType("FWT")
+                .duration(20)
+                .panel(ADULT_2)
+                .repeatDays(toRepeatDayStrings(Set.of(DayOfWeek.MONDAY)))
+                .jurisdiction(CROWN_2)
+                .isDraft(false)
+                ;
+
+        when(createSessionRequestParam.getRepeatPattern()).thenReturn(repeatPattern);
+        when(repeatPattern.getStartDate()).thenReturn(futureDate.toString());
+        when(repeatPattern.getEndDate()).thenReturn(futureDate.toString());
+        when(repeatPattern.getFrequency()).thenReturn(ONCE_2);
+        when(createSessionRequestParam.getSessions()).thenReturn(List.of(session));
+        when(referenceDataCache.getRotaBusinessTypeByCode(eq("FWT"))).thenReturn(Optional.empty());
+
+        final JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam);
+
+        assertTrue(result.containsKey(ERROR_MESSAGE));
+        assertEquals(ErrorMessages.BUSINESS_TYPE_NOT_FOUND + "FWT", result.getString(ERROR_MESSAGE));
+    }
+
+    @Test
+    void shouldReturnBusinessTypeNotFoundWhenAnAllDaySplitNamesAnUnknownBusinessType() {
+        final SessionValidationParams params = new SessionValidationParams().maxDurationForMorning(60).maxDurationForAfternoon(60).allDaySplit(true).sessionType(ALL_DAY).businessType("FWT").slotsOrDuration(null).courtScheduleId(null).sessionStartTime(VALUE_10_00).sessionEndTime("17:00");
+        when(referenceDataCache.getRotaBusinessTypeByCode("FWT")).thenReturn(Optional.empty());
+
+        final JsonObject result = sessionsApiValidator.validateSession(params, true);
+
+        assertTrue(result.containsKey(ERROR_MESSAGE));
+        assertEquals(ErrorMessages.BUSINESS_TYPE_NOT_FOUND + "FWT", result.getString(ERROR_MESSAGE));
+    }
+
+    @Test
     void shouldReturnErrorWhenIsAllDaySplitIsTrueAndBusinessTypeIsNotDurationBased() {
         final SessionValidationParams params = new SessionValidationParams().maxDurationForMorning(60).maxDurationForAfternoon(60).allDaySplit(true).sessionType(ALL_DAY).businessType(BUSINESS_TYPE_2).slotsOrDuration(null).courtScheduleId(null).sessionStartTime(VALUE_10_00).sessionEndTime("17:00");
         final BusinessType businessType = new BusinessType().id(BUSINESS_TYPE_2).seqNum(1).typeCode(DESCRIPTION).typeDescription(CATEGORY).slot(false).duration(false).jurisdiction(null);

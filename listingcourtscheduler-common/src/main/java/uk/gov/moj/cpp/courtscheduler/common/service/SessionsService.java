@@ -196,6 +196,14 @@ public class SessionsService {
         if (isBusinessTypeChangeInvalid(updateCourtSchedule, persistedBusinessType, updatedBusinessType)) {
             return new Result().msg(ErrorMessages.BUSINESS_TYPE_CHANGE_NOT_ALLOWED).success(false);
         }
+        final boolean targetIsSlotBased = TRUE.equals(updatedBusinessType.getSlot());
+        if (!persistedBusinessType.equals(updateCourtSchedule.getBusinessType())
+                && persistedCourtSchedule.isSlotBased() != targetIsSlotBased) {
+            if (TRUE.equals(persistedCourtSchedule.hasHearingsBooked())) {
+                return new Result().msg(ErrorMessages.BUSINESS_TYPE_NATURE_CHANGE_WITH_HEARINGS).success(false);
+            }
+            persistedCourtSchedule.setSlotBased(targetIsSlotBased);
+        }
 
         final List<AllocatedListingEachBooked> allocatedListingEachBooked = allocatedListingRepository.getAllocatedListingsEachBookedByCourtScheduleId(singletonList(courtScheduleId));
         final Optional<Instant> earliestHearingStartTime = allocatedListingEachBooked.stream()
@@ -293,7 +301,6 @@ public class SessionsService {
 
     private void updateAvailability(final UpdateCourtSchedule updateCourtSchedule, final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule persistedCourtSchedule) {
         final Integer totalListedDuration = allocatedListingRepository.findTotalAllocatedDurationByCourtScheduleId(updateCourtSchedule.getCourtScheduleId());
-        //Assuming that businessType won't be changing from slot to non-slot or vice versa
         if (persistedCourtSchedule.isSlotBased()) {
             updateCourtSchedule.setAvailableSlots(updateCourtSchedule.getMaxSlots() - (nonNull(totalListedDuration) ? totalListedDuration : 0));
             updateCourtSchedule.setMaxDuration(0);

@@ -443,6 +443,16 @@
       "typeDescription": "Video Link Trial",
       "slot": true,
       "duration": false
+    },
+    {
+      "id": "3a0c6c1e-6c2f-4b7e-9a0c-1f2d3e4b5a6c",
+      "seqNum": 541,
+      "typeCode": "LGT",
+      "typeDescription": "Trial",
+      "slot": false,
+      "duration": true,
+      "validFrom": "2019-01-01",
+      "validTo": "2029-12-31"
     }
   ]
 }

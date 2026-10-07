@@ -59,6 +59,36 @@ class MiExportIT extends AbstractIT {
                 .asJsonObject().getString("id"), is(courtScheduleId));
     }
 
+    /**
+     * SPRDT-1370 (C2-14). The MI export reads rows, not reference data: a session persisted under
+     * a business type the reference data no longer carries still exports, with its raw code.
+     */
+    @Test
+    void shouldExportCourtSchedulesWhosePersistedBusinessTypeHasBeenRetired() throws SQLException, JsonProcessingException {
+        final LocalDate fromDate = LocalDate.now().minusDays(1);
+        final LocalDate toDate = LocalDate.now().plusDays(1);
+        final String courtScheduleId = randomUUID().toString();
+        final CourtSchedule expected = RANDOM.nextObject(CourtSchedule.class);
+        expected.setCourtScheduleId(courtScheduleId);
+        expected.setBusinessType("FWT");
+        String exportMiDataRequestParams = getPayload("courtscheduler.export.mi_data_query.json");
+        exportMiDataRequestParams = exportMiDataRequestParams.replace("FROM_DATE", fromDate.toString());
+        exportMiDataRequestParams = exportMiDataRequestParams.replace("TO_DATE", toDate.toString());
+        final Map<String, Object> map = mapper.readValue(exportMiDataRequestParams, new TypeReference<>() {
+        });
+        final RequestParams requestParams = getRequestParams("/mi/court_schedules",
+                "application/vnd.courtscheduler.export.court_schedule+json", SYSTEM_USER_ID, map);
+        databaseSeeder.insertCourtSchedule(expected);
+
+        final ResponseData tempResponseData = poll(requestParams).with().timeout(30L, SECONDS).pollInterval(50L, MILLISECONDS).pollDelay(0L, MILLISECONDS).until();
+
+        assertThat(tempResponseData.getStatus().getStatusCode(), is(OK.getStatusCode()));
+        final JsonObject exported = stringToJsonObjectConverter.convert(tempResponseData.getPayload())
+                .getJsonArray("courtSchedules").get(0).asJsonObject();
+        assertThat(exported.getString("id"), is(courtScheduleId));
+        assertThat(exported.getString("rota_business_type"), is("FWT"));
+    }
+
     @Test
     void shouldExportCourtScheduleJudiciaries() throws Exception {
         final LocalDate fromDate = LocalDate.now().minusDays(1);
