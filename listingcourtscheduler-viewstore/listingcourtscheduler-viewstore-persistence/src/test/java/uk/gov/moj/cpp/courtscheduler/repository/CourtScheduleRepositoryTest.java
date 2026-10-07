@@ -1,5 +1,7 @@
 package uk.gov.moj.cpp.courtscheduler.repository;
 
+import uk.gov.moj.cpp.courtscheduler.openapi.model.Result;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.UpdateCourtSchedule;
 import static java.util.UUID.randomUUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -11,7 +13,6 @@ import uk.gov.moj.cpp.courtscheduler.domain.CrownFallbackSearchResult;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtScheduleMatcherInfo;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.CrownFallbackRequest;
-import uk.gov.moj.cpp.courtscheduler.openapi.model.Result;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.TimezoneUtils;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
@@ -78,6 +79,47 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
     // Behavioural coverage of getCourtSchedulesByIdList's aggregation semantics lives in the
     // integration tests (see CourtSchedulerIT). This unit test only covers the short-circuit
     // branches that don't reach the query.
+    /**
+     * SPRDT-1351 / SPRDT-1370: a session moved off a retired duration type onto a slot type has its
+     * slot nature flipped on the entity by the service before update() runs. update() copies the
+     * counters from the request and persists the entity as it stands, so the row must come back
+     * slot-based with the slot counters and zeroed durations, not with the pre-change nature.
+     */
+    @Test
+    void updateShouldPersistTheSlotNatureAlongsideTheNewCounters() {
+        final CourtSchedule persisted = courtScheduleRepository.save(
+                createCourtSchedule("B99MC04", ADULT_2, LocalDate.of(2026, 7, 6), CR01_2, TRF_2, "AM"));
+        em.flush();
+        persisted.setSlotBased(true);
+        final UpdateCourtSchedule update = new UpdateCourtSchedule()
+                .courtScheduleId(persisted.getCourtScheduleId())
+                .courtRoomId(CR01_2)
+                .courtSession("AM")
+                .businessType("PTPH")
+                .panel(ADULT_2)
+                .maxSlots(15)
+                .availableSlots(15)
+                .maxDuration(0)
+                .availableDuration(0)
+                .sessionStartTime("10:00")
+                .sessionEndTime("13:00")
+                .isOverbookingAllowed(false)
+                .jurisdiction(CROWN_2);
+
+        final Result result = courtScheduleRepository.update(persisted, update, Optional.empty());
+        em.flush();
+        em.clear();
+
+        assertTrue(result.getSuccess());
+        final CourtSchedule reloaded = em.find(CourtSchedule.class, persisted.getCourtScheduleId());
+        assertTrue(reloaded.isSlotBased());
+        assertEquals("PTPH", reloaded.getBusinessType());
+        assertEquals(15, reloaded.getMaxSlots());
+        assertEquals(15, reloaded.getAvailableSlots());
+        assertEquals(0, reloaded.getMaxDuration());
+        assertEquals(0, reloaded.getAvailableDuration());
+    }
+
     @Test
     void courtSchedulesByIdListShouldReturnEmptyListForEmptyOrNullInput() {
         assertTrue(courtScheduleRepository.getCourtSchedulesByIdList(new ArrayList<>()).isEmpty());

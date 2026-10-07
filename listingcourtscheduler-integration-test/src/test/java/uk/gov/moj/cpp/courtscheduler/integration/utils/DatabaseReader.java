@@ -40,6 +40,8 @@ public class DatabaseReader {
     private static final String COURT_SCHEDULE_UPDATED_AFTER_SQL = "SELECT * FROM court_schedule WHERE active is true AND updated_on > ? ORDER BY session_start";
     private static final String COURT_SCHEDULE_JUDICIARY_CREATED_AFTER_SQL = "SELECT * FROM court_schedule_judiciary WHERE active is true AND created_on > ?";
     private static final String COURT_SCHEDULE_BY_ID_SQL = "SELECT * FROM court_schedule WHERE id = ?";
+    private static final String ROTA_PROCESS_LOG_SINCE_SQL = "SELECT error_text FROM rota_process_log WHERE error_code = ? AND timestamp >= ? ORDER BY timestamp";
+    private static final String ROTA_PROCESS_LOG_ALL_SINCE_SQL = "SELECT error_code, error_text FROM rota_process_log WHERE timestamp >= ? ORDER BY timestamp";
 
     private final ConnectionProvider connectionProvider = new ConnectionProvider();
 
@@ -65,6 +67,41 @@ public class DatabaseReader {
 
     public List<CourtScheduleJudiciary> courtScheduleJudiciariesCreatedAfter(final LocalDateTime createdOn) {
         return executeCourtScheduleJudiciariesCreatedAfterQuery(createdOn);
+    }
+
+    /** The {@code error_text} of every rota_process_log row with {@code errorCode} written at or after {@code since}. */
+    public List<String> rotaProcessLogErrorTextsSince(final String errorCode, final Instant since) {
+        final List<String> errorTexts = new ArrayList<>();
+        try (Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
+             PreparedStatement statement = connection.prepareStatement(ROTA_PROCESS_LOG_SINCE_SQL)) {
+            statement.setString(1, errorCode);
+            statement.setTimestamp(2, Timestamp.from(since));
+            try (ResultSet resultSet = statement.executeQuery()) {
+                while (resultSet.next()) {
+                    errorTexts.add(resultSet.getString("error_text"));
+                }
+            }
+        } catch (final SQLException exp) {
+            throw new RuntimeException(EXCEPTION_WHILE_QUERYING_THE_DB, exp);
+        }
+        return errorTexts;
+    }
+
+    /** Every rota_process_log row written at or after {@code since}, as "error_code: error_text". */
+    public List<String> rotaProcessLogSince(final Instant since) {
+        final List<String> rows = new ArrayList<>();
+        try (Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
+             PreparedStatement statement = connection.prepareStatement(ROTA_PROCESS_LOG_ALL_SINCE_SQL)) {
+            statement.setTimestamp(1, Timestamp.from(since));
+            try (ResultSet resultSet = statement.executeQuery()) {
+                while (resultSet.next()) {
+                    rows.add(resultSet.getString("error_code") + ": " + resultSet.getString("error_text"));
+                }
+            }
+        } catch (final SQLException exp) {
+            throw new RuntimeException(EXCEPTION_WHILE_QUERYING_THE_DB, exp);
+        }
+        return rows;
     }
 
     public CourtSchedule courtScheduleById(final String courtScheduleId) {

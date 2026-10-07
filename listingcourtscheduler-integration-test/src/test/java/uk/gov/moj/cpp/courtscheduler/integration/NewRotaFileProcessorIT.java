@@ -33,6 +33,7 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.sql.SQLException;
+import java.time.temporal.ChronoUnit;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -70,6 +71,8 @@ class NewRotaFileProcessorIT extends AbstractIT {
     private static final int DEFAULT_POLL_TIMEOUT_FOR_ROTA_FILE_PROCESS_IN_SEC = 50;
     
     private static final String BEDFORD_SHIRE_MASTER_FILE_BASE_NAME = "IT_Test_lja_bedfordshire_rotaa_20240401T180039Z";
+    private static final String RETIRED_BUSINESS_TYPE_FILE_BASE_NAME = "IT_Test_lja_bedfordshire_rota_retired_business_type_20240401T180039Z";
+    private static final int EXPECTED_SCHEDULES_WITHOUT_THE_RETIRED_PAIR = 585;
     private static final String BEDFORD_SHIRE_MAGISTRATES_COURT_OU_CODE = "B40IM00";
     private static final String COURT_SCHEDULE_MANUAL_ENTRIES_JSON = "court_schedule_manual_entries.json";
     private static final String ROTA_FILE_PROCESSOR_REQUEST_OLD = "rota-file-processor-request.json";
@@ -126,6 +129,43 @@ class NewRotaFileProcessorIT extends AbstractIT {
     void tearDown() {
         FILES_TO_BE_DELETED_FROM_OUTPUT_CONTAINER.forEach(fileToBeDeleted -> 
                 azureBlobClientService.deleteFile(fileToBeDeleted, of(AZURE_BLOB_OUTPUT_CONTAINER_NAME)));
+    }
+
+    /**
+     * SPRDT-1370 (C2-13). One AM/PM pair in the rota file sits on a business type reference data no
+     * longer carries. That pair is reported in rota_process_log and left out; every other row still
+     * imports, so the batch does not abort on a single retired code. This is the session-creating
+     * flow ({@code rotaProcess=old}): the new flow only lays judiciary onto sessions that already
+     * exist and never reaches the business-type filter.
+     */
+    @Test
+    void shouldImportTheRestOfTheRotaFileWhenOneRowNamesARetiredBusinessType() throws IOException, SQLException {
+        // The log row is stamped by the app container's clock; a generous lower bound absorbs any skew.
+        final Instant processingStartedAt = Instant.now().minus(1, ChronoUnit.HOURS);
+        final String finalMasterRotaFileName = uploadRotaFile(RETIRED_BUSINESS_TYPE_FILE_BASE_NAME);
+        insertCourtSchedulerMigrationStatus(List.of(BEDFORD_SHIRE_MAGISTRATES_COURT_OU_CODE));
+
+        final Response response = postCommand(ROTASL_FILE_PROCESSOR_URL, ROTASL_PROCESS_ROTA_FILES_CONTENT_TYPE,
+                SYSTEM_USER_ID, getPayload(ROTA_FILE_PROCESSOR_REQUEST_OLD));
+        assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
+        FILES_TO_BE_DELETED_FROM_OUTPUT_CONTAINER.add(finalMasterRotaFileName);
+
+        try {
+            await().timeout(DEFAULT_POLL_TIMEOUT_FOR_ROTA_FILE_PROCESS_IN_SEC, SECONDS).until(() ->
+                    databaseReader.rotaProcessLogErrorTextsSince("BUSINESS_TYPES_NOT_FOUND", processingStartedAt).stream()
+                            .anyMatch(text -> text.contains("FWT"))
+                            && databaseReader.courtSchedules().size() >= EXPECTED_SCHEDULES_WITHOUT_THE_RETIRED_PAIR);
+        } catch (final org.awaitility.core.ConditionTimeoutException timedOut) {
+            fail(format("rota file with a retired business type never settled: %d court schedules, rota_process_log rows %s",
+                    databaseReader.courtSchedules().size(),
+                    databaseReader.rotaProcessLogSince(processingStartedAt)));
+        }
+
+        final List<String> reported = databaseReader.rotaProcessLogErrorTextsSince("BUSINESS_TYPES_NOT_FOUND", processingStartedAt);
+        assertThat(reported.toString(), reported.stream().anyMatch(text -> text.contains("FWT")), is(true));
+        final List<CourtSchedule> courtSchedules = databaseReader.courtSchedules();
+        assertThat("court schedules imported alongside the retired pair", courtSchedules.size(), is(EXPECTED_SCHEDULES_WITHOUT_THE_RETIRED_PAIR));
+        assertThat(courtSchedules.stream().noneMatch(schedule -> "FWT".equals(schedule.getBusinessType())), is(true));
     }
 
     @Test
@@ -199,9 +239,13 @@ class NewRotaFileProcessorIT extends AbstractIT {
     }
     
     private String uploadRotaFile() throws IOException {
+        return uploadRotaFile(BEDFORD_SHIRE_MASTER_FILE_BASE_NAME);
+    }
+
+    private String uploadRotaFile(final String rotaFileBaseName) throws IOException {
         final String generatedUniqueFileId = randomUUID().toString().substring(0, 8);
-        final String finalMasterRotaFileName = format("%s_%s.xml", BEDFORD_SHIRE_MASTER_FILE_BASE_NAME, generatedUniqueFileId);
-        final String resourcePath = format(ROTAFILEPROCESSOR_RESOURCE_PATH, BEDFORD_SHIRE_MASTER_FILE_BASE_NAME);
+        final String finalMasterRotaFileName = format("%s_%s.xml", rotaFileBaseName, generatedUniqueFileId);
+        final String resourcePath = format(ROTAFILEPROCESSOR_RESOURCE_PATH, rotaFileBaseName);
         final InputStream rotaFileInputStream = Thread.currentThread().getContextClassLoader().getResourceAsStream(resourcePath);
 
         try (rotaFileInputStream) {
