@@ -1909,6 +1909,8 @@ components:
         endDate: { type: string, format: date, nullable: true }
         durationInMinutes: { type: integer, default: 0 }
         courtScheduleId: { type: string, nullable: true }
+        # UTC instant (listing's startTime); a single-day move books the session whose window contains it
+        hearingStartTime: { type: string, nullable: true }
 
     ChangeCourtRoomForMultidayHearingRequest:
       type: object

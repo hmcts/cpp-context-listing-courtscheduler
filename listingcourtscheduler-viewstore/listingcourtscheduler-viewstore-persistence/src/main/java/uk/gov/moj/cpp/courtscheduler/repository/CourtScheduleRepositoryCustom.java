@@ -93,6 +93,19 @@ public interface CourtScheduleRepositoryCustom {
                                                                                               String courtRoomId);
 
     /**
+     * Single-day {@code move-hearing-to-past-date} lookup (SPRDT-1447, restoring main's
+     * time-window search): active sessions at the centre on {@code sessionDate} for the
+     * jurisdiction whose window contains {@code hearingStartTime} (UTC wall clock) — any
+     * {@code court_session} (AM/PM/AD). Scoped to {@code courtRoomId} when supplied. Ordered
+     * final-before-draft, then by room number.
+     */
+    List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> findSessionsForMoveToPastDate(String courtCentreId,
+                                                                                           String courtRoomId,
+                                                                                           LocalDate sessionDate,
+                                                                                           LocalDateTime hearingStartTime,
+                                                                                           String jurisdiction);
+
+    /**
      * AD weekday sessions for a room in a date range. businessType and isDraft are optional
      * filters (null = unconstrained). The extend path (SPRDT-1273) passes the block's own draft
      * state so an allocated hearing's tail days only ever book FINAL sessions — a draft tail

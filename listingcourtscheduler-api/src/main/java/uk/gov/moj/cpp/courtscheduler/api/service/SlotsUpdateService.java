@@ -39,6 +39,8 @@ import uk.gov.moj.cpp.courtscheduler.repository.ProvisionalBookingRepository;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -87,6 +89,7 @@ public class SlotsUpdateService {
     private static final String SOURCE_EXEMPT_SAB = "EXEMPT_SAB";
     private static final String SOURCE_AUTO_CREATE_SAB = "AUTO_CREATE_SAB";
     private static final String JURISDICTION_CROWN = "CROWN";
+    private static final String JURISDICTION_MAGISTRATES = "MAGISTRATES";
 
     @Inject
     private CourtScheduleRepository courtScheduleRepository;
@@ -603,13 +606,15 @@ public class SlotsUpdateService {
      * an optional {@code courtScheduleId} anchor or a {@code courtRoomId}-scoped centre search,
      * MAGISTRATES always via the (equally {@code courtRoomId}-scoped) centre search. When the anchor
      * is used, its own room already applies and {@code courtRoomId} is not separately enforced.
+     * An explicit single-day move carrying {@code hearingStartTime} (and no anchor) instead books
+     * the AM/PM/AD session whose window contains that time (SPRDT-1447).
      * source=MOVE_TO_PAST_DATE. The past-only rule is owned by the caller (listing); courtscheduler
      * books whatever consecutive sessions it finds and does not reject future dates.
      */
     public MoveHearingToPastDateResponse moveHearingToPastDate(final MoveHearingToPastDateRequest request) {
-        LOGGER.info("[MOVE-PAST] hearingId: {}, centre: {}, courtRoomId: {}, jurisdiction: {}, startDate: {}, endDate: {}, durationMins: {}",
+        LOGGER.info("[MOVE-PAST] hearingId: {}, centre: {}, courtRoomId: {}, jurisdiction: {}, startDate: {}, endDate: {}, hearingStartTime: {}, durationMins: {}",
                 Encode.forJava(request.getHearingId()), Encode.forJava(request.getCourtCentreId()), Encode.forJava(request.getCourtRoomId()), request.getJurisdiction(),
-                request.getStartDate(), request.getEndDate(), request.getDurationInMinutes());
+                request.getStartDate(), request.getEndDate(), Encode.forJava(request.getHearingStartTime()), request.getDurationInMinutes());
 
         // A GENUINE date range (endDate strictly after startDate) sizes the block from the calendar
         // span; with no endDate at all, duration keeps driving it (legacy shape - some callers still
@@ -631,11 +636,23 @@ public class SlotsUpdateService {
 
         // Select (search + validate) the past sessions BEFORE touching the prior allocation, so a search
         // miss can never orphan the hearing — the release is deferred until we have sessions to book onto.
+        final boolean hasAnchor = request.getCourtScheduleId() != null && !request.getCourtScheduleId().isBlank();
+        final LocalDateTime hearingStartTime = toUtcLocalDateTime(request.getHearingStartTime());
         final List<CourtSchedule> sessions;
-        if (JURISDICTION_CROWN.equalsIgnoreCase(request.getJurisdiction())) {
+        if (isExplicitSameDayMove && hearingStartTime != null && !hasAnchor) {
+            // SPRDT-1447: a single-day move books the AM/PM/AD session whose window contains the
+            // requested start time (main's time-window lookup). The consecutive searches below are
+            // AD-only (built for SPRDT-1089 multi-day booking), so an AM/PM-only room could never match.
+            final String jurisdiction = request.getJurisdiction() == null || request.getJurisdiction().isBlank()
+                    ? JURISDICTION_MAGISTRATES : request.getJurisdiction().toUpperCase(java.util.Locale.ROOT);
+            sessions = selectConsecutiveSessions(
+                    courtScheduleRepository.findSessionsForMoveToPastDate(
+                            request.getCourtCentreId(), request.getCourtRoomId(), request.getStartDate(), hearingStartTime, jurisdiction),
+                    daysNeeded, request.getHearingId(), perDay);
+        } else if (JURISDICTION_CROWN.equalsIgnoreCase(request.getJurisdiction())) {
             // CROWN consecutive run: anchor (when present) keys findConsecutiveSessions; otherwise search the
             // court centre via findConsecutiveSessionsForCentre (findConsecutiveSessions needs a courtScheduleId).
-            final List<CourtSchedule> candidates = (request.getCourtScheduleId() != null && !request.getCourtScheduleId().isBlank())
+            final List<CourtSchedule> candidates = hasAnchor
                     ? courtScheduleRepository.findConsecutiveSessions(request.getCourtScheduleId(), daysNeeded)
                     : courtScheduleRepository.findConsecutiveSessionsForCentre(
                             request.getCourtCentreId(), request.getStartDate(), daysNeeded, request.getCourtRoomId());
@@ -1019,6 +1036,14 @@ public class SlotsUpdateService {
             throw new SlotsBookException(
                     "Failed to persist booking for hearingId " + hearingId + ": " + result.getMsg());
         }
+    }
+
+    /** UTC wall clock of an ISO instant - the same frame court_schedule session times are stored in. */
+    private static LocalDateTime toUtcLocalDateTime(final String isoInstant) {
+        if (isoInstant == null || isoInstant.isBlank()) {
+            return null;
+        }
+        return ZonedDateTime.parse(isoInstant).withZoneSameInstant(java.time.ZoneOffset.UTC).toLocalDateTime();
     }
 
    /* package */ static boolean areConsecutiveBusinessDays(final List<CourtSchedule> sessions,

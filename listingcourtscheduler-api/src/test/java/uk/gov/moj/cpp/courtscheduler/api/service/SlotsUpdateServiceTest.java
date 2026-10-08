@@ -44,6 +44,7 @@ import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 import uk.gov.moj.cpp.courtscheduler.repository.ProvisionalBookingRepository;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.time.Instant;
@@ -1966,6 +1967,123 @@ class SlotsUpdateServiceTest {
             assertEquals(1, response.sessions().size());
             verify(courtScheduleRepository).findConsecutiveSessionsForCentre(
                     eq(courtCentreId), eq(LocalDate.of(2025, 3, 3)), eq(1), eq(courtRoomId));
+        }
+
+        // ─── SPRDT-1447: single-day time-window lookup (AM/PM/AD) ───
+
+        @Test
+        void should_bookTimeWindowSession_when_singleDayMoveCarriesHearingStartTime() {
+            // AM-only room: the AD-only consecutive search can never match it; the time-window
+            // lookup books the session whose window contains the requested start time.
+            final String hearingId = UUID.randomUUID().toString();
+            final String courtCentreId = UUID.randomUUID().toString();
+            final String courtRoomId = UUID.randomUUID().toString();
+            final LocalDate day = LocalDate.of(2026, 10, 6);
+            final uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule amSession = buildSession(day);
+
+            final MoveHearingToPastDateRequest request = singleDayMove(hearingId, courtCentreId, courtRoomId, "MAGISTRATES", day)
+                    .hearingStartTime("2026-10-06T09:00:00.000Z");
+
+            when(courtScheduleRepository.findSessionsForMoveToPastDate(
+                    courtCentreId, courtRoomId, day, LocalDateTime.of(2026, 10, 6, 9, 0), "MAGISTRATES"))
+                    .thenReturn(List.of(amSession));
+            when(courtScheduleRepository.saveBookedSlots(any(), eq(false), eq(false)))
+                    .thenReturn(new Result().msg("").success(true));
+
+            final MoveHearingToPastDateResponse response = service.moveHearingToPastDate(request);
+
+            assertEquals(1, response.sessions().size());
+            assertEquals(amSession.getCourtScheduleId(), response.sessions().get(0).getCourtScheduleId());
+            verify(courtScheduleRepository, org.mockito.Mockito.never())
+                    .findConsecutiveSessionsForCentre(any(), any(), org.mockito.ArgumentMatchers.anyInt(), any());
+        }
+
+        @Test
+        void should_normaliseOffsetStartTimeToUtc_when_timeWindowLookupUsed() {
+            final String courtCentreId = UUID.randomUUID().toString();
+            final String courtRoomId = UUID.randomUUID().toString();
+            final LocalDate day = LocalDate.of(2026, 10, 6);
+
+            final MoveHearingToPastDateRequest request = singleDayMove(UUID.randomUUID().toString(), courtCentreId, courtRoomId, CROWN_2, day)
+                    .hearingStartTime("2026-10-06T10:00:00+01:00"); // 10:00 BST == 09:00 UTC
+
+            org.junit.jupiter.api.Assertions.assertThrows(NoSessionAvailableException.class,
+                    () -> service.moveHearingToPastDate(request));
+            verify(courtScheduleRepository).findSessionsForMoveToPastDate(
+                    courtCentreId, courtRoomId, day, LocalDateTime.of(2026, 10, 6, 9, 0), CROWN_2);
+        }
+
+        @Test
+        void should_throwNoSessionWithoutRelease_when_timeWindowLookupFindsNothing() {
+            final String hearingId = UUID.randomUUID().toString();
+            final LocalDate day = LocalDate.of(2026, 10, 6);
+            final MoveHearingToPastDateRequest request = singleDayMove(hearingId, UUID.randomUUID().toString(),
+                    UUID.randomUUID().toString(), "MAGISTRATES", day)
+                    .hearingStartTime("2026-10-06T09:00:00.000Z"); // repository mock returns no session
+
+            org.junit.jupiter.api.Assertions.assertThrows(NoSessionAvailableException.class,
+                    () -> service.moveHearingToPastDate(request));
+            verify(courtScheduleRepository, org.mockito.Mockito.never()).releaseOldAllocatedListings(any());
+            verify(courtScheduleRepository, org.mockito.Mockito.never()).saveBookedSlots(any(), anyBoolean(), anyBoolean());
+        }
+
+        @Test
+        void should_keepAnchorConsecutiveSearch_when_crownSingleDayMoveHasCourtScheduleId() {
+            final String anchorId = UUID.randomUUID().toString();
+            final LocalDate day = LocalDate.of(2026, 10, 6);
+            final MoveHearingToPastDateRequest request = singleDayMove(UUID.randomUUID().toString(), UUID.randomUUID().toString(),
+                    UUID.randomUUID().toString(), CROWN_2, day)
+                    .hearingStartTime("2026-10-06T09:00:00.000Z")
+                    .courtScheduleId(anchorId);
+
+            org.junit.jupiter.api.Assertions.assertThrows(NoSessionAvailableException.class,
+                    () -> service.moveHearingToPastDate(request));
+            verify(courtScheduleRepository).findConsecutiveSessions(anchorId, 1);
+            verify(courtScheduleRepository, org.mockito.Mockito.never())
+                    .findSessionsForMoveToPastDate(any(), any(), any(), any(), any());
+        }
+
+        @Test
+        void should_keepConsecutiveCentreSearch_when_genuineRangeCarriesHearingStartTime() {
+            final String courtCentreId = UUID.randomUUID().toString();
+            final String courtRoomId = UUID.randomUUID().toString();
+            final MoveHearingToPastDateRequest request = singleDayMove(UUID.randomUUID().toString(), courtCentreId, courtRoomId,
+                    "MAGISTRATES", LocalDate.of(2026, 10, 5))
+                    .endDate(LocalDate.of(2026, 10, 6))
+                    .hearingStartTime("2026-10-05T09:00:00.000Z");
+
+            service.moveHearingToPastDate(request);
+
+            verify(courtScheduleRepository).findConsecutiveSessionsForCentre(
+                    courtCentreId, LocalDate.of(2026, 10, 5), 2, courtRoomId);
+            verify(courtScheduleRepository, org.mockito.Mockito.never())
+                    .findSessionsForMoveToPastDate(any(), any(), any(), any(), any());
+        }
+
+        @Test
+        void should_defaultJurisdictionToMagistrates_when_timeWindowLookupHasNoJurisdiction() {
+            final String courtCentreId = UUID.randomUUID().toString();
+            final LocalDate day = LocalDate.of(2026, 10, 6);
+            final MoveHearingToPastDateRequest request = singleDayMove(UUID.randomUUID().toString(), courtCentreId, null, null, day)
+                    .hearingStartTime("2026-10-06T13:30:00.000Z");
+
+            org.junit.jupiter.api.Assertions.assertThrows(NoSessionAvailableException.class,
+                    () -> service.moveHearingToPastDate(request));
+            verify(courtScheduleRepository).findSessionsForMoveToPastDate(
+                    courtCentreId, null, day, LocalDateTime.of(2026, 10, 6, 13, 30), "MAGISTRATES");
+        }
+
+        private MoveHearingToPastDateRequest singleDayMove(final String hearingId, final String courtCentreId,
+                                                           final String courtRoomId, final String jurisdiction,
+                                                           final LocalDate day) {
+            return new MoveHearingToPastDateRequest()
+                    .hearingId(hearingId)
+                    .courtCentreId(courtCentreId)
+                    .courtRoomId(courtRoomId)
+                    .jurisdiction(jurisdiction)
+                    .startDate(day)
+                    .endDate(day)
+                    .durationInMinutes(60);
         }
     }
 

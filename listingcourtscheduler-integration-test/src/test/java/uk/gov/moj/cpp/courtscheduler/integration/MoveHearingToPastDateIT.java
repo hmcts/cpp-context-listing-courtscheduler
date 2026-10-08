@@ -125,6 +125,63 @@ class MoveHearingToPastDateIT extends AbstractIT {
                 bookedScheduleIds(hearingId), contains(requestedRoomSessionId));
     }
 
+    // --- (b3) SPRDT-1447: single-day move into an AM/PM-only room (time-window lookup) ---
+
+    @Test
+    void shouldMoveMagsHearingToPastDate_singleDayIntoAmSessionOfAmPmOnlyRoom() throws Exception {
+        final String centreId = UUID.randomUUID().toString();
+        final String roomId = UUID.randomUUID().toString();
+        final String hearingId = UUID.randomUUID().toString();
+        final LocalDate day = pastMonday();
+
+        // No AD session that day - only AM (09:00-13:00) and PM (13:00-17:00), as in the reported rota.
+        final String amSessionId = seedSession(day, roomId, "NGAP", centreId, "OU-MAG5", MAGISTRATES_2, 240, "AM", 9, 13);
+        seedSession(day, roomId, "NGAP", centreId, "OU-MAG5", MAGISTRATES_2, 240, "PM", 13, 17);
+
+        final Response response = callMove(centreId, roomId, MAGISTRATES_2, day, null, 60, hearingId, 10, 11);
+
+        assertThat(response.getStatus(), is(OK.getStatusCode()));
+        final String payload = body(response);
+        assertThat(payload, containsString(SOURCE_MOVE_TO_PAST_DATE));
+        assertThat(extractSessionIds(payload), contains(amSessionId));
+        assertThat("the AM session containing 10:00 is booked", bookedScheduleIds(hearingId), contains(amSessionId));
+        assertThat(PERSISTED_ALLOCATED_LISTINGS_SOURCE, bookedSources(hearingId), contains(MOVE_TO_PAST_DATE_2));
+    }
+
+    @Test
+    void shouldMoveCrownHearingToPastDate_singleDayIntoPmSessionOfAmPmOnlyRoom() throws Exception {
+        final String centreId = UUID.randomUUID().toString();
+        final String roomId = UUID.randomUUID().toString();
+        final String hearingId = UUID.randomUUID().toString();
+        final LocalDate day = pastMonday();
+
+        seedSession(day, roomId, "CR", centreId, "OU-CRN5", CROWN_2, 180, "AM", 9, 12);
+        final String pmSessionId = seedSession(day, roomId, "CR", centreId, "OU-CRN5", CROWN_2, 180, "PM", 13, 16);
+
+        final Response response = callMove(centreId, roomId, CROWN_2, day, null, 60, hearingId, 14, 15);
+
+        assertThat(response.getStatus(), is(OK.getStatusCode()));
+        assertThat(extractSessionIds(body(response)), contains(pmSessionId));
+        assertThat("the PM session containing 14:00 is booked", bookedScheduleIds(hearingId), contains(pmSessionId));
+    }
+
+    @Test
+    void shouldRejectSingleDayMove_whenStartTimeOutsideEverySessionWindow() throws Exception {
+        final String centreId = UUID.randomUUID().toString();
+        final String roomId = UUID.randomUUID().toString();
+        final String hearingId = UUID.randomUUID().toString();
+        final LocalDate day = pastMonday();
+
+        // PM-only room; a 10:00 start falls in no session window -> 422 NO_SESSION_FOUND, nothing booked.
+        seedSession(day, roomId, "NGAP", centreId, "OU-MAG6", MAGISTRATES_2, 240, "PM", 13, 17);
+
+        final Response response = callMove(centreId, roomId, MAGISTRATES_2, day, null, 60, hearingId, 10, 11);
+
+        assertThat(response.getStatus(), is(422));
+        assertThat(body(response), containsString("NO_SESSION_FOUND"));
+        assertThat("nothing booked for the hearing", bookedScheduleIds(hearingId), is(empty()));
+    }
+
     // --- (c) multi-day MAGS (consecutive weekdays) ---
 
     @Test
@@ -274,13 +331,27 @@ class MoveHearingToPastDateIT extends AbstractIT {
                               final LocalDate endDate,
                               final int durationInMinutes,
                               final String hearingId) {
+        return callMove(courtCentreId, courtRoomId, jurisdiction, startDate, endDate, durationInMinutes, hearingId, 10, 17);
+    }
+
+    /** As above, with an explicit UTC start/end hour (single-day moves match the session whose window contains the start). */
+    @SuppressWarnings("java:S107")
+    private Response callMove(final String courtCentreId,
+                              final String courtRoomId,
+                              final String jurisdiction,
+                              final LocalDate startDate,
+                              final LocalDate endDate,
+                              final int durationInMinutes,
+                              final String hearingId,
+                              final int startHourUtc,
+                              final int endHourUtc) {
         final LocalDate effectiveEndDate = endDate != null ? endDate : startDate;
         final jakarta.json.JsonObjectBuilder b = Json.createObjectBuilder()
                 .add("courtCentreId", courtCentreId)
                 .add("courtRoomId", courtRoomId)
                 .add("jurisdiction", jurisdiction)
-                .add("startTime", startDate.atTime(10, 0).toInstant(ZoneOffset.UTC).toString())
-                .add("endTime", effectiveEndDate.atTime(17, 0).toInstant(ZoneOffset.UTC).toString())
+                .add("startTime", startDate.atTime(startHourUtc, 0).toInstant(ZoneOffset.UTC).toString())
+                .add("endTime", effectiveEndDate.atTime(endHourUtc, 0).toInstant(ZoneOffset.UTC).toString())
                 .add("durationInMinutes", durationInMinutes);
         return postCommand("/hearings/" + hearingId, ACCEPT, SYSTEM_USER_ID, b.build().toString());
     }
@@ -382,9 +453,25 @@ class MoveHearingToPastDateIT extends AbstractIT {
                                final String ouCode,
                                final String jurisdiction,
                                final int availableDurationMinutes) throws java.sql.SQLException {
+        return seedSession(sessionDate, courtRoomId, businessType, courtCentreId, ouCode, jurisdiction,
+                availableDurationMinutes, "AD", 10, 17);
+    }
+
+    /** As above, with an explicit {@code court_session} and UTC session window (start/end hour). */
+    @SuppressWarnings("java:S107")
+    private String seedSession(final LocalDate sessionDate,
+                               final String courtRoomId,
+                               final String businessType,
+                               final String courtCentreId,
+                               final String ouCode,
+                               final String jurisdiction,
+                               final int availableDurationMinutes,
+                               final String courtSession,
+                               final int startHourUtc,
+                               final int endHourUtc) throws java.sql.SQLException {
         final String id = UUID.randomUUID().toString();
-        final Instant sessionStart = sessionDate.atTime(10, 0).toInstant(ZoneOffset.UTC);
-        final Instant sessionEnd = sessionDate.atTime(17, 0).toInstant(ZoneOffset.UTC);
+        final Instant sessionStart = sessionDate.atTime(startHourUtc, 0).toInstant(ZoneOffset.UTC);
+        final Instant sessionEnd = sessionDate.atTime(endHourUtc, 0).toInstant(ZoneOffset.UTC);
 
         final CourtSchedule cs = new CourtSchedule();
         cs.setCourtScheduleId(id);
@@ -398,7 +485,7 @@ class MoveHearingToPastDateIT extends AbstractIT {
         cs.setOperationalUnit(ouCode);
         cs.setBusinessType(businessType);
         cs.setPanel("Adult");
-        cs.setCourtSession("AD");
+        cs.setCourtSession(courtSession);
         cs.setActive(true);
         cs.setSlotBased(false);
         cs.setSessionDate(sessionDate);

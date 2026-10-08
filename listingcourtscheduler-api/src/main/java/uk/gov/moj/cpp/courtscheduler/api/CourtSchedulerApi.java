@@ -646,9 +646,9 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
      * courtCentreId/courtRoomId/jurisdiction/startTime/endTime mirror main's contract (the review
      * artifact this reconciles); courtScheduleId is an additive CROWN payback anchor main has no
      * equivalent for (main's CROWN never reaches this endpoint). startTime/endTime are absolute UTC
-     * instants: only their DATES drive the [startDate, endDate] span booked here — court-schedule
-     * sessions in this service are booked per day, not per time-slot, so the time-of-day is not
-     * otherwise matched.
+     * instants: their DATES drive the [startDate, endDate] span booked here, and startTime is also
+     * passed through as hearingStartTime so a single-day move books the AM/PM/AD session whose
+     * window contains it (SPRDT-1447, restoring main's time-window lookup).
      */
     private ResponseEntity<Map<String, Object>> moveHearingToPastDate(final String hearingId, final JsonObject payload) {
         final String startTimeRaw = getStringOrNull(payload, "startTime");
@@ -666,7 +666,8 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
                 .startDate(startDate)
                 .endDate(endDate)
                 .durationInMinutes(payload.containsKey(DURATION_IN_MINUTES) ? payload.getInt(DURATION_IN_MINUTES) : 0)
-                .courtScheduleId(getStringOrNull(payload, "courtScheduleId"));
+                .courtScheduleId(getStringOrNull(payload, "courtScheduleId"))
+                .hearingStartTime(startTimeRaw);
 
         final JsonObject validationError = hearingSlotsApiValidator.moveHearingToPastDateValidation(moveRequest);
         if (!validationError.isEmpty()) {

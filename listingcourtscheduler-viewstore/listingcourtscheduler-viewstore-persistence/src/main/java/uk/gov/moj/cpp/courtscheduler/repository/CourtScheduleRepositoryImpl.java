@@ -1258,6 +1258,50 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
     }
 
     @Override
+    public List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> findSessionsForMoveToPastDate(
+            final String courtCentreId, final String courtRoomId, final LocalDate sessionDate,
+            final LocalDateTime hearingStartTime, final String jurisdiction) {
+        LOGGER.info("CourtScheduleRepository:findSessionsForMoveToPastDate courtCentreId: {}, courtRoomId: {}, sessionDate: {}, hearingStartTime: {}, jurisdiction: {}",
+                courtCentreId, courtRoomId, sessionDate, hearingStartTime, jurisdiction);
+
+        // No court_session filter: AM, PM and AD sessions are all eligible - the requested start
+        // time picks the session whose window contains it (a 10:00 start lands AM or AD, never PM).
+        final StringBuilder queryStr = new StringBuilder(512).append("""
+                SELECT s.id
+                FROM court_schedule s
+                WHERE s.active = true
+                  AND s.court_house_id = :courtCentreId
+                  AND DATE(s.session_start) = :sessionDate
+                  AND s.jurisdiction = :jurisdiction
+                  AND (:hearingStartTime) BETWEEN s.session_start_time AND s.session_end_time
+                """);
+        if (courtRoomId != null) {
+            queryStr.append("  AND s.court_room_id = :courtRoomId\n");
+        }
+        queryStr.append("ORDER BY s.is_draft ASC, s.court_room_number ASC");
+
+        final jakarta.persistence.Query query = entityManager.createNativeQuery(queryStr.toString());
+        query.setParameter(COURT_CENTRE_ID, courtCentreId);
+        query.setParameter(SESSION_DATE, java.sql.Date.valueOf(sessionDate));
+        query.setParameter("jurisdiction", jurisdiction);
+        query.setParameter(HEARING_START_TIME, hearingStartTime);
+        if (courtRoomId != null) {
+            query.setParameter(COURT_ROOM_ID, courtRoomId);
+        }
+
+        @SuppressWarnings(UNCHECKED_WARNING)
+        final List<String> ids = query.getResultList();
+        if (isEmpty(ids)) {
+            return Collections.emptyList();
+        }
+        // getCourtSchedulesByIdList does not preserve order - restore the query's preference order
+        final List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> sessions =
+                new ArrayList<>(getCourtSchedulesByIdList(ids));
+        sessions.sort(java.util.Comparator.comparingInt(session -> ids.indexOf(session.getCourtScheduleId())));
+        return sessions;
+    }
+
+    @Override
     public List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> findAdSessionsInRange(
             final String ouCode, final String courtRoomId, final String businessType,
             final LocalDate fromInclusive, final LocalDate toInclusive, final Boolean isDraft) {
