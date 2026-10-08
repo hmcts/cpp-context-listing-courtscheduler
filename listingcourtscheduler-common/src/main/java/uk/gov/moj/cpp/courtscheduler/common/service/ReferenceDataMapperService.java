@@ -13,7 +13,6 @@ import static uk.gov.moj.cpp.courtscheduler.common.utils.VenueNameComparator.mat
 import uk.gov.moj.cpp.courtscheduler.openapi.model.Judiciary;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.BusinessType;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtRoom;
-import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtRoomSessionAllocation;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.Venue;
 
 import java.util.ArrayList;
@@ -40,8 +39,6 @@ public class ReferenceDataMapperService {
     private ReferenceDataCache referenceDataCache;
 
     private List<Judiciary> judiciaries = synchronizedList(new ArrayList<>());
-
-    private List<CourtRoomSessionAllocation> courtRoomSessionAllocations = synchronizedList(new ArrayList<>());
 
     private List<CourtRoom> courtRooms = synchronizedList(new ArrayList<>());
 
@@ -71,14 +68,6 @@ public class ReferenceDataMapperService {
                 .findFirst();
         logger.debug("judiciary found for id {} with judiciary : {}", judiciaryId, judiciaryOptional.orElse(null));
         return judiciaryOptional;
-    }
-
-    public Optional<CourtRoomSessionAllocation> findByOuCodeAndRoomIdAndListingSessionAndBusinessType(final String ouCode,
-                                                                                                      final Integer roomId,
-                                                                                                      final String listingSession,
-                                                                                                      final String businessType) {
-        courtRoomSessionAllocations = isEmpty(courtRoomSessionAllocations) ? referenceDataCache.getCourtRoomSessionAllocations() : courtRoomSessionAllocations;
-        return getAllocationByOuCodeAndRoomIAndSessionAndBusinessType(ouCode, roomId, listingSession, businessType);
     }
 
     public Optional<CourtRoom> findByVenue(final Venue venue, final Map<String, String> exceptionMessages) {
@@ -116,9 +105,6 @@ public class ReferenceDataMapperService {
         if (nonNull(courtRooms)) {
             courtRooms.clear();
         }
-        if (nonNull(courtRoomSessionAllocations)) {
-            courtRoomSessionAllocations.clear();
-        }
         if (nonNull(judiciaries)) {
             judiciaries.clear();
         }
@@ -131,22 +117,8 @@ public class ReferenceDataMapperService {
         judiciaries = referenceDataCache.getJudiciaries();
     }
 
-    public void loadCourtRoomSessionAllocations() {
-        courtRoomSessionAllocations = referenceDataCache.getCourtRoomSessionAllocations();
-    }
-
     public void loadCourtRooms() {
         courtRooms = referenceDataCache.getCourtRooms();
-    }
-
-    private Optional<CourtRoomSessionAllocation> getAllocationByOuCodeAndRoomIAndSessionAndBusinessType(final String ouCode, final Integer roomId, final String listingSession, final String businessType) {
-        return courtRoomSessionAllocations
-                .stream()
-                .filter(courtRoomSessionAllocation -> ouCode.equals(courtRoomSessionAllocation.getOucode()) &&
-                        roomId.equals(courtRoomSessionAllocation.getCourtRoomId()) &&
-                        listingSession.equals(courtRoomSessionAllocation.getCourtSession()) &&
-                        businessType.equals(courtRoomSessionAllocation.getRotaBusinessTypeCode()))
-                .findAny();
     }
 
     private Optional<Judiciary> getJudiciaryByEmail(final String email) {

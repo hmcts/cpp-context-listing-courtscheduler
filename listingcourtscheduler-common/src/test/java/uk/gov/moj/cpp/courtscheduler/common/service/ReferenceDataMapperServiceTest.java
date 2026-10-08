@@ -8,7 +8,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtRoom;
-import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtRoomSessionAllocation;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.Judiciary;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.Venue;
 import uk.gov.moj.cpp.platform.test.data.utils.FileUtil;
@@ -95,19 +94,6 @@ class ReferenceDataMapperServiceTest {
     }
 
     @Test
-    void shouldFindByOuCodeAndRoomIdAndListingSessionAndBusinessType() throws JsonProcessingException {
-
-        when(referenceDataCache.getCourtRoomSessionAllocations()).thenReturn(getCourtRoomSessionAllocations());
-
-        final Optional<CourtRoomSessionAllocation> courtRoomSessionAllocationOptional = referenceDataMapperService.findByOuCodeAndRoomIdAndListingSessionAndBusinessType("B01KR00", 2035, "FRIPM", "GEN");
-
-        assertTrue(courtRoomSessionAllocationOptional.isPresent());
-        assertEquals("93231aab-a87e-3dbd-b334-402e07643f2f", courtRoomSessionAllocationOptional.get().getId());
-
-        verify(referenceDataCache, atLeastOnce()).getCourtRoomSessionAllocations();
-    }
-
-    @Test
     void shouldFindByVenue() throws JsonProcessingException {
 
         when(referenceDataCache.getCourtRooms()).thenReturn(getCourtRoomsFromRefData());
@@ -184,13 +170,6 @@ class ReferenceDataMapperServiceTest {
 
         verify(referenceDataCache).getJudiciaries();
     }
-
-    private List<CourtRoomSessionAllocation> getCourtRoomSessionAllocations() throws JsonProcessingException {
-        final String courtRoomSessionAllocationsJsonStr = FileUtil.fileToString("/test-data/court-room-session-allocations-domain-data.json");
-
-        return objectMapper.readValue(courtRoomSessionAllocationsJsonStr, new TypeReference<>() {});
-    }
-
 
     private List<Judiciary> getJudiciaries() throws JsonProcessingException {
         final String judiciariesJsonStr = FileUtil.fileToString("/test-data/judiciaries-domain-data.json");
