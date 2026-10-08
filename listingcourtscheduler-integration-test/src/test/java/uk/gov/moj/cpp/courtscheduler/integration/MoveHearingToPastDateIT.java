@@ -269,6 +269,45 @@ class MoveHearingToPastDateIT extends AbstractIT {
                 databaseReader.courtScheduleById(pastSession).getAvailableDuration(), is(0));
     }
 
+    // --- (e2) SPRDT-1447: MAGS single-day move into an AM session of an AM/PM-only room → prior paid back ---
+
+    /**
+     * Same payback contract as (e), but on the time-window path: the hearing currently holds 60
+     * minutes of a future AM session and is moved to a past day whose room has only AM and PM
+     * sessions. The prior future capacity must be restored, the AM session containing the 10:00
+     * start consumed, and the PM session left untouched.
+     */
+    @Test
+    void shouldMoveMagsSingleDayHearingIntoAmSessionAndPayBackPriorFutureSession() throws Exception {
+        final String centreId = UUID.randomUUID().toString();
+        final String roomId = UUID.randomUUID().toString();
+        final String hearingId = UUID.randomUUID().toString();
+        final LocalDate futureDay = futureMonday();
+        final LocalDate pastDay = pastMonday();
+
+        // Currently booked: 60 of a future AM session's 240 minutes (180 left).
+        final String futureSession = seedSession(futureDay, roomId, "NGAP", centreId, "OU-MAG7", MAGISTRATES_2, 180, "AM", 9, 13);
+        book(hearingId, futureSession, futureDay, 60, "OU-MAG7");
+        // Target day: AM and PM only, no AD session.
+        final String pastAm = seedSession(pastDay, roomId, "NGAP", centreId, "OU-MAG7", MAGISTRATES_2, 240, "AM", 9, 13);
+        final String pastPm = seedSession(pastDay, roomId, "NGAP", centreId, "OU-MAG7", MAGISTRATES_2, 240, "PM", 13, 17);
+
+        final Response response = callMove(centreId, roomId, MAGISTRATES_2, pastDay, null, 60, hearingId, 10, 11);
+
+        assertThat(response.getStatus(), is(OK.getStatusCode()));
+        assertThat(extractSessionIds(body(response)), contains(pastAm));
+
+        assertThat("hearing now booked on the past AM session only",
+                bookedScheduleIds(hearingId), contains(pastAm));
+        assertThat(PERSISTED_ALLOCATED_LISTINGS_SOURCE, bookedSources(hearingId), contains(MOVE_TO_PAST_DATE_2));
+        assertThat("prior future AM session's 60 minutes paid back",
+                databaseReader.courtScheduleById(futureSession).getAvailableDuration(), is(240));
+        assertThat("past AM session's capacity consumed by the moved hearing",
+                databaseReader.courtScheduleById(pastAm).getAvailableDuration(), is(180));
+        assertThat("past PM session untouched",
+                databaseReader.courtScheduleById(pastPm).getAvailableDuration(), is(240));
+    }
+
     // --- (f) CROWN multi-day with an EXISTING future block → EVERY prior day paid back ---
 
     /**
