@@ -140,6 +140,8 @@ class SessionsServiceTest {
     private static final String MAGISTRATES_2 = "MAGISTRATES";
     private static final String OU001_2 = "OU001";
     private static final String RETIRED_BT_2 = "RETIRED_BT";
+    private static final String PTPH_2 = "PTPH";
+    private static final String COURT_HOUSE_1 = "Court House 1";
     private static final String TRL_2 = "TRL";
     private static final String YOUTH_2 = "Youth";
     private static final String CENTRE_1 = "centre-1";
@@ -503,6 +505,17 @@ class SessionsServiceTest {
     }
 
     @Test
+    void shouldRefuseToCreateASessionOnAnUnknownBusinessType() {
+        final CreateSessionRequestParam createSessionRequest = createSessionRequest(sessionListWithSingleSession(), createRepeatPattern(LocalDate.now(), LocalDate.now().plusMonths(1), RepeatFrequency.ONCE, 1));
+        when(referenceDataCache.getRotaBusinessTypeByCode(eq(DVLA_2))).thenReturn(Optional.empty());
+
+        final RuntimeException refused = assertThrows(RuntimeException.class, () -> sessionsService.create(createSessionRequest));
+
+        assertThat(refused.getMessage(), is(ErrorMessages.BUSINESS_TYPE_NOT_FOUND + DVLA_2));
+        verify(courtScheduleRepository, never()).saveCourtSchedules(any(List.class));
+    }
+
+    @Test
     void shouldCreateSingleCourtSchedulesForOnceFrequency() {
         final CreateSessionRequestParam createSessionRequest = createSessionRequest(sessionListWithSingleSession(), createRepeatPattern(LocalDate.now(), LocalDate.now().plusMonths(1), RepeatFrequency.ONCE, 1));
         when(referenceDataCache.getRotaBusinessTypeByCode(eq(DVLA_2))).thenReturn(returnBusinessTypeObject(DVLA_2, true));
@@ -534,6 +547,21 @@ class SessionsServiceTest {
         sessionsService.create(createSessionRequest);
         verify(courtScheduleRepository, times(1)).saveCourtSchedules(any(List.class));
     }
+    @Test
+    void shouldFallBackToBusinessTypeCodeAsDescriptionOnTheRotaListWhenTypeHasBeenRetired() {
+        final CourtScheduleRequestParam courtScheduleRequestParam = courtScheduleRequestParam();
+        final uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule courtSchedule = new uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule();
+        courtSchedule.setCourtScheduleId(randomUUID().toString());
+        courtSchedule.setBusinessType(RETIRED_BT_2);
+        given(courtScheduleRepository.getCourtSchedulesBy(courtScheduleRequestParam)).willReturn(List.of(courtSchedule));
+        when(referenceDataCache.getRotaBusinessTypeByCode(eq(RETIRED_BT_2))).thenReturn(Optional.empty());
+
+        final List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> courtSchedules = sessionsService.getCourtSchedules(courtScheduleRequestParam);
+
+        assertThat(courtSchedules, is(List.of(courtSchedule)));
+        assertThat(courtSchedule.getBusinessDescription(), is(RETIRED_BT_2));
+    }
+
     @Test
     void shouldGetCourtSchedulesBetweenLastUpdatedOn() {
         // given
@@ -1238,6 +1266,78 @@ class SessionsServiceTest {
         assertThat(result.getSuccess(), is(true));
     }
 
+    @Test
+    void shouldSwitchToSlotNatureWhenRetiredDurationTypeMovesToSlotTypeWithNoHearings() {
+        final String courtScheduleId = randomUUID().toString();
+        final CourtSchedule persistedCourtSchedule = getPersistedCourtSchedule(courtScheduleId, RETIRED_BT_2);
+        persistedCourtSchedule.setJurisdiction(CROWN_2);
+        persistedCourtSchedule.setSlotBased(false);
+        persistedCourtSchedule.setHasHearingsBooked(false);
+        final UpdateCourtSchedule updateCourtSchedule = random(UpdateCourtSchedule.class);
+        updateCourtSchedule.setCourtScheduleId(courtScheduleId);
+        updateCourtSchedule.setCourtRoomId(persistedCourtSchedule.getCourtRoomId());
+        updateCourtSchedule.setBusinessType(PTPH_2);
+        updateCourtSchedule.setPanel(persistedCourtSchedule.getPanel());
+        updateCourtSchedule.setCourtSession(AM_SESSION);
+        updateCourtSchedule.setSessionStartTime(VALUE_11_00);
+        updateCourtSchedule.setSessionEndTime(VALUE_13_00);
+        updateCourtSchedule.setAllDaySplit(false);
+        updateCourtSchedule.setMaxSlots(15);
+        updateCourtSchedule.setMaxDuration(0);
+        updateCourtSchedule.setJurisdiction(null);
+
+        when(courtScheduleRepository.retrieveCourtScheduleWithListingById(anyString())).thenReturn(persistedCourtSchedule);
+        when(referenceDataCache.getRotaBusinessTypeByCode(eq(RETIRED_BT_2))).thenReturn(Optional.empty());
+        when(referenceDataCache.getRotaBusinessTypeByCode(eq(PTPH_2))).thenReturn(returnBusinessTypeObject(PTPH_2, true, CROWN_2));
+        when(allocatedListingRepository.findTotalAllocatedDurationByCourtScheduleId(anyString())).thenReturn(0);
+        when(courtScheduleRepository.update(any(), any(), any())).thenReturn(new Result().success(true));
+
+        final Result result = sessionsService.update(updateCourtSchedule);
+
+        assertThat(result.getSuccess(), is(true));
+        assertThat(persistedCourtSchedule.isSlotBased(), is(true));
+        final ArgumentCaptor<UpdateCourtSchedule> written = ArgumentCaptor.forClass(UpdateCourtSchedule.class);
+        verify(courtScheduleRepository).update(eq(persistedCourtSchedule), written.capture(), any());
+        assertThat(written.getValue().getMaxSlots(), is(15));
+        assertThat(written.getValue().getAvailableSlots(), is(15));
+        assertThat(written.getValue().getMaxDuration(), is(0));
+        assertThat(written.getValue().getAvailableDuration(), is(0));
+    }
+
+    @Test
+    void shouldRejectRetiredDurationTypeMovingToSlotTypeWhileHearingsAreBooked() {
+        final String courtScheduleId = randomUUID().toString();
+        final CourtSchedule persistedCourtSchedule = getPersistedCourtSchedule(courtScheduleId, RETIRED_BT_2);
+        persistedCourtSchedule.setJurisdiction(CROWN_2);
+        persistedCourtSchedule.setSlotBased(false);
+        persistedCourtSchedule.setHasHearingsBooked(true);
+        final UpdateCourtSchedule updateCourtSchedule = random(UpdateCourtSchedule.class);
+        updateCourtSchedule.setCourtScheduleId(courtScheduleId);
+        updateCourtSchedule.setCourtRoomId(persistedCourtSchedule.getCourtRoomId());
+        updateCourtSchedule.setBusinessType(PTPH_2);
+        updateCourtSchedule.setPanel(persistedCourtSchedule.getPanel());
+        updateCourtSchedule.setCourtSession(ALL_DAY);
+        updateCourtSchedule.setSessionStartTime(VALUE_11_00);
+        updateCourtSchedule.setSessionEndTime(VALUE_13_00);
+        updateCourtSchedule.setAllDaySplit(false);
+        updateCourtSchedule.setMaxSlots(15);
+        updateCourtSchedule.setMaxDuration(0);
+        updateCourtSchedule.setJurisdiction(null);
+
+        when(courtScheduleRepository.retrieveCourtScheduleWithListingById(anyString())).thenReturn(persistedCourtSchedule);
+        when(referenceDataCache.getRotaBusinessTypeByCode(eq(RETIRED_BT_2))).thenReturn(Optional.empty());
+        when(referenceDataCache.getRotaBusinessTypeByCode(eq(PTPH_2))).thenReturn(returnBusinessTypeObject(PTPH_2, true, CROWN_2));
+        lenient().when(allocatedListingRepository.findTotalAllocatedDurationByCourtScheduleId(anyString())).thenReturn(120);
+        lenient().when(courtScheduleRepository.update(any(), any(), any())).thenReturn(new Result().success(true));
+
+        final Result result = sessionsService.update(updateCourtSchedule);
+
+        assertThat(result.getSuccess(), is(false));
+        assertThat(result.getMsg(), is(ErrorMessages.BUSINESS_TYPE_NATURE_CHANGE_WITH_HEARINGS));
+        assertThat(persistedCourtSchedule.isSlotBased(), is(false));
+        verify(courtScheduleRepository, never()).update(any(), any(), any());
+    }
+
     /**
      * SPRDT-1351: read/display enrichment falls back to the persisted code when reference data no
      * longer carries it, so sessions on a retired business type stay visible instead of failing the
@@ -1600,11 +1700,12 @@ class SessionsServiceTest {
         updateCourtSchedule.setBusinessType(DVLA_2);
         updateCourtSchedule.setCourtSession(random(String.class));
         updateCourtSchedule.setJurisdiction(null); // Don't change jurisdiction
-        updateCourtSchedule.setMaxDuration(60); // Non-zero so the slot-based validity check fails, forcing the "change not allowed" branch
+        updateCourtSchedule.setMaxDuration(60);
+        updateCourtSchedule.setMaxSlots(0);
 
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(anyString())).thenReturn(persistedCourtSchedule);
         when(referenceDataCache.getRotaBusinessTypeByCode(eq(persistedCourtSchedule.getBusinessType()))).thenReturn(returnBusinessTypeObject("DVAL", true, MAGISTRATES_2));
-        when(referenceDataCache.getRotaBusinessTypeByCode(eq(updateCourtSchedule.getBusinessType()))).thenReturn(returnBusinessTypeObject(DVLA_2, true, MAGISTRATES_2));
+        when(referenceDataCache.getRotaBusinessTypeByCode(eq(updateCourtSchedule.getBusinessType()))).thenReturn(returnBusinessTypeObject(DVLA_2, false, MAGISTRATES_2));
 
         final Result result = sessionsService.update(updateCourtSchedule);
 
@@ -3438,7 +3539,7 @@ class SessionsServiceTest {
                 .courtroomName(COURTROOM_1)
                 .oucode(OU001_2)
                 .cppCourtRoomId(1)
-                .oucodeL3Name("Court House 1")
+                .oucodeL3Name(COURT_HOUSE_1)
                 .oucodeL2Code(OU001_2)
                 ;
 
@@ -3532,6 +3633,40 @@ class SessionsServiceTest {
         verify(courtScheduleRepository).save(savedSession.capture());
         assertThat(savedSession.getValue().getOuCode(), is(C45_GU00));
         assertThat(savedSession.getValue().getCourtHouseName(), is(GUILDFORD_CROWN_COURT));
+    }
+
+    @Test
+    void shouldFallBackToBusinessTypeCodeAsDescriptionInAssignCourtroomErrorGroupWhenTypeHasBeenRetired() {
+        final String courtScheduleId = randomUUID().toString();
+        final String courtRoomId = randomUUID().toString();
+        final String courtCentreId = randomUUID().toString();
+        final uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule assignedSession =
+                createDomainCourtSchedule(courtScheduleId, CROWN_2, courtCentreId, false);
+        assignedSession.setBusinessType(RETIRED_BT_2);
+        final CourtRoom courtRoom = new CourtRoom()
+                .courtroomId(courtRoomId)
+                .oucodeUUID(courtCentreId)
+                .courtroomName(COURTROOM_1)
+                .oucode(OU001_2)
+                .cppCourtRoomId(1)
+                .oucodeL3Name(COURT_HOUSE_1)
+                .oucodeL2Code(OU001_2)
+                ;
+        final AssignCourtroomRequest request = new AssignCourtroomRequest()
+                .courtScheduleIds(List.of(courtScheduleId))
+                .courtRoomId(courtRoomId);
+        when(courtScheduleRepository.getCourtSchedulesByIdList(anyList())).thenReturn(List.of(assignedSession));
+        when(referenceDataCache.getCpCourtRoomsByCourtRoomId(eq(courtRoomId))).thenReturn(List.of(courtRoom));
+        lenient().when(courtScheduleRepository.findDuplicateSessionsForAssignCourtroom(anyString(), any(), anyString(), anyList(), anyString(), anyString()))
+                .thenReturn(emptyList());
+        when(referenceDataCache.getRotaBusinessTypeByCode(eq(RETIRED_BT_2))).thenReturn(Optional.empty());
+
+        final AssignCourtroomResponse response = sessionsService.assignCourtroom(request);
+
+        assertEquals(1, response.getErrorGroups().size());
+        assertEquals("Cannot assign courtroom to an assigned session", response.getErrorGroups().get(0).getError());
+        assertEquals(RETIRED_BT_2, response.getErrorGroups().get(0).getSessions().get(0).getBusinessDescription());
+        verify(courtScheduleRepository, never()).save(any());
     }
 
     @Test
@@ -3775,7 +3910,7 @@ class SessionsServiceTest {
                 .courtroomName(COURTROOM_1)
                 .oucode(OU001_2)
                 .cppCourtRoomId(1)
-                .oucodeL3Name("Court House 1")
+                .oucodeL3Name(COURT_HOUSE_1)
                 .oucodeL2Code(OU001_2)
                 ;
 
@@ -3828,7 +3963,7 @@ class SessionsServiceTest {
                 .courtroomName(COURTROOM_1)
                 .oucode(OU001_2)
                 .cppCourtRoomId(1)
-                .oucodeL3Name("Court House 1")
+                .oucodeL3Name(COURT_HOUSE_1)
                 .oucodeL2Code(OU001_2)
                 ;
 
