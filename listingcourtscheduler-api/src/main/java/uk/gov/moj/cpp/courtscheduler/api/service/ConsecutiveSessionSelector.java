@@ -1,13 +1,16 @@
 package uk.gov.moj.cpp.courtscheduler.api.service;
 
 import uk.gov.moj.cpp.courtscheduler.common.utils.SessionAvailability;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
+import org.owasp.encoder.Encode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -70,22 +73,22 @@ public final class ConsecutiveSessionSelector {
             final int available = getEffectiveAvailableDuration(session);
             if (available < perDayMinutes) {
                 LOGGER.info("[CROWN-SAB] Overbooking session {} on {} for hearingId {} — {}mins available, {}mins needed, overbookingAllowed={} (court-calendar always-assign rule)",
-                        session.getCourtScheduleId(), session.getSessionDate(), hearingId,
-                        available, perDayMinutes, session.isOverbookingAllowed());
+                        Encode.forJava(session.getCourtScheduleId()), session.getSessionDate(), Encode.forJava(hearingId),
+                        available, perDayMinutes, session.getOverbookingAllowed());
             }
         }
     }
 
-    static boolean areConsecutiveBusinessDays(final List<CourtSchedule> sessions, final String hearingId) {
+    /* package */ static boolean areConsecutiveBusinessDays(final List<CourtSchedule> sessions, final String hearingId) {
         for (int i = 1; i < sessions.size(); i++) {
             final LocalDate previousDate = sessions.get(i - 1).getSessionDate();
             final LocalDate currentDate = sessions.get(i).getSessionDate();
             final LocalDate expectedNextBusinessDay = SessionAvailability.getNextBusinessDay(previousDate);
             if (!currentDate.equals(expectedNextBusinessDay)) {
                 LOGGER.info("[MULTIDAY-SEARCH] hearingId: {}, gap detected between {} ({}) and {} ({}), expected next business day: {}",
-                        hearingId,
-                        sessions.get(i - 1).getCourtScheduleId(), previousDate,
-                        sessions.get(i).getCourtScheduleId(), currentDate,
+                        Encode.forJava(hearingId),
+                        Encode.forJava(sessions.get(i - 1).getCourtScheduleId()), previousDate,
+                        Encode.forJava(sessions.get(i).getCourtScheduleId()), currentDate,
                         expectedNextBusinessDay);
                 return false;
             }
@@ -93,9 +96,9 @@ public final class ConsecutiveSessionSelector {
         return true;
     }
 
-    static List<CourtSchedule> dedupeByDatePreferringBookable(
+    /* package */ static List<CourtSchedule> dedupeByDatePreferringBookable(
             final List<CourtSchedule> sessions, final int requiredPerDayMinutes) {
-        final java.util.LinkedHashMap<LocalDate, CourtSchedule> byDate = new java.util.LinkedHashMap<>();
+        final Map<LocalDate, CourtSchedule> byDate = new LinkedHashMap<>();
         for (final CourtSchedule cs : sessions) {
             if (cs.getSessionDate() == null) {
                 continue;
@@ -117,13 +120,13 @@ public final class ConsecutiveSessionSelector {
         }
         if (existingFits) {
             // both fit: prefer NOT-overbookingAllowed, matching slot-search's preferNonOverbooking
-            return existing.isOverbookingAllowed() && !incoming.isOverbookingAllowed() ? incoming : existing;
+            return existing.getOverbookingAllowed() && !incoming.getOverbookingAllowed() ? incoming : existing;
         }
         // neither fits: prefer the row where overbooking is explicitly allowed
-        return !existing.isOverbookingAllowed() && incoming.isOverbookingAllowed() ? incoming : existing;
+        return !existing.getOverbookingAllowed() && incoming.getOverbookingAllowed() ? incoming : existing;
     }
 
-    static int getEffectiveAvailableDuration(final CourtSchedule cs) {
+    /* package */ static int getEffectiveAvailableDuration(final CourtSchedule cs) {
         return SessionAvailability.getEffectiveAvailableDuration(cs);
     }
 

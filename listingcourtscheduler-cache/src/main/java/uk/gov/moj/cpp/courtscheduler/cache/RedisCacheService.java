@@ -15,6 +15,7 @@ import io.lettuce.core.SetArgs;
 import io.lettuce.core.SocketOptions;
 import io.lettuce.core.api.StatefulRedisConnection;
 import io.lettuce.core.api.sync.RedisCommands;
+import org.owasp.encoder.Encode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,7 +47,7 @@ public class RedisCacheService implements CacheService{
     @Value("${redis.common-cache.key-ttl-seconds:86400}")
     private String ttlSeconds;
 
-    private RedisClient redisClient = null;
+    private RedisClient redisClient;
 
     @Override
     public String add(final String key, final String value) {
@@ -101,52 +102,52 @@ public class RedisCacheService implements CacheService{
     }
 
     private String executeAddCommand(final String key, final String value, final Integer timeToLive) {
-        try (final StatefulRedisConnection<String, String> connection = this.redisClient.connect()) {
+        try (StatefulRedisConnection<String, String> connection = this.redisClient.connect()) {
             final RedisCommands<String, String> command = connection.sync();
             final SetArgs args = new SetArgs().ex(timeToLive);
             return command.set(key, value, args);
         } catch (final RedisConnectionException redisConnectionException) {
-            LOGGER.warn("Exception in RedisCache executeAddCommand() - {}", redisConnectionException.getMessage(), redisConnectionException);
+            LOGGER.warn("Exception in RedisCache executeAddCommand() - {}", Encode.forJava(redisConnectionException.getMessage()), redisConnectionException);
             return null;
         }
     }
 
     @SuppressWarnings({"squid:S2221"})
     private String executeGetCommand(final String key) {
-        try (final StatefulRedisConnection<String, String> connection = this.redisClient.connect()) {
+        try (StatefulRedisConnection<String, String> connection = this.redisClient.connect()) {
             final RedisCommands<String, String> command = connection.sync();
             return command.get(key);
         } catch (final RedisConnectionException redisConnectionException) {
-            LOGGER.warn("Exception in RedisCache executeGetCommand() - {} ", redisConnectionException.getMessage(), redisConnectionException);
+            LOGGER.warn("Exception in RedisCache executeGetCommand() - {} ", Encode.forJava(redisConnectionException.getMessage()), redisConnectionException);
             return null;
         }
     }
 
     private boolean executeRemoveCommand(final String key) {
-        try (final StatefulRedisConnection<String, String> connection = this.redisClient.connect()) {
+        try (StatefulRedisConnection<String, String> connection = this.redisClient.connect()) {
             final RedisCommands<String, String> command = connection.sync();
             LOGGER.info("Cache DEL:Key:{}", key);
             command.del(key);
             return true;
         } catch (final RedisConnectionException redisConnectionException) {
-            LOGGER.warn("Exception in RedisCache executeRemoveCommand() - {} ", redisConnectionException.getMessage(), redisConnectionException);
+            LOGGER.warn("Exception in RedisCache executeRemoveCommand() - {} ", Encode.forJava(redisConnectionException.getMessage()), redisConnectionException);
             return false;
         }
     }
 
     private String executeFlushAllCommand() {
-        try (final StatefulRedisConnection<String, String> connection = this.redisClient.connect()) {
+        try (StatefulRedisConnection<String, String> connection = this.redisClient.connect()) {
             final RedisCommands<String, String> command = connection.sync();
             return command.flushdb();
         } catch (final RedisConnectionException redisConnectionException) {
-            LOGGER.warn("Exception in RedisCache executeFlushAllCommand() - {}", redisConnectionException.getMessage(), redisConnectionException);
+            LOGGER.warn("Exception in RedisCache executeFlushAllCommand() - {}", Encode.forJava(redisConnectionException.getMessage()), redisConnectionException);
             return null;
         }
     }
 
     private void setRedisClient() {
         LOGGER.info("Redis host : {}", host);
-        final String keyPart = ("none".equals(this.key) ? "" : this.key + "@");
+        final String keyPart = "none".equals(this.key) ? "" : this.key + "@";
         final RedisURI redisURI = RedisURI.create("redis://" + keyPart + host + ":" + port + "/" + DB_NAME);
         redisURI.setSsl(Boolean.parseBoolean(useSsl));
 

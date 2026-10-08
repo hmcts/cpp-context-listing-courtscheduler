@@ -7,9 +7,9 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataMapperService;
-import uk.gov.moj.cpp.courtscheduler.domain.AssignJudiciariesRequest;
-import uk.gov.moj.cpp.courtscheduler.domain.Judiciary;
-import uk.gov.moj.cpp.courtscheduler.domain.JudiciaryAssignment;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.Judiciary;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.AssignJudiciariesRequest;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.JudiciaryAssignment;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 
@@ -28,6 +28,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class AssignJudiciariesApiValidatorTest {
+    private static final String ERROR_MESSAGE = "errorMessage";
+    private static final String JUDICIARY_1 = "judiciary-1";
+    private static final String NOT_A_UUID = "not-a-uuid";
+
 
     @Mock
     private ReferenceDataMapperService referenceDataMapperService;
@@ -40,21 +44,17 @@ class AssignJudiciariesApiValidatorTest {
 
     @Test
     void shouldReturnEmptyWhenValid() {
-        final String judiciaryId = "judiciary-1";
+        final String judiciaryId = JUDICIARY_1;
         final String sessionId = UUID.randomUUID().toString();
-        final JudiciaryAssignment assignment = JudiciaryAssignment.builder()
-                .withJudiciaryId(judiciaryId)
-                .withSessionIds(List.of(sessionId))
-                .withIsDeputy(false)
-                .withIsBenchChairman(true)
-                .build();
-        final AssignJudiciariesRequest request = AssignJudiciariesRequest.builder()
-                .addJudiciary(assignment)
-                .build();
+        final JudiciaryAssignment assignment = new JudiciaryAssignment()
+                .judiciaryId(judiciaryId)
+                .sessionIds(List.of(sessionId))
+                .isDeputy(false)
+                .isBenchChairman(true);
+        final AssignJudiciariesRequest request = new AssignJudiciariesRequest()
+                .judiciaries(List.of(assignment));
 
-        final Judiciary judiciary = Judiciary.JudiciaryBuilder.aJudiciary()
-                .withId(judiciaryId)
-                .build();
+        final Judiciary judiciary = new Judiciary().id(judiciaryId);
         final CourtSchedule session = new CourtSchedule();
         session.setCourtScheduleId(sessionId);
 
@@ -70,41 +70,37 @@ class AssignJudiciariesApiValidatorTest {
 
     @Test
     void shouldReturnErrorsWhenMissingData() {
-        final JudiciaryAssignment assignment = JudiciaryAssignment.builder()
-                .withJudiciaryId("")
-                .withSessionIds(List.of("not-a-uuid"))
-                .withIsDeputy(false)
-                .withIsBenchChairman(true)
-                .build();
-        final AssignJudiciariesRequest request = AssignJudiciariesRequest.builder()
-                .addJudiciary(assignment)
-                .build();
+        final JudiciaryAssignment assignment = new JudiciaryAssignment()
+                .judiciaryId("")
+                .sessionIds(List.of(NOT_A_UUID))
+                .isDeputy(false)
+                .isBenchChairman(true);
+        final AssignJudiciariesRequest request = new AssignJudiciariesRequest()
+                .judiciaries(List.of(assignment));
 
         final JsonObject result = validator.validate(request);
 
-        assertTrue(result.containsKey("errorMessage"));
-        final String message = result.getString("errorMessage");
+        assertTrue(result.containsKey(ERROR_MESSAGE));
+        final String message = result.getString(ERROR_MESSAGE);
         assertTrue(message.contains("Judiciary id is mandatory"));
-        assertTrue(message.contains("not-a-uuid"));
+        assertTrue(message.contains(NOT_A_UUID));
     }
 
     @Test
     void shouldRequireAssignments() {
         final JsonObject result = validator.validate(null);
-        assertEquals("At least one judiciary assignment must be supplied", result.getString("errorMessage"));
+        assertEquals("At least one judiciary assignment must be supplied", result.getString(ERROR_MESSAGE));
     }
 
     @Test
     void shouldSkipValidationWhenSkipValidationsIsTrue() {
         // Even with invalid assignment (empty judiciaryId), validation should pass when skipValidations is true
-        final JudiciaryAssignment assignment = JudiciaryAssignment.builder()
-                .withJudiciaryId("")
-                .withSessionIds(List.of("not-a-uuid"))
-                .build();
-        final AssignJudiciariesRequest request = AssignJudiciariesRequest.builder()
-                .addJudiciary(assignment)
-                .withSkipValidations(true)
-                .build();
+        final JudiciaryAssignment assignment = new JudiciaryAssignment()
+                .judiciaryId("")
+                .sessionIds(List.of(NOT_A_UUID));
+        final AssignJudiciariesRequest request = new AssignJudiciariesRequest()
+                .judiciaries(List.of(assignment))
+                .skipValidations(true);
 
         final JsonObject result = validator.validate(request);
 
@@ -114,60 +110,52 @@ class AssignJudiciariesApiValidatorTest {
     @Test
     void shouldPerformValidationWhenSkipValidationsIsFalse() {
         // With invalid assignment and skipValidations false, validation should fail
-        final JudiciaryAssignment assignment = JudiciaryAssignment.builder()
-                .withJudiciaryId("")
-                .withSessionIds(List.of("not-a-uuid"))
-                .withIsDeputy(false)
-                .withIsBenchChairman(true)
-                .build();
-        final AssignJudiciariesRequest request = AssignJudiciariesRequest.builder()
-                .addJudiciary(assignment)
-                .withSkipValidations(false)
-                .build();
+        final JudiciaryAssignment assignment = new JudiciaryAssignment()
+                .judiciaryId("")
+                .sessionIds(List.of(NOT_A_UUID))
+                .isDeputy(false)
+                .isBenchChairman(true);
+        final AssignJudiciariesRequest request = new AssignJudiciariesRequest()
+                .judiciaries(List.of(assignment))
+                .skipValidations(false);
 
         final JsonObject result = validator.validate(request);
 
-        assertTrue(result.containsKey("errorMessage"));
-        final String message = result.getString("errorMessage");
+        assertTrue(result.containsKey(ERROR_MESSAGE));
+        final String message = result.getString(ERROR_MESSAGE);
         assertTrue(message.contains("Judiciary id is mandatory"));
     }
 
     @Test
     void shouldPerformValidationWhenSkipValidationsIsNotSet() {
         // When skipValidations is not set, should default to false and perform validation
-        final JudiciaryAssignment assignment = JudiciaryAssignment.builder()
-                .withJudiciaryId("")
-                .withSessionIds(List.of("not-a-uuid"))
-                .withIsDeputy(false)
-                .withIsBenchChairman(true)
-                .build();
-        final AssignJudiciariesRequest request = AssignJudiciariesRequest.builder()
-                .addJudiciary(assignment)
-                .build();
+        final JudiciaryAssignment assignment = new JudiciaryAssignment()
+                .judiciaryId("")
+                .sessionIds(List.of(NOT_A_UUID))
+                .isDeputy(false)
+                .isBenchChairman(true);
+        final AssignJudiciariesRequest request = new AssignJudiciariesRequest()
+                .judiciaries(List.of(assignment));
 
         final JsonObject result = validator.validate(request);
 
-        assertTrue(result.containsKey("errorMessage"));
-        final String message = result.getString("errorMessage");
+        assertTrue(result.containsKey(ERROR_MESSAGE));
+        final String message = result.getString(ERROR_MESSAGE);
         assertTrue(message.contains("Judiciary id is mandatory"));
     }
 
     @Test
     void shouldAcceptNullIsDeputy() {
-        final String judiciaryId = "judiciary-1";
+        final String judiciaryId = JUDICIARY_1;
         final String sessionId = UUID.randomUUID().toString();
-        final JudiciaryAssignment assignment = JudiciaryAssignment.builder()
-                .withJudiciaryId(judiciaryId)
-                .withSessionIds(List.of(sessionId))
-                .withIsBenchChairman(true)
-                .build();
-        final AssignJudiciariesRequest request = AssignJudiciariesRequest.builder()
-                .addJudiciary(assignment)
-                .build();
+        final JudiciaryAssignment assignment = new JudiciaryAssignment()
+                .judiciaryId(judiciaryId)
+                .sessionIds(List.of(sessionId))
+                .isBenchChairman(true);
+        final AssignJudiciariesRequest request = new AssignJudiciariesRequest()
+                .judiciaries(List.of(assignment));
 
-        final Judiciary judiciary = Judiciary.JudiciaryBuilder.aJudiciary()
-                .withId(judiciaryId)
-                .build();
+        final Judiciary judiciary = new Judiciary().id(judiciaryId);
         final CourtSchedule session = new CourtSchedule();
         session.setCourtScheduleId(sessionId);
 
@@ -183,20 +171,16 @@ class AssignJudiciariesApiValidatorTest {
 
     @Test
     void shouldAcceptNullIsBenchChairman() {
-        final String judiciaryId = "judiciary-1";
+        final String judiciaryId = JUDICIARY_1;
         final String sessionId = UUID.randomUUID().toString();
-        final JudiciaryAssignment assignment = JudiciaryAssignment.builder()
-                .withJudiciaryId(judiciaryId)
-                .withSessionIds(List.of(sessionId))
-                .withIsDeputy(false)
-                .build();
-        final AssignJudiciariesRequest request = AssignJudiciariesRequest.builder()
-                .addJudiciary(assignment)
-                .build();
+        final JudiciaryAssignment assignment = new JudiciaryAssignment()
+                .judiciaryId(judiciaryId)
+                .sessionIds(List.of(sessionId))
+                .isDeputy(false);
+        final AssignJudiciariesRequest request = new AssignJudiciariesRequest()
+                .judiciaries(List.of(assignment));
 
-        final Judiciary judiciary = Judiciary.JudiciaryBuilder.aJudiciary()
-                .withId(judiciaryId)
-                .build();
+        final Judiciary judiciary = new Judiciary().id(judiciaryId);
         final CourtSchedule session = new CourtSchedule();
         session.setCourtScheduleId(sessionId);
 
@@ -212,19 +196,15 @@ class AssignJudiciariesApiValidatorTest {
 
     @Test
     void shouldAcceptNullIsDeputyAndIsBenchChairman() {
-        final String judiciaryId = "judiciary-1";
+        final String judiciaryId = JUDICIARY_1;
         final String sessionId = UUID.randomUUID().toString();
-        final JudiciaryAssignment assignment = JudiciaryAssignment.builder()
-                .withJudiciaryId(judiciaryId)
-                .withSessionIds(List.of(sessionId))
-                .build();
-        final AssignJudiciariesRequest request = AssignJudiciariesRequest.builder()
-                .addJudiciary(assignment)
-                .build();
+        final JudiciaryAssignment assignment = new JudiciaryAssignment()
+                .judiciaryId(judiciaryId)
+                .sessionIds(List.of(sessionId));
+        final AssignJudiciariesRequest request = new AssignJudiciariesRequest()
+                .judiciaries(List.of(assignment));
 
-        final Judiciary judiciary = Judiciary.JudiciaryBuilder.aJudiciary()
-                .withId(judiciaryId)
-                .build();
+        final Judiciary judiciary = new Judiciary().id(judiciaryId);
         final CourtSchedule session = new CourtSchedule();
         session.setCourtScheduleId(sessionId);
 
@@ -242,13 +222,11 @@ class AssignJudiciariesApiValidatorTest {
     void shouldReturnErrorWhenJudiciaryNotFound() {
         final String judiciaryId = "non-existent-judiciary";
         final String sessionId = UUID.randomUUID().toString();
-        final JudiciaryAssignment assignment = JudiciaryAssignment.builder()
-                .withJudiciaryId(judiciaryId)
-                .withSessionIds(List.of(sessionId))
-                .build();
-        final AssignJudiciariesRequest request = AssignJudiciariesRequest.builder()
-                .addJudiciary(assignment)
-                .build();
+        final JudiciaryAssignment assignment = new JudiciaryAssignment()
+                .judiciaryId(judiciaryId)
+                .sessionIds(List.of(sessionId));
+        final AssignJudiciariesRequest request = new AssignJudiciariesRequest()
+                .judiciaries(List.of(assignment));
 
         final CourtSchedule session = new CourtSchedule();
         session.setCourtScheduleId(sessionId);
@@ -260,26 +238,22 @@ class AssignJudiciariesApiValidatorTest {
 
         final JsonObject result = validator.validate(request);
 
-        assertTrue(result.containsKey("errorMessage"));
-        final String message = result.getString("errorMessage");
+        assertTrue(result.containsKey(ERROR_MESSAGE));
+        final String message = result.getString(ERROR_MESSAGE);
         assertTrue(message.contains("Judiciary not found: " + judiciaryId));
     }
 
     @Test
     void shouldReturnErrorWhenSessionNotFound() {
-        final String judiciaryId = "judiciary-1";
+        final String judiciaryId = JUDICIARY_1;
         final String sessionId = UUID.randomUUID().toString();
-        final JudiciaryAssignment assignment = JudiciaryAssignment.builder()
-                .withJudiciaryId(judiciaryId)
-                .withSessionIds(List.of(sessionId))
-                .build();
-        final AssignJudiciariesRequest request = AssignJudiciariesRequest.builder()
-                .addJudiciary(assignment)
-                .build();
+        final JudiciaryAssignment assignment = new JudiciaryAssignment()
+                .judiciaryId(judiciaryId)
+                .sessionIds(List.of(sessionId));
+        final AssignJudiciariesRequest request = new AssignJudiciariesRequest()
+                .judiciaries(List.of(assignment));
 
-        final Judiciary judiciary = Judiciary.JudiciaryBuilder.aJudiciary()
-                .withId(judiciaryId)
-                .build();
+        final Judiciary judiciary = new Judiciary().id(judiciaryId);
 
         when(referenceDataMapperService.findById(eq(judiciaryId)))
                 .thenReturn(Optional.of(judiciary));
@@ -288,8 +262,8 @@ class AssignJudiciariesApiValidatorTest {
 
         final JsonObject result = validator.validate(request);
 
-        assertTrue(result.containsKey("errorMessage"));
-        final String message = result.getString("errorMessage");
+        assertTrue(result.containsKey(ERROR_MESSAGE));
+        final String message = result.getString(ERROR_MESSAGE);
         assertTrue(message.contains("Session not found: " + sessionId));
     }
 
@@ -297,13 +271,11 @@ class AssignJudiciariesApiValidatorTest {
     void shouldReturnErrorsForBothJudiciaryAndSessionNotFound() {
         final String judiciaryId = "non-existent-judiciary";
         final String sessionId = UUID.randomUUID().toString();
-        final JudiciaryAssignment assignment = JudiciaryAssignment.builder()
-                .withJudiciaryId(judiciaryId)
-                .withSessionIds(List.of(sessionId))
-                .build();
-        final AssignJudiciariesRequest request = AssignJudiciariesRequest.builder()
-                .addJudiciary(assignment)
-                .build();
+        final JudiciaryAssignment assignment = new JudiciaryAssignment()
+                .judiciaryId(judiciaryId)
+                .sessionIds(List.of(sessionId));
+        final AssignJudiciariesRequest request = new AssignJudiciariesRequest()
+                .judiciaries(List.of(assignment));
 
         when(referenceDataMapperService.findById(eq(judiciaryId)))
                 .thenReturn(Optional.empty());
@@ -312,10 +284,9 @@ class AssignJudiciariesApiValidatorTest {
 
         final JsonObject result = validator.validate(request);
 
-        assertTrue(result.containsKey("errorMessage"));
-        final String message = result.getString("errorMessage");
+        assertTrue(result.containsKey(ERROR_MESSAGE));
+        final String message = result.getString(ERROR_MESSAGE);
         assertTrue(message.contains("Judiciary not found: " + judiciaryId));
         assertTrue(message.contains("Session not found: " + sessionId));
     }
 }
-

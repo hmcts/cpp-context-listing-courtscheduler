@@ -2,10 +2,10 @@ package uk.gov.moj.cpp.courtscheduler.api.service;
 
 import uk.gov.moj.cpp.courtscheduler.api.validator.ValidationException;
 import uk.gov.moj.cpp.courtscheduler.common.service.SessionsService;
-import uk.gov.moj.cpp.courtscheduler.domain.AllocatedSlot;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
-import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalSlot;
-import uk.gov.moj.cpp.courtscheduler.domain.Result;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.AllocatedSlot;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.ProvisionalSlot;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.Result;
 import uk.gov.moj.cpp.courtscheduler.exception.ConfirmedBookingExistsException;
 import uk.gov.moj.cpp.courtscheduler.exception.NoCapacityException;
 import uk.gov.moj.cpp.courtscheduler.exception.NoSessionAvailableException;
@@ -14,7 +14,6 @@ import uk.gov.moj.cpp.courtscheduler.repository.AllocatedListingRepository;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
 
-import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
@@ -98,11 +97,10 @@ public class ReservationService {
                                  final String bookingId,
                                  final String hearingStartTime,
                                  final Integer duration) {
-        return reserveAll(bookingId, List.of(ProvisionalSlot.ProvisionalSlotBuilder.aProvisionalSlot()
-                .withCourtScheduleId(sessionId)
-                .withHearingStartTime(hearingStartTime)
-                .withDuration(duration)
-                .build())).get(0);
+        return reserveAll(bookingId, List.of(new ProvisionalSlot()
+                .courtScheduleId(sessionId)
+                .hearingStartTime(hearingStartTime)
+                .duration(duration))).get(0);
     }
 
     /**
@@ -150,7 +148,7 @@ public class ReservationService {
         // releaseExistingHearingAllocations = false: there is no hearing_id on these rows to
         // release by, and the booking-scoped release above has already run.
         final Result result = courtScheduleRepository.saveBookedSlots(slots, false, false, false);
-        if (!result.isSuccess()) {
+        if (!Boolean.TRUE.equals(result.getSuccess())) {
             throw new NoCapacityException(
                     "Could not reserve sessions for booking " + bookingId + ": " + result.getMsg());
         }
@@ -185,7 +183,7 @@ public class ReservationService {
 
         final String anchorId = requested.getCourtScheduleId();
         final CourtSchedule anchor = courtScheduleRepository.getCourtSchedulesByIdList(List.of(anchorId)).stream()
-                .filter(CourtSchedule::isActive)
+                .filter(cs -> Boolean.TRUE.equals(cs.getActive()))
                 .findFirst()
                 .orElseThrow(() -> new NoSessionAvailableException("No session found for sessionId " + anchorId));
 
@@ -193,7 +191,7 @@ public class ReservationService {
         // SessionsService#validateSessionAvailabilityListMode branches to its slot-based validator
         // before it ever reaches validateListModeDurationBased/validateListModeMultiDay, so a
         // slot-based anchor is never a Crown multi-day pick, whatever duration happens to be sent.
-        if (anchor.isSlotBased() || !JURISDICTION_CROWN.equalsIgnoreCase(anchor.getJurisdiction())) {
+        if (Boolean.TRUE.equals(anchor.getSlotBased()) || !JURISDICTION_CROWN.equalsIgnoreCase(anchor.getJurisdiction())) {
             return Optional.empty();
         }
 
@@ -232,9 +230,9 @@ public class ReservationService {
         slot.setSessionDate(session.getSessionDate().toString());
         slot.setDuration(perDayMinutes);
         if (session.getSessionStartTime() != null) {
-            slot.setHearingStartTime(DateUtils.toIsoString(new Timestamp(session.getSessionStartTime().getTime())));
+            slot.setHearingStartTime(DateUtils.toIsoString(session.getSessionStartTime()));
         }
-        slot.setSlotBased(session.isSlotBased());
+        slot.setSlotBased(session.getSlotBased());
         slot.setSource(SOURCE_RESERVED_UNCONFIRMED);
         slot.setExpiresAt(LocalDate.now(ZoneOffset.UTC));
         return slot;
@@ -271,7 +269,7 @@ public class ReservationService {
         // courtScheduleId/isOverbookingAllowed/active — not ouCode/sessionDate, which this method
         // needs. getCourtSchedulesByIdList uses the full-fields projection instead.
         final CourtSchedule session = courtScheduleRepository.getCourtSchedulesByIdList(List.of(sessionId)).stream()
-                .filter(CourtSchedule::isActive)
+                .filter(cs -> Boolean.TRUE.equals(cs.getActive()))
                 .findFirst()
                 .orElseThrow(() -> new NoSessionAvailableException("No session found for sessionId " + sessionId));
 
@@ -280,7 +278,7 @@ public class ReservationService {
         // missing duration to 0 would write a row that holds no capacity at all, so the session
         // stays bookable by the next clerk while this booking believes it holds it. Reject instead
         // of guessing a default.
-        if (!session.isSlotBased() && (duration == null || duration <= 0)) {
+        if (!Boolean.TRUE.equals(session.getSlotBased()) && (duration == null || duration <= 0)) {
             throw new ValidationException(Json.createObjectBuilder()
                     .add(ERROR_MESSAGE, "duration is required and must be greater than zero for duration-based session "
                             + sessionId)
@@ -316,7 +314,7 @@ public class ReservationService {
         slot.setSessionDate(session.getSessionDate().toString());
         slot.setDuration(duration == null ? 0 : duration);
         slot.setHearingStartTime(requested.getHearingStartTime());
-        slot.setSlotBased(session.isSlotBased());
+        slot.setSlotBased(session.getSlotBased());
         slot.setSource(SOURCE_RESERVED_UNCONFIRMED);
         // Expires at the end of the day the reservation is made, as a calendar date rather than an
         // instant — the purge job only cares whether "today" has moved past this date, not the

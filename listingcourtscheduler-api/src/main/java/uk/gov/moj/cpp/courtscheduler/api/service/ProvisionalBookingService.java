@@ -6,8 +6,8 @@ import static org.apache.commons.lang3.StringUtils.isNotBlank;
 import static uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant.PROVISIONAL_SLOTS;
 
 import uk.gov.moj.cpp.courtscheduler.common.converter.ListToJsonArrayConverter;
-import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalBookingInfo;
-import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalBookingSlots;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.ProvisionalBookingInfo;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.ProvisionalBookingSlots;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary;
@@ -203,7 +203,7 @@ public class ProvisionalBookingService {
      * either source.
      */
     private void attachJudiciaries(final List<ProvisionalBookingInfo> provisionalBookingInfoArrayList) {
-        final List<uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary> courtScheduleJudiciariesArrayList = new ArrayList<>();
+        final List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtScheduleJudiciary> courtScheduleJudiciariesArrayList = new ArrayList<>();
         final ModelMapper modelMapper = new ModelMapper();
 
         final List<CourtSchedule> courtSchedulesWithListingProfile = provisionalBookingInfoArrayList.stream()
@@ -217,10 +217,10 @@ public class ProvisionalBookingService {
                 .toList();
         //judiciary details are not required for provisional bookings without listing profile(ghost rota)
         if (isNotEmpty(courtSchedulesWithListingProfile)) {
-            List<CourtScheduleJudiciary> courtScheduleJudiciaries = courtScheduleRepository.getCourtScheduleJudiciariesForProvisionalBooking(courtSchedulesWithListingProfile);
+            final List<CourtScheduleJudiciary> courtScheduleJudiciaries = courtScheduleRepository.getCourtScheduleJudiciariesForProvisionalBooking(courtSchedulesWithListingProfile);
             courtScheduleJudiciaries.forEach(courtScheduleJudiciary -> {
-                final uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary domain =
-                        modelMapper.map(courtScheduleJudiciary, uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary.class);
+                final uk.gov.moj.cpp.courtscheduler.openapi.model.CourtScheduleJudiciary domain =
+                        modelMapper.map(courtScheduleJudiciary, uk.gov.moj.cpp.courtscheduler.openapi.model.CourtScheduleJudiciary.class);
                 domain.setEmailAddress(courtScheduleJudiciary.getEmail());
                 courtScheduleJudiciariesArrayList.add(domain);
             });
@@ -244,51 +244,52 @@ public class ProvisionalBookingService {
      */
     private ProvisionalBookingInfo buildInfoFromReservation(final AllocatedListing reservation) {
         final CourtSchedule courtSchedule = courtScheduleRepository.findBy(reservation.getCourtScheduleId());
-        return new ProvisionalBookingInfo.ProvisionalBookingInfoBuilder()
-                .withCourtScheduleId(courtSchedule.getCourtScheduleId())
-                .withListingProfileId(courtSchedule.getListingProfileId())
-                .withOuCode(courtSchedule.getOuCode())
-                .withCourtHouseId(courtSchedule.getCourtHouseId())
-                .withCourtHouseName(courtSchedule.getCourtHouseName())
-                .withCourtRoomId(courtSchedule.getCourtRoomId())
-                .withCourtRoomNumber(courtSchedule.getCourtRoomNumber())
-                .withCourtRoomName(courtSchedule.getCourtRoomName())
-                .withBusinessType(courtSchedule.getBusinessType())
-                .withCourtSession(courtSchedule.getCourtSession())
-                .withSessionDate(courtSchedule.getSessionDate())
-                .withPanel(courtSchedule.getPanel())
-                .withOperationalUnit(courtSchedule.getOperationalUnit())
-                .withAvailableSlots(courtSchedule.getAvailableSlots())
-                .withAvailableDuration(courtSchedule.getAvailableDuration())
-                .withMaxSlots(courtSchedule.getMaxSlots())
-                .withMaxDuration(courtSchedule.getMaxDuration())
-                .withBookingId(reservation.getBookingId())
-                .withHearingStartTime(reservation.getHearingStartTime())
-                .build();
+        return new ProvisionalBookingInfo()
+                .courtScheduleId(courtSchedule.getCourtScheduleId())
+                .listingProfileId(courtSchedule.getListingProfileId())
+                .ouCode(courtSchedule.getOuCode())
+                .courtHouseId(courtSchedule.getCourtHouseId())
+                .courtHouseName(courtSchedule.getCourtHouseName())
+                .courtRoomId(courtSchedule.getCourtRoomId())
+                .courtRoomNumber(courtSchedule.getCourtRoomNumber())
+                .courtRoomName(courtSchedule.getCourtRoomName())
+                .businessType(courtSchedule.getBusinessType())
+                .courtSession(courtSchedule.getCourtSession())
+                .sessionDate(courtSchedule.getSessionDate())
+                .panel(courtSchedule.getPanel())
+                .operationalUnit(courtSchedule.getOperationalUnit())
+                .availableSlots(courtSchedule.getAvailableSlots())
+                .availableDuration(courtSchedule.getAvailableDuration())
+                .maxSlots(courtSchedule.getMaxSlots())
+                .maxDuration(courtSchedule.getMaxDuration())
+                .bookingId(reservation.getBookingId())
+                .hearingStartTime(reservation.getHearingStartTime() == null ? null
+                        : reservation.getHearingStartTime().atOffset(java.time.ZoneOffset.UTC));
     }
 
     private ProvisionalBookingInfo buildProvisionalInfo(final ProvisionalBooking provisionalBooking) {
-        final ProvisionalBookingInfo.ProvisionalBookingInfoBuilder provisionalBookingInfoBuilder = new ProvisionalBookingInfo.ProvisionalBookingInfoBuilder();
-        CourtSchedule courtSchedule = provisionalBooking.getProvisionalBookingKey().getCourtSchedule();
-        provisionalBookingInfoBuilder.withCourtScheduleId(courtSchedule.getCourtScheduleId())
-                .withListingProfileId(courtSchedule.getListingProfileId())
-                .withOuCode(courtSchedule.getOuCode())
-                .withCourtHouseId(courtSchedule.getCourtHouseId())
-                .withCourtHouseName(courtSchedule.getCourtHouseName())
-                .withCourtRoomId(courtSchedule.getCourtRoomId())
-                .withCourtRoomNumber(courtSchedule.getCourtRoomNumber())
-                .withCourtRoomName(courtSchedule.getCourtRoomName())
-                .withBusinessType(courtSchedule.getBusinessType())
-                .withCourtSession(courtSchedule.getCourtSession())
-                .withSessionDate(courtSchedule.getSessionDate())
-                .withPanel(courtSchedule.getPanel())
-                .withOperationalUnit(courtSchedule.getOperationalUnit())
-                .withAvailableSlots(courtSchedule.getAvailableSlots())
-                .withAvailableDuration(courtSchedule.getAvailableDuration())
-                .withMaxSlots(courtSchedule.getMaxSlots())
-                .withMaxDuration(courtSchedule.getMaxDuration())
-                .withBookingId(provisionalBooking.getProvisionalBookingKey().getBookingId())
-                .withHearingStartTime(provisionalBooking.getHearingStartTime());
-        return provisionalBookingInfoBuilder.build();
+        final ProvisionalBookingInfo provisionalBookingInfoBuilder = new ProvisionalBookingInfo();
+        final CourtSchedule courtSchedule = provisionalBooking.getProvisionalBookingKey().getCourtSchedule();
+        provisionalBookingInfoBuilder.courtScheduleId(courtSchedule.getCourtScheduleId())
+                .listingProfileId(courtSchedule.getListingProfileId())
+                .ouCode(courtSchedule.getOuCode())
+                .courtHouseId(courtSchedule.getCourtHouseId())
+                .courtHouseName(courtSchedule.getCourtHouseName())
+                .courtRoomId(courtSchedule.getCourtRoomId())
+                .courtRoomNumber(courtSchedule.getCourtRoomNumber())
+                .courtRoomName(courtSchedule.getCourtRoomName())
+                .businessType(courtSchedule.getBusinessType())
+                .courtSession(courtSchedule.getCourtSession())
+                .sessionDate(courtSchedule.getSessionDate())
+                .panel(courtSchedule.getPanel())
+                .operationalUnit(courtSchedule.getOperationalUnit())
+                .availableSlots(courtSchedule.getAvailableSlots())
+                .availableDuration(courtSchedule.getAvailableDuration())
+                .maxSlots(courtSchedule.getMaxSlots())
+                .maxDuration(courtSchedule.getMaxDuration())
+                .bookingId(provisionalBooking.getProvisionalBookingKey().getBookingId())
+                .hearingStartTime(provisionalBooking.getHearingStartTime() == null ? null
+                        : provisionalBooking.getHearingStartTime().atOffset(java.time.ZoneOffset.UTC));
+        return provisionalBookingInfoBuilder;
     }
 }

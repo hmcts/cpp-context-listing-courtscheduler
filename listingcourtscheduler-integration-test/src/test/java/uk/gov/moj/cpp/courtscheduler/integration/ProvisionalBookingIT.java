@@ -16,7 +16,7 @@ import static uk.gov.moj.cpp.platform.test.data.utils.FileUtil.getPayload;
 
 import uk.gov.moj.cpp.courtscheduler.integration.utils.RequestParams;
 import uk.gov.moj.cpp.courtscheduler.integration.utils.ResponseData;
-import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalSlot;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.ProvisionalSlot;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary;
@@ -36,7 +36,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.json.JSONObject;
 import org.junit.jupiter.api.Test;
 
-public class ProvisionalBookingIT extends AbstractIT {
+class ProvisionalBookingIT extends AbstractIT {
 
     private final String RELATIVE_PATH = "/unconfirmedBooking";
 
@@ -53,8 +53,8 @@ public class ProvisionalBookingIT extends AbstractIT {
         final Response response = postCommand(RELATIVE_PATH, "application/vnd.courtscheduler.create.unconfirmed.booking+json", SYSTEM_USER_ID, provisionalBookingPayload);
 
         assertThat(response.getStatus(), is(OK.getStatusCode()));
-        String responseString = response.readEntity(String.class); // Ensure to read the entity as String
-        JSONObject responseJson = new JSONObject(responseString);
+        final String responseString = response.readEntity(String.class); // Ensure to read the entity as String
+        final JSONObject responseJson = new JSONObject(responseString);
         assertThat(responseJson.get("bookingId"), notNullValue());
     }
 
@@ -116,11 +116,11 @@ public class ProvisionalBookingIT extends AbstractIT {
 
     @Test
     void shouldRetrieveProvisionalBooking() throws Exception {
-        String courtScheduleId = UUID.randomUUID().toString();
-        String bookingId = UUID.randomUUID().toString();
+        final String courtScheduleId = UUID.randomUUID().toString();
+        final String bookingId = UUID.randomUUID().toString();
 
 
-        CourtSchedule courtSchedule = RANDOM.nextObject(CourtSchedule.class);
+        final CourtSchedule courtSchedule = RANDOM.nextObject(CourtSchedule.class);
         courtSchedule.setCourtScheduleId(courtScheduleId);
         databaseSeeder.insertCourtSchedule(courtSchedule);
 
@@ -133,13 +133,13 @@ public class ProvisionalBookingIT extends AbstractIT {
         courtScheduleJudiciary.setCourtListingProfileId(courtScheduleJudiciary.getCourtListingProfileId());
         databaseSeeder.saveJudiciarySchedule(courtScheduleJudiciary);
 
-        final ProvisionalSlot provisionalSlot = new ProvisionalSlot(courtSchedule.getCourtScheduleId(), "2020-01-01T11:00:00.000Z");
+        final ProvisionalSlot provisionalSlot = new ProvisionalSlot().courtScheduleId(courtSchedule.getCourtScheduleId()).hearingStartTime("2020-01-01T11:00:00.000Z");
         databaseSeeder.bookSlots(List.of(provisionalSlot), bookingId);
 
         String provisionalBooking = getPayload("courtscheduler.get.unconfirmed.booking.json");
         provisionalBooking = provisionalBooking.replace("BOOKING_ID", bookingId);
-        ObjectMapper mapper = new ObjectMapper();
-        Map<String, Object> map = mapper.readValue(provisionalBooking, new TypeReference<>() {
+        final ObjectMapper mapper = new ObjectMapper();
+        final Map<String, Object> map = mapper.readValue(provisionalBooking, new TypeReference<>() {
         });
 
         final RequestParams requestParams = getRequestParams(RELATIVE_PATH, "application/vnd.courtscheduler.get.unconfirmed.booking+json", SYSTEM_USER_ID, map);
@@ -320,7 +320,7 @@ public class ProvisionalBookingIT extends AbstractIT {
                 + "anything but SHARED here is what would block a legitimate re-share",
                 bookingStatusOf(bookingId), is("SHARED"));
 
-        assertThat(bookingStatusOf(UUID.randomUUID().toString()), is("NONE"));
+        assertThat(bookingStatusOf(UUID.randomUUID().toString()), is("NOT_FOUND"));
     }
 
     /** Confirmed rows, which are the only ones carrying a real {@code hearing_id}. */

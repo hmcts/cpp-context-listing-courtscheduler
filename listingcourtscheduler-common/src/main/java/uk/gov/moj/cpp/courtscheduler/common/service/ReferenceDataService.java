@@ -17,13 +17,12 @@ import static uk.gov.moj.cpp.courtscheduler.common.utils.VenueNameComparator.mat
 import static uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog.RotaProcessLogBuilder.rotaProcessLog;
 
 import uk.gov.moj.cpp.courtscheduler.common.JsonObjects;
-import uk.gov.moj.cpp.courtscheduler.common.service.CommonPlatformQueryClient;
-import uk.gov.moj.cpp.courtscheduler.domain.BusinessType;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtRoomSessionAllocation;
-import uk.gov.moj.cpp.courtscheduler.domain.Judiciary;
-import uk.gov.moj.cpp.courtscheduler.domain.OrganisationUnit;
-import uk.gov.moj.cpp.courtscheduler.domain.Venue;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.BusinessType;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtRoom;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtRoomSessionAllocation;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.Judiciary;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.OrganisationUnit;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.Venue;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog;
 
 import java.time.LocalDate;
@@ -60,6 +59,8 @@ import org.slf4j.LoggerFactory;
 public class ReferenceDataService {
     private static final Logger LOGGER = LoggerFactory.getLogger(ReferenceDataService.class);
 
+    private static final int SINGLE_COURT_ROOM_COUNT = 1;
+
     private static final String REFERENCEDATA_BASE_PATH = "/referencedata-query-api/query/api/rest/referencedata";
     private static final String PUBLIC_HOLIDAYS_PATH = REFERENCEDATA_BASE_PATH + "/public-holidays";
     private static final String ROTA_BUSINESS_TYPES_PATH = REFERENCEDATA_BASE_PATH + "/rota-business-types";
@@ -92,10 +93,13 @@ public class ReferenceDataService {
     private static final String VENUE_NAME = "rotaVenueName";
     private static final String LOCATION_ID = "rotaLocationId";
 
+    private static final String ID = "id";
+    private static final String CPP_COURT_ROOM_ID = "cppCourtRoomId";
     private static final String COURT_DETAIL_NOT_FOUND = "COURT_DETAIL_NOT_FOUND";
     private static final String COURT_ROOM_FETCHED_BY_VENUE_NAME = "CourtRoom fetched by VenueName: %s%n,can't find by VenueId:%s%n";
     private static final String MULTIPLE_COURTROOMS_FOUND_BY_VENUE_NAME = "Multiple courtrooms found by VenueName : %s%n , but VenueId: %s%n selected by created_on";
     private static final String ALL = "ALL";
+    private static final String SEQ_ID = "seqId";
 
     @Inject
     private RotaProcessLogService rotaProcessLogService;
@@ -127,11 +131,11 @@ public class ReferenceDataService {
                 ROTA_COURT_ROOM_MAPPINGS_PATH, ACCEPT_ROTA_COURT_ROOM_MAPPINGS, Map.of());
         final int resultsCount = JsonObjects.getJsonArray(payload, CP_ROTA_COURT_ROOM_MAPPINGS).orElseThrow(() -> new RuntimeException("No courtrooms  found: ")).size();
         LOGGER.debug("Total courtrooms found: {}", resultsCount);
-        Set<String> seenCourtRoomIds = new HashSet<>();
-        Set<String> duplicateCourtRoomIds = new HashSet<>();
-        List<RotaProcessLog> errorLogs = new ArrayList<>();
+        final Set<String> seenCourtRoomIds = new HashSet<>();
+        final Set<String> duplicateCourtRoomIds = new HashSet<>();
+        final List<RotaProcessLog> errorLogs = new ArrayList<>();
 
-        List<CourtRoom> courtRooms = JsonObjects.getJsonArray(payload, CP_ROTA_COURT_ROOM_MAPPINGS)
+        final List<CourtRoom> courtRooms = JsonObjects.getJsonArray(payload, CP_ROTA_COURT_ROOM_MAPPINGS)
                 .orElseThrow(() -> new RuntimeException("No courtrooms found: "))
                 .stream()
                 .map(JsonObject.class::cast)
@@ -143,12 +147,17 @@ public class ReferenceDataService {
                             return null;
                         }
                         return toCourtRoom(jsonObject);
-                    } catch (Exception e) {
-                        LOGGER.error(format("Error while converting court room with ID: %d", jsonObject.getInt("cppCourtRoomId")), e);
+                    } catch (@SuppressWarnings("PMD.AvoidCatchingGenericException") // Deliberate broad safety net:
+                            // one malformed courtroom record must not abort mapping the rest of the batch, and
+                            // toCourtRoom()/JSON field access can throw a variety of unchecked exceptions
+                            // (NumberFormatException, ClassCastException, JsonException, NPE) depending on which
+                            // field is missing or malformed. The bad record is logged and skipped instead.
+                            final Exception e) {
+                        LOGGER.error(format("Error while converting court room with ID: %d", jsonObject.getInt(CPP_COURT_ROOM_ID)), e);
                         LOGGER.error(format("Skipping the failed records, %d records left", resultsCount - 1));
-                        String cppCourtRoomId =
-                                jsonObject.containsKey("cppCourtRoomId") && !jsonObject.isNull("cppCourtRoomId")
-                                        ? valueOf(jsonObject.getInt("cppCourtRoomId"))
+                        final String cppCourtRoomId =
+                                jsonObject.containsKey(CPP_COURT_ROOM_ID) && !jsonObject.isNull(CPP_COURT_ROOM_ID)
+                                        ? valueOf(jsonObject.getInt(CPP_COURT_ROOM_ID))
                                         : getStringOrElse(jsonObject, COURTROOM_ID, "unknown");
                         errorLogs.add(
                                 rotaProcessLog()
@@ -253,14 +262,14 @@ public class ReferenceDataService {
     public Optional<CourtRoom> getRotaCourtRoomByCourtRoomId(final String courtRoomId) {
         final JsonObject payload = commonPlatformQueryClient.getReferenceData(
                 ROTA_COURT_ROOM_MAPPINGS_PATH, ACCEPT_ROTA_COURT_ROOM_MAPPINGS, Map.of());
-        JsonArray courtRoomMappings = payload.getJsonArray(CP_ROTA_COURT_ROOM_MAPPINGS);
+        final JsonArray courtRoomMappings = payload.getJsonArray(CP_ROTA_COURT_ROOM_MAPPINGS);
         if (isNull(courtRoomMappings)) {
             throw new RuntimeException("No court room found: " + courtRoomId);
         }
-        List<CourtRoom> courtRoomList = courtRoomMappings.stream()
+        final List<CourtRoom> courtRoomList = courtRoomMappings.stream()
                 .map(JsonObject.class::cast)
                 .filter(jsonObject -> {
-                    JsonString id = jsonObject.getJsonString(COURTROOM_ID);
+                    final JsonString id = jsonObject.getJsonString(COURTROOM_ID);
                     return id != null && courtRoomId.equals(id.getString());
                 })
                 .map(this::toCourtRoom)
@@ -273,7 +282,7 @@ public class ReferenceDataService {
         final JsonObject payload = commonPlatformQueryClient.getReferenceData(
                 ROTA_COURT_ROOM_MAPPINGS_PATH, ACCEPT_ROTA_COURT_ROOM_MAPPINGS, Map.of());
         LOGGER.debug("getRotaCourtRoomByVenue called - request has been sent and the response payload : {}", payload);
-        JsonArray courtRoomMappings = payload.getJsonArray(CP_ROTA_COURT_ROOM_MAPPINGS);
+        final JsonArray courtRoomMappings = payload.getJsonArray(CP_ROTA_COURT_ROOM_MAPPINGS);
         if (isNull(courtRoomMappings)) {
             throw new RuntimeException(format("No court room found with venue: %d-%d-%s", venue.getLocationId(), venue.getVenueId(), venue.getVenueName()));
         }
@@ -292,7 +301,7 @@ public class ReferenceDataService {
         if (courtRoomOptional.isPresent()) {
             return courtRoomOptional;
         } else {
-            if (courtRoomList.size() > 1) {
+            if (courtRoomList.size() > SINGLE_COURT_ROOM_COUNT) {
                 exceptionMessages.put(format(MULTIPLE_COURTROOMS_FOUND_BY_VENUE_NAME, venue.getVenueName(), venue.getVenueId()), COURT_DETAIL_NOT_FOUND);
             } else {
                 exceptionMessages.put(format(COURT_ROOM_FETCHED_BY_VENUE_NAME, venue.getVenueName(), venue.getVenueId()), COURT_DETAIL_NOT_FOUND);
@@ -309,7 +318,7 @@ public class ReferenceDataService {
 
         final List<Judiciary> judiciaries = new ArrayList<>();
         JsonObjects.getJsonArray(payload, "judiciaries").ifPresent(judiciariesJsonArray -> {
-            for(JsonValue jsonValue: judiciariesJsonArray) {
+            for(final JsonValue jsonValue: judiciariesJsonArray) {
                 final JsonObject jsonObject = (JsonObject) jsonValue;
                 judiciaries.add(toJudiciary(jsonObject));
             }
@@ -333,7 +342,7 @@ public class ReferenceDataService {
 
         final List<Judiciary> judiciaries = new ArrayList<>();
         JsonObjects.getJsonArray(payload, "judiciaries").ifPresent(judiciariesJsonArray -> {
-            for(JsonValue jsonValue: judiciariesJsonArray) {
+            for(final JsonValue jsonValue: judiciariesJsonArray) {
                 final JsonObject jsonObject = (JsonObject) jsonValue;
                 judiciaries.add(toJudiciary(jsonObject));
             }
@@ -360,7 +369,7 @@ public class ReferenceDataService {
 
         final List<Judiciary> judiciaries = new ArrayList<>();
         JsonObjects.getJsonArray(payload, "judiciaries").ifPresent(judiciariesJsonArray -> {
-            for (JsonValue jsonValue : judiciariesJsonArray) {
+            for (final JsonValue jsonValue : judiciariesJsonArray) {
                 final JsonObject jsonObject = (JsonObject) jsonValue;
                 judiciaries.add(toJudiciaryFromSearchResult(jsonObject));
             }
@@ -373,46 +382,44 @@ public class ReferenceDataService {
      * Parses judiciary JSON from refdata search results; tolerates optional fields not present on full records.
      */
     private Judiciary toJudiciaryFromSearchResult(final JsonObject jsonObject) {
-        final List<uk.gov.moj.cpp.courtscheduler.domain.JudiciarySpecialismType> specialisms = new ArrayList<>();
+        final List<String> specialisms = new ArrayList<>();
         JsonObjects.getJsonArray(jsonObject, "specialisms").ifPresent(specialismsJsonArray -> {
-            for (JsonValue specialismValue : specialismsJsonArray) {
+            for (final JsonValue specialismValue : specialismsJsonArray) {
                 final String specialismString = specialismValue.getValueType() == JsonValue.ValueType.STRING
                         ? ((JsonString) specialismValue).getString()
                         : specialismValue.toString();
                 try {
-                    final uk.gov.moj.cpp.courtscheduler.domain.JudiciarySpecialismType specialismType =
-                            uk.gov.moj.cpp.courtscheduler.domain.JudiciarySpecialismType.valueOf(specialismString);
-                    specialisms.add(specialismType);
+                    uk.gov.moj.cpp.courtscheduler.domain.JudiciarySpecialismType.valueOf(specialismString);
+                    specialisms.add(specialismString);
                 } catch (IllegalArgumentException e) {
                     LOGGER.warn("Unknown specialism value received from referencedata service: {}", specialismString);
                 }
             }
         });
 
-        final Integer seqId = jsonObject.containsKey("seqId") && !jsonObject.isNull("seqId")
-                ? jsonObject.getInt("seqId")
+        final Integer seqId = jsonObject.containsKey(SEQ_ID) && !jsonObject.isNull(SEQ_ID)
+                ? jsonObject.getInt(SEQ_ID)
                 : null;
 
-        return Judiciary.JudiciaryBuilder.aJudiciary()
-                .withId(getStringOrElse(jsonObject, "id", null))
-                .withCpUserId(getStringOrElse(jsonObject, "cpUserId", null))
-                .withEmailAddress(getStringOrElse(jsonObject, "emailAddress", null))
-                .withJudiciaryType(getStringOrElse(jsonObject, "judiciaryType", null))
-                .withPersonId(getStringOrElse(jsonObject, "personId", null))
-                .withSurname(getStringOrElse(jsonObject, "surname", ""))
-                .withForenames(getStringOrElse(jsonObject, "forenames", ""))
-                .withSeqId(seqId != null ? seqId : 0)
-                .withTitleJudicialPrefix(getStringOrElse(jsonObject, "titleJudicialPrefix", null))
-                .withTitleJudicialPrefixWelsh(getStringOrElse(jsonObject, "titleJudicialPrefixWelsh", null))
-                .withTitleSuffix(getStringOrElse(jsonObject, "titleSuffix", null))
-                .withTitleSuffixWelsh(getStringOrElse(jsonObject, "titleSuffixWelsh", null))
-                .withValidFrom(getStringOrElse(jsonObject, "validFrom", null))
-                .withValidTo(getStringOrElse(jsonObject, "validTo", null))
-                .withTitlePrefix(getStringOrElse(jsonObject, "titlePrefix", null))
-                .withTitlePrefixWelsh(getStringOrElse(jsonObject, "titlePrefixWelsh", null))
-                .withSpecialisms(specialisms)
-                .withRequestedName(getStringOrElse(jsonObject, "requestedName", null))
-                .build();
+        return new Judiciary()
+                .id(getStringOrElse(jsonObject, "id", null))
+                .cpUserId(getStringOrElse(jsonObject, "cpUserId", null))
+                .emailAddress(getStringOrElse(jsonObject, "emailAddress", null))
+                .judiciaryType(getStringOrElse(jsonObject, "judiciaryType", null))
+                .personId(getStringOrElse(jsonObject, "personId", null))
+                .surname(getStringOrElse(jsonObject, "surname", ""))
+                .forenames(getStringOrElse(jsonObject, "forenames", ""))
+                .seqId(seqId != null ? seqId : 0)
+                .titleJudicialPrefix(getStringOrElse(jsonObject, "titleJudicialPrefix", null))
+                .titleJudicialPrefixWelsh(getStringOrElse(jsonObject, "titleJudicialPrefixWelsh", null))
+                .titleSuffix(getStringOrElse(jsonObject, "titleSuffix", null))
+                .titleSuffixWelsh(getStringOrElse(jsonObject, "titleSuffixWelsh", null))
+                .validFrom(getStringOrElse(jsonObject, "validFrom", null))
+                .validTo(getStringOrElse(jsonObject, "validTo", null))
+                .titlePrefix(getStringOrElse(jsonObject, "titlePrefix", null))
+                .titlePrefixWelsh(getStringOrElse(jsonObject, "titlePrefixWelsh", null))
+                .specialisms(specialisms)
+                .requestedName(getStringOrElse(jsonObject, "requestedName", null));
     }
 
     public List<CourtRoomSessionAllocation> getCourtRoomSessionAllocationsMap() {
@@ -421,7 +428,7 @@ public class ReferenceDataService {
 
         final List<CourtRoomSessionAllocation> courtRoomSessionAllocations = new ArrayList<>();
         JsonObjects.getJsonArray(payload, "courtRoomSessionAllocations").ifPresent(courtRoomSessionAllocationsJsonArray -> {
-            for(JsonValue jsonValue: courtRoomSessionAllocationsJsonArray) {
+            for(final JsonValue jsonValue: courtRoomSessionAllocationsJsonArray) {
                 final JsonObject jsonObject = (JsonObject) jsonValue;
                 courtRoomSessionAllocations.add(toCourtRoomSessionAllocation(jsonObject));
             }
@@ -453,110 +460,103 @@ public class ReferenceDataService {
         if (payload.isEmpty() || !payload.containsKey("id")) {
             return Optional.empty();
         }
-        return Optional.of(OrganisationUnit.OrganisationUnitBuilder.anOrganisationUnit()
-                .withId(getStringOrElse(payload, "id", null))
-                .withDefaultStartTime(getStringOrElse(payload, "defaultStartTime", null))
-                .build());
+        return Optional.of(new OrganisationUnit()
+                .id(getStringOrElse(payload, "id", null))
+                .defaultStartTime(getStringOrElse(payload, "defaultStartTime", null)));
     }
 
-    private BusinessType toBusinessType(JsonObject jsonObject) {
-        return BusinessType.BusinessTypeBuilder.aBusinessType()
-                .withId(jsonObject.getString("id"))
-                .withSeqNum(jsonObject.getInt("seqNum"))
-                .withTypeCode(jsonObject.getString("typeCode"))
-                .withTypeDescription(jsonObject.getString("typeDescription"))
-                .withSlot(jsonObject.getBoolean("slot"))
-                .withDuration(jsonObject.getBoolean("duration"))
-                .withJurisdiction(getStringOrElse(jsonObject, "jurisdiction", null))
-                .build();
+    private BusinessType toBusinessType(final JsonObject jsonObject) {
+        return new BusinessType()
+                .id(jsonObject.getString("id"))
+                .seqNum(jsonObject.getInt("seqNum"))
+                .typeCode(jsonObject.getString("typeCode"))
+                .typeDescription(jsonObject.getString("typeDescription"))
+                .slot(jsonObject.getBoolean("slot"))
+                .duration(jsonObject.getBoolean("duration"))
+                .jurisdiction(getStringOrElse(jsonObject, "jurisdiction", null));
     }
 
-    private CourtRoom toCourtRoom(JsonObject jsonObject) {
-        return CourtRoom.CourtRoomBuilder.aCourtRoom()
-                .withId(jsonObject.getString("id"))
-                .withRotaLocationId(jsonObject.getInt(LOCATION_ID))
-                .withRotaVenueName(jsonObject.getString(VENUE_NAME))
-                .withCppCourtRoomId(jsonObject.getInt("cppCourtRoomId"))
-                .withRotaVenueId(getIntOrElse(jsonObject,"rotaVenueId", null))
-                .withOucode(jsonObject.getString("oucode"))
-                .withOucodeL3Name(getStringOrElse(jsonObject, "oucodeL3Name", null))
-                .withOucodeL2Name(getStringOrElse(jsonObject, "oucodeL2Name", null))
-                .withOucodeL2Code(getStringOrElse(jsonObject, "oucodeL2Code", null))
-                .withOucodeUUID(jsonObject.getString("oucodeUUID"))
-                .withCourtRoomName(getStringOrElse(jsonObject, "courtroomName", null))
-                .withCourtRoomId(getStringOrElse(jsonObject, COURTROOM_ID, null))
-                .build();
+    private CourtRoom toCourtRoom(final JsonObject jsonObject) {
+        return new CourtRoom()
+                .id(jsonObject.getString("id"))
+                .rotaLocationId(jsonObject.getInt(LOCATION_ID))
+                .rotaVenueName(jsonObject.getString(VENUE_NAME))
+                .cppCourtRoomId(jsonObject.getInt("cppCourtRoomId"))
+                .rotaVenueId(getIntOrElse(jsonObject,"rotaVenueId", null))
+                .oucode(jsonObject.getString("oucode"))
+                .oucodeL3Name(getStringOrElse(jsonObject, "oucodeL3Name", null))
+                .oucodeL2Name(getStringOrElse(jsonObject, "oucodeL2Name", null))
+                .oucodeL2Code(getStringOrElse(jsonObject, "oucodeL2Code", null))
+                .oucodeUUID(jsonObject.getString("oucodeUUID"))
+                .courtroomName(getStringOrElse(jsonObject, "courtroomName", null))
+                .courtroomId(getStringOrElse(jsonObject, COURTROOM_ID, null));
     }
 
-    private Judiciary toJudiciary(JsonObject jsonObject) {
-        final List<uk.gov.moj.cpp.courtscheduler.domain.JudiciarySpecialismType> specialisms = new ArrayList<>();
+    private Judiciary toJudiciary(final JsonObject jsonObject) {
+        final List<String> specialisms = new ArrayList<>();
         JsonObjects.getJsonArray(jsonObject, "specialisms").ifPresent(specialismsJsonArray -> {
-            for (JsonValue specialismValue : specialismsJsonArray) {
+            for (final JsonValue specialismValue : specialismsJsonArray) {
                 final String specialismString = specialismValue.getValueType() == JsonValue.ValueType.STRING
-                        ? ((jakarta.json.JsonString) specialismValue).getString()
+                        ? ((JsonString) specialismValue).getString()
                         : specialismValue.toString();
                 try {
-                    final uk.gov.moj.cpp.courtscheduler.domain.JudiciarySpecialismType specialismType =
-                            uk.gov.moj.cpp.courtscheduler.domain.JudiciarySpecialismType.valueOf(specialismString);
-                    specialisms.add(specialismType);
+                    uk.gov.moj.cpp.courtscheduler.domain.JudiciarySpecialismType.valueOf(specialismString);
+                    specialisms.add(specialismString);
                 } catch (IllegalArgumentException e) {
                     LOGGER.warn("Unknown specialism value received from referencedata service: {}", specialismString);
                 }
             }
         });
 
-        return Judiciary.JudiciaryBuilder.aJudiciary()
-                .withId(getStringOrElse(jsonObject, "id", null))
-                .withCpUserId(getStringOrElse(jsonObject, "cpUserId", null))
-                .withEmailAddress(getStringOrElse(jsonObject, "emailAddress", null))
-                .withJudiciaryType(getStringOrElse(jsonObject, "judiciaryType", null))
-                .withPersonId(getStringOrElse(jsonObject, "personId", null))
-                .withSurname(jsonObject.getString("surname"))
-                .withForenames(jsonObject.getString("forenames"))
-                .withSeqId(jsonObject.getInt("seqId"))
-                .withTitleJudicialPrefix(getStringOrElse(jsonObject, "titleJudicialPrefix", null))
-                .withTitleJudicialPrefixWelsh(getStringOrElse(jsonObject, "titleJudicialPrefixWelsh", null))
-                .withTitleSuffix(getStringOrElse(jsonObject, "titleSuffix", null))
-                .withTitleSuffixWelsh(getStringOrElse(jsonObject, "titleSuffixWelsh", null))
-                .withValidFrom(getStringOrElse(jsonObject, "validFrom", null))
-                .withValidTo(getStringOrElse(jsonObject, "validTo", null))
-                .withTitlePrefix(getStringOrElse(jsonObject, "titlePrefix", null))
-                .withTitlePrefixWelsh(getStringOrElse(jsonObject, "titlePrefixWelsh", null))
-                .withSpecialisms(specialisms)
-                .withRequestedName(getStringOrElse(jsonObject, "requestedName", null))
-                .build();
+        return new Judiciary()
+                .id(getStringOrElse(jsonObject, "id", null))
+                .cpUserId(getStringOrElse(jsonObject, "cpUserId", null))
+                .emailAddress(getStringOrElse(jsonObject, "emailAddress", null))
+                .judiciaryType(getStringOrElse(jsonObject, "judiciaryType", null))
+                .personId(getStringOrElse(jsonObject, "personId", null))
+                .surname(jsonObject.getString("surname"))
+                .forenames(jsonObject.getString("forenames"))
+                .seqId(jsonObject.getInt("seqId"))
+                .titleJudicialPrefix(getStringOrElse(jsonObject, "titleJudicialPrefix", null))
+                .titleJudicialPrefixWelsh(getStringOrElse(jsonObject, "titleJudicialPrefixWelsh", null))
+                .titleSuffix(getStringOrElse(jsonObject, "titleSuffix", null))
+                .titleSuffixWelsh(getStringOrElse(jsonObject, "titleSuffixWelsh", null))
+                .validFrom(getStringOrElse(jsonObject, "validFrom", null))
+                .validTo(getStringOrElse(jsonObject, "validTo", null))
+                .titlePrefix(getStringOrElse(jsonObject, "titlePrefix", null))
+                .titlePrefixWelsh(getStringOrElse(jsonObject, "titlePrefixWelsh", null))
+                .specialisms(specialisms)
+                .requestedName(getStringOrElse(jsonObject, "requestedName", null));
     }
 
-    private CourtRoomSessionAllocation toCourtRoomSessionAllocation(JsonObject jsonObject) {
-        return CourtRoomSessionAllocation.CourtRoomSessionAllocationBuilder.aCourtRoomSessionAllocation()
-                .withId(jsonObject.getString("id"))
-                .withCourtRoomId(jsonObject.getInt("courtRoomId"))
-                .withOucode(jsonObject.getString("oucode"))
-                .withMaxSlot(getIntOrElse(jsonObject, "maxSlot", 0))
-                .withMaxDurationMins(getIntOrElse(jsonObject, "maxDurationMins", 0))
-                .withCourtSession(getStringOrElse(jsonObject, "courtSession", null))
-                .withRotaBusinessTypeCode(getStringOrElse(jsonObject, "rotaBusinessTypeCode", null))
-                .withValidFrom(getStringOrElse(jsonObject, "validFrom", null))
-                .withValidTo(getStringOrElse(jsonObject, "validTo", null))
-                .withSessionStartTime(getStringOrElse(jsonObject, "sessionStartTime", null))
-                .withSessionEndTime(getStringOrElse(jsonObject, "sessionEndTime", null))
-                .build();
+    private CourtRoomSessionAllocation toCourtRoomSessionAllocation(final JsonObject jsonObject) {
+        return new CourtRoomSessionAllocation()
+                .id(jsonObject.getString("id"))
+                .courtRoomId(jsonObject.getInt("courtRoomId"))
+                .oucode(jsonObject.getString("oucode"))
+                .maxSlot(getIntOrElse(jsonObject, "maxSlot", 0))
+                .maxDurationMins(getIntOrElse(jsonObject, "maxDurationMins", 0))
+                .courtSession(getStringOrElse(jsonObject, "courtSession", null))
+                .rotaBusinessTypeCode(getStringOrElse(jsonObject, "rotaBusinessTypeCode", null))
+                .validFrom(getStringOrElse(jsonObject, "validFrom", null))
+                .validTo(getStringOrElse(jsonObject, "validTo", null))
+                .sessionStartTime(getStringOrElse(jsonObject, "sessionStartTime", null))
+                .sessionEndTime(getStringOrElse(jsonObject, "sessionEndTime", null));
     }
 
-    private CourtRoom toCpCourtRoom(JsonObject jsonObject, JsonObject ou) {
-        return CourtRoom.CourtRoomBuilder.aCourtRoom()
-                .withId(getStringOrElse(jsonObject, "id", null))
-                .withCppCourtRoomId(getIntOrElse(jsonObject, "courtroomId", null))
-                .withCourtRoomId(String.valueOf(getIntOrElse(jsonObject, "courtroomId", 0)))
-                .withCourtRoomName(getStringOrElse(jsonObject, "courtroomName", null))
-                .withRotaVenueId(getIntOrElse(jsonObject, "venueId", null))
-                .withRotaVenueName(getStringOrElse(jsonObject, "venueName", null))
-                .withOucode(getStringOrElse(ou, "oucode", null))
-                .withOucodeL3Name(getStringOrElse(ou, "oucodeL3Name", null))
-                .withOucodeL2Name(getStringOrElse(ou, "oucodeL2Name", null))
-                .withOucodeL2Code(getStringOrElse(ou, "oucodeL2Code", null))
-                .withOucodeUUID(getStringOrElse(ou, "id", null))
-                .build();
+    private CourtRoom toCpCourtRoom(final JsonObject jsonObject, final JsonObject ou) {
+        return new CourtRoom()
+                .id(getStringOrElse(jsonObject, "id", null))
+                .cppCourtRoomId(getIntOrElse(jsonObject, "courtroomId", null))
+                .courtroomId(valueOf(getIntOrElse(jsonObject, "courtroomId", 0)))
+                .courtroomName(getStringOrElse(jsonObject, "courtroomName", null))
+                .rotaVenueId(getIntOrElse(jsonObject, "venueId", null))
+                .rotaVenueName(getStringOrElse(jsonObject, "venueName", null))
+                .oucode(getStringOrElse(ou, "oucode", null))
+                .oucodeL3Name(getStringOrElse(ou, "oucodeL3Name", null))
+                .oucodeL2Name(getStringOrElse(ou, "oucodeL2Name", null))
+                .oucodeL2Code(getStringOrElse(ou, "oucodeL2Code", null))
+                .oucodeUUID(getStringOrElse(ou, "id", null));
     }
 
     private String getStringOrElse(final JsonObject jsonObject, final String key, final String defaultValue) {

@@ -4,8 +4,8 @@ import static java.util.UUID.randomUUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatNoException;
 
+import java.time.Instant;
 import java.time.LocalDate;
-import java.util.Date;
 import java.util.List;
 
 import org.junit.jupiter.api.DisplayName;
@@ -91,9 +91,9 @@ class SaveCourtSchedulesDuplicateTest extends AbstractRepositoryTest {
         cs.setMaxAdAfternoonDuration(0);
         cs.setSupportAdSplit(false);
         cs.setIsOverbookingAllowed(true);
-        cs.setSessionStartTime(new Date());
-        cs.setSessionEndTime(new Date());
-        cs.setNationalBreakTime(new Date());
+        cs.setSessionStartTime(Instant.now());
+        cs.setSessionEndTime(Instant.now());
+        cs.setNationalBreakTime(Instant.now());
         return cs;
     }
 }

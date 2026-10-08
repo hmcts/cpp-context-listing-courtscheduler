@@ -29,6 +29,7 @@ Thumbs.db
 ._.Trashes
 
 # Eclipse
+bin/
 .classpath
 .compatibility
 .project

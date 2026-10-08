@@ -6,8 +6,8 @@ import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.CANNOT_BE_NULL;
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.MANDATORY_SEARCH_CRITERIA;
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.PAYLOAD_CANNOT_EMPTY;
 
-import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalBookingSlots;
-import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalSlot;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.ProvisionalBookingSlots;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.ProvisionalSlot;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -24,28 +24,28 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class ProvisionalBookingApiValidatorTest {
 
     @InjectMocks
-    ProvisionalBookingApiValidator provisionalBookingApiValidator;
+    private ProvisionalBookingApiValidator provisionalBookingApiValidator;
 
     @Test
     void shouldValidateSuccessfully() {
-        ProvisionalBookingSlots provisionalBookingSlots = new ProvisionalBookingSlots();
-        List<ProvisionalSlot> provisionalSlotList = new ArrayList<>();
-        ProvisionalSlot provisionalSlot = new ProvisionalSlot(UUID.randomUUID().toString());
+        final ProvisionalBookingSlots provisionalBookingSlots = new ProvisionalBookingSlots();
+        final List<ProvisionalSlot> provisionalSlotList = new ArrayList<>();
+        final ProvisionalSlot provisionalSlot = new ProvisionalSlot().courtScheduleId(UUID.randomUUID().toString());
         provisionalSlotList.add(provisionalSlot);
         provisionalBookingSlots.setProvisionalSlots(provisionalSlotList);
 
-        JsonObject response = provisionalBookingApiValidator.createProvisionalBookingValidation(provisionalBookingSlots);
+        final JsonObject response = provisionalBookingApiValidator.createProvisionalBookingValidation(provisionalBookingSlots);
 
         assertEquals(EMPTY_JSON_OBJECT, response);
     }
 
     @Test
     void shouldValidateAndReturnError() {
-        ProvisionalBookingSlots provisionalBookingSlots = new ProvisionalBookingSlots();
-        List<ProvisionalSlot> provisionalSlotList = new ArrayList<>();
+        final ProvisionalBookingSlots provisionalBookingSlots = new ProvisionalBookingSlots();
+        final List<ProvisionalSlot> provisionalSlotList = new ArrayList<>();
         provisionalBookingSlots.setProvisionalSlots(provisionalSlotList);
 
-        JsonObject response = provisionalBookingApiValidator.createProvisionalBookingValidation(provisionalBookingSlots);
+        final JsonObject response = provisionalBookingApiValidator.createProvisionalBookingValidation(provisionalBookingSlots);
 
         assertEquals(MANDATORY_SEARCH_CRITERIA + PAYLOAD_CANNOT_EMPTY + CANNOT_BE_NULL, response.getString("errorMessage"));
     }

@@ -2,9 +2,6 @@ package uk.gov.moj.cpp.courtscheduler.common.exception;
 
 public class ErrorMessages {
 
-    private ErrorMessages() {
-    }
-
     public static final String DUPLICATE_SESSIONS = "Session to be added has a duplicate";
     public static final String SESSION_EDIT_ANOTHER_USER = "This session is being edited by another user. Your changes cannot be saved so please try again later.";
     public static final String SESSION_NOT_FOUND = "Court Session not found";
@@ -15,7 +12,8 @@ public class ErrorMessages {
     public static final String DURATION_NOT_FOUND_FOR_REGULAR_SESSION = "Duration should be set for this session";
     public static final String ALL_DAY_SPLIT_MANDATORY_FOR_AD_SESSION = "All day split flag should be sent for All Day(AD) session";
     public static final String ALL_DAY_SPLIT_CHANGE_NOT_ALLOWED = "All day split flag cannot be changed for this session";
-    public static final String BUSINESS_TYPE_NOT_FOUND = "Business Type not found";
+    public static final String BUSINESS_TYPE_NOT_FOUND = "Business Type not found: ";
+    public static final String BUSINESS_TYPE_NATURE_CHANGE_WITH_HEARINGS = "Business Type cannot be changed between Slot and Duration while hearings are booked on the session";
     public static final String COURTROOM_NOT_FOUND = "Court Room not found";
     public static final String AM_SESSION_END_TIME_CANNOT_EXCEED = "AM Session End Time cannot exceed 13:00";
     public static final String SESSION_START_TIME_CANNOT_BE_EARLIER = "%s Session Start Time cannot be earlier than 01:00";
@@ -30,4 +28,7 @@ public class ErrorMessages {
     public static final String SESSION_START_TIME_CANNOT_BE_CHANGED_TO_AFTER_HEARING_TIME = MIN_HEARING_TIME_AFTER_SESSION_START_TIME;
     public static final String SESSION_END_TIME_CANNOT_BE_CHANGED_TO_BEFORE_HEARING_TIME = "Session End Time can not be updated to a time that is before than the maximum hearing time";
     public static final String SESSION_IN_PAST_CANNOT_BE_EDITED = "Cannot edit a session that is in the past";
+
+    private ErrorMessages() {
+    }
 }

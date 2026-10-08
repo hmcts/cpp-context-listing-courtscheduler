@@ -2,7 +2,6 @@ package uk.gov.moj.cpp.courtscheduler.rotafileprocessor;
 
 import static java.lang.Boolean.FALSE;
 import static java.lang.Boolean.TRUE;
-import static java.util.Collections.emptyList;
 import static java.util.Collections.emptySet;
 import static java.util.Objects.nonNull;
 import static java.util.stream.Collectors.toMap;
@@ -16,9 +15,9 @@ import uk.gov.moj.cpp.courtscheduler.common.service.CourtScheduleJudiciaryServic
 import uk.gov.moj.cpp.courtscheduler.common.service.CourtScheduleService;
 import uk.gov.moj.cpp.courtscheduler.common.service.RotaFileProcessHistoryService;
 import uk.gov.moj.cpp.courtscheduler.common.service.SessionsService;
-import uk.gov.moj.cpp.courtscheduler.domain.BusinessType;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.BusinessType;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.domain.rota.SlotAndScheduleInfo;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.RotaFileProcessHistory;
 import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.enricher.BusinessTypeMatchingLogger;
@@ -33,7 +32,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
 
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
@@ -70,7 +68,7 @@ public class RotaFilePartialProcessor {
     private Map<String, Boolean> migratedMap = new ConcurrentHashMap<>();
 
     @Async
-    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
+    @Transactional(propagation = REQUIRES_NEW)
     public CompletableFuture<Void> processFullRotaFile(final Map<String, CourtSchedule> slots,
                                     final Map<String, CourtSchedule> slotsForMigrated,
                                     final Collection<CourtScheduleJudiciary> schedules,
@@ -110,7 +108,7 @@ public class RotaFilePartialProcessor {
 
     @SuppressWarnings({"squid:S00112,", "squid:S1141"})
     @Async
-    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
+    @Transactional(propagation = REQUIRES_NEW)
     public CompletableFuture<Void> processSnapshotRotaFile(final Map<String, CourtSchedule> slots,
                                         final Map<String, CourtSchedule> slotsForMigrated,
                                         final Collection<CourtScheduleJudiciary> schedules,
@@ -132,7 +130,7 @@ public class RotaFilePartialProcessor {
 
         logger.info("DD-15703:processSnapshotRotaFile: after delete UnAllocated CourtScheduleJudiciariesEntriesForRotaPeriod with numberOfDeletedUnAllocatedCourtScheduleJudiciaries: {}", numberOfDeletedUnAllocatedCourtScheduleJudiciaries);
         if (isNotEmpty(nonMigratedOuCodes)) {
-            int numberOfDeletedUnAllocatedCourtSchedules = courtScheduleService.deleteUnAllocatedCourtScheduleEntriesForRotaPeriod(startDate, endDate, nonMigratedOuCodes);
+            final int numberOfDeletedUnAllocatedCourtSchedules = courtScheduleService.deleteUnAllocatedCourtScheduleEntriesForRotaPeriod(startDate, endDate, nonMigratedOuCodes);
             logger.info("DD-15703:processSnapshotRotaFile: after deleteUnAllocatedCourtScheduleEntriesForRotaPeriod - numberOfDeletedUnAllocatedCourtSchedules: {}", numberOfDeletedUnAllocatedCourtSchedules);
         } else {
             logger.info("processSnapshotRotaFile: there is no nonMigratedOuCodes, all migrated with ouCodes: {}", ouCodes);
@@ -166,7 +164,7 @@ public class RotaFilePartialProcessor {
         final List<CourtSchedule> existingSlotList = sessionsService.getExtractedCourtSchedules(ouCodes, startDate, endDate);
 
         final List<String> incomingSlotProfileIds = slots.values().stream().map(CourtSchedule::getListingProfileId).toList();
-        final Map<String, CourtSchedule> existingSlotMap = existingSlotList.stream().collect(Collectors.toMap(CourtSchedule::getCourtScheduleId, courtSchedule -> courtSchedule));
+        final Map<String, CourtSchedule> existingSlotMap = existingSlotList.stream().collect(toMap(CourtSchedule::getCourtScheduleId, courtSchedule -> courtSchedule));
 
         final List<String> existingSlotScheduleIds = existingSlotList.stream().map(CourtSchedule::getCourtScheduleId).toList();
         final List<String> existingNonMigratedSlotScheduleIds = existingSlotList.stream()
@@ -294,8 +292,8 @@ public class RotaFilePartialProcessor {
                 .stream()
                 .filter(existingSlot -> FALSE.equals(migratedMap.get(existingSlot.getOuCode())))
                 .filter(existingSlot ->
-                        (existingSlot.isSlotBased() && slotIdsToDelete.contains(existingSlot.getCourtScheduleId()) && existingSlot.getMaxSlots().equals(existingSlot.getAvailableSlots()))
-                                || (!existingSlot.isSlotBased() && slotIdsToDelete.contains(existingSlot.getCourtScheduleId()) && existingSlot.getMaxDuration().equals(existingSlot.getAvailableDuration())))
+                        (TRUE.equals(existingSlot.getSlotBased()) && slotIdsToDelete.contains(existingSlot.getCourtScheduleId()) && existingSlot.getMaxSlots().equals(existingSlot.getAvailableSlots()))
+                                || (!TRUE.equals(existingSlot.getSlotBased()) && slotIdsToDelete.contains(existingSlot.getCourtScheduleId()) && existingSlot.getMaxDuration().equals(existingSlot.getAvailableDuration())))
                 .map(CourtSchedule::getCourtScheduleId)
                 .toList();
     }
@@ -312,7 +310,7 @@ public class RotaFilePartialProcessor {
             final int currentMaxDuration = courtSchedule.getMaxDuration();
             int newAvailableSlots = courtSchedule.getAvailableSlots();
             int newAvailableDuration = courtSchedule.getAvailableDuration();
-            final boolean isSlotBased = businessTypesMap.get(courtSchedule.getBusinessType()).isSlot();
+            final boolean isSlotBased = TRUE.equals(businessTypesMap.get(courtSchedule.getBusinessType()).getSlot());
             final int totalListedAmount = getTotalListedAmountForCourtSchedule(allocatedListings, courtSchedule.getCourtScheduleId());
 
             if (isSlotBased) {
@@ -321,13 +319,11 @@ public class RotaFilePartialProcessor {
                 newAvailableDuration = currentMaxDuration - totalListedAmount;
             }
 
-            final CourtSchedule updatedCourtSchedule = new CourtSchedule.CourtScheduleBuilder()
-                    .withCourtSchedule(courtSchedule)
-                    .withMaxDuration(currentMaxDuration)
-                    .withAvailableSlots(newAvailableSlots)
-                    .withAvailableDuration(newAvailableDuration)
-                    .withMaxSlots(currentMaxSlots)
-                    .build();
+            final CourtSchedule updatedCourtSchedule = copyOf(courtSchedule)
+                    .maxDuration(currentMaxDuration)
+                    .availableSlots(newAvailableSlots)
+                    .availableDuration(newAvailableDuration)
+                    .maxSlots(currentMaxSlots);
             updatedSlots.add(updatedCourtSchedule);
         });
         return updatedSlots;
@@ -349,11 +345,59 @@ public class RotaFilePartialProcessor {
         }
     }
 
-    private Integer getTotalListedAmountForCourtSchedule(final Map<String, Integer> allocatedListings, String courtScheduleId) {
+    private Integer getTotalListedAmountForCourtSchedule(final Map<String, Integer> allocatedListings, final String courtScheduleId) {
         int totalAmount = 0;
         if (!allocatedListings.isEmpty() && allocatedListings.containsKey(courtScheduleId)) {
             totalAmount = allocatedListings.get(courtScheduleId);
         }
         return totalAmount;
+    }
+
+    /**
+     * Defensive copy: generated OpenAPI models have no copy-constructor, only no-arg + fluent
+     * setters, so this replaces the old hand-written CourtScheduleBuilder#withCourtSchedule
+     * bulk-copy.
+     */
+    private static CourtSchedule copyOf(final CourtSchedule source) {
+        return new CourtSchedule()
+                .courtScheduleId(source.getCourtScheduleId())
+                .sessionDate(source.getSessionDate())
+                .ouCode(source.getOuCode())
+                .courtHouseName(source.getCourtHouseName())
+                .courtHouseId(source.getCourtHouseId())
+                .courtRoomId(source.getCourtRoomId())
+                .courtRoomNumber(source.getCourtRoomNumber())
+                .courtRoomName(source.getCourtRoomName())
+                .businessType(source.getBusinessType())
+                .courtSession(source.getCourtSession())
+                .slotBased(source.getSlotBased())
+                .maxSlots(source.getMaxSlots())
+                .maxDuration(source.getMaxDuration())
+                .listingProfileId(source.getListingProfileId())
+                .operationalUnit(source.getOperationalUnit())
+                .panel(source.getPanel())
+                .availableDuration(source.getAvailableDuration())
+                .availableSlots(source.getAvailableSlots())
+                .judiciaries(source.getJudiciaries())
+                .slotStartTimes(source.getSlotStartTimes())
+                .active(source.getActive())
+                .createdOn(source.getCreatedOn())
+                .updatedOn(source.getUpdatedOn())
+                .allDaySplit(source.getAllDaySplit())
+                .maxDurationForMorning(source.getMaxDurationForMorning())
+                .maxDurationForAfternoon(source.getMaxDurationForAfternoon())
+                .totalBooked(source.getTotalBooked())
+                .sessionStartTime(source.getSessionStartTime())
+                .sessionEndTime(source.getSessionEndTime())
+                .totalBookedForMorning(source.getTotalBookedForMorning())
+                .totalBookedForAfternoon(source.getTotalBookedForAfternoon())
+                .availableDurationForMorning(source.getAvailableDurationForMorning())
+                .availableDurationForAfternoon(source.getAvailableDurationForAfternoon())
+                .overbookingAllowed(source.getOverbookingAllowed())
+                .nationalBreakTime(source.getNationalBreakTime())
+                .draft(source.getDraft())
+                .minHearingTime(source.getMinHearingTime())
+                .maxHearingTime(source.getMaxHearingTime())
+                .jurisdiction(source.getJurisdiction());
     }
 }

@@ -4,7 +4,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.mockito.BDDMockito.given;
 
-import uk.gov.moj.cpp.courtscheduler.domain.MiFilterCriteria;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.MiFilterCriteria;
 import uk.gov.moj.cpp.courtscheduler.repository.AllocatedListingRepository;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleJudiciaryRepository;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
@@ -34,43 +34,43 @@ class MiServiceTest {
     private MiService miService;
 
     @Test
-    public void shouldGetCourtSchedulesBetweenLastUpdatedOn() {
+    void shouldGetCourtSchedulesBetweenLastUpdatedOn() {
         // given
-        MiFilterCriteria miFilterCriteria = miFilterCriteria();
-        uk.gov.moj.cpp.courtscheduler.domain.mi.CourtSchedule courtSchedule = new uk.gov.moj.cpp.courtscheduler.domain.mi.CourtSchedule();
+        final MiFilterCriteria miFilterCriteria = miFilterCriteria();
+        final uk.gov.moj.cpp.courtscheduler.domain.mi.CourtSchedule courtSchedule = new uk.gov.moj.cpp.courtscheduler.domain.mi.CourtSchedule();
         given(courtScheduleRepository.findByUpdatedOnGreaterThanAndUpdatedOnLessThan(miFilterCriteria)).willReturn(List.of(courtSchedule));
 
-        List<uk.gov.moj.cpp.courtscheduler.domain.mi.CourtSchedule> courtSchedules = miService.getCourtSchedules(miFilterCriteria);
+        final List<uk.gov.moj.cpp.courtscheduler.domain.mi.CourtSchedule> courtSchedules = miService.getCourtSchedules(miFilterCriteria);
 
         assertThat(courtSchedules.contains(courtSchedule), is(true));
     }
 
     private static MiFilterCriteria miFilterCriteria() {
-        LocalDate fromDate = LocalDate.now().minusDays(1);
-        LocalDate toDate = LocalDate.now().plusDays(1);
-        return new MiFilterCriteria(fromDate, toDate);
+        final LocalDate fromDate = LocalDate.now().minusDays(1);
+        final LocalDate toDate = LocalDate.now().plusDays(1);
+        return new MiFilterCriteria().fromDate(fromDate).toDate(toDate);
     }
 
     @Test
-    public void shouldGetCourtScheduleJudiciariesBetweenLastUpdatedOn() {
+    void shouldGetCourtScheduleJudiciariesBetweenLastUpdatedOn() {
         // given
-        MiFilterCriteria miFilterCriteria = miFilterCriteria();
-        uk.gov.moj.cpp.courtscheduler.domain.mi.CourtScheduleJudiciary courtScheduleJudiciary = new uk.gov.moj.cpp.courtscheduler.domain.mi.CourtScheduleJudiciary();
+        final MiFilterCriteria miFilterCriteria = miFilterCriteria();
+        final uk.gov.moj.cpp.courtscheduler.domain.mi.CourtScheduleJudiciary courtScheduleJudiciary = new uk.gov.moj.cpp.courtscheduler.domain.mi.CourtScheduleJudiciary();
         given(courtScheduleJudiciaryRepository.findByUpdatedOnGreaterThanAndUpdatedOnLessThan(miFilterCriteria)).willReturn(List.of(courtScheduleJudiciary));
 
-        List<uk.gov.moj.cpp.courtscheduler.domain.mi.CourtScheduleJudiciary> courtScheduleJudiciaries = miService.getCourtSchedulesJudiciary(miFilterCriteria);
+        final List<uk.gov.moj.cpp.courtscheduler.domain.mi.CourtScheduleJudiciary> courtScheduleJudiciaries = miService.getCourtSchedulesJudiciary(miFilterCriteria);
 
         assertThat(courtScheduleJudiciaries.contains(courtScheduleJudiciary), is(true));
     }
 
     @Test
-    public void shouldGetAllocatedListingsBetweenLastUpdatedOn() {
+    void shouldGetAllocatedListingsBetweenLastUpdatedOn() {
         // given
-        MiFilterCriteria miFilterCriteria = miFilterCriteria();
-        uk.gov.moj.cpp.courtscheduler.domain.mi.AllocatedListing allocatedListing = new uk.gov.moj.cpp.courtscheduler.domain.mi.AllocatedListing();
+        final MiFilterCriteria miFilterCriteria = miFilterCriteria();
+        final uk.gov.moj.cpp.courtscheduler.domain.mi.AllocatedListing allocatedListing = new uk.gov.moj.cpp.courtscheduler.domain.mi.AllocatedListing();
         given(allocatedListingRepository.findByUpdatedOnGreaterThanAndUpdatedOnLessThan(miFilterCriteria)).willReturn(List.of(allocatedListing));
 
-        List<uk.gov.moj.cpp.courtscheduler.domain.mi.AllocatedListing> allocatedListings = miService.getAllocatedListings(miFilterCriteria);
+        final List<uk.gov.moj.cpp.courtscheduler.domain.mi.AllocatedListing> allocatedListings = miService.getAllocatedListings(miFilterCriteria);
 
         assertThat(allocatedListings.contains(allocatedListing), is(true));
     }

@@ -7,6 +7,8 @@ package uk.gov.moj.cpp.courtscheduler.exception;
  */
 public class NoCapacityException extends RuntimeException {
 
+    private static final long serialVersionUID = 1L;
+
     public NoCapacityException(final String message) {
         super(message);
     }

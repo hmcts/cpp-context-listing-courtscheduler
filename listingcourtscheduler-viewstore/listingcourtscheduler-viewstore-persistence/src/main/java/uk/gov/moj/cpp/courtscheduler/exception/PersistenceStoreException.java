@@ -5,6 +5,9 @@ import static java.lang.String.format;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 
 public class PersistenceStoreException extends RuntimeException {
+
+    private static final long serialVersionUID = 1L;
+
     public PersistenceStoreException(final Exception ex) {
         super(ExceptionUtils.getStackTrace(ex), ex);
     }

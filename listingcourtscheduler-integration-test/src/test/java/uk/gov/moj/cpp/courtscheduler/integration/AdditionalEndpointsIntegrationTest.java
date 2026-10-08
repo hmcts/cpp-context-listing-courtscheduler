@@ -16,10 +16,10 @@ import org.springframework.http.ResponseEntity;
  * fall through to the unhandled-exception 500. With minimal stub payloads the validators
  * may reject (4xx) — the contract is honoured either way.</p>
  */
-class AdditionalEndpointsIntegrationTest extends AbstractIntegrationTest {
+class AdditionalEndpointsIntegrationTest extends IntegrationTestBase {
 
     @Test
-    void getHearingSlots_doesNotBlowUp() {
+    void fetchHearingSlots_doesNotBlowUp() {
         final ResponseEntity<String> response = get(
                 "/hearingslots?panel=ADULT"
                         + "&sessionStartDate=2026-06-01"
@@ -71,7 +71,7 @@ class AdditionalEndpointsIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
-    void getProvisionalBooking_doesNotBlowUp() {
+    void fetchProvisionalBooking_doesNotBlowUp() {
         final ResponseEntity<String> response = get(
                 "/unconfirmedBooking?bookingIds=" + UUID.randomUUID(),
                 SYSTEM_USER_ID,
@@ -80,7 +80,7 @@ class AdditionalEndpointsIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
-    void getMiCourtSchedules_returns200() {
+    void fetchMiCourtSchedules_returns200() {
         final ResponseEntity<String> response = get(
                 "/mi/court_schedules?fromDate=2026-01-01&toDate=2026-12-31",
                 SYSTEM_USER_ID,
@@ -90,7 +90,7 @@ class AdditionalEndpointsIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
-    void getMiAllocatedListings_returns200() {
+    void fetchMiAllocatedListings_returns200() {
         final ResponseEntity<String> response = get(
                 "/mi/allocated_listings?fromDate=2026-01-01&toDate=2026-12-31",
                 SYSTEM_USER_ID,
@@ -100,7 +100,7 @@ class AdditionalEndpointsIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
-    void getMiCourtScheduleJudiciaries_returns200() {
+    void fetchMiCourtScheduleJudiciaries_returns200() {
         final ResponseEntity<String> response = get(
                 "/mi/court_schedule_judiciaries?fromDate=2026-01-01&toDate=2026-12-31",
                 SYSTEM_USER_ID,

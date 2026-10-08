@@ -8,23 +8,21 @@ import static uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog.RotaPr
 
 import uk.gov.moj.cpp.courtscheduler.common.exception.MissingDataError;
 import uk.gov.moj.cpp.courtscheduler.common.service.mapper.CourtScheduleJudiciaryMapper;
-import uk.gov.moj.cpp.courtscheduler.domain.AssignJudiciariesRequest;
-import uk.gov.moj.cpp.courtscheduler.domain.AssignJudiciariesResponse;
-import uk.gov.moj.cpp.courtscheduler.domain.AssignJudiciaryToSessionsRequest;
-import uk.gov.moj.cpp.courtscheduler.domain.AssignmentFailure;
-import uk.gov.moj.cpp.courtscheduler.domain.AssignmentFailureReason;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
-import uk.gov.moj.cpp.courtscheduler.domain.Judiciary;
-import uk.gov.moj.cpp.courtscheduler.domain.JudiciaryAssignment;
-import uk.gov.moj.cpp.courtscheduler.domain.SessionJudiciary;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.AssignJudiciariesResponse;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.AssignmentFailure;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtScheduleJudiciary;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.Judiciary;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.AssignJudiciariesRequest;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.AssignJudiciaryToSessionsRequest;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.JudiciaryAssignment;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.SessionJudiciary;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleJudiciaryRepository;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 
+import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.Date;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -42,6 +40,7 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import org.springframework.transaction.annotation.Transactional;
 
+import org.owasp.encoder.Encode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -117,14 +116,14 @@ public class JudiciaryAssignmentService {
 
         courtScheduleJudiciaryRepository.deleteAllAssignmentsForCourtScheduleIds(courtScheduleIds);
 
-        final Date now = Calendar.getInstance().getTime();
+        final Instant now = Instant.now();
         int persisted = 0;
         for (final String sessionId : courtScheduleIds) {
             final CourtSchedule schedule = scheduleById.get(sessionId);
             for (final SessionJudiciary sessionJudiciary : sessionJudiciaries) {
                 final String judicialId = sessionJudiciary.getJudicialId().trim();
                 final Judiciary ref = referenceDataMapperService.findById(judicialId)
-                        .orElseThrow(() -> new IllegalArgumentException("Judiciary not found: " + judicialId));
+                        .orElseThrow(() -> judiciaryNotFoundException(judicialId));
                 final CourtScheduleJudiciary domain =
                         buildCourtScheduleJudiciaryForSessionsUi(ref, schedule, sessionId, now, sessionJudiciary);
                 persistEntityWithEntityManager(CourtScheduleJudiciaryMapper.toEntity(domain));
@@ -135,7 +134,15 @@ public class JudiciaryAssignmentService {
             entityManager.flush();
         }
         LOGGER.info("assignJudiciaryToSessions: courtSchedules={}, sessionJudiciaries={}, persisted={}, executionId={}",
-                courtScheduleIds.size(), sessionJudiciaries.size(), persisted, executionId);
+                courtScheduleIds.size(), sessionJudiciaries.size(), persisted, Encode.forJava(executionId));
+    }
+
+    private static String extractJudiciaryType(final SessionJudiciary sessionJudiciary) {
+        return sessionJudiciary.getJudicialRoleType() == null ? null : sessionJudiciary.getJudicialRoleType().getJudiciaryType();
+    }
+
+    private IllegalArgumentException judiciaryNotFoundException(final String judicialId) {
+        return new IllegalArgumentException("Judiciary not found: " + judicialId);
     }
 
     private void validateSessionJudiciaries(final List<SessionJudiciary> sessionJudiciaries) {
@@ -144,7 +151,7 @@ public class JudiciaryAssignmentService {
             if (sessionJudiciary == null || isBlank(sessionJudiciary.getJudicialId())) {
                 throw new IllegalArgumentException("Each judiciary entry must include a judicialId.");
             }
-            if (isBlank(sessionJudiciary.getJudiciaryType())) {
+            if (isBlank(extractJudiciaryType(sessionJudiciary))) {
                 throw new IllegalArgumentException("Each judiciary entry must include judicialRoleType.judiciaryType.");
             }
             final String id = sessionJudiciary.getJudicialId().trim();
@@ -164,7 +171,7 @@ public class JudiciaryAssignmentService {
             if (sessionJudiciary == null) {
                 continue;
             }
-            final String raw = sessionJudiciary.getJudiciaryType();
+            final String raw = extractJudiciaryType(sessionJudiciary);
             if (isBlank(raw)) {
                 continue;
             }
@@ -201,41 +208,40 @@ public class JudiciaryAssignmentService {
     private CourtScheduleJudiciary buildCourtScheduleJudiciaryForSessionsUi(final Judiciary judiciary,
                                                                             final CourtSchedule schedule,
                                                                             final String sessionId,
-                                                                            final Date timestamp,
+                                                                            final Instant timestamp,
                                                                             final SessionJudiciary sessionJudiciary) {
-        final String judiciaryType = !isBlank(sessionJudiciary.getJudiciaryType())
-                ? sessionJudiciary.getJudiciaryType().trim()
-                : nonNullOrDefault(judiciary.getJudiciaryType());
-        return CourtScheduleJudiciary.judiciary()
-                .withCourtScheduleId(sessionId)
-                .withCourtListingProfileId(schedule.getListingProfileId())
-                .withJudiciaryId(judiciary.getId())
-                .withRotaJudiciaryId(null)
-                .withTitle(nonNullOrDefault(firstNonEmpty(judiciary.getTitlePrefix(), judiciary.getTitleJudicialPrefix())))
-                .withForenames(nonNullOrDefault(judiciary.getForenames()))
-                .withSurname(nonNullOrDefault(judiciary.getSurname()))
-                .withEmailAddress(nonNullOrDefault(judiciary.getEmailAddress()))
-                .withJudiciaryType(judiciaryType)
-                .withPosition(null)
-                .withIsBenchChairman(Boolean.TRUE.equals(sessionJudiciary.getIsBenchChairman()))
-                .withIsDeputy(Boolean.TRUE.equals(sessionJudiciary.getIsDeputy()))
-                .withCreatedOn(timestamp)
-                .withUpdatedOn(timestamp)
-                .withActive(true)
-                .build();
+        final String judiciaryType = isBlank(extractJudiciaryType(sessionJudiciary))
+                ? nonNullOrDefault(judiciary.getJudiciaryType())
+                : extractJudiciaryType(sessionJudiciary).trim();
+        return new CourtScheduleJudiciary()
+                .courtScheduleId(sessionId)
+                .courtListingProfileId(schedule.getListingProfileId())
+                .judiciaryId(judiciary.getId())
+                .rotaJudiciaryId(null)
+                .title(nonNullOrDefault(firstNonEmpty(judiciary.getTitlePrefix(), judiciary.getTitleJudicialPrefix())))
+                .forenames(nonNullOrDefault(judiciary.getForenames()))
+                .surname(nonNullOrDefault(judiciary.getSurname()))
+                .emailAddress(nonNullOrDefault(judiciary.getEmailAddress()))
+                .judiciaryType(judiciaryType)
+                .position(null)
+                .isBenchChairman(Boolean.TRUE.equals(sessionJudiciary.getIsBenchChairman()))
+                .isDeputy(Boolean.TRUE.equals(sessionJudiciary.getIsDeputy()))
+                .createdOn(uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toOffsetDateTime(timestamp))
+                .updatedOn(uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toOffsetDateTime(timestamp))
+                .active(true);
     }
 
     @Transactional
     public AssignJudiciariesResponse assignJudiciaries(final AssignJudiciariesRequest request,
                                                        final String executionId,
                                                        final boolean useRepository) {
-        final boolean skipValidations = request != null && request.isSkipValidations();
+        final boolean skipValidations = request != null && Boolean.TRUE.equals(request.getSkipValidations());
         final List<JudiciaryAssignment> assignments = Optional.ofNullable(request)
                 .map(AssignJudiciariesRequest::getJudiciaries)
                 .orElse(emptyList());
 
         if (isEmpty(assignments)) {
-            return AssignJudiciariesResponse.builder().build();
+            return new AssignJudiciariesResponse();
         }
 
         final Map<String, CourtSchedule> sessionsById = fetchSessionsById(assignments);
@@ -250,11 +256,10 @@ public class JudiciaryAssignmentService {
             logMissingReferences(result.missingJudiciaryIds(), result.missingSessionIds(), executionId);
         }
 
-        return AssignJudiciariesResponse.builder()
-                .withRequestedAssignments(result.requestedAssignments())
-                .withSuccessfulAssignments(result.successfulAssignments())
-                .withFailures(result.failures())
-                .build();
+        return new AssignJudiciariesResponse()
+                .requestedAssignments(result.requestedAssignments())
+                .successfulAssignments(result.successfulAssignments())
+                .failures(result.failures());
     }
 
     private Map<String, CourtSchedule> fetchSessionsById(final List<JudiciaryAssignment> assignments) {
@@ -280,7 +285,7 @@ public class JudiciaryAssignmentService {
         final Set<String> missingJudiciaryIds = new LinkedHashSet<>();
         final Set<String> missingSessionIds = new LinkedHashSet<>();
         final List<AssignmentFailure> failures = new ArrayList<>();
-        final Date now = Calendar.getInstance().getTime();
+        final Instant now = Instant.now();
 
         int requestedAssignments = 0;
         int successfulAssignments = 0;
@@ -354,22 +359,28 @@ public class JudiciaryAssignmentService {
     private AssignmentAttempt attemptAssignment(final Judiciary judiciary,
                                                 final CourtSchedule schedule,
                                                 final String sessionId,
-                                                final Date timestamp,
+                                                final Instant timestamp,
                                                 final JudiciaryAssignment assignment,
                                                 final boolean useRepository) {
         final CourtScheduleJudiciary courtScheduleJudiciary = buildCourtScheduleJudiciary(judiciary, schedule, sessionId, timestamp, assignment);
         try {
-            final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary entity = 
+            final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary entity =
                     CourtScheduleJudiciaryMapper.toEntity(courtScheduleJudiciary);
-            
+
             if (useRepository) {
                 persistEntityWithRepository(entity);
             } else {
                 persistEntityWithEntityManager(entity);
             }
-            
+
             return AssignmentAttempt.success();
-        } catch (Exception ex) {
+        } catch (@SuppressWarnings("PMD.AvoidCatchingGenericException") // Deliberate broad safety net: the two
+                // persistence paths (Spring Data `save` vs `EntityManager.merge`) can surface different unchecked
+                // exception hierarchies (DataAccessException vs PersistenceException/ConstraintViolationException)
+                // depending on `useRepository`, and handleAssignmentException() below inspects the whole cause
+                // chain by class-name/message to detect duplicate-key violations regardless of which one occurred.
+                // Narrowing to a single exception type would risk missing legitimate duplicate-assignment cases.
+                final Exception ex) {
             return handleAssignmentException(ex, judiciary.getId(), sessionId);
         }
     }
@@ -399,11 +410,11 @@ public class JudiciaryAssignmentService {
                                                         final String judiciaryId,
                                                         final String sessionId) {
         if (isDuplicateAssignment(ex)) {
-            LOGGER.warn("Skipping duplicate judiciary assignment for judiciaryId {} and sessionId {}", judiciaryId, sessionId);
-            return AssignmentAttempt.failure(judiciaryId, sessionId, AssignmentFailureReason.DUPLICATE_ASSIGNMENT);
+            LOGGER.warn("Skipping duplicate judiciary assignment for judiciaryId {} and sessionId {}", Encode.forJava(judiciaryId), Encode.forJava(sessionId));
+            return AssignmentAttempt.failure(judiciaryId, sessionId, AssignmentFailure.ReasonEnum.DUPLICATE_ASSIGNMENT);
         } else {
-            LOGGER.error("Unexpected error while assigning judiciary {} to session {}", judiciaryId, sessionId, ex);
-            return AssignmentAttempt.failure(judiciaryId, sessionId, AssignmentFailureReason.PERSISTENCE_ERROR);
+            LOGGER.error("Unexpected error while assigning judiciary {} to session {}", Encode.forJava(judiciaryId), Encode.forJava(sessionId), ex);
+            return AssignmentAttempt.failure(judiciaryId, sessionId, AssignmentFailure.ReasonEnum.PERSISTENCE_ERROR);
         }
     }
 
@@ -423,28 +434,27 @@ public class JudiciaryAssignmentService {
     private CourtScheduleJudiciary buildCourtScheduleJudiciary(final Judiciary judiciary,
                                                                final CourtSchedule schedule,
                                                                final String sessionId,
-                                                               final Date timestamp,
+                                                               final Instant timestamp,
                                                                final JudiciaryAssignment assignment) {
         final String rotaJudiciaryId = firstNonEmpty(assignment.getRotaJudiciaryId(), 
                 firstNonEmpty(judiciary.getCpUserId(), judiciary.getId()));
 
-        return CourtScheduleJudiciary.judiciary()
-                .withCourtScheduleId(sessionId)
-                .withCourtListingProfileId(schedule.getListingProfileId())
-                .withJudiciaryId(judiciary.getId())
-                .withRotaJudiciaryId(rotaJudiciaryId)
-                .withTitle(nonNullOrDefault(firstNonEmpty(judiciary.getTitlePrefix(), judiciary.getTitleJudicialPrefix())))
-                .withForenames(nonNullOrDefault(judiciary.getForenames()))
-                .withSurname(nonNullOrDefault(judiciary.getSurname()))
-                .withEmailAddress(nonNullOrDefault(judiciary.getEmailAddress()))
-                .withJudiciaryType(nonNullOrDefault(judiciary.getJudiciaryType()))
-                .withPosition(assignment.getPosition())
-                .withIsBenchChairman(assignment.getIsBenchChairman() != null ? assignment.getIsBenchChairman() : false)
-                .withIsDeputy(assignment.getIsDeputy() != null ? assignment.getIsDeputy() : false)
-                .withCreatedOn(timestamp)
-                .withUpdatedOn(timestamp)
-                .withActive(true)
-                .build();
+        return new CourtScheduleJudiciary()
+                .courtScheduleId(sessionId)
+                .courtListingProfileId(schedule.getListingProfileId())
+                .judiciaryId(judiciary.getId())
+                .rotaJudiciaryId(rotaJudiciaryId)
+                .title(nonNullOrDefault(firstNonEmpty(judiciary.getTitlePrefix(), judiciary.getTitleJudicialPrefix())))
+                .forenames(nonNullOrDefault(judiciary.getForenames()))
+                .surname(nonNullOrDefault(judiciary.getSurname()))
+                .emailAddress(nonNullOrDefault(judiciary.getEmailAddress()))
+                .judiciaryType(nonNullOrDefault(judiciary.getJudiciaryType()))
+                .position(assignment.getPosition())
+                .isBenchChairman(assignment.getIsBenchChairman() != null ? assignment.getIsBenchChairman() : false)
+                .isDeputy(assignment.getIsDeputy() != null ? assignment.getIsDeputy() : false)
+                .createdOn(uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toOffsetDateTime(timestamp))
+                .updatedOn(uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toOffsetDateTime(timestamp))
+                .active(true);
     }
 
     private String firstNonEmpty(final String primary, final String fallback) {
@@ -465,7 +475,7 @@ public class JudiciaryAssignmentService {
         Throwable current = throwable;
         while (current != null) {
             final String className = current.getClass().getName();
-            final String message = current.getMessage() != null ? current.getMessage().toLowerCase() : "";
+            final String message = current.getMessage() != null ? current.getMessage().toLowerCase(Locale.ROOT) : "";
             if (className.contains("ConstraintViolationException")
                     || className.contains("SQLIntegrityConstraintViolationException")
                     || message.contains("duplicate")
@@ -488,7 +498,7 @@ public class JudiciaryAssignmentService {
                                       final String executionId) {
         if (!missingJudiciaryIds.isEmpty()) {
             final String joined = String.join(", ", missingJudiciaryIds);
-            LOGGER.warn("Missing judiciary ids for assignment (skipValidations=true): {}", joined);
+            LOGGER.warn("Missing judiciary ids for assignment (skipValidations=true): {}", Encode.forJava(joined));
             final RotaProcessLog log = rotaProcessLog()
                     .withExecutionId(executionId)
                     .withErrorCode(MissingDataError.JUDICIARY_ID_NOT_FOUND_ASSIGNMENT.code())
@@ -498,7 +508,7 @@ public class JudiciaryAssignmentService {
         }
         if (!missingSessionIds.isEmpty()) {
             final String joined = String.join(", ", missingSessionIds);
-            LOGGER.warn("Missing session ids for assignment (skipValidations=true): {}", joined);
+            LOGGER.warn("Missing session ids for assignment (skipValidations=true): {}", Encode.forJava(joined));
             final RotaProcessLog log = rotaProcessLog()
                     .withExecutionId(executionId)
                     .withErrorCode(MissingDataError.SESSION_ID_NOT_FOUND_ASSIGNMENT.code())
@@ -522,34 +532,33 @@ public class JudiciaryAssignmentService {
      * Internal class to hold assignment attempt results.
      */
     private static class AssignmentAttempt {
-        private final boolean success;
-        private final AssignmentFailure failure;
+        private final boolean successful;
+        private final AssignmentFailure failureDetail;
 
-        private AssignmentAttempt(final boolean success, final AssignmentFailure failure) {
-            this.success = success;
-            this.failure = failure;
+        private AssignmentAttempt(final boolean successful, final AssignmentFailure failureDetail) {
+            this.successful = successful;
+            this.failureDetail = failureDetail;
         }
 
-        static AssignmentAttempt success() {
+       /* package */ static AssignmentAttempt success() {
             return new AssignmentAttempt(true, null);
         }
 
-        static AssignmentAttempt failure(final String judiciaryId,
+       /* package */ static AssignmentAttempt failure(final String judiciaryId,
                                          final String sessionId,
-                                         final AssignmentFailureReason reason) {
-            return new AssignmentAttempt(false, AssignmentFailure.builder()
-                    .withJudiciaryId(judiciaryId)
-                    .withSessionId(sessionId)
-                    .withReason(reason)
-                    .build());
+                                         final AssignmentFailure.ReasonEnum reason) {
+            return new AssignmentAttempt(false, new AssignmentFailure()
+                    .judiciaryId(judiciaryId)
+                    .sessionId(sessionId)
+                    .reason(reason));
         }
 
-        boolean isSuccess() {
-            return success;
+       /* package */ boolean isSuccess() {
+            return successful;
         }
 
-        AssignmentFailure getFailure() {
-            return failure;
+       /* package */ AssignmentFailure getFailure() {
+            return failureDetail;
         }
     }
 }

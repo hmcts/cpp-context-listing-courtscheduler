@@ -13,7 +13,7 @@ import static org.mockito.Mockito.when;
 
 import uk.gov.moj.cpp.courtscheduler.common.converter.ObjectToJsonObjectConverter;
 
-import uk.gov.moj.cpp.courtscheduler.domain.AllocatedListingTotalBooked;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.AllocatedListingTotalBooked;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.IdResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant;
@@ -98,14 +98,16 @@ class AllocatedListingServiceTest {
 
     private List<AllocatedListingTotalBooked> getAllocatedListingTotalBooked(final List<String> courtScheduleIds) {
         return courtScheduleIds.stream()
-                .map(courtScheduleId -> new AllocatedListingTotalBooked(courtScheduleId, totalBooked))
+                .map(courtScheduleId -> new AllocatedListingTotalBooked()
+                        .courtScheduleId(courtScheduleId)
+                        .totalBooked(totalBooked.intValue()))
                 .toList();
     }
 
 
     @Test
     void shouldGetHearingIds() {
-        HearingSlotRequestParam hearingIdsReq =
+        final HearingSlotRequestParam hearingIdsReq =
                 new HearingSlotRequestParam("panel",
                         "2024-12-09",
                         "2024-12-09",
@@ -124,13 +126,13 @@ class AllocatedListingServiceTest {
                         null,
                         null,
                         null);
-        Set<IdResponse> hearingIds = new LinkedHashSet<>();
+        final Set<IdResponse> hearingIds = new LinkedHashSet<>();
         hearingIds.add(new IdResponse(randomUUID().toString(), randomUUID().toString(), LocalDate.now(), 1, 1));
         hearingIds.add(new IdResponse(randomUUID().toString(), randomUUID().toString(), LocalDate.now(), 1, 1));
         hearingIds.add(new IdResponse(randomUUID().toString(), randomUUID().toString(), LocalDate.now(), 1, 1));
-        Pair pair = Pair.of(3, hearingIds);
+        final Pair pair = Pair.of(3, hearingIds);
         when(allocatedListingRepository.findHearingIdsBy(eq(hearingIdsReq))).thenReturn(pair);
-        JsonObject hearingIdsJsonObj = allocatedListingService.getHearingIds(hearingIdsReq);
+        final JsonObject hearingIdsJsonObj = allocatedListingService.getHearingIds(hearingIdsReq);
 
         verify(allocatedListingRepository, atLeastOnce()).findHearingIdsBy(eq(hearingIdsReq));
 
@@ -138,12 +140,12 @@ class AllocatedListingServiceTest {
         assertEquals(3, hearingIdsJsonObj.getInt(RequestParameterConstant.RESULTS.getLabel()));
         assertEquals(1, hearingIdsJsonObj.getInt(RequestParameterConstant.PAGE_COUNT.getLabel()));
 
-        JsonArray hearingIdsJsonArr = hearingIdsJsonObj.getJsonArray(RequestParameterConstant.HEARING_IDS.getLabel());
+        final JsonArray hearingIdsJsonArr = hearingIdsJsonObj.getJsonArray(RequestParameterConstant.HEARING_IDS.getLabel());
         assertEquals(3, hearingIdsJsonArr.size());
         hearingIdsJsonArr.forEach(e ->
         {
-            assertTrue(hearingIds.stream().map(IdResponse::hearingId).toList().contains(((e.asJsonObject().getString("hearingId")))));
-            assertTrue(hearingIds.stream().map(IdResponse::courtScheduleId).toList().contains(((e.asJsonObject().getString("courtScheduleId")))));
+            assertTrue(hearingIds.stream().map(IdResponse::hearingId).toList().contains(e.asJsonObject().getString("hearingId")));
+            assertTrue(hearingIds.stream().map(IdResponse::courtScheduleId).toList().contains(e.asJsonObject().getString("courtScheduleId")));
         });
 
     }

@@ -1,3 +1,5 @@
+import org.cyclonedx.Version
+
 plugins {
     id 'application'
     id 'org.springframework.boot'
@@ -30,6 +32,9 @@ openApiGenerate {
             openApiNullable     : 'false',
             skipDefaultInterface: 'true',
             useResponseEntity   : 'true'
+    ]
+    globalProperties = [
+            apis: ""
     ]
 }
 
@@ -128,12 +133,13 @@ gitProperties {
     failOnNoGitDirectory = false
 }
 
-cyclonedxBom {
+tasks.cyclonedxDirectBom {
     includeConfigs = ["runtimeClasspath"]
     skipConfigs = ["compileClasspath", "testImplementation", "testCompileClasspath", "testRuntimeClasspath"]
-    schemaVersion = "1.6"
+    schemaVersion = Version.VERSION_16
     componentVersion = providers.provider { project.version.toString() }
-    destination = layout.buildDirectory.dir("reports").get().asFile
+    jsonOutput = layout.buildDirectory.file("reports/bom.json")
+    xmlOutput = layout.buildDirectory.file("reports/bom.xml")
 }
 
 jar {

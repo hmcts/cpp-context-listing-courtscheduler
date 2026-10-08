@@ -8,7 +8,6 @@ import uk.gov.moj.cpp.courtscheduler.common.service.CourtScheduleService;
 import uk.gov.moj.cpp.courtscheduler.common.service.RotaProcessLogService;
 
 import org.springframework.scheduling.annotation.Async;
-import org.springframework.stereotype.Service;
 import jakarta.inject.Inject;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,7 +15,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @Service
-@org.springframework.transaction.annotation.Transactional
+@Transactional
 public class RotaRedundantDataCleanerService {
 
     private static final Logger logger = LoggerFactory.getLogger(RotaRedundantDataCleanerService.class);

@@ -17,9 +17,9 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import uk.gov.moj.cpp.courtscheduler.domain.AllocatedSlot;
-import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalBookingSlots;
-import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalSlot;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.AllocatedSlot;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.ProvisionalBookingSlots;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.ProvisionalSlot;
 import uk.gov.moj.cpp.courtscheduler.exception.NoCapacityException;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
@@ -255,11 +255,10 @@ class ProvisionalBookingServiceTest {
     private ProvisionalBookingSlots slots(final String... courtScheduleIds) {
         final ProvisionalBookingSlots booking = new ProvisionalBookingSlots();
         booking.setProvisionalSlots(java.util.Arrays.stream(courtScheduleIds)
-                .map(id -> ProvisionalSlot.ProvisionalSlotBuilder.aProvisionalSlot()
-                        .withCourtScheduleId(id)
-                        .withHearingStartTime("2026-10-14T10:00:00.000Z")
-                        .withDuration(60)
-                        .build())
+                .map(id -> new ProvisionalSlot()
+                        .courtScheduleId(id)
+                        .hearingStartTime("2026-10-14T10:00:00.000Z")
+                        .duration(60))
                 .toList());
         return booking;
     }

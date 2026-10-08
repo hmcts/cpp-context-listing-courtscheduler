@@ -21,10 +21,10 @@ class DateParsingUtilityTest {
     @Test
     void shouldParseValidDate() {
         // given
-        String validDateStr = "2024-01-15";
+        final String validDateStr = "2024-01-15";
 
         // when
-        LocalDate result = dateParsingUtility.parseSessionDate(validDateStr);
+        final LocalDate result = dateParsingUtility.parseSessionDate(validDateStr);
 
         // then
         assertNotNull(result);
@@ -36,10 +36,10 @@ class DateParsingUtilityTest {
     @Test
     void shouldReturnNull_WhenDateIsInvalid() {
         // given
-        String invalidDateStr = "2024-13-45"; // Invalid month and day
+        final String invalidDateStr = "2024-13-45"; // Invalid month and day
 
         // when
-        LocalDate result = dateParsingUtility.parseSessionDate(invalidDateStr);
+        final LocalDate result = dateParsingUtility.parseSessionDate(invalidDateStr);
 
         // then
         assertThat(result, is(nullValue()));
@@ -48,10 +48,10 @@ class DateParsingUtilityTest {
     @Test
     void shouldReturnNull_WhenDateIsInWrongFormat() {
         // given
-        String wrongFormatDateStr = "15/01/2024"; // Wrong format
+        final String wrongFormatDateStr = "15/01/2024"; // Wrong format
 
         // when
-        LocalDate result = dateParsingUtility.parseSessionDate(wrongFormatDateStr);
+        final LocalDate result = dateParsingUtility.parseSessionDate(wrongFormatDateStr);
 
         // then
         assertThat(result, is(nullValue()));
@@ -60,7 +60,7 @@ class DateParsingUtilityTest {
     @Test
     void shouldReturnNull_WhenDateIsNull() {
         // when
-        LocalDate result = dateParsingUtility.parseSessionDate(null);
+        final LocalDate result = dateParsingUtility.parseSessionDate(null);
 
         // then
         assertThat(result, is(nullValue()));
@@ -69,10 +69,10 @@ class DateParsingUtilityTest {
     @Test
     void shouldReturnNull_WhenDateIsEmpty() {
         // given
-        String emptyDateStr = "";
+        final String emptyDateStr = "";
 
         // when
-        LocalDate result = dateParsingUtility.parseSessionDate(emptyDateStr);
+        final LocalDate result = dateParsingUtility.parseSessionDate(emptyDateStr);
 
         // then
         assertThat(result, is(nullValue()));
@@ -81,10 +81,10 @@ class DateParsingUtilityTest {
     @Test
     void shouldParseLeapYearDate() {
         // given
-        String leapYearDateStr = "2024-02-29"; // 2024 is a leap year
+        final String leapYearDateStr = "2024-02-29"; // 2024 is a leap year
 
         // when
-        LocalDate result = dateParsingUtility.parseSessionDate(leapYearDateStr);
+        final LocalDate result = dateParsingUtility.parseSessionDate(leapYearDateStr);
 
         // then
         assertNotNull(result);
@@ -96,10 +96,10 @@ class DateParsingUtilityTest {
     @Test
     void shouldReturnNull_WhenDateIsNotLeapYear() {
         // given
-        String nonLeapYearDateStr = "2023-02-29"; // 2023 is not a leap year
+        final String nonLeapYearDateStr = "2023-02-29"; // 2023 is not a leap year
 
         // when
-        LocalDate result = dateParsingUtility.parseSessionDate(nonLeapYearDateStr);
+        final LocalDate result = dateParsingUtility.parseSessionDate(nonLeapYearDateStr);
 
         // then
         assertThat(result, is(nullValue()));
@@ -108,10 +108,10 @@ class DateParsingUtilityTest {
     @Test
     void shouldParseDateWithSingleDigitMonthAndDay() {
         // given
-        String dateStr = "2024-1-5"; // Single digit month and day
+        final String dateStr = "2024-1-5"; // Single digit month and day
 
         // when
-        LocalDate result = dateParsingUtility.parseSessionDate(dateStr);
+        final LocalDate result = dateParsingUtility.parseSessionDate(dateStr);
 
         // then
         // The formatter expects "yyyy-MM-dd" format, so this should fail

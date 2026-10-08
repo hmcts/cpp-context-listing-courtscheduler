@@ -2,7 +2,7 @@ plugins {
     id 'io.spring.dependency-management' version '1.1.7' apply false
     id 'org.springframework.boot' version '4.1.0' apply false
     id 'org.openapi.generator' version '7.23.0' apply false
-    id 'org.cyclonedx.bom' version '2.4.1' apply false
+    id 'org.cyclonedx.bom' version '3.4.1' apply false
     id 'com.gorylenko.gradle-git-properties' version '4.0.1' apply false
     id 'com.avast.gradle.docker-compose' version '0.17.21' apply false
     id 'com.github.ben-manes.versions' version '0.54.0'
@@ -66,6 +66,11 @@ subprojects {
         testCompileOnly "org.projectlombok:lombok:${lombokVersion}"
         testAnnotationProcessor "org.projectlombok:lombok:${lombokVersion}"
 
+        // Log-injection (CWE-117) defense: encodes untrusted values (exception messages,
+        // request-supplied IDs) before they reach a log statement. Same usage as
+        // cp-court-list-publishing-service.
+        implementation "org.owasp.encoder:encoder:${owaspEncoderVersion}"
+
         testImplementation 'org.junit.jupiter:junit-jupiter'
         testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine'
         testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
@@ -90,17 +95,20 @@ subprojects {
     }
 
     pmd {
+        // Pinned so local, IDE and CI runs apply the same rules (Gradle's default PMD version varies).
+        // Keep in sync with the pmd/pmd-github-action `version` in .github/workflows/code-analysis.yml.
+        toolVersion = '7.28.0'
         ruleSets = []
-        ignoreFailures = true
+        ruleSetFiles = rootProject.files('.github/pmd-ruleset.xml')
+        ignoreFailures = false
     }
     tasks.withType(Pmd).configureEach {
+        // Exclude OpenAPI-generated sources from PMD analysis
+        source = source.filter { file -> !file.absolutePath.contains('/build/generated') }
         reports {
             xml.required.set(true)
             html.required.set(true)
         }
-    }
-    tasks.matching { it.name == 'pmdMain' }.configureEach {
-        onlyIf { gradle.startParameter.taskNames.contains(name) }
     }
     tasks.matching { it.name == 'pmdTest' || it.name == 'pmdTestFixtures' }.configureEach { enabled = false }
 

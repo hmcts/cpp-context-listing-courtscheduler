@@ -2,13 +2,14 @@ package uk.gov.moj.cpp.courtscheduler.domain.mi;
 
 import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
 
-import java.util.Date;
+import java.time.Instant;
+import java.time.LocalDate;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 
-@SuppressWarnings({"PMD.BeanMembersShouldSerialize", "squid:S2384"})
+@SuppressWarnings("squid:S2384")
 @JsonInclude
 @JsonPropertyOrder({
         "id",
@@ -36,49 +37,49 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 public class CourtSchedule {
 
     private String id;
-    private String court_listing_profile_id;
+    private String courtListingProfileId;
     private String oucode;
-    private String court_room_id;
-    private Integer court_room_number;
-    private String court_house_id;// same as courtCentreId
-    private String court_house_name;
-    private String court_room_name;
-    private String operational_unit;
-    private String rota_business_type;
+    private String courtRoomId;
+    private Integer courtRoomNumber;
+    private String courtHouseId;// same as courtCentreId
+    private String courtHouseName;
+    private String courtRoomName;
+    private String operationalUnit;
+    private String rotaBusinessType;
     private String panel;
-    private String court_session;
-    private Boolean is_slot_based;
+    private String courtSession;
+    private Boolean slotBased;
     private Boolean active;
-    private Date session_start;
-    private Integer max_slot;
-    private Integer available_slot;
-    private Integer max_duration_mins;
-    private Integer available_duration_mins;
-    private Date created_on;
-    private Date updated_on;
+    private LocalDate sessionDate;
+    private Integer maxSlot;
+    private Integer availableSlot;
+    private Integer maxDurationMins;
+    private Integer availableDurationMins;
+    private Instant createdOn;
+    private Instant updatedOn;
 
     protected CourtSchedule(final CourtScheduleBuilder builder) {
         this.id = builder.courtScheduleId;
-        this.court_listing_profile_id = builder.listingProfileId;
+        this.courtListingProfileId = builder.listingProfileId;
         this.oucode = builder.ouCode;
-        this.court_room_id = builder.courtRoomId;
-        this.court_room_number = builder.courtRoomNumber;
-        this.court_house_name = builder.courtHouseName;
-        this.court_house_id = builder.courtHouseId;
-        this.court_room_name = builder.courtRoomName;
-        this.operational_unit = builder.operationalUnit;
-        this.rota_business_type = builder.businessType;
+        this.courtRoomId = builder.courtRoomId;
+        this.courtRoomNumber = builder.courtRoomNumber;
+        this.courtHouseName = builder.courtHouseName;
+        this.courtHouseId = builder.courtHouseId;
+        this.courtRoomName = builder.courtRoomName;
+        this.operationalUnit = builder.operationalUnit;
+        this.rotaBusinessType = builder.businessType;
         this.panel = builder.panel;
-        this.court_session = builder.courtSession;
-        this.session_start = builder.sessionDate;
-        this.max_slot = builder.maxSlots;
-        this.max_duration_mins = builder.maxDuration;
-        this.available_slot = builder.availableSlots;
-        this.available_duration_mins = builder.availableDuration;
-        this.is_slot_based = builder.slotBased;
+        this.courtSession = builder.courtSession;
+        this.sessionDate = builder.sessionDate;
+        this.maxSlot = builder.maxSlots;
+        this.maxDurationMins = builder.maxDuration;
+        this.availableSlot = builder.availableSlots;
+        this.availableDurationMins = builder.availableDuration;
+        this.slotBased = builder.slotBased;
         this.active = builder.active;
-        this.created_on = builder.createdOn;
-        this.updated_on = builder.updatedOn;
+        this.createdOn = builder.createdOn;
+        this.updatedOn = builder.updatedOn;
     }
 
     public CourtSchedule() {
@@ -86,7 +87,7 @@ public class CourtSchedule {
 
     @JsonProperty("operational_unit")
     public String getOperationalUnit() {
-        return operational_unit;
+        return operationalUnit;
     }
 
     @JsonProperty("panel")
@@ -101,12 +102,12 @@ public class CourtSchedule {
 
     @JsonProperty("court_listing_profile_id")
     public String getListingProfileId() {
-        return court_listing_profile_id;
+        return courtListingProfileId;
     }
 
     @JsonProperty("session_start")
     public String getSessionDate() {
-        return DateUtils.toIsoString(session_start);
+        return sessionDate == null ? null : sessionDate + "T00:00Z";
     }
 
     @JsonProperty("oucode")
@@ -116,62 +117,62 @@ public class CourtSchedule {
 
     @JsonProperty("court_house_name")
     public String getCourtHouseName() {
-        return court_house_name;
+        return courtHouseName;
     }
 
     @JsonProperty("court_house_id")
     public String getCourtHouseId() {
-        return court_house_id;
+        return courtHouseId;
     }
 
     @JsonProperty("court_room_id")
     public String getCourtRoomId() {
-        return court_room_id;
+        return courtRoomId;
     }
 
     @JsonProperty("court_room_number")
     public Integer getCourtRoomNumber() {
-        return court_room_number;
+        return courtRoomNumber;
     }
 
     @JsonProperty("court_room_name")
     public String getCourtRoomName() {
-        return court_room_name;
+        return courtRoomName;
     }
 
     @JsonProperty("rota_business_type")
     public String getBusinessType() {
-        return rota_business_type;
+        return rotaBusinessType;
     }
 
     @JsonProperty("court_session")
     public String getCourtSession() {
-        return court_session;
+        return courtSession;
     }
 
     @JsonProperty("available_slot")
     public Integer getAvailableSlots() {
-        return available_slot;
+        return availableSlot;
     }
 
     @JsonProperty("available_duration_mins")
     public Integer getAvailableDuration() {
-        return available_duration_mins;
+        return availableDurationMins;
     }
 
     @JsonProperty("max_slot")
     public Integer getMaxSlots() {
-        return max_slot;
+        return maxSlot;
     }
 
     @JsonProperty("max_duration_mins")
     public Integer getMaxDuration() {
-        return max_duration_mins;
+        return maxDurationMins;
     }
 
     @JsonProperty("is_slot_based")
     public Boolean isSlotBased() {
-        return is_slot_based;
+        return slotBased;
     }
 
     @JsonProperty("active")
@@ -184,7 +185,7 @@ public class CourtSchedule {
     }
 
     public void setListingProfileId(final String listingProfileId) {
-        this.court_listing_profile_id = listingProfileId;
+        this.courtListingProfileId = listingProfileId;
     }
 
     public void setOuCode(final String ouCode) {
@@ -192,31 +193,31 @@ public class CourtSchedule {
     }
 
     public void setCourtRoomId(final String courtRoomId) {
-        this.court_room_id = courtRoomId;
+        this.courtRoomId = courtRoomId;
     }
 
     public void setCourtRoomNumber(final Integer courtRoomNumber) {
-        this.court_room_number = courtRoomNumber;
+        this.courtRoomNumber = courtRoomNumber;
     }
 
     public void setCourtHouseId(final String courtHouseId) {
-        this.court_house_id = courtHouseId;
+        this.courtHouseId = courtHouseId;
     }
 
     public void setCourtHouseName(final String courtHouseName) {
-        this.court_house_name = courtHouseName;
+        this.courtHouseName = courtHouseName;
     }
 
     public void setCourtRoomName(final String courtRoomName) {
-        this.court_room_name = courtRoomName;
+        this.courtRoomName = courtRoomName;
     }
 
     public void setOperationalUnit(final String operationalUnit) {
-        this.operational_unit = operationalUnit;
+        this.operationalUnit = operationalUnit;
     }
 
     public void setBusinessType(final String businessType) {
-        this.rota_business_type = businessType;
+        this.rotaBusinessType = businessType;
     }
 
     public void setPanel(final String panel) {
@@ -224,59 +225,59 @@ public class CourtSchedule {
     }
 
     public void setCourtSession(final String courtSession) {
-        this.court_session = courtSession;
+        this.courtSession = courtSession;
     }
 
     public void setSlotBased(final Boolean slotBased) {
-        this.is_slot_based = slotBased;
+        this.slotBased = slotBased;
     }
 
-    public void setSessionDate(final Date sessionDate) {
-        this.session_start = sessionDate;
+    public void setSessionDate(final LocalDate sessionDate) {
+        this.sessionDate = sessionDate;
     }
 
     public void setMaxSlots(final Integer maxSlots) {
-        this.max_slot = maxSlots;
+        this.maxSlot = maxSlots;
     }
 
     public void setMaxDuration(final Integer maxDuration) {
-        this.max_duration_mins = maxDuration;
+        this.maxDurationMins = maxDuration;
     }
 
     public void setAvailableSlots(final Integer availableSlots) {
-        this.available_slot = availableSlots;
+        this.availableSlot = availableSlots;
     }
 
     public void setAvailableDuration(final Integer availableDuration) {
-        this.available_duration_mins = availableDuration;
+        this.availableDurationMins = availableDuration;
     }
 
-    public void setActive(Boolean active) {
+    public void setActive(final Boolean active) {
         this.active = active;
     }
 
     @JsonProperty("created_on")
     public String getCreatedOn() {
-        return created_on == null ? null : DateUtils.toIsoString(created_on);
+        return createdOn == null ? null : DateUtils.toIsoStringMinutes(createdOn);
     }
 
-    public void setCreatedOn(Date createdOn) {
-        this.created_on = createdOn;
+    public void setCreatedOn(final Instant createdOn) {
+        this.createdOn = createdOn;
     }
 
     @JsonProperty("updated_on")
     public String getUpdatedOn() {
-        return updated_on == null ? null : DateUtils.toIsoString(updated_on);
+        return updatedOn == null ? null : DateUtils.toIsoStringMinutes(updatedOn);
     }
 
-    public void setUpdatedOn(Date updatedOn) {
-        this.updated_on = updatedOn;
+    public void setUpdatedOn(final Instant updatedOn) {
+        this.updatedOn = updatedOn;
     }
 
     public Boolean hasHearingsBooked() {
-        return (is_slot_based) ?
-                max_slot.compareTo(available_slot) != 0 :
-                max_duration_mins.compareTo(available_duration_mins) != 0;
+        return slotBased ?
+                maxSlot.compareTo(availableSlot) != 0 :
+                maxDurationMins.compareTo(availableDurationMins) != 0;
 
     }
 
@@ -294,7 +295,7 @@ public class CourtSchedule {
         private String businessType;
         private String businessDescription;
         private String panel;
-        private Date sessionDate;
+        private LocalDate sessionDate;
         private Integer maxSlots = 0;
         private Integer maxDuration = 0;
         private Integer availableSlots = 0;
@@ -302,8 +303,8 @@ public class CourtSchedule {
         private String courtSession;
         private Boolean slotBased;
         private Boolean active;
-        private Date createdOn;
-        private Date updatedOn;
+        private Instant createdOn;
+        private Instant updatedOn;
 
         public static CourtScheduleBuilder courtSchedule() {
             return new CourtScheduleBuilder();
@@ -337,7 +338,7 @@ public class CourtSchedule {
             return maxSlots;
         }
 
-        public Date getSessionDate() {
+        public LocalDate getSessionDate() {
             return sessionDate;
         }
 
@@ -391,23 +392,23 @@ public class CourtSchedule {
 
         public CourtScheduleBuilder withCourtSchedule(final CourtSchedule courtSchedule) {
             this.courtScheduleId = courtSchedule.id;
-            this.sessionDate = courtSchedule.session_start;
+            this.sessionDate = courtSchedule.sessionDate;
             this.ouCode = courtSchedule.oucode;
-            this.courtHouseName = courtSchedule.court_house_name;
-            this.courtHouseId = courtSchedule.court_house_id;
-            this.courtRoomId = courtSchedule.court_room_id;
-            this.courtRoomNumber = courtSchedule.court_room_number;
-            this.courtRoomName = courtSchedule.court_room_name;
-            this.businessType = courtSchedule.rota_business_type;
-            this.courtSession = courtSchedule.court_session;
-            this.slotBased = courtSchedule.is_slot_based;
-            this.maxSlots = courtSchedule.max_slot;
-            this.maxDuration = courtSchedule.max_duration_mins;
-            this.listingProfileId = courtSchedule.court_listing_profile_id;
-            this.operationalUnit = courtSchedule.operational_unit;
+            this.courtHouseName = courtSchedule.courtHouseName;
+            this.courtHouseId = courtSchedule.courtHouseId;
+            this.courtRoomId = courtSchedule.courtRoomId;
+            this.courtRoomNumber = courtSchedule.courtRoomNumber;
+            this.courtRoomName = courtSchedule.courtRoomName;
+            this.businessType = courtSchedule.rotaBusinessType;
+            this.courtSession = courtSchedule.courtSession;
+            this.slotBased = courtSchedule.slotBased;
+            this.maxSlots = courtSchedule.maxSlot;
+            this.maxDuration = courtSchedule.maxDurationMins;
+            this.listingProfileId = courtSchedule.courtListingProfileId;
+            this.operationalUnit = courtSchedule.operationalUnit;
             this.panel = courtSchedule.panel;
-            this.availableDuration = courtSchedule.available_duration_mins;
-            this.availableSlots = courtSchedule.available_slot;
+            this.availableDuration = courtSchedule.availableDurationMins;
+            this.availableSlots = courtSchedule.availableSlot;
             this.active = courtSchedule.active;
             return this;
         }
@@ -487,7 +488,7 @@ public class CourtSchedule {
             return this;
         }
 
-        public CourtScheduleBuilder withSessionDate(final Date sessionDate) {
+        public CourtScheduleBuilder withSessionDate(final LocalDate sessionDate) {
             this.sessionDate = sessionDate;
             return this;
         }
@@ -513,12 +514,12 @@ public class CourtSchedule {
         }
 
 
-        public CourtScheduleBuilder withCreatedOn(final Date createdOn) {
+        public CourtScheduleBuilder withCreatedOn(final Instant createdOn) {
             this.createdOn = createdOn;
             return this;
         }
 
-        public CourtScheduleBuilder withUpdatedOn(final Date updatedOn) {
+        public CourtScheduleBuilder withUpdatedOn(final Instant updatedOn) {
             this.updatedOn = updatedOn;
             return this;
         }

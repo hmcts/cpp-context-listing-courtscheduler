@@ -6,16 +6,15 @@ import java.io.Serializable;
 import java.util.Objects;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Embeddable;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 
 @Embeddable
 public class JudiciaryAvailabilityRuleRepeatDay implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
-    @Enumerated(EnumType.STRING)
+    @Convert(converter = AvailabilityDayOfWeekConverter.class)
     @Column(name = "day_of_week", nullable = false)
     private AvailabilityDayOfWeek dayOfWeek; // Full name: Monday, Tuesday, etc.
 
@@ -23,7 +22,7 @@ public class JudiciaryAvailabilityRuleRepeatDay implements Serializable {
         //For JPA
     }
 
-    public JudiciaryAvailabilityRuleRepeatDay(AvailabilityDayOfWeek dayOfWeek) {
+    public JudiciaryAvailabilityRuleRepeatDay(final AvailabilityDayOfWeek dayOfWeek) {
         this.dayOfWeek = dayOfWeek;
     }
 
@@ -31,12 +30,12 @@ public class JudiciaryAvailabilityRuleRepeatDay implements Serializable {
         return this.dayOfWeek;
     }
 
-    public void setDayOfWeek(AvailabilityDayOfWeek dayOfWeek) {
+    public void setDayOfWeek(final AvailabilityDayOfWeek dayOfWeek) {
         this.dayOfWeek = dayOfWeek;
     }
 
     @Override
-    public boolean equals(Object o) {
+    public boolean equals(final Object o) {
         if (this == o) {
             return true;
         }

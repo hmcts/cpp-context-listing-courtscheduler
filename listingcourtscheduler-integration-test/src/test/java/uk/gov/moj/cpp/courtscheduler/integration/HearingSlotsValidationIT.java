@@ -35,7 +35,7 @@ class HearingSlotsValidationIT extends AbstractIT {
 
     /** Minimal valid query params for GET hearing slots (panel, dates, ouCode, pageSize, pageNumber). */
     private static Map<String, Object> validGetHearingSlotsParams() {
-        Map<String, Object> params = new HashMap<>();
+        final Map<String, Object> params = new HashMap<>();
         params.put("panel", "ADULT");
         params.put("sessionStartDate", "2025-07-01");
         params.put("sessionEndDate", "2025-07-31");
@@ -46,8 +46,8 @@ class HearingSlotsValidationIT extends AbstractIT {
         return params;
     }
 
-    private ResponseData getHearingSlots(Map<String, Object> queryParams) {
-        RequestParams requestParams = getRequestParams(HEARING_SLOTS_URL, GET_HEARING_SLOTS_ACCEPT, SYSTEM_USER_ID, queryParams);
+    private ResponseData getHearingSlots(final Map<String, Object> queryParams) {
+        final RequestParams requestParams = getRequestParams(HEARING_SLOTS_URL, GET_HEARING_SLOTS_ACCEPT, SYSTEM_USER_ID, queryParams);
         return poll(requestParams).with().timeout(30L, SECONDS).pollInterval(50L, MILLISECONDS).pollDelay(0L, MILLISECONDS).until();
     }
 
@@ -63,10 +63,10 @@ class HearingSlotsValidationIT extends AbstractIT {
 
     @ParameterizedTest(name = "shouldReturn400 when {0} is missing")
     @MethodSource("requiredGetHearingSlotsParams")
-    void shouldReturn400WhenRequiredParamIsMissing(String paramName) {
-        Map<String, Object> params = validGetHearingSlotsParams();
+    void shouldReturn400WhenRequiredParamIsMissing(final String paramName) {
+        final Map<String, Object> params = validGetHearingSlotsParams();
         params.remove(paramName);
-        ResponseData response = getHearingSlots(params);
+        final ResponseData response = getHearingSlots(params);
         assertThat(response.getStatus().getStatusCode(), is(BAD_REQUEST.getStatusCode()));
         assertThat(response.getPayload(), containsString(paramName));
         // Spring's missing-required-parameter message ("Required request parameter 'X' ... is not
@@ -76,9 +76,9 @@ class HearingSlotsValidationIT extends AbstractIT {
 
     @Test
     void shouldReturnErrorWhenJurisdictionIsInvalid() {
-        Map<String, Object> params = validGetHearingSlotsParams();
+        final Map<String, Object> params = validGetHearingSlotsParams();
         params.put("jurisdiction", "INVALID");
-        ResponseData response = getHearingSlots(params);
+        final ResponseData response = getHearingSlots(params);
         assertThat(response.getPayload(), containsString("Invalid jurisdiction value"));
     }
 

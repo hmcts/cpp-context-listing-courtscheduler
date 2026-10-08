@@ -5,8 +5,8 @@ import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.toMap;
 
 import uk.gov.moj.cpp.courtscheduler.common.converter.ObjectToJsonObjectConverter;
-import uk.gov.moj.cpp.courtscheduler.domain.AllocatedListingEachBooked;
-import uk.gov.moj.cpp.courtscheduler.domain.AllocatedListingTotalBooked;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.AllocatedListingEachBooked;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.AllocatedListingTotalBooked;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.IdResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant;
@@ -66,7 +66,7 @@ public class AllocatedListingService {
     }
 
 
-    public JsonObject getHearingIds(HearingSlotRequestParam hearingIdsRequest) {
+    public JsonObject getHearingIds(final HearingSlotRequestParam hearingIdsRequest) {
         final Pair<Integer, Set<IdResponse>> hearingIdsResult =
                 allocatedListingRepository.findHearingIdsBy(hearingIdsRequest);
         final long resultsCount = hearingIdsResult.getKey();
@@ -82,7 +82,7 @@ public class AllocatedListingService {
                                 convert(idResults)));
 
         final JsonArray hearingIdsJsonArray = jsonHearingIdsArrayBuilder.build();
-        final long pageCount = (long) Math.ceil((double) resultsCount / (double) pageSize);
+        final long pageCount = (long) Math.ceil((double) resultsCount / pageSize);
 
         return Json.createObjectBuilder()
                 .add(RequestParameterConstant.RESULTS.getLabel(), resultsCount)

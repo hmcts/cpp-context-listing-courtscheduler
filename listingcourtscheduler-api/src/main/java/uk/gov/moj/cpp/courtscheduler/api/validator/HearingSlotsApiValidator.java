@@ -19,13 +19,13 @@ import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.START_DATE_IS_IN_BA
 import org.springframework.web.server.ResponseStatusException;
 // (removed) use java.time.LocalDate directly
 import uk.gov.moj.cpp.courtscheduler.common.Jurisdiction;
-import uk.gov.moj.cpp.courtscheduler.domain.CrownSearchAndBookRequest;
-import uk.gov.moj.cpp.courtscheduler.domain.HearingSlot;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CrownSearchAndBookRequest;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.HearingSlot;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
-import uk.gov.moj.cpp.courtscheduler.domain.MagsSearchAndBookRequest;
-import uk.gov.moj.cpp.courtscheduler.domain.MoveHearingToPastDateRequest;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.MagsSearchAndBookRequest;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.MoveHearingToPastDateRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant;
-import uk.gov.moj.cpp.courtscheduler.domain.RequestedCourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.RequestedCourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 
@@ -33,10 +33,12 @@ import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.List;
+import java.util.Optional;
 
 import jakarta.inject.Inject;
 import jakarta.json.JsonObject;
 
+import org.owasp.encoder.Encode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,9 +46,9 @@ import org.slf4j.LoggerFactory;
 public class HearingSlotsApiValidator {
     private static final Logger LOGGER = LoggerFactory.getLogger(HearingSlotsApiValidator.class.getName());
 
-    static final String SHOULD_BE_ENTERED = " should be entered";
+   /* package */ static final String SHOULD_BE_ENTERED = " should be entered";
 
-    static final String MAGS_COURT_SCHEDULE_ID_NOT_ALLOWED =
+   /* package */ static final String MAGS_COURT_SCHEDULE_ID_NOT_ALLOWED =
             "courtScheduleId is not permitted on mags.search.and.book — Magistrates bookings never anchor on a courtScheduleId";
 
     @Inject
@@ -74,8 +76,8 @@ public class HearingSlotsApiValidator {
         }
 
         // Validate startDate <= endDate
-        final var start = java.time.LocalDate.parse(hearingSlotRequestParam.sessionStartDate());
-        final var end = java.time.LocalDate.parse(hearingSlotRequestParam.sessionEndDate());
+        final java.time.LocalDate start = java.time.LocalDate.parse(hearingSlotRequestParam.sessionStartDate());
+        final java.time.LocalDate end = java.time.LocalDate.parse(hearingSlotRequestParam.sessionEndDate());
         if (end.isBefore(start)) {
             return buildErrorResponse(START_DATE_AFTER_END_DATE);
         }
@@ -122,18 +124,19 @@ public class HearingSlotsApiValidator {
 
         LOGGER.info("Validating list Hearing Slots input : {}", hearingSlots);
 
-        for (HearingSlot hearingSlot : hearingSlots) {
-            List<RequestedCourtSchedule> schedules = hearingSlot.getCourtScheduleIds();
+        for (final HearingSlot hearingSlot : hearingSlots) {
+            final List<RequestedCourtSchedule> schedules = hearingSlot.getCourtScheduleIds();
 
-            for (RequestedCourtSchedule requestedCourtSchedule : schedules) {
-                uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule cs = courtScheduleRepository.findBy(requestedCourtSchedule.getCourtScheduleId());
+            for (final RequestedCourtSchedule requestedCourtSchedule : schedules) {
+                final CourtSchedule cs = courtScheduleRepository.findBy(requestedCourtSchedule.getCourtScheduleId());
 
                 if (isNull(cs)) {
                     return buildErrorResponse("Requested CourSchedule not found. Id: " + requestedCourtSchedule.getCourtScheduleId());
                 }
 
-                if (invalidDuration(requestedCourtSchedule, cs))
+                if (invalidDuration(requestedCourtSchedule, cs)) {
                     return buildErrorResponse("No duration supplied for requested CourtSchedule: " + requestedCourtSchedule.getCourtScheduleId());
+                }
             }
         }
 
@@ -141,41 +144,51 @@ public class HearingSlotsApiValidator {
     }
 
 
-    private boolean invalidDuration(RequestedCourtSchedule schedule, CourtSchedule cs) {
+    private boolean invalidDuration(final RequestedCourtSchedule schedule, final CourtSchedule cs) {
         return !cs.isSlotBased() && isNull(schedule.getDurationInMinutes());
     }
 
     private void validateHearingStartTime(final String hearingStartTime) {
         if (isNotBlank(hearingStartTime)) {
-            try {
-                ZonedDateTime.parse(hearingStartTime);
-            } catch (final DateTimeParseException e) {
-                throw new ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST, format("Invalid hearingStartTime: %s and exception %s ", hearingStartTime, e.getMessage()));
-            }
+            parseHearingStartTime(hearingStartTime);
+        }
+    }
+
+    private ZonedDateTime parseHearingStartTime(final String hearingStartTime) {
+        try {
+            return ZonedDateTime.parse(hearingStartTime);
+        } catch (final DateTimeParseException e) {
+            throw new ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST, format("Invalid hearingStartTime: %s and exception %s ", hearingStartTime, e.getMessage()));
         }
     }
 
     private boolean isInvalidDateFormat(final String date) {
+        return parseDate(date).isEmpty();
+    }
+
+    private Optional<java.time.LocalDate> parseDate(final String date) {
         try {
-            java.time.LocalDate.parse(date);
+            return Optional.of(java.time.LocalDate.parse(date));
         } catch (final DateTimeParseException ignored) {
             LOGGER.debug("Invalid date string for hearing-slots validation (expected for bad input): {}", date);
-            return true;
+            return Optional.empty();
         }
-        return false;
     }
 
     private boolean isValidInstant(final String date) {
         if(date == null){
             return true;
         }
+        return parseInstant(date).isPresent();
+    }
+
+    private Optional<Instant> parseInstant(final String date) {
         try {
-            Instant.parse(date);
+            return Optional.of(Instant.parse(date));
         } catch (final DateTimeParseException ignored) {
             LOGGER.debug("Invalid instant string for hearing-slots validation (expected for bad input): {}", date);
-            return false;
+            return Optional.empty();
         }
-        return true;
     }
 
     private JsonObject getMessage(final String value) {
@@ -194,8 +207,8 @@ public class HearingSlotsApiValidator {
      */
     public JsonObject crownSearchAndBookValidation(final CrownSearchAndBookRequest request) {
         LOGGER.info("Validating crownSearchAndBook: hearingId={}, courtCentreId={}, hearingDate={}, durationInMinutes={}, courtScheduleId={}",
-                request.getHearingId(), request.getCourtCentreId(), request.getHearingDate(),
-                request.getDurationInMinutes(), request.getCourtScheduleId());
+                Encode.forJava(request.getHearingId()), Encode.forJava(request.getCourtCentreId()), request.getHearingDate(),
+                request.getDurationInMinutes(), Encode.forJava(request.getCourtScheduleId()));
 
         if (isBlank(request.getHearingId())) {
             return getMessage(RequestParameterConstant.HEARING_ID.getLabel());
@@ -217,8 +230,8 @@ public class HearingSlotsApiValidator {
      */
     public JsonObject magsSearchAndBookValidation(final MagsSearchAndBookRequest request) {
         LOGGER.info("Validating magsSearchAndBook: hearingId={}, courtCentreId={}, hearingDate={}, durationInMinutes={}, isPolice={}",
-                request.getHearingId(), request.getCourtCentreId(), request.getHearingDate(),
-                request.getDurationInMinutes(), request.isPolice());
+                Encode.forJava(request.getHearingId()), Encode.forJava(request.getCourtCentreId()), request.getHearingDate(),
+                request.getDurationInMinutes(), request.getIsPolice());
 
         if (isBlank(request.getHearingId())) {
             return getMessage(RequestParameterConstant.HEARING_ID.getLabel());
@@ -229,22 +242,25 @@ public class HearingSlotsApiValidator {
         if (isBlank(request.getCourtCentreId())) {
             return getMessage(RequestParameterConstant.COURT_CENTRE.getLabel() + SHOULD_BE_ENTERED);
         }
-        if (request.hasCourtScheduleId()) {
+        if (request.getCourtScheduleId() != null && !request.getCourtScheduleId().isBlank()) {
             return buildErrorResponse(MAGS_COURT_SCHEDULE_ID_NOT_ALLOWED);
         }
         return EMPTY_JSON_OBJECT;
     }
 
     /**
-     * Validates a {@code courtscheduler.move-hearing-to-past-date} request (SPRDT-1089, AC7).
+     * Validates a {@code courtscheduler.move-hearing-to-past-date} request (SPRDT-1089, AC7;
+     * courtRoomId/startTime added to mirror main's stricter required set).
      *
-     * <p>{@code hearingId}, {@code jurisdiction} and {@code startDate} are mandatory.
-     * {@code courtScheduleId} is an OPTIONAL CROWN anchor. Returns {@code EMPTY_JSON_OBJECT} when valid.
-     * The past-only rule is owned by the caller (listing); it is not enforced here.</p>
+     * <p>{@code hearingId}, {@code jurisdiction}, {@code courtRoomId} and {@code startDate}
+     * (derived from {@code startTime}) are mandatory. {@code courtScheduleId} is an OPTIONAL CROWN
+     * anchor. Returns {@code EMPTY_JSON_OBJECT} when valid. The past-only rule is owned by the
+     * caller (listing); it is not enforced here.</p>
      */
     public JsonObject moveHearingToPastDateValidation(final MoveHearingToPastDateRequest request) {
-        LOGGER.info("Validating moveHearingToPastDate: hearingId={}, courtCentreId={}, jurisdiction={}, startDate={}",
-                request.getHearingId(), request.getCourtCentreId(), request.getJurisdiction(), request.getStartDate());
+        LOGGER.info("Validating moveHearingToPastDate: hearingId={}, courtCentreId={}, courtRoomId={}, jurisdiction={}, startDate={}",
+                Encode.forJava(request.getHearingId()), Encode.forJava(request.getCourtCentreId()), Encode.forJava(request.getCourtRoomId()),
+                request.getJurisdiction(), request.getStartDate());
 
         if (isBlank(request.getHearingId())) {
             return getMessage(RequestParameterConstant.HEARING_ID.getLabel());
@@ -252,13 +268,19 @@ public class HearingSlotsApiValidator {
         if (isBlank(request.getJurisdiction())) {
             return getMessage("jurisdiction");
         }
+        if (isBlank(request.getCourtRoomId())) {
+            return getMessage("courtRoomId");
+        }
         if (request.getStartDate() == null) {
-            return getMessage("startDate");
+            return getMessage("startTime");
+        }
+        if (request.getEndDate() != null && request.getEndDate().isBefore(request.getStartDate())) {
+            return buildErrorResponse("endDate must not be before startDate");
         }
         return EMPTY_JSON_OBJECT;
     }
 
-    private JsonObject buildErrorResponse(String errorMessage) {
+    private JsonObject buildErrorResponse(final String errorMessage) {
         return createObjectBuilder()
                 .add(ERROR_MESSAGE, errorMessage)
                 .build();
