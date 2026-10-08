@@ -446,7 +446,9 @@ protocols: [ HTTP, HTTPS ]
       422:
         description: |
           Booking failed with errorCode NO_SESSION_FOUND when no session (or qualifying consecutive
-          run) is available for the request, NO_ALLOCATION_ON_DATE when
+          run) is available for the request, FUTURE_DATE_NOT_ALLOWED when a
+          move-hearing-to-past-date startTime/endTime is not strictly before today (UTC; body per
+          json/schema/courtscheduler.move-hearing-to-past-date.error.json), NO_ALLOCATION_ON_DATE when
           change-court-room-for-multiday-hearing is requested for a date the hearing isn't
           currently allocated on, or — for a crown.search.and.book RESIZE of an existing multi-day
           block (same start date, different end date) — NO_AVAILABILITY (with unavailableDates) or

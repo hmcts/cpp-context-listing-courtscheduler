@@ -397,6 +397,22 @@ Supports complex filtering:
 
 **Response:** `application/vnd.courtscheduler.get.hearing.ids+json`
 
+#### POST `/hearings/{hearingId}` (move-hearing-to-past-date)
+**Purpose:** Move a hearing to past-dated court-schedule session(s), both jurisdictions. Restored from main (SPRDT-985/987) by SPRDT-1447 after the main merge `8de19ce` dropped it.
+
+**Request:** `application/vnd.courtscheduler.move-hearing-to-past-date+json` (`courtCentreId`, `courtRoomId`, `jurisdiction`, `startTime`, `endTime` as UTC instants; optional `durationInMinutes`, `courtScheduleId`)
+
+**Response:** `{hearingId, source, sessions[]}` (`application/vnd.courtscheduler.move-hearing-to-past-date.response+json`)
+
+**Business Logic:**
+- Past dates only: `startTime`/`endTime` on or after today (UTC) is a 422 `FUTURE_DATE_NOT_ALLOWED`
+- MAGISTRATES (main's behaviour): for each sitting day (weekdays; a weekend-only span books the requested days) finds the active session in `courtRoomId` at `courtCentreId` whose window contains the `startTime` time-of-day — any `court_session` (AM/PM/AD), non-draft first, lowest room number first — no fallback to another room
+- MAGISTRATES duration is the submitted window (a full court day, 360 minutes, per day for a multi-day span); each returned session carries the submitted start/end and that duration
+- CROWN single-day move (no `courtScheduleId`): the session in the requested `courtRoomId`, on the requested date, whose window contains the `startTime` time-of-day — no fallback to another room (Crown rulings of 2026-10-08, see `docs/pipeline/adrs/001-crown-move-to-past-rulings.md`)
+- CROWN anchored or multi-day move: consecutive weekday sessions in one room + business type, optionally anchored on `courtScheduleId` (SPRDT-1089); payback of the prior block (SPRDT-1333)
+- Every day is resolved before anything changes; the hearing's prior allocation is then released (payback) and the new session(s) booked with `source=MOVE_TO_PAST_DATE`
+- 422 `NO_SESSION_FOUND` when any day has no matching session — for both jurisdictions, including a multi-day range (nothing is released or booked) — or the allocation cannot be persisted
+
 ### Provisional Booking Endpoints
 
 #### POST `/provisionalBooking`

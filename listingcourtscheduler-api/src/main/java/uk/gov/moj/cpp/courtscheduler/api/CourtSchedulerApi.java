@@ -13,6 +13,10 @@ import jakarta.json.JsonObjectBuilder;
 import jakarta.json.JsonReader;
 import jakarta.servlet.http.HttpServletRequest;
 import java.io.StringReader;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -65,6 +69,7 @@ import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtScheduleDeleteResponse;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerGetCourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerSearchCourtSchedulesByIdResponse;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.CrownSearchAndBookRequest;
+import uk.gov.moj.cpp.courtscheduler.domain.BookedPastSession;
 import uk.gov.moj.cpp.courtscheduler.domain.CrownSearchAndBookResponse;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.ListHearingSlotsResponse;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.MagsSearchAndBookRequest;
@@ -80,6 +85,7 @@ import uk.gov.moj.cpp.courtscheduler.exception.CrownFallbackInvalidRequestExcept
 import uk.gov.moj.cpp.courtscheduler.exception.CrownFallbackNoSessionException;
 import uk.gov.moj.cpp.courtscheduler.exception.ExtendMultidayHearingException;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.RequestedDay;
+import uk.gov.moj.cpp.courtscheduler.exception.MoveHearingToPastDateNoSessionException;
 import uk.gov.moj.cpp.courtscheduler.exception.NoAllocationOnDateException;
 import uk.gov.moj.cpp.courtscheduler.exception.NoSessionAvailableException;
 import uk.gov.moj.cpp.courtscheduler.exception.SlotsBookException;
@@ -122,11 +128,16 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
     private static final String COURT_ROOM_ID = "courtRoomId";
     private static final String DURATION_IN_MINUTES = "durationInMinutes";
     private static final java.time.format.DateTimeFormatter UTC_HH_MM_FORMATTER =
-            java.time.format.DateTimeFormatter.ofPattern("HH:mm").withZone(java.time.ZoneOffset.UTC);
+            java.time.format.DateTimeFormatter.ofPattern("HH:mm").withZone(ZoneOffset.UTC);
     private static final String CROWN_SAB_MT = "application/vnd.courtscheduler.crown.search.and.book";
     private static final String MAGS_SAB_MT = "application/vnd.courtscheduler.mags.search.and.book";
     private static final String MOVE_PAST_MT = "application/vnd.courtscheduler.move-hearing-to-past-date";
     private static final String CHANGE_ROOM_MULTIDAY_MT = "application/vnd.courtscheduler.change-court-room-for-multiday-hearing";
+    private static final String CROWN_JURISDICTION = "CROWN";
+    private static final String FUTURE_DATE_NOT_ALLOWED = "FUTURE_DATE_NOT_ALLOWED";
+    private static final String MOVE_TO_PAST_DATE_SOURCE = "MOVE_TO_PAST_DATE";
+    // main: a multi-day move books a full court day per sitting day
+    private static final int MULTI_DAY_DURATION_MINUTES = 360;
 
     // --- shared infrastructure
     private final ObjectMapper objectMapper;
@@ -572,7 +583,7 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
             }
         } catch (CrownFallbackInvalidRequestException e) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
-        } catch (CrownFallbackNoSessionException | NoSessionAvailableException e) {
+        } catch (CrownFallbackNoSessionException | NoSessionAvailableException | MoveHearingToPastDateNoSessionException e) {
             // Booking-family 422s keep the legacy FLAT body ({"errorCode":...,"message":...}) —
             // UnprocessableEntityException would render the judiciary-validate wrapper instead.
             return ResponseEntity.status(422)
@@ -645,18 +656,27 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
     /**
      * courtCentreId/courtRoomId/jurisdiction/startTime/endTime mirror main's contract (the review
      * artifact this reconciles); courtScheduleId is an additive CROWN payback anchor main has no
-     * equivalent for (main's CROWN never reaches this endpoint). startTime/endTime are absolute UTC
-     * instants: only their DATES drive the [startDate, endDate] span booked here — court-schedule
-     * sessions in this service are booked per day, not per time-slot, so the time-of-day is not
-     * otherwise matched.
+     * equivalent for. startTime/endTime are absolute UTC instants. Only past dates are accepted:
+     * today or later is a 422 FUTURE_DATE_NOT_ALLOWED before anything else is looked at.
+     *
+     * <p>CROWN keeps the team (ccsph2) consecutive-run behaviour. MAGISTRATES takes main's path
+     * (SPRDT-1447, restored after the 8de19ce main merge dropped it): the session whose window
+     * contains the submitted start time, the submitted window as the booked duration, and the
+     * submitted start/end stamped on each returned session.</p>
      */
     private ResponseEntity<Map<String, Object>> moveHearingToPastDate(final String hearingId, final JsonObject payload) {
         final String startTimeRaw = getStringOrNull(payload, "startTime");
         final String endTimeRaw = getStringOrNull(payload, "endTime");
-        final java.time.LocalDate startDate = startTimeRaw == null ? null
-                : java.time.ZonedDateTime.parse(startTimeRaw).toLocalDate();
-        final java.time.LocalDate endDate = endTimeRaw == null ? null
-                : java.time.ZonedDateTime.parse(endTimeRaw).toLocalDate();
+        final ZonedDateTime startInstant = startTimeRaw == null ? null : ZonedDateTime.parse(startTimeRaw);
+        final ZonedDateTime endInstant = endTimeRaw == null ? null : ZonedDateTime.parse(endTimeRaw);
+        final LocalDate startDate = startInstant == null ? null : startInstant.toLocalDate();
+        final LocalDate endDate = endInstant == null ? null : endInstant.toLocalDate();
+
+        final LocalDate today = LocalDate.now(ZoneOffset.UTC);
+        if ((startDate != null && !startDate.isBefore(today)) || (endDate != null && !endDate.isBefore(today))) {
+            return ResponseEntity.unprocessableEntity()
+                    .body(JsonValueConverter.toMap(buildErrorBody(FUTURE_DATE_NOT_ALLOWED, "startDate/endDate must be before today")));
+        }
 
         final MoveHearingToPastDateRequest moveRequest = new MoveHearingToPastDateRequest()
                 .hearingId(hearingId)
@@ -665,6 +685,8 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
                 .jurisdiction(getStringOrNull(payload, "jurisdiction"))
                 .startDate(startDate)
                 .endDate(endDate)
+                .startTime(startTimeRaw)
+                .endTime(endTimeRaw)
                 .durationInMinutes(payload.containsKey(DURATION_IN_MINUTES) ? payload.getInt(DURATION_IN_MINUTES) : 0)
                 .courtScheduleId(getStringOrNull(payload, "courtScheduleId"));
 
@@ -672,8 +694,41 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
         if (!validationError.isEmpty()) {
             throw new ValidationException(validationError);
         }
-        final MoveHearingToPastDateResponse response = slotsUpdateService.moveHearingToPastDate(moveRequest);
-        return ResponseEntity.ok(toResponseMap(response));
+        if (CROWN_JURISDICTION.equalsIgnoreCase(moveRequest.getJurisdiction())) {
+            final MoveHearingToPastDateResponse response = slotsUpdateService.moveHearingToPastDate(moveRequest);
+            return ResponseEntity.ok(toResponseMap(response));
+        }
+        return moveMagistratesHearingToPastDate(hearingId, moveRequest, startInstant, endInstant);
+    }
+
+    /**
+     * MAGISTRATES half of {@link #moveHearingToPastDate(String, JsonObject)} - main's controller
+     * logic: the day and time-of-day for the range-containment search AND the stamped sessions are
+     * derived from the submitted instants; a multi-day move books a full court day per sitting day,
+     * a single-day move the submitted window. Returned as {@code {hearingId, source, sessions[]}}.
+     */
+    private ResponseEntity<Map<String, Object>> moveMagistratesHearingToPastDate(final String hearingId,
+                                                                                final MoveHearingToPastDateRequest moveRequest,
+                                                                                final ZonedDateTime startInstant,
+                                                                                final ZonedDateTime endInstant) {
+        final LocalDate startDate = moveRequest.getStartDate();
+        final LocalDate endDate = moveRequest.getEndDate() == null ? startDate : moveRequest.getEndDate();
+        final ZonedDateTime effectiveEnd = endInstant == null ? startInstant : endInstant;
+        final String hearingStartTime = UTC_HH_MM_FORMATTER.format(startInstant);
+        final String hearingEndTime = UTC_HH_MM_FORMATTER.format(effectiveEnd);
+        final int durationInMinutes = endDate.isAfter(startDate)
+                ? MULTI_DAY_DURATION_MINUTES
+                : (int) ChronoUnit.MINUTES.between(startInstant, effectiveEnd);
+
+        final List<BookedPastSession> sessions = slotsUpdateService.moveHearingToPastDate(
+                hearingId, moveRequest.getCourtCentreId(), moveRequest.getCourtRoomId(), startDate, endDate,
+                hearingStartTime, hearingEndTime, moveRequest.getJurisdiction(), durationInMinutes);
+
+        final Map<String, Object> responseBody = new LinkedHashMap<>();
+        responseBody.put("hearingId", hearingId);
+        responseBody.put("source", MOVE_TO_PAST_DATE_SOURCE);
+        responseBody.put("sessions", objectMapper.convertValue(sessions, new TypeReference<List<Map<String, Object>>>() { }));
+        return ResponseEntity.ok(responseBody);
     }
 
     /**
@@ -688,7 +743,7 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
         for (int i = 0; i < daysArray.size(); i++) {
             final JsonObject dayJson = daysArray.getJsonObject(i);
             days.add(new RequestedDay()
-                    .sessionDate(java.time.LocalDate.parse(dayJson.getString("sessionDate")))
+                    .sessionDate(LocalDate.parse(dayJson.getString("sessionDate")))
                     .courtScheduleId(dayJson.getString("courtScheduleId"))
                     .durationInMinutes(dayJson.getInt(DURATION_IN_MINUTES)));
         }
@@ -703,8 +758,12 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
     }
 
     private static JsonObject buildErrorBody(final String message) {
+        return buildErrorBody("NO_ALLOCATION_ON_DATE", message);
+    }
+
+    private static JsonObject buildErrorBody(final String errorCode, final String message) {
         return Json.createObjectBuilder()
-                .add("errorCode", "NO_ALLOCATION_ON_DATE")
+                .add("errorCode", errorCode)
                 .add("message", message == null ? "" : message)
                 .build();
     }
@@ -715,7 +774,7 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
                 .add("message", e.getMessage() == null ? "" : e.getMessage());
         if (!e.getUnavailableDates().isEmpty()) {
             final jakarta.json.JsonArrayBuilder dates = Json.createArrayBuilder();
-            for (final java.time.LocalDate d : e.getUnavailableDates()) {
+            for (final LocalDate d : e.getUnavailableDates()) {
                 dates.add(d.toString());
             }
             body.add("unavailableDates", dates);
@@ -738,9 +797,9 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
         return json.containsKey("isPolice") && !json.isNull("isPolice") && json.getBoolean("isPolice");
     }
 
-    private static java.time.LocalDate getDateOrNull(final JsonObject json, final String key) {
+    private static LocalDate getDateOrNull(final JsonObject json, final String key) {
         final String raw = getStringOrNull(json, key);
-        return raw == null ? null : java.time.LocalDate.parse(raw);
+        return raw == null ? null : LocalDate.parse(raw);
     }
 
     private Map<String, Object> toResponseMap(final Object response) {

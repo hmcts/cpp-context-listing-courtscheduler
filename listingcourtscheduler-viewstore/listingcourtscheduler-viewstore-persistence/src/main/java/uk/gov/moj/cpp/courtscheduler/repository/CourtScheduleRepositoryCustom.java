@@ -93,6 +93,18 @@ public interface CourtScheduleRepositoryCustom {
                                                                                               String courtRoomId);
 
     /**
+     * MAGISTRATES move-hearing-to-past-date session lookup, restored from main (SPRDT-1447; lost in
+     * the 8de19ce main merge): exact date + jurisdiction at the centre, optionally scoped to a room,
+     * optionally range-containing {@code sessionStartTime} - any court_session (AM/PM/AD), any day of
+     * the week. Non-draft first, then lowest room number.
+     */
+    Optional<CourtSchedule> findSessionForMoveToPastDate(String courtCentreId,
+                                                         String courtRoomId,
+                                                         LocalDate sessionDate,
+                                                         LocalDateTime sessionStartTime,
+                                                         String jurisdiction);
+
+    /**
      * AD weekday sessions for a room in a date range. businessType and isDraft are optional
      * filters (null = unconstrained). The extend path (SPRDT-1273) passes the block's own draft
      * state so an allocated hearing's tail days only ever book FINAL sessions — a draft tail

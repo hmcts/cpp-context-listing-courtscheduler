@@ -601,9 +601,11 @@ class HearingSlotsApiValidatorTest {
     @org.junit.jupiter.api.Nested
     class MoveHearingToPastDateValidation {
 
+        private static final String MAGS_START = "2025-03-03T10:00:00.000Z";
+
         @Test
         void should_passValidation_when_startDateIsInFuture() {
-            // Past-only is owned by the caller (listing), not this validator — a future startDate must NOT be rejected.
+            // Past-only is enforced in CourtSchedulerApi before validation, not by this validator.
             final MoveHearingToPastDateRequest request = new MoveHearingToPastDateRequest()
                     .hearingId(UUID.randomUUID().toString())
                     .courtCentreId(UUID.randomUUID().toString())
@@ -616,7 +618,7 @@ class HearingSlotsApiValidatorTest {
 
         @Test
         void should_passValidation_when_startDateIsToday() {
-            // AC7 — today is allowed (not future)
+            // The validator itself does not apply the past-only rule (CourtSchedulerApi does, before validation).
             final MoveHearingToPastDateRequest request = new MoveHearingToPastDateRequest()
                     .hearingId(UUID.randomUUID().toString())
                     .courtCentreId(UUID.randomUUID().toString())
@@ -643,16 +645,45 @@ class HearingSlotsApiValidatorTest {
 
         @Test
         void should_passValidation_when_magsJurisdictionNoAnchor() {
-            // AC7 — MAGS: courtScheduleId absent, jurisdiction=MAGISTRATES => valid
-            final MoveHearingToPastDateRequest request = new MoveHearingToPastDateRequest()
+            // AC7 — MAGS: courtScheduleId absent, jurisdiction=MAGISTRATES, complete window => valid
+            assertEquals(EMPTY_JSON_OBJECT, validator.moveHearingToPastDateValidation(
+                    magsMove(MAGS_START, "2025-03-03T11:00:00.000Z")));
+        }
+
+        @Test
+        void should_returnError_when_magsStartTimeMissing() {
+            // SPRDT-1447: the MAGISTRATES lookup needs the time-of-day, so startTime itself is required
+            final JsonObject result = validator.moveHearingToPastDateValidation(magsMove(null, null));
+            assertFalse(result.isEmpty());
+            assertTrue(result.getString(ERROR_MESSAGE).contains("startTime"));
+        }
+
+        @Test
+        void should_returnError_when_onlyStartTimeSupplied() {
+            final JsonObject result = validator.moveHearingToPastDateValidation(magsMove(MAGS_START, null));
+            assertFalse(result.isEmpty());
+            assertTrue(result.getString(ERROR_MESSAGE).contains("must both be supplied"));
+        }
+
+        @Test
+        void should_returnError_when_endTimeBeforeStartTime() {
+            final JsonObject result = validator.moveHearingToPastDateValidation(
+                    magsMove(MAGS_START, "2025-03-03T09:30:00.000Z"));
+            assertFalse(result.isEmpty());
+            assertTrue(result.getString(ERROR_MESSAGE).contains("endTime must not be before startTime"));
+        }
+
+
+        private MoveHearingToPastDateRequest magsMove(final String startTime, final String endTime) {
+            return new MoveHearingToPastDateRequest()
                     .hearingId(UUID.randomUUID().toString())
                     .courtCentreId(UUID.randomUUID().toString())
                     .courtRoomId(UUID.randomUUID().toString())
                     .jurisdiction("MAGISTRATES")
                     .startDate(LocalDate.of(2025, 3, 3))
+                    .startTime(startTime)
+                    .endTime(endTime)
                     .durationInMinutes(720);
-
-            assertEquals(EMPTY_JSON_OBJECT, validator.moveHearingToPastDateValidation(request));
         }
 
         @Test

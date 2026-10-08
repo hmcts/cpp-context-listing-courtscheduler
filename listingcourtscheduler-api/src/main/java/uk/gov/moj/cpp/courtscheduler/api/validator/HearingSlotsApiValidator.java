@@ -44,6 +44,7 @@ import org.slf4j.LoggerFactory;
 
 @Service
 public class HearingSlotsApiValidator {
+    private static final String MAGISTRATES_JURISDICTION = "MAGISTRATES";
     private static final Logger LOGGER = LoggerFactory.getLogger(HearingSlotsApiValidator.class.getName());
 
    /* package */ static final String SHOULD_BE_ENTERED = " should be entered";
@@ -254,8 +255,10 @@ public class HearingSlotsApiValidator {
      *
      * <p>{@code hearingId}, {@code jurisdiction}, {@code courtRoomId} and {@code startDate}
      * (derived from {@code startTime}) are mandatory. {@code courtScheduleId} is an OPTIONAL CROWN
-     * anchor. Returns {@code EMPTY_JSON_OBJECT} when valid. The past-only rule is owned by the
-     * caller (listing); it is not enforced here.</p>
+     * anchor. MAGISTRATES also needs the {@code startTime} instant itself (its session lookup uses
+     * the time-of-day), and a window must be complete ({@code startTime} and {@code endTime} both
+     * present) and not reversed (SPRDT-1447). Returns {@code EMPTY_JSON_OBJECT} when valid. The
+     * past-only rule is enforced before validation, in {@code CourtSchedulerApi}.</p>
      */
     public JsonObject moveHearingToPastDateValidation(final MoveHearingToPastDateRequest request) {
         LOGGER.info("Validating moveHearingToPastDate: hearingId={}, courtCentreId={}, courtRoomId={}, jurisdiction={}, startDate={}",
@@ -276,6 +279,16 @@ public class HearingSlotsApiValidator {
         }
         if (request.getEndDate() != null && request.getEndDate().isBefore(request.getStartDate())) {
             return buildErrorResponse("endDate must not be before startDate");
+        }
+        if (MAGISTRATES_JURISDICTION.equalsIgnoreCase(request.getJurisdiction()) && isBlank(request.getStartTime())) {
+            return getMessage("startTime");
+        }
+        if (isBlank(request.getStartTime()) != isBlank(request.getEndTime())) {
+            return buildErrorResponse("startTime and endTime must both be supplied");
+        }
+        if (!isBlank(request.getStartTime())
+                && ZonedDateTime.parse(request.getEndTime()).isBefore(ZonedDateTime.parse(request.getStartTime()))) {
+            return buildErrorResponse("endTime must not be before startTime");
         }
         return EMPTY_JSON_OBJECT;
     }
