@@ -341,3 +341,12 @@ rule "API - Action - courtscheduler.search.court-schedules-by-id"
     $outcome.setSuccess(true);
 end
 
+
+rule "API - Action - courtscheduler.move-hearing-to-past-date"
+  when
+    $outcome: Outcome();
+    $action: Action(name == "courtscheduler.move-hearing-to-past-date");
+        eval(userAndGroupProvider.isMemberOfAnyOfTheSuppliedGroups($action, SecurityGroupConstants.systemUserRoles()));
+  then
+    $outcome.setSuccess(true);
+end

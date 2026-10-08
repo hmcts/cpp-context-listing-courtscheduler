@@ -51,11 +51,11 @@ class CourtScheduleEnricherTest {
 
         final CourtRoomSessionAllocation courtRoomSessionAllocation = new CourtRoomSessionAllocation("241546", 1234, "BAUOS05", 8, 60, "TBL", "PM");
         when(courtSession.getCourtSession(any(), anyString())).thenReturn("WEDAM");
-        when(referenceDataMapperService.findByVenue(any(Venue.class), any(Map.class))).thenReturn(of(courtRoom));
+        when(referenceDataMapperService.findByVenue(any(Venue.class), anyMap())).thenReturn(of(courtRoom));
         when(referenceDataMapperService.findByOuCodeAndRoomIdAndListingSessionAndBusinessType(anyString(), anyInt(), anyString(), anyString()))
                 .thenReturn(of(courtRoomSessionAllocation));
 
-        final Map<String, String> listingProfile = new HashMap();
+        final Map<String, String> listingProfile = new HashMap<>();
         listingProfile.put("id", "CS2129874");
         listingProfile.put("sessionDate", "2019-10-01");
         listingProfile.put("session", "AM");
@@ -92,11 +92,11 @@ class CourtScheduleEnricherTest {
 
         final CourtRoomSessionAllocation courtRoomSessionAllocation = new CourtRoomSessionAllocation("241546", 1234, courtRoom.getOucode(), 8, 60, "TBL", "PM");
         when(courtSession.getCourtSession(any(), anyString())).thenReturn("WEDAM");
-        when(referenceDataMapperService.findByVenue(any(Venue.class), any(Map.class))).thenReturn(of(courtRoom));
+        when(referenceDataMapperService.findByVenue(any(Venue.class), anyMap())).thenReturn(of(courtRoom));
         when(referenceDataMapperService.findByOuCodeAndRoomIdAndListingSessionAndBusinessType(anyString(), anyInt(), anyString(), anyString()))
                 .thenReturn(of(courtRoomSessionAllocation));
 
-        final Map<String, String> listingProfile = new HashMap();
+        final Map<String, String> listingProfile = new HashMap<>();
         listingProfile.put("id", "CS2129874");
         listingProfile.put("sessionDate", "2019-10-01");
         listingProfile.put("session", "AM");
@@ -135,7 +135,7 @@ class CourtScheduleEnricherTest {
 
     @Test
     void shouldBuildNewCourtScheduleWithCourtRoomDetailsNotPresentLogMessages() {
-        final Map<String, String> listingProfile = new HashMap();
+        final Map<String, String> listingProfile = new HashMap<>();
         final String businessType = "DVB";
         listingProfile.put("id", "CS2129874");
         listingProfile.put("sessionDate", "2019-10-01");
@@ -196,7 +196,7 @@ class CourtScheduleEnricherTest {
                 .withSessionEndTime("12:45")
                 .build();
         when(courtSession.getCourtSession(any(), anyString())).thenReturn("WEDAM");
-        when(referenceDataMapperService.findByVenue(any(Venue.class), any(Map.class))).thenReturn(of(courtRoom));
+        when(referenceDataMapperService.findByVenue(any(Venue.class), anyMap())).thenReturn(of(courtRoom));
         when(referenceDataMapperService.findByOuCodeAndRoomIdAndListingSessionAndBusinessType(anyString(), anyInt(), anyString(), anyString()))
                 .thenReturn(of(allocation));
 
@@ -216,7 +216,7 @@ class CourtScheduleEnricherTest {
         // Allocation present but no start/end times configured -> defaults must apply (10:00 / 13:00 for AM)
         final CourtRoomSessionAllocation allocation = new CourtRoomSessionAllocation("241546", 1234, "BAUOS05", 8, 60, "TBL", "WEDAM");
         when(courtSession.getCourtSession(any(), anyString())).thenReturn("WEDAM");
-        when(referenceDataMapperService.findByVenue(any(Venue.class), any(Map.class))).thenReturn(of(courtRoom));
+        when(referenceDataMapperService.findByVenue(any(Venue.class), anyMap())).thenReturn(of(courtRoom));
         when(referenceDataMapperService.findByOuCodeAndRoomIdAndListingSessionAndBusinessType(anyString(), anyInt(), anyString(), anyString()))
                 .thenReturn(of(allocation));
 
@@ -234,7 +234,7 @@ class CourtScheduleEnricherTest {
         final CourtRoom courtRoom = createCourtRoom();
 
         when(courtSession.getCourtSession(any(), anyString())).thenReturn("WEDPM");
-        when(referenceDataMapperService.findByVenue(any(Venue.class), any(Map.class))).thenReturn(of(courtRoom));
+        when(referenceDataMapperService.findByVenue(any(Venue.class), anyMap())).thenReturn(of(courtRoom));
         // No CourtRoomSessionAllocation configured for this room/session
         when(referenceDataMapperService.findByOuCodeAndRoomIdAndListingSessionAndBusinessType(anyString(), anyInt(), anyString(), anyString()))
                 .thenReturn(empty());

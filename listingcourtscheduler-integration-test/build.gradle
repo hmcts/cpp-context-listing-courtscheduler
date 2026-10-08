@@ -114,6 +114,36 @@ tasks.named('test') {
     dependsOn tasks.named('composeUp')
     finalizedBy tasks.named('composeDown')
 
+    // Maven parity: the legacy IT profile ran **/*IT.java but excluded **/performance/**;
+    // performance runs were opt-in via -Pperformance-test. Keep that split here — run the
+    // performance package with `./gradlew :listingcourtscheduler-integration-test:performanceTest`.
+    exclude '**/performance/**'
+
+    systemProperty 'app.baseUrl',
+            "http://localhost:${serverPort}/listingcourtscheduler-api/rest/courtscheduler"
+    systemProperty 'wiremock.baseUrl', 'http://localhost:8189'
+
+    jvmArgs = ['-Xshare:off']
+    testLogging {
+        showStandardStreams = true
+    }
+}
+
+// Opt-in replacement for the Maven 'performance-test' profile: only **/performance/**/*IT.
+// Not wired into `check`/`build` — run explicitly, e.g.
+//   ./gradlew :listingcourtscheduler-integration-test:performanceTest
+tasks.register('performanceTest', Test) {
+    description = "Runs the performance ITs (**/performance/**) against the IT docker-compose stack"
+    group = "verification"
+
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+
+    dependsOn tasks.named('composeUp')
+    finalizedBy tasks.named('composeDown')
+
+    include '**/performance/**'
+
     systemProperty 'app.baseUrl',
             "http://localhost:${serverPort}/listingcourtscheduler-api/rest/courtscheduler"
     systemProperty 'wiremock.baseUrl', 'http://localhost:8189'

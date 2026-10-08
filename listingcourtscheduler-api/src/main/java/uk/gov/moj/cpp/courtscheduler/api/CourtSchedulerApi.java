@@ -311,6 +311,15 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
         if (cs.getSessionEndTime() != null) {
             map.put("sessionEndTime", UTC_HH_MM_FORMATTER.format(cs.getSessionEndTime().toInstant()));
         }
+        // The legacy get-court-schedule response was assembled from CourtScheduleView, whose wire
+        // names for these flags are is-prefixed — unlike the raw CourtSchedule serialization used
+        // by the hearing-slots and sessions-by-id responses, which keeps the bean-convention names
+        // draft/overbookingAllowed. Rename here rather than annotating CourtSchedule, so the other
+        // endpoints keep their contract.
+        map.remove("draft");
+        map.remove("overbookingAllowed");
+        map.put("isOverbookingAllowed", cs.isOverbookingAllowed());
+        map.put("isDraft", cs.isDraft());
         return map;
     }
 

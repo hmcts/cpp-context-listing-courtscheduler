@@ -11,15 +11,22 @@ import uk.gov.moj.cpp.courtscheduler.domain.Hearing;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotSearchAndBookResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotSearchRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.ListHearingSlotsResponse;
+import uk.gov.moj.cpp.courtscheduler.domain.MoveHearingToPastDateResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.RequestedSlots;
 import uk.gov.moj.cpp.courtscheduler.domain.Result;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
 import uk.gov.moj.cpp.courtscheduler.exception.CourtScheduleIdNotMatchingException;
+import uk.gov.moj.cpp.courtscheduler.exception.MoveHearingToPastDateNoSessionException;
 import uk.gov.moj.cpp.courtscheduler.exception.ProvisionalSlotNotFoundException;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 import uk.gov.moj.cpp.courtscheduler.repository.ProvisionalBookingRepository;
 
 import java.sql.Timestamp;
+import java.time.DayOfWeek;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
@@ -41,6 +48,8 @@ public class SlotsUpdateService {
     public static final String HEARING_DATE = "hearingDate";
     public static final String COURT_SCHEDULE_ID = "courtScheduleId";
     public static final String SCHEDULES = "schedules";
+    public static final String MOVE_TO_PAST_DATE_SOURCE = "MOVE_TO_PAST_DATE";
+    private static final String MAGISTRATES_JURISDICTION = "MAGISTRATES";
 
     @Inject
     private CourtScheduleRepository courtScheduleRepository;
@@ -123,6 +132,138 @@ public class SlotsUpdateService {
         if(isSearchSuccessful && CollectionUtils.isNotEmpty(allocatedSlots))
             hearingSlotSearchAndBookResponse = AllocatedSlotToHearingSlotSearchResponseConverter.convert(allocatedSlots.get(0), hearingSlotSearchRequest.hearingId());
         return hearingSlotSearchAndBookResponse;
+    }
+
+    /**
+     * Expands [startDate, endDate] into sitting days (see {@link #sittingDays}) and books a session
+     * on every day in a single atomic call. All sessions are resolved first, so if any day has no
+     * matching session the whole move is rejected before any allocation is written (saveBookedSlots
+     * releases prior allocations for the hearing exactly once and then books every slot). Supports
+     * both jurisdictions and an optional room-scoped, time-of-day (range-containment) search.
+     */
+    public List<MoveHearingToPastDateResponse> moveHearingToPastDate(final String hearingId,
+                                                                     final String courtCentreId,
+                                                                     final String courtRoomId,
+                                                                     final LocalDate startDate,
+                                                                     final LocalDate endDate,
+                                                                     final String hearingStartTime,
+                                                                     final String hearingEndTime,
+                                                                     final String jurisdiction,
+                                                                     final int durationInMinutes) {
+        final String effectiveJurisdiction = (jurisdiction == null || jurisdiction.isBlank())
+                ? MAGISTRATES_JURISDICTION : jurisdiction.toUpperCase();
+        final LocalDate effectiveEndDate = endDate == null ? startDate : endDate;
+        final List<LocalDate> sittingDays = sittingDays(startDate, effectiveEndDate);
+        if (sittingDays.isEmpty()) {
+            // only reachable when endDate is before startDate - an empty span has no day to book
+            throw new MoveHearingToPastDateNoSessionException(
+                    "No day between " + startDate + " and " + effectiveEndDate);
+        }
+
+        final List<CourtSchedule> sessions = new ArrayList<>();
+        for (final LocalDate day : sittingDays) {
+            final LocalDateTime sessionStartDateTime = (hearingStartTime == null || hearingStartTime.isBlank())
+                    ? null : LocalDateTime.of(day, LocalTime.parse(hearingStartTime));
+            final CourtSchedule session = courtScheduleRepository
+                    .findSessionForMoveToPastDate(courtCentreId, courtRoomId, day, sessionStartDateTime, effectiveJurisdiction)
+                    .orElseThrow(() -> new MoveHearingToPastDateNoSessionException(
+                            "No session available at courtCentreId=" + courtCentreId + " on " + day));
+            sessions.add(session);
+        }
+
+        final List<AllocatedSlot> slots = new ArrayList<>();
+        for (int i = 0; i < sittingDays.size(); i++) {
+            slots.add(buildAllocatedSlotForPastDateMove(hearingId, durationInMinutes,
+                    sittingDays.get(i), hearingStartTime, sessions.get(i)));
+        }
+        final Result persistResult = courtScheduleRepository.saveBookedSlots(slots, false, false);
+        if (!persistResult.isSuccess()) {
+            throw new MoveHearingToPastDateNoSessionException(
+                    "Move hearing to past date failed to persist allocation for hearingId " + hearingId + ": " + persistResult.getMsg());
+        }
+
+        final List<MoveHearingToPastDateResponse> responses = new ArrayList<>();
+        for (int i = 0; i < sittingDays.size(); i++) {
+            responses.add(toMoveHearingToPastDateResponse(hearingId, durationInMinutes,
+                    sittingDays.get(i), hearingStartTime, hearingEndTime, sessions.get(i)));
+        }
+        return responses;
+    }
+
+    /**
+     * Weekdays are always sitting days, and mid-span weekends in a mixed range stay skipped
+     * (multi-day hearings do not sit over the weekend). A span containing no weekday at all - a
+     * single Saturday/Sunday, or a Sat-Sun range - uses the requested days verbatim: weekend
+     * sessions are real (e.g. magistrates remand courts sit Saturdays), so whether such a day is
+     * bookable is the per-day session lookup's decision, not a calendar rule.
+     */
+    private static List<LocalDate> sittingDays(final LocalDate startDate, final LocalDate endDate) {
+        final List<LocalDate> allDays = new ArrayList<>();
+        final List<LocalDate> weekdays = new ArrayList<>();
+        LocalDate cursor = startDate;
+        while (!cursor.isAfter(endDate)) {
+            allDays.add(cursor);
+            final DayOfWeek dow = cursor.getDayOfWeek();
+            if (dow != DayOfWeek.SATURDAY && dow != DayOfWeek.SUNDAY) {
+                weekdays.add(cursor);
+            }
+            cursor = cursor.plusDays(1);
+        }
+        return weekdays.isEmpty() ? allDays : weekdays;
+    }
+
+    private static AllocatedSlot buildAllocatedSlotForPastDateMove(final String hearingId, final int durationInMinutes,
+                                                                   final LocalDate day, final String hearingStartTime,
+                                                                   final CourtSchedule session) {
+        final AllocatedSlot slot = new AllocatedSlot();
+        slot.setHearingId(hearingId);
+        slot.setCourtScheduleId(session.getCourtScheduleId());
+        slot.setOuCode(session.getOuCode());
+        slot.setDuration(durationInMinutes);
+        slot.setSessionDate(day.toString());
+        slot.setSource(MOVE_TO_PAST_DATE_SOURCE);
+        // Booked slot reflects the SUBMITTED start time-of-day on this day, not the session window.
+        final String submittedStart = submittedIso(day, hearingStartTime);
+        if (submittedStart != null) {
+            slot.setHearingStartTime(submittedStart);
+        } else if (session.getSessionStartTime() != null) {
+            slot.setHearingStartTime(DateUtils.toIsoString(new Timestamp(session.getSessionStartTime().getTime())));
+        }
+        return slot;
+    }
+
+    private static MoveHearingToPastDateResponse toMoveHearingToPastDateResponse(final String hearingId, final int durationInMinutes,
+                                                                                 final LocalDate day, final String hearingStartTime,
+                                                                                 final String hearingEndTime, final CourtSchedule session) {
+        final boolean overbooked = session.isSlotBased()
+                ? (session.getAvailableSlots() != null && session.getAvailableSlots() <= 0)
+                : (session.getAvailableDuration() != null && session.getAvailableDuration() < durationInMinutes);
+
+        // sessionStartTime/sessionEndTime carry the SUBMITTED start/end time-of-day on this sitting
+        // day (falling back to the court-schedule window only if a time-of-day was not supplied).
+        final String submittedStart = submittedIso(day, hearingStartTime);
+        final String submittedEnd = submittedIso(day, hearingEndTime);
+        return new MoveHearingToPastDateResponse(
+                hearingId,
+                session.getCourtScheduleId(),
+                session.getCourtRoomId(),
+                day.toString(),
+                submittedStart != null ? submittedStart
+                        : (session.getSessionStartTime() != null ? DateUtils.toIsoString(new Timestamp(session.getSessionStartTime().getTime())) : null),
+                submittedEnd != null ? submittedEnd
+                        : (session.getSessionEndTime() != null ? DateUtils.toIsoString(new Timestamp(session.getSessionEndTime().getTime())) : null),
+                durationInMinutes,
+                session.getIsDraft(),
+                session.getBusinessType(),
+                MOVE_TO_PAST_DATE_SOURCE,
+                overbooked);
+    }
+
+    private static String submittedIso(final LocalDate day, final String timeOfDay) {
+        if (timeOfDay == null || timeOfDay.isBlank()) {
+            return null;
+        }
+        return DateUtils.toIsoString(LocalDateTime.of(day, LocalTime.parse(timeOfDay)));
     }
 
     private boolean isCourtScheduleIdsMatching(final List<String> slotsCourtScheduleIdList, final List<String> provisionalBookingCourtScheduleIdList) {

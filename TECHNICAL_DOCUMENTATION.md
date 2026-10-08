@@ -398,6 +398,19 @@ Supports complex filtering:
 
 **Response:** `application/vnd.courtscheduler.get.hearing.ids+json`
 
+#### POST `/hearings/{hearingId}`
+**Purpose:** Move a hearing to a past-dated MAGISTRATES court-schedule session (SPRDT-985)
+
+**Request:** `application/vnd.courtscheduler.move-hearing-to-past-date+json`
+
+**Response:** `application/vnd.courtscheduler.move-hearing-to-past-date.response+json`
+
+**Business Logic:**
+- Finds the first active MAGISTRATES session matching the exact `startDate` and `courtCentreId` (non-draft, lowest court room first)
+- Releases any prior allocation held by the hearing and books the session with `source=MOVE_TO_PAST_DATE`
+- `durationInMinutes` defaults to 1 when omitted
+- 422 `FUTURE_DATE_NOT_ALLOWED` when `startDate` is after today; 422 `JURISDICTION_NOT_SUPPORTED` for CROWN; 422 `NO_SESSION_FOUND` when no session matches or the allocation cannot be persisted
+
 ### Provisional Booking Endpoints
 
 #### POST `/provisionalBooking`

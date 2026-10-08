@@ -281,6 +281,11 @@ class HearingSlotIT extends AbstractIT {
         JsonObject jsonObject = stringToJsonObjectConverter.convert(tempResponseData.getPayload());
         final JsonObject hearingSlotJsonObject = (JsonObject) jsonObject.getJsonArray("hearingSlots").get(0);
         assertThat(hearingSlotJsonObject.getString("courtScheduleId"), is(courtSchedule.getCourtScheduleId()));
+        // Wire-contract pin: cross-context consumers (cpp-context-listing, cpp-apitests) read the
+        // legacy bean-convention names — these flags must not serialize as isDraft/isOverbookingAllowed.
+        assertThat(hearingSlotJsonObject.containsKey("draft"), is(true));
+        assertThat(hearingSlotJsonObject.containsKey("overbookingAllowed"), is(true));
+        assertThat(hearingSlotJsonObject.containsKey("isDraft"), is(false));
         final JsonArray slotStartTimesJsonArray = hearingSlotJsonObject.getJsonArray("slotStartTimes");
         assertThat(slotStartTimesJsonArray.size(), is(4));
         slotStartTimesJsonArray.forEach(slotStartTime -> {
