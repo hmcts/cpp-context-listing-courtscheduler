@@ -37,7 +37,7 @@ public class ProvisionalBookingService {
     private static final String SAFE_TO_SHARE = "safeToShare";
     private static final String STATUS_RESERVED = "RESERVED";
     private static final String STATUS_SHARED = "SHARED";
-    private static final String STATUS_NONE = "NONE";
+    private static final String STATUS_NOT_FOUND = "NOT_FOUND";
     @Inject
     private ProvisionalBookingRepository provisionalBookingRepository;
     @Inject
@@ -120,18 +120,15 @@ public class ProvisionalBookingService {
      * Reports whether each booking id still has a hold behind it. Used by the pre-share gate:
      * sharing is asynchronous, so the clerk has to be told before the command is sent.
      *
-     * <p>A legacy provisional_booking row counts as live. Those drafts never had a reservation,
-     * and reporting them as expired would block every pre-go-live magistrates draft at share.
-     *
-     * <p>Checks each booking id individually rather than batching the legacy lookup (contrast
+     * <p>Checks each booking id individually rather than batching (contrast
      * {@link #fetchProvisionalSlots}, which batches unresolved ids into one query) — this method
      * only needs a per-id boolean, not the full session detail that justifies batching there.
      *
      * <p><b>Contract.</b> {@code status} is one of {@code RESERVED} (a reservation still holds
      * capacity), {@code SHARED} (a confirmed row carries this booking id, so the result was
-     * already shared and its hold correctly released), {@code LEGACY} (a pre-reserve-a-slot
-     * provisional_booking row, active or not), or {@code NONE} (nothing found — the hold expired
-     * and was purged). {@code safeToShare} is {@code status != NONE}.
+     * already shared and its hold correctly released), or {@code NOT_FOUND} (no row under this
+     * booking id in either shape — the hold expired and was purged).
+     * {@code safeToShare} is {@code status != NOT_FOUND}.
      *
      * <p>Unlike the {@code live} flag this replaces, the answer no longer conflates an expired
      * hold with an already-shared booking, so a caller may gate a re-share on it directly.
@@ -146,14 +143,14 @@ public class ProvisionalBookingService {
             final String status = statusOf(bookingId);
             bookings.add(Json.createObjectBuilder()
                     .add(BOOKING_ID, bookingId)
-                    .add(SAFE_TO_SHARE, !STATUS_NONE.equals(status))
+                    .add(SAFE_TO_SHARE, !STATUS_NOT_FOUND.equals(status))
                     .add(STATUS, status));
         }
         return Json.createObjectBuilder().add("bookings", bookings).build();
     }
 
     /**
-     * Resolves a booking id to one of four states, in precedence order.
+     * Resolves a booking id to one of three states, in precedence order.
      *
      * <p><b>Order matters.</b> A live reservation outranks a confirmed row: if a booking somehow
      * carried both, the clerk is still holding capacity, and reporting it as already shared would
@@ -180,14 +177,14 @@ public class ProvisionalBookingService {
         }
         // No row under this booking id, in either shape, so there is no hold to share against.
         //
-        // This used to fall back to the legacy provisional_booking table and answer LEGACY,
-        // on the grounds that a pre-reserve-a-slot draft never had a reservation and so should
-        // not be reported as expired. That fallback is gone deliberately: a provisional_booking
-        // row proves only that a booking was once recorded, never that a session is still held.
-        // Answering LEGACY therefore waved through exactly the drafts most likely to be stale -
-        // the oldest ones - which is the opposite of what the gate is for. Absence of an
-        // unconfirmed booking now means what it says: the hold is gone, so re-pick.
-        return STATUS_NONE;
+        // This used to fall back to the legacy provisional_booking table and report a fourth
+        // state for a row found there, on the grounds that a pre-reserve-a-slot draft never had a
+        // reservation and so should not be reported as expired. That fallback is gone
+        // deliberately: a provisional_booking row proves only that a booking was once recorded,
+        // never that a session is still held, so it waved through exactly the drafts most likely
+        // to be stale - the oldest ones - which is the opposite of what the gate is for. Absence
+        // of an unconfirmed booking now means what it says: the hold is gone, so re-pick.
+        return STATUS_NOT_FOUND;
     }
 
     /**

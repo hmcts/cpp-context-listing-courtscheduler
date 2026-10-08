@@ -167,13 +167,13 @@ class ProvisionalBookingServiceTest {
     }
 
     @Test
-    void shouldReportAPurgedBookingAsNone() {
+    void shouldReportAPurgedBookingAsNotFound() {
         when(allocatedListingRepository.findByBookingId("bk-gone")).thenReturn(List.of());
 
         final JsonObject booking = provisionalBookingService.getBookingStatus("bk-gone")
                 .getJsonArray("bookings").getJsonObject(0);
 
-        assertThat(booking.getString("status"), is("NONE"));
+        assertThat(booking.getString("status"), is("NOT_FOUND"));
         assertThat(booking.getBoolean("safeToShare"), is(false));
     }
 
@@ -182,7 +182,7 @@ class ProvisionalBookingServiceTest {
      * makes a booking safe to share.
      *
      * <p>That row proves only that a booking was once recorded — never that a session is still
-     * held. Answering LEGACY therefore waved through precisely the drafts most likely to be
+     * held. Reporting it as safe therefore waved through precisely the drafts most likely to be
      * stale, the oldest ones, which is the opposite of what the gate exists to do. Absence of
      * an unconfirmed booking now means what it says: the hold is gone, so the clerk re-picks.
      *
@@ -190,13 +190,13 @@ class ProvisionalBookingServiceTest {
      * appears here; Mockito's strict stubbing would fail the test if one did.
      */
     @Test
-    void shouldReportABookingWithOnlyALegacyRowAsNone() {
+    void shouldReportABookingWithOnlyALegacyRowAsNotFound() {
         when(allocatedListingRepository.findByBookingId("legacy-bk")).thenReturn(List.of());
 
         final JsonObject booking = provisionalBookingService.getBookingStatus("legacy-bk")
                 .getJsonArray("bookings").getJsonObject(0);
 
-        assertThat(booking.getString("status"), is("NONE"));
+        assertThat(booking.getString("status"), is("NOT_FOUND"));
         assertThat(booking.getBoolean("safeToShare"), is(false));
     }
 
