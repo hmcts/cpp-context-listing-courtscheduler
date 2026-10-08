@@ -72,6 +72,7 @@ class SlotsUpdateServiceTest {
     private static final String DATE_2026_04_21 = "2026-04-21";
     private static final String VALUE_731816 = "731816";
     private static final String CROWN_2 = "CROWN";
+    private static final String MAGISTRATES_2 = "MAGISTRATES";
     private static final String CROWN_FB_LIST_2 = "CROWN_FB_LIST";
     private static final String MOVE_2 = "MOVE";
     private static final String CS_EXISTING_DAY2 = "cs-existing-day2";
@@ -1800,7 +1801,7 @@ class SlotsUpdateServiceTest {
                     .hearingId(UUID.randomUUID().toString())
                     .courtCentreId(UUID.randomUUID().toString())
                     .courtRoomId(UUID.randomUUID().toString())
-                    .jurisdiction("MAGISTRATES")
+                    .jurisdiction(MAGISTRATES_2)
                     .startDate(LocalDate.of(2025, 1, 10))
                     .endDate(LocalDate.of(2025, 1, 10)); // same day - mandatory-endDate shape, NOT a range
 
@@ -1897,7 +1898,7 @@ class SlotsUpdateServiceTest {
             final MoveHearingToPastDateRequest request = new MoveHearingToPastDateRequest()
                     .hearingId(hearingId)
                     .courtCentreId(courtCentreId)
-                    .jurisdiction("MAGISTRATES")
+                    .jurisdiction(MAGISTRATES_2)
                     .startDate(LocalDate.of(2025, 3, 3))
                     .durationInMinutes(720);
 
@@ -1981,11 +1982,11 @@ class SlotsUpdateServiceTest {
             final LocalDate day = LocalDate.of(2026, 10, 6);
             final uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule amSession = buildSession(day);
 
-            final MoveHearingToPastDateRequest request = singleDayMove(hearingId, courtCentreId, courtRoomId, "MAGISTRATES", day)
+            final MoveHearingToPastDateRequest request = singleDayMove(hearingId, courtCentreId, courtRoomId, MAGISTRATES_2, day)
                     .hearingStartTime("2026-10-06T09:00:00.000Z");
 
             when(courtScheduleRepository.findSessionsForMoveToPastDate(
-                    courtCentreId, courtRoomId, day, LocalDateTime.of(2026, 10, 6, 9, 0), "MAGISTRATES"))
+                    courtCentreId, courtRoomId, day, LocalDateTime.of(2026, 10, 6, 9, 0), MAGISTRATES_2))
                     .thenReturn(List.of(amSession));
             when(courtScheduleRepository.saveBookedSlots(any(), eq(false), eq(false)))
                     .thenReturn(new Result().msg("").success(true));
@@ -2018,7 +2019,7 @@ class SlotsUpdateServiceTest {
             final String hearingId = UUID.randomUUID().toString();
             final LocalDate day = LocalDate.of(2026, 10, 6);
             final MoveHearingToPastDateRequest request = singleDayMove(hearingId, UUID.randomUUID().toString(),
-                    UUID.randomUUID().toString(), "MAGISTRATES", day)
+                    UUID.randomUUID().toString(), MAGISTRATES_2, day)
                     .hearingStartTime("2026-10-06T09:00:00.000Z"); // repository mock returns no session
 
             org.junit.jupiter.api.Assertions.assertThrows(NoSessionAvailableException.class,
@@ -2048,7 +2049,7 @@ class SlotsUpdateServiceTest {
             final String courtCentreId = UUID.randomUUID().toString();
             final String courtRoomId = UUID.randomUUID().toString();
             final MoveHearingToPastDateRequest request = singleDayMove(UUID.randomUUID().toString(), courtCentreId, courtRoomId,
-                    "MAGISTRATES", LocalDate.of(2026, 10, 5))
+                    MAGISTRATES_2, LocalDate.of(2026, 10, 5))
                     .endDate(LocalDate.of(2026, 10, 6))
                     .hearingStartTime("2026-10-05T09:00:00.000Z");
 
@@ -2070,7 +2071,7 @@ class SlotsUpdateServiceTest {
             org.junit.jupiter.api.Assertions.assertThrows(NoSessionAvailableException.class,
                     () -> service.moveHearingToPastDate(request));
             verify(courtScheduleRepository).findSessionsForMoveToPastDate(
-                    courtCentreId, null, day, LocalDateTime.of(2026, 10, 6, 13, 30), "MAGISTRATES");
+                    courtCentreId, null, day, LocalDateTime.of(2026, 10, 6, 13, 30), MAGISTRATES_2);
         }
 
         private MoveHearingToPastDateRequest singleDayMove(final String hearingId, final String courtCentreId,

@@ -52,6 +52,8 @@ class MoveHearingToPastDateIT extends AbstractIT {
     private static final String MAGISTRATES_2 = "MAGISTRATES";
     private static final String MOVE_TO_PAST_DATE_2 = "MOVE_TO_PAST_DATE";
     private static final String OU_CRN4 = "OU-CRN4";
+    private static final String OU_MAG7 = "OU-MAG7";
+    private static final String NGAP = "NGAP";
     private static final String SOURCE_MOVE_TO_PAST_DATE = "\"source\":\"MOVE_TO_PAST_DATE\"";
     private static final String PERSISTED_ALLOCATED_LISTINGS_SOURCE = "persisted allocated_listings.source";
 
@@ -67,7 +69,7 @@ class MoveHearingToPastDateIT extends AbstractIT {
         final String hearingId = UUID.randomUUID().toString();
         final LocalDate day = pastMonday();
 
-        final String sessionId = seedSession(day, roomId, "NGAP", centreId, "OU-MAG1", MAGISTRATES_2);
+        final String sessionId = seedSession(day, roomId, NGAP, centreId, "OU-MAG1", MAGISTRATES_2);
 
         final Response response = callMove(centreId, roomId, MAGISTRATES_2, day, null, 360, hearingId);
 
@@ -135,8 +137,8 @@ class MoveHearingToPastDateIT extends AbstractIT {
         final LocalDate day = pastMonday();
 
         // No AD session that day - only AM (09:00-13:00) and PM (13:00-17:00), as in the reported rota.
-        final String amSessionId = seedSession(day, roomId, "NGAP", centreId, "OU-MAG5", MAGISTRATES_2, 240, "AM", 9, 13);
-        seedSession(day, roomId, "NGAP", centreId, "OU-MAG5", MAGISTRATES_2, 240, "PM", 13, 17);
+        final String amSessionId = seedSession(day, roomId, NGAP, centreId, "OU-MAG5", MAGISTRATES_2, 240, "AM", 9, 13);
+        seedSession(day, roomId, NGAP, centreId, "OU-MAG5", MAGISTRATES_2, 240, "PM", 13, 17);
 
         final Response response = callMove(centreId, roomId, MAGISTRATES_2, day, null, 60, hearingId, 10, 11);
 
@@ -173,7 +175,7 @@ class MoveHearingToPastDateIT extends AbstractIT {
         final LocalDate day = pastMonday();
 
         // PM-only room; a 10:00 start falls in no session window -> 422 NO_SESSION_FOUND, nothing booked.
-        seedSession(day, roomId, "NGAP", centreId, "OU-MAG6", MAGISTRATES_2, 240, "PM", 13, 17);
+        seedSession(day, roomId, NGAP, centreId, "OU-MAG6", MAGISTRATES_2, 240, "PM", 13, 17);
 
         final Response response = callMove(centreId, roomId, MAGISTRATES_2, day, null, 60, hearingId, 10, 11);
 
@@ -191,8 +193,8 @@ class MoveHearingToPastDateIT extends AbstractIT {
         final String hearingId = UUID.randomUUID().toString();
         final LocalDate day1 = pastMonday();
 
-        final String d1 = seedSession(day1, roomId, "NGAP", centreId, "OU-MAG2", MAGISTRATES_2);
-        final String d2 = seedSession(day1.plusDays(1), roomId, "NGAP", centreId, "OU-MAG2", MAGISTRATES_2);
+        final String d1 = seedSession(day1, roomId, NGAP, centreId, "OU-MAG2", MAGISTRATES_2);
+        final String d2 = seedSession(day1.plusDays(1), roomId, NGAP, centreId, "OU-MAG2", MAGISTRATES_2);
 
         // A genuine date range (endDate after startDate) => 2 days needed; consecutive Mon+Tue in the
         // same room + business type. durationInMinutes alone no longer drives multi-day sizing here —
@@ -286,11 +288,11 @@ class MoveHearingToPastDateIT extends AbstractIT {
         final LocalDate pastDay = pastMonday();
 
         // Currently booked: 60 of a future AM session's 240 minutes (180 left).
-        final String futureSession = seedSession(futureDay, roomId, "NGAP", centreId, "OU-MAG7", MAGISTRATES_2, 180, "AM", 9, 13);
-        book(hearingId, futureSession, futureDay, 60, "OU-MAG7");
+        final String futureSession = seedSession(futureDay, roomId, NGAP, centreId, OU_MAG7, MAGISTRATES_2, 180, "AM", 9, 13);
+        book(hearingId, futureSession, futureDay, 60, OU_MAG7);
         // Target day: AM and PM only, no AD session.
-        final String pastAm = seedSession(pastDay, roomId, "NGAP", centreId, "OU-MAG7", MAGISTRATES_2, 240, "AM", 9, 13);
-        final String pastPm = seedSession(pastDay, roomId, "NGAP", centreId, "OU-MAG7", MAGISTRATES_2, 240, "PM", 13, 17);
+        final String pastAm = seedSession(pastDay, roomId, NGAP, centreId, OU_MAG7, MAGISTRATES_2, 240, "AM", 9, 13);
+        final String pastPm = seedSession(pastDay, roomId, NGAP, centreId, OU_MAG7, MAGISTRATES_2, 240, "PM", 13, 17);
 
         final Response response = callMove(centreId, roomId, MAGISTRATES_2, pastDay, null, 60, hearingId, 10, 11);
 
