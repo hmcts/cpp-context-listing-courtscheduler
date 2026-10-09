@@ -106,6 +106,7 @@ class CourtSchedulerApiTest {
             "application/vnd.courtscheduler.unassign.judiciary+json";
     private static final String JUDICIARIES = "judiciaries";
     private static final String JUDGE_ID_1 = "judge-1";
+    private static final String COURT_SCHEDULE_ID_1 = "cs-1";
 
     // -----------------------------------------------------------------------
     // postCourtschedulerSessionJudiciary — dispatch
@@ -359,9 +360,9 @@ class CourtSchedulerApiTest {
     void bulkAssignJudiciaries_shouldReturn202AndInvokeHelperWhenServiceSucceeds() throws Exception {
         final Map<String, Object> body = new HashMap<>();
         final AssignJudiciaryToSessionsRequest dto = AssignJudiciaryToSessionsRequest.builder()
-                .withCourtScheduleIds(List.of("cs-1"))
+                .withCourtScheduleIds(List.of(COURT_SCHEDULE_ID_1))
                 .build();
-        final List<String> changedIds = List.of("cs-1");
+        final List<String> changedIds = List.of(COURT_SCHEDULE_ID_1);
         final List<JsonObject> payloads = List.of(Json.createObjectBuilder().build());
 
         when(objectMapper.writeValueAsString(any())).thenReturn("{}");
@@ -401,11 +402,11 @@ class CourtSchedulerApiTest {
     @Test
     void removeAllJudiciaries_shouldReturn202AndInvokeHelperWhenServiceSucceeds() throws Exception {
         final Map<String, Object> body = new HashMap<>();
-        final List<String> changedIds = List.of("cs-1");
+        final List<String> changedIds = List.of(COURT_SCHEDULE_ID_1);
         final List<JsonObject> payloads = List.of(Json.createObjectBuilder().build());
 
         when(objectMapper.writeValueAsString(any())).thenReturn("{\"courtScheduleIds\":[\"cs-1\"]}");
-        when(judiciaryUnassignmentService.removeAllJudiciaryByCourtScheduleIds(List.of("cs-1")))
+        when(judiciaryUnassignmentService.removeAllJudiciaryByCourtScheduleIds(List.of(COURT_SCHEDULE_ID_1)))
                 .thenReturn(changedIds);
         when(changeJudiciaryForHearingsHelper.createChangeJudiciaryForHearingsPayloads(changedIds))
                 .thenReturn(payloads);

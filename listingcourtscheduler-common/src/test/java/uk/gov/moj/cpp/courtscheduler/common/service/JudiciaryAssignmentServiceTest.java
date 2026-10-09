@@ -218,7 +218,7 @@ class JudiciaryAssignmentServiceTest {
         when(referenceDataMapperService.findById(jid)).thenReturn(Optional.of(buildJudiciary(jid)));
         when(courtScheduleJudiciaryRepository.deleteAllAssignmentsForCourtScheduleIds(anyList())).thenReturn(2);
         when(judiciaryChangeDetectionService.buildCourtScheduleJudiciaryHashMap(anyList())).thenReturn(Map.of());
-        when(judiciaryChangeDetectionService.findChangedCourtScheduleIds(any(), any())).thenReturn(List.of());
+        when(judiciaryChangeDetectionService.findChangedCourtScheduleIds(any(), any())).thenReturn(of());
 
         final AssignJudiciaryToSessionsRequest req = AssignJudiciaryToSessionsRequest.builder()
                 .withCourtScheduleIds(of(s1, s2))
@@ -281,7 +281,7 @@ class JudiciaryAssignmentServiceTest {
         when(courtScheduleRepository.findByCourtScheduleIds(anyList())).thenReturn(of(buildCourtScheduleWithHouse(s1, "H1")));
         when(courtScheduleJudiciaryRepository.deleteAllAssignmentsForCourtScheduleIds(anyList())).thenReturn(1);
         when(judiciaryChangeDetectionService.buildCourtScheduleJudiciaryHashMap(anyList())).thenReturn(Map.of());
-        when(judiciaryChangeDetectionService.findChangedCourtScheduleIds(any(), any())).thenReturn(List.of());
+        when(judiciaryChangeDetectionService.findChangedCourtScheduleIds(any(), any())).thenReturn(of());
 
         final AssignJudiciaryToSessionsRequest req = AssignJudiciaryToSessionsRequest.builder()
                 .withCourtScheduleIds(of(s1))
@@ -409,7 +409,7 @@ class JudiciaryAssignmentServiceTest {
         when(referenceDataMapperService.findById(jid)).thenReturn(Optional.of(buildJudiciary(jid)));
         when(courtScheduleJudiciaryRepository.deleteAllAssignmentsForCourtScheduleIds(anyList())).thenReturn(0);
         when(judiciaryChangeDetectionService.buildCourtScheduleJudiciaryHashMap(anyList())).thenReturn(Map.of());
-        when(judiciaryChangeDetectionService.findChangedCourtScheduleIds(any(), any())).thenReturn(List.of());
+        when(judiciaryChangeDetectionService.findChangedCourtScheduleIds(any(), any())).thenReturn(of());
 
         final AssignJudiciaryToSessionsRequest req = AssignJudiciaryToSessionsRequest.builder()
                 .withCourtScheduleIds(of(s1))

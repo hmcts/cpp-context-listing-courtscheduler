@@ -3700,7 +3700,7 @@ class CourtSchedulerIT extends AbstractIT {
         databaseSeeder.insertAllocatedListing(allocatedListing);
 
         final String requestPayload = createObjectBuilder()
-                .add("courtScheduleIds", createArrayBuilder()
+                .add(P_COURT_SCHEDULE_IDS, createArrayBuilder()
                         .add(courtSchedule.getCourtScheduleId())
                         .build())
                 .build()
@@ -3731,7 +3731,7 @@ class CourtSchedulerIT extends AbstractIT {
         // No allocated listing — judiciary removed but no hearings to notify
 
         final String requestPayload = createObjectBuilder()
-                .add("courtScheduleIds", createArrayBuilder()
+                .add(P_COURT_SCHEDULE_IDS, createArrayBuilder()
                         .add(courtSchedule.getCourtScheduleId())
                         .build())
                 .build()
@@ -3765,7 +3765,7 @@ class CourtSchedulerIT extends AbstractIT {
                 .anyMatch(js -> js.getId().getCourtScheduleId().equals(courtScheduleTwo.getCourtScheduleId())));
 
         final String requestPayload = createObjectBuilder()
-                .add("courtScheduleIds", createArrayBuilder()
+                .add(P_COURT_SCHEDULE_IDS, createArrayBuilder()
                         .add(courtScheduleOne.getCourtScheduleId())
                         .add(courtScheduleTwo.getCourtScheduleId())
                         .build())
@@ -3789,7 +3789,7 @@ class CourtSchedulerIT extends AbstractIT {
     @Test
     void shouldReturnBadRequestWhenRemoveAllJudiciaryCourtScheduleIdsEmpty() {
         final String requestPayload = createObjectBuilder()
-                .add("courtScheduleIds", createArrayBuilder().build())
+                .add(P_COURT_SCHEDULE_IDS, createArrayBuilder().build())
                 .build()
                 .toString();
 
