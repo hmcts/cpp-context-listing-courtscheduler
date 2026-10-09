@@ -910,7 +910,7 @@ public class SlotsUpdateService {
             allocatedSchedules.add(target);
             if (!isNoop) {
                 final boolean overbooking = !target.getOverbookingAllowed()
-                        && getEffectiveAvailableDuration(target) < day.getDurationInMinutes();
+                        && isFull(target, day.getDurationInMinutes());
                 final String daySource = overbooking
                         ? SOURCE_MULTIDAY_COURTROOM_CHANGE : SOURCE_CHANGE_COURT_ROOM_MULTIDAY;
                 datesToRelease.add(day.getSessionDate());
@@ -941,6 +941,13 @@ public class SlotsUpdateService {
      * Key each allocation by its session date (resolved via {@code sessionDateById}); an allocation
      * whose courtScheduleId has no resolvable session is skipped rather than mapped to a null date.
      */
+    private static boolean isFull(final CourtSchedule target, final int durationInMinutes) {
+        if (Boolean.TRUE.equals(target.getSlotBased())) {
+            return target.getAvailableSlots() == null || target.getAvailableSlots() <= 0;
+        }
+        return getEffectiveAvailableDuration(target) < durationInMinutes;
+    }
+
     private static Map<LocalDate, AllocatedListing> mapAllocationsBySessionDate(
             final List<AllocatedListing> allocations, final Map<String, LocalDate> sessionDateById) {
         final Map<LocalDate, AllocatedListing> byDate = new HashMap<>();
@@ -1161,6 +1168,7 @@ public class SlotsUpdateService {
                     slot.setCourtScheduleId(session.getCourtScheduleId());
                     slot.setHearingId(hearingId);
                     slot.setDuration(perDayDuration);
+                    slot.setSlotBased(Boolean.TRUE.equals(session.getSlotBased()));
                     if (session.getSessionDate() != null) {
                         slot.setSessionDate(session.getSessionDate().toString());
                     }
