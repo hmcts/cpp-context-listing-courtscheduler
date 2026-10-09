@@ -2,29 +2,6 @@ package uk.gov.moj.cpp.courtscheduler.api;
 
 import static java.util.Arrays.stream;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import jakarta.json.Json;
-import jakarta.json.JsonObject;
-import jakarta.json.JsonObjectBuilder;
-import jakarta.json.JsonReader;
-import jakarta.servlet.http.HttpServletRequest;
-import java.io.StringReader;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.server.ResponseStatusException;
 import uk.gov.moj.cpp.courtscheduler.api.converter.AssignCourtroomRequestConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.AssignJudiciariesRequestConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.AssignJudiciaryToSessionsConverter;
@@ -41,6 +18,7 @@ import uk.gov.moj.cpp.courtscheduler.api.service.MiService;
 import uk.gov.moj.cpp.courtscheduler.api.service.ProvisionalBookingService;
 import uk.gov.moj.cpp.courtscheduler.api.service.SlotsRemoveService;
 import uk.gov.moj.cpp.courtscheduler.api.service.SlotsUpdateService;
+import uk.gov.moj.cpp.courtscheduler.api.service.rota.helper.ChangeJudiciaryForHearingsHelper;
 import uk.gov.moj.cpp.courtscheduler.api.validator.AssignJudiciariesApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.CourtScheduleApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.HearingSlotsApiValidator;
@@ -70,23 +48,48 @@ import uk.gov.moj.cpp.courtscheduler.domain.MiFilterCriteria;
 import uk.gov.moj.cpp.courtscheduler.domain.MoveHearingToPastDateRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.MoveHearingToPastDateResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalBookingSlots;
+import uk.gov.moj.cpp.courtscheduler.domain.RequestedDay;
 import uk.gov.moj.cpp.courtscheduler.domain.RequestedSlots;
 import uk.gov.moj.cpp.courtscheduler.domain.Result;
 import uk.gov.moj.cpp.courtscheduler.domain.SessionsParam;
 import uk.gov.moj.cpp.courtscheduler.domain.UpdateCourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.envelope.SkipEnvelope;
 import uk.gov.moj.cpp.courtscheduler.exception.CrownFallbackInvalidRequestException;
 import uk.gov.moj.cpp.courtscheduler.exception.CrownFallbackNoSessionException;
 import uk.gov.moj.cpp.courtscheduler.exception.ExtendMultidayHearingException;
-import uk.gov.moj.cpp.courtscheduler.domain.RequestedDay;
 import uk.gov.moj.cpp.courtscheduler.exception.NoAllocationOnDateException;
 import uk.gov.moj.cpp.courtscheduler.exception.NoSessionAvailableException;
-import uk.gov.moj.cpp.courtscheduler.envelope.SkipEnvelope;
 import uk.gov.moj.cpp.courtscheduler.openapi.api.CourtscheduleOpenApi;
 import uk.gov.moj.cpp.courtscheduler.openapi.api.HearingsOpenApi;
 import uk.gov.moj.cpp.courtscheduler.openapi.api.MiOpenApi;
 import uk.gov.moj.cpp.courtscheduler.openapi.api.ProvisionalBookingOpenApi;
 import uk.gov.moj.cpp.courtscheduler.openapi.api.SessionOpenApi;
 import uk.gov.moj.cpp.courtscheduler.openapi.api.ValidateOpenApi;
+
+import java.io.StringReader;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.json.Json;
+import jakarta.json.JsonObject;
+import jakarta.json.JsonObjectBuilder;
+import jakarta.json.JsonReader;
+import jakarta.servlet.http.HttpServletRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 /**
  * Spring Boot replacement for the legacy WildFly {@code CourtSchedulerApi} omnibus
@@ -142,6 +145,7 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
     // --- session judiciary assignment / unassignment
     private final JudiciaryAssignmentService judiciaryAssignmentService;
     private final JudiciaryUnassignmentService judiciaryUnassignmentService;
+    private final ChangeJudiciaryForHearingsHelper changeJudiciaryForHearingsHelper;
     private final AssignJudiciariesApiValidator assignJudiciariesApiValidator;
     private final JudiciariesApiValidator judiciariesApiValidator;
     private final AssignJudiciariesRequestConverter assignJudiciariesRequestConverter;
@@ -174,6 +178,7 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
                              final ValidateSessionAvailabilityRequestParamConverter validateSessionAvailabilityRequestParamConverter,
                              final JudiciaryAssignmentService judiciaryAssignmentService,
                              final JudiciaryUnassignmentService judiciaryUnassignmentService,
+                             final ChangeJudiciaryForHearingsHelper changeJudiciaryForHearingsHelper,
                              final AssignJudiciariesApiValidator assignJudiciariesApiValidator,
                              final JudiciariesApiValidator judiciariesApiValidator,
                              final AssignJudiciariesRequestConverter assignJudiciariesRequestConverter,
@@ -199,6 +204,7 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
         this.validateSessionAvailabilityRequestParamConverter = validateSessionAvailabilityRequestParamConverter;
         this.judiciaryAssignmentService = judiciaryAssignmentService;
         this.judiciaryUnassignmentService = judiciaryUnassignmentService;
+        this.changeJudiciaryForHearingsHelper = changeJudiciaryForHearingsHelper;
         this.assignJudiciariesApiValidator = assignJudiciariesApiValidator;
         this.judiciariesApiValidator = judiciariesApiValidator;
         this.assignJudiciariesRequestConverter = assignJudiciariesRequestConverter;
@@ -424,7 +430,11 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
         if (!validate.isEmpty()) {
             throw new ValidationException(validate);
         }
-        judiciaryAssignmentService.assignJudiciaries(dto, UUID.randomUUID().toString());
+        final List<String> changedCourtScheduleIds =
+                judiciaryAssignmentService.assignJudiciaries(dto, UUID.randomUUID().toString());
+        final List<JsonObject> payloads = changeJudiciaryForHearingsHelper
+                .createChangeJudiciaryForHearingsPayloads(changedCourtScheduleIds);
+        changeJudiciaryForHearingsHelper.sendChangeJudiciaryForHearingsCommands(payloads);
         return ResponseEntity.status(HttpStatus.ACCEPTED).build();
     }
 
@@ -446,12 +456,16 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
             judiciaryToSessionIds.put(judiciaryId, sessionIds);
         }
         final boolean skipValidations = Boolean.TRUE.equals(body.get("skipValidations"));
+        final List<String> changedCourtScheduleIds;
         try {
-            judiciaryUnassignmentService.unassignJudiciary(
+            changedCourtScheduleIds = judiciaryUnassignmentService.unassignJudiciary(
                     judiciaryToSessionIds, UUID.randomUUID().toString(), skipValidations);
         } catch (IllegalStateException ise) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ise.getMessage());
         }
+        final List<JsonObject> payloads = changeJudiciaryForHearingsHelper
+                .createChangeJudiciaryForHearingsPayloads(changedCourtScheduleIds);
+        changeJudiciaryForHearingsHelper.sendChangeJudiciaryForHearingsCommands(payloads);
         return ResponseEntity.status(HttpStatus.ACCEPTED).build();
     }
 

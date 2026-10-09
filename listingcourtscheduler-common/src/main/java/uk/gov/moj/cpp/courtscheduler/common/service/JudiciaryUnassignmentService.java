@@ -14,16 +14,18 @@ import java.time.Instant;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 
-import org.springframework.stereotype.Service;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
-import org.springframework.transaction.annotation.Transactional;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class JudiciaryUnassignmentService {
@@ -42,17 +44,32 @@ public class JudiciaryUnassignmentService {
     @Inject
     private RotaProcessLogService rotaProcessLogService;
 
+    @Inject
+    private JudiciaryChangeDetectionService judiciaryChangeDetectionService;
+
     @PersistenceContext
     private EntityManager entityManager;
 
     @Transactional
-    public void unassignJudiciary(final Map<String, List<String>> judiciaryToSessionIds, final String executionId) {
-        unassignJudiciary(judiciaryToSessionIds, executionId, false);
+    public List<String> unassignJudiciary(final Map<String, List<String>> judiciaryToSessionIds, final String executionId) {
+        return unassignJudiciary(judiciaryToSessionIds, executionId, false);
     }
 
-    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
-    public void unassignJudiciary(final Map<String, List<String>> judiciaryToSessionIds, final String executionId, final boolean skipValidations) {
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public List<String> unassignJudiciary(final Map<String, List<String>> judiciaryToSessionIds, final String executionId,
+                                          final boolean skipValidations) {
         LOGGER.info("unassignJudiciary: attempting to unassign judiciaries from sessions : {} (skipValidations: {})", judiciaryToSessionIds, skipValidations);
+
+        final List<String> allCourtScheduleIds = judiciaryToSessionIds.values().stream()
+                .flatMap(List::stream)
+                .filter(Objects::nonNull)
+                .distinct()
+                .collect(Collectors.toList());
+
+        final Map<String, List<Integer>> preHashMap =
+                judiciaryChangeDetectionService.buildCourtScheduleJudiciaryHashMap(allCourtScheduleIds);
+        LOGGER.info("Pre-unassignment: captured judiciary hash map for {} court schedule(s), executionId={}",
+                preHashMap.size(), executionId);
 
         final Set<String> missingSessionIds = new LinkedHashSet<>();
         final Set<String> missingJudiciaryIds = new LinkedHashSet<>();
@@ -72,9 +89,7 @@ public class JudiciaryUnassignmentService {
             // Check if judiciary exists in any assignment (skip if skipValidations is true)
             if (!skipValidations) {
                 final List<CourtScheduleJudiciary> judiciaryAssignments = courtScheduleJudiciaryRepository.findByJudiciaryId(judiciaryId);
-                final boolean judiciaryExists = !judiciaryAssignments.isEmpty();
-
-                if (!judiciaryExists) {
+                if (judiciaryAssignments.isEmpty()) {
                     missingJudiciaryIds.add(judiciaryId);
                     LOGGER.warn("unassignJudiciary: Judiciary ID {} not found for unassign judiciary operation", judiciaryId);
                     continue;
@@ -98,8 +113,8 @@ public class JudiciaryUnassignmentService {
                     final Map<String, Integer> allocatedListings = allocatedListingService.getAllocatedListingsByCourtScheduleId(singletonList(courtScheduleId));
                     if (allocatedListings.containsKey(courtScheduleId) && allocatedListings.get(courtScheduleId) > 0) {
                         allocatedListingSessionIds.add(courtScheduleId);
-                        final String errorMessage = String.format("Cannot unassign judiciary %s from courtSchedule %s: court schedule has allocated listings", judiciaryId, courtScheduleId);
-                        LOGGER.warn("unassignJudiciary: {}", errorMessage);
+                        LOGGER.warn("unassignJudiciary: Cannot unassign judiciary {} from courtSchedule {}: court schedule has allocated listings",
+                                judiciaryId, courtScheduleId);
                         continue;
                     }
                 }
@@ -112,14 +127,12 @@ public class JudiciaryUnassignmentService {
                 final CourtScheduleJudiciary courtScheduleJudiciary = courtScheduleJudiciaryRepository.findBy(key);
 
                 if (courtScheduleJudiciary == null) {
-                    // Judiciary exists but not for this specific session - skip this assignment
                     final String identifier = String.format("%s-%s", judiciaryId, courtScheduleId);
                     missingCourtScheduleJudiciaryIds.add(identifier);
                     LOGGER.info("unassignJudiciary: Judiciary {} not assigned to courtSchedule {}, skipping", judiciaryId, courtScheduleId);
                     continue;
                 }
 
-                // Remove the judiciary assignment using EntityManager
                 try {
                     final CourtScheduleJudiciary managed = entityManager.merge(courtScheduleJudiciary);
                     entityManager.remove(managed);
@@ -130,17 +143,27 @@ public class JudiciaryUnassignmentService {
                         // unchecked exceptions here. Narrowing would risk letting one bad pair abort the batch.
                         final Exception ex) {
                     LOGGER.error("Unexpected error while unassigning judiciary {} from session {}", judiciaryId, courtScheduleId, ex);
-                    // Continue processing other assignments
                 }
             }
         }
 
         entityManager.flush();
-        // Skip logging missing references if skipValidations is true
+
+        final Map<String, List<Integer>> postHashMap =
+                judiciaryChangeDetectionService.buildCourtScheduleJudiciaryHashMap(allCourtScheduleIds);
+        LOGGER.info("Post-unassignment: captured judiciary hash map for {} court schedule(s), executionId={}",
+                postHashMap.size(), executionId);
+
+        final List<String> changedCourtScheduleIds =
+                judiciaryChangeDetectionService.findChangedCourtScheduleIds(preHashMap, postHashMap);
+        LOGGER.info("Found {} changed court schedule IDs after unassignment, executionId={}",
+                changedCourtScheduleIds.size(), executionId);
+
         if (!skipValidations) {
             logMissingReferences(missingJudiciaryIds, missingSessionIds, allocatedListingSessionIds, missingCourtScheduleJudiciaryIds, executionId);
         }
         LOGGER.info("unassignJudiciary: successfully completed unassigning judiciaries from sessions");
+        return changedCourtScheduleIds;
     }
 
     @Transactional
