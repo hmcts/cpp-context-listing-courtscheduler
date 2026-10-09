@@ -31,12 +31,14 @@ import uk.gov.moj.cpp.courtscheduler.openapi.model.MagsSearchAndBookRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.MagsSearchAndBookResponse;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.MoveHearingToPastDateRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.MoveHearingToPastDateResponse;
+import uk.gov.moj.cpp.courtscheduler.domain.BookedPastSession;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.ProvisionalBookingInfo;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.RequestedDay;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.RequestedSlots;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.Result;
 import uk.gov.moj.cpp.courtscheduler.exception.CrownFallbackInvalidRequestException;
 import uk.gov.moj.cpp.courtscheduler.exception.CrownFallbackNoSessionException;
+import uk.gov.moj.cpp.courtscheduler.exception.MoveHearingToPastDateNoSessionException;
 import uk.gov.moj.cpp.courtscheduler.exception.NoAllocationOnDateException;
 import uk.gov.moj.cpp.courtscheduler.exception.NoSessionAvailableException;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
@@ -44,6 +46,7 @@ import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 import uk.gov.moj.cpp.courtscheduler.repository.ProvisionalBookingRepository;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.time.Instant;
@@ -85,6 +88,7 @@ class SlotsUpdateServiceTest {
     private static final String CS3B = "cs3b";
     private static final String TEST_HEARING = "test-hearing";
     private static final String UNCHECKED = "unchecked";
+    private static final String MOVE_TO_PAST_DATE_SOURCE = "MOVE_TO_PAST_DATE";
 
 
     @Mock
@@ -805,7 +809,7 @@ class SlotsUpdateServiceTest {
             lenient().when(courtScheduleRepository.findAllocatedListingByHearingId(hearingId))
                     .thenReturn(Optional.empty());
 
-            org.junit.jupiter.api.Assertions.assertThrows(
+            Assertions.assertThrows(
                     uk.gov.moj.cpp.courtscheduler.exception.CrownFallbackInvalidRequestException.class,
                     () -> service.crownSearchAndBook(request));
         }
@@ -997,7 +1001,7 @@ class SlotsUpdateServiceTest {
             lenient().when(courtScheduleRepository.saveBookedSlots(any(), eq(false), eq(false)))
                     .thenReturn(new Result().msg("db down").success(false));
 
-            org.junit.jupiter.api.Assertions.assertThrows(
+            Assertions.assertThrows(
                     uk.gov.moj.cpp.courtscheduler.exception.SlotsBookException.class,
                     () -> service.crownSearchAndBook(request));
         }
@@ -1778,7 +1782,7 @@ class SlotsUpdateServiceTest {
                     .jurisdiction(CROWN_2)
                     .startDate(LocalDate.of(2025, 1, 10)); // past, single date, centre search finds nothing
 
-            org.junit.jupiter.api.Assertions.assertThrows(NoSessionAvailableException.class,
+            Assertions.assertThrows(NoSessionAvailableException.class,
                     () -> service.moveHearingToPastDate(request));
         }
 
@@ -1799,17 +1803,17 @@ class SlotsUpdateServiceTest {
                     .hearingId(UUID.randomUUID().toString())
                     .courtCentreId(UUID.randomUUID().toString())
                     .courtRoomId(UUID.randomUUID().toString())
-                    .jurisdiction("MAGISTRATES")
+                    .jurisdiction(CROWN_2)
                     .startDate(LocalDate.of(2025, 1, 10))
                     .endDate(LocalDate.of(2025, 1, 10)); // same day - mandatory-endDate shape, NOT a range
 
-            org.junit.jupiter.api.Assertions.assertThrows(NoSessionAvailableException.class,
+            Assertions.assertThrows(NoSessionAvailableException.class,
                     () -> service.moveHearingToPastDate(request));
         }
 
-        /** A GENUINE multi-day range (endDate strictly after startDate) that finds nothing stays exploratory: empty success, prior allocation untouched. */
+        /** CROWN ruling (2026-10-08): a GENUINE multi-day range that finds nothing is a 422 NO_SESSION_FOUND, prior allocation untouched. */
         @Test
-        void should_returnEmptySessions_when_genuineDateRangeFindsNothing() {
+        void should_throwNoSession_when_genuineDateRangeFindsNothing() {
             final MoveHearingToPastDateRequest request = new MoveHearingToPastDateRequest()
                     .hearingId(UUID.randomUUID().toString())
                     .courtCentreId(UUID.randomUUID().toString())
@@ -1818,15 +1822,15 @@ class SlotsUpdateServiceTest {
                     .startDate(LocalDate.of(2025, 1, 10))
                     .endDate(LocalDate.of(2025, 1, 13)); // genuine range - centre search finds nothing
 
-            final MoveHearingToPastDateResponse response = service.moveHearingToPastDate(request);
-            assertTrue(response.sessions().isEmpty());
+            Assertions.assertThrows(NoSessionAvailableException.class,
+                    () -> service.moveHearingToPastDate(request));
             verify(courtScheduleRepository, org.mockito.Mockito.never()).releaseOldAllocatedListings(any());
         }
 
         @Test
         void should_bookConsecutivePastWeekdays_when_crownMoveHearingToPastDate() {
             // AC7 — CROWN past span (no anchor): books consecutive past weekdays via the centre search,
-            // source=MOVE_TO_PAST_DATE.
+            // source=MOVE_TO_PAST_DATE_SOURCE.
             final String hearingId = UUID.randomUUID().toString();
             final String courtCentreId = UUID.randomUUID().toString();
             final List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> pastSessions =
@@ -1852,7 +1856,7 @@ class SlotsUpdateServiceTest {
             final org.mockito.ArgumentCaptor<List<AllocatedSlot>> slotsCaptor =
                     org.mockito.ArgumentCaptor.forClass(List.class);
             verify(courtScheduleRepository).saveBookedSlots(slotsCaptor.capture(), eq(false), eq(false));
-            assertTrue(slotsCaptor.getValue().stream().allMatch(s -> "MOVE_TO_PAST_DATE".equals(s.getSource())));
+            assertTrue(slotsCaptor.getValue().stream().allMatch(s -> MOVE_TO_PAST_DATE_SOURCE.equals(s.getSource())));
         }
 
         @Test
@@ -1885,33 +1889,6 @@ class SlotsUpdateServiceTest {
         }
 
         @Test
-        void should_bookConsecutivePastSessions_when_magsMoveHearingToPastDate() {
-            // AC7 — MAGS past span: CONSECUTIVE past sessions booked (no sparse), mirroring the CROWN no-anchor path.
-            final String hearingId = UUID.randomUUID().toString();
-            final String courtCentreId = UUID.randomUUID().toString();
-            final List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> consecutivePast = List.of(
-                    buildSession(LocalDate.of(2025, 3, 3)),
-                    buildSession(LocalDate.of(2025, 3, 4))); // consecutive weekdays
-
-            final MoveHearingToPastDateRequest request = new MoveHearingToPastDateRequest()
-                    .hearingId(hearingId)
-                    .courtCentreId(courtCentreId)
-                    .jurisdiction("MAGISTRATES")
-                    .startDate(LocalDate.of(2025, 3, 3))
-                    .durationInMinutes(720);
-
-            lenient().when(courtScheduleRepository.findConsecutiveSessionsForCentre(
-                    eq(courtCentreId), eq(LocalDate.of(2025, 3, 3)), eq(2), eq(null)))
-                    .thenReturn(consecutivePast);
-            lenient().when(courtScheduleRepository.saveBookedSlots(any(), eq(false), eq(false)))
-                    .thenReturn(new Result().msg("").success(true));
-
-            service.moveHearingToPastDate(request);
-            verify(courtScheduleRepository).findConsecutiveSessionsForCentre(
-                    eq(courtCentreId), eq(LocalDate.of(2025, 3, 3)), eq(2), eq(null));
-        }
-
-        @Test
         void should_treatAsMultiDay_when_moveHearingEndDateAfterStartDate() {
             // AC7 — endDate > startDate triggers the multi-day path; daysNeeded comes from the inclusive
             // date range (3..5 Mar = 3 days) and drives the centre search.
@@ -1923,7 +1900,9 @@ class SlotsUpdateServiceTest {
                     .startDate(LocalDate.of(2025, 3, 3))
                     .endDate(LocalDate.of(2025, 3, 5)); // endDate > startDate => multi-day, 3 days inclusive
 
-            service.moveHearingToPastDate(request);
+            // nothing seeded: the miss is a 422 (CROWN ruling), but the 3-day search was still made
+            Assertions.assertThrows(NoSessionAvailableException.class,
+                    () -> service.moveHearingToPastDate(request));
 
             verify(courtScheduleRepository).findConsecutiveSessionsForCentre(
                     eq(courtCentreId), eq(LocalDate.of(2025, 3, 3)), eq(3), eq(null));
@@ -1931,41 +1910,123 @@ class SlotsUpdateServiceTest {
 
         /**
          * Regression test: an explicit single-day move (endDate present and EQUAL to startDate -
-         * the mandatory-endDate wire shape) must always search for exactly ONE day, even when the
-         * hearing's own durationInMinutes is large (e.g. a multi-day trial's overall estimate).
-         * Before this fix, ceil(durationInMinutes/360) silently turned an ordinary same-day move
-         * into an unsatisfiable multi-consecutive-day search (observed live: a 1800-minute CROWN
-         * hearing's move demanded 5 consecutive weekday sessions and failed NO_SESSION_FOUND
-         * against a single seeded day).
+         * the mandatory-endDate wire shape) books exactly ONE session, even when the hearing's own
+         * durationInMinutes is large (e.g. a multi-day trial's overall estimate). Since the CROWN
+         * ruling of 2026-10-08 that one session is the requested room/date/start-time match.
          */
         @Test
         void should_needExactlyOneDay_when_endDateEqualsStartDateRegardlessOfDuration() {
-            final String hearingId = UUID.randomUUID().toString();
             final String courtCentreId = UUID.randomUUID().toString();
             final String courtRoomId = UUID.randomUUID().toString();
-            final List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> singleSession =
-                    buildConsecutiveSessions(LocalDate.of(2025, 3, 3), 1);
+            final LocalDate day = LocalDate.of(2025, 3, 3);
+            stubCrownTimeWindowSession(courtCentreId, courtRoomId, day, LocalDateTime.of(2025, 3, 3, 10, 0));
 
-            final MoveHearingToPastDateRequest request = new MoveHearingToPastDateRequest()
-                    .hearingId(hearingId)
-                    .courtCentreId(courtCentreId)
-                    .courtRoomId(courtRoomId)
-                    .jurisdiction(CROWN_2)
-                    .startDate(LocalDate.of(2025, 3, 3))
-                    .endDate(LocalDate.of(2025, 3, 3)) // same day - NOT a range
-                    .durationInMinutes(1800); // a large overall hearing estimate, unrelated to this move
+            final MoveHearingToPastDateResponse response = service.moveHearingToPastDate(
+                    crownSameDayMove(courtCentreId, courtRoomId, day, "2025-03-03T10:00:00.000Z")
+                            .durationInMinutes(1800)); // a large overall hearing estimate, unrelated to this move
 
-            lenient().when(courtScheduleRepository.findConsecutiveSessionsForCentre(
-                    eq(courtCentreId), eq(LocalDate.of(2025, 3, 3)), eq(1), eq(courtRoomId)))
-                    .thenReturn(singleSession);
+            assertEquals(1, response.sessions().size());
+            verify(courtScheduleRepository, org.mockito.Mockito.never())
+                    .findConsecutiveSessionsForCentre(any(), any(), org.mockito.ArgumentMatchers.anyInt(), any());
+        }
+
+        // ─── CROWN rulings of 2026-10-08 (SPRDT-1447) ───
+
+        @Test
+        void should_bookTheRequestedRoomDateAndTimeSession_when_crownSingleDayMoveHasNoAnchor() {
+            final String courtCentreId = UUID.randomUUID().toString();
+            final String courtRoomId = UUID.randomUUID().toString();
+            final LocalDate day = LocalDate.of(2025, 3, 3);
+            final CourtSchedule session =
+                    stubCrownTimeWindowSession(courtCentreId, courtRoomId, day, LocalDateTime.of(2025, 3, 3, 14, 0));
+
+            final MoveHearingToPastDateResponse response = service.moveHearingToPastDate(
+                    crownSameDayMove(courtCentreId, courtRoomId, day, "2025-03-03T14:00:00.000Z").durationInMinutes(60));
+
+            assertEquals(1, response.sessions().size());
+            assertEquals(session.getCourtScheduleId(), response.sessions().get(0).getCourtScheduleId());
+            final org.mockito.ArgumentCaptor<List<AllocatedSlot>> slots = slotsCaptor();
+            verify(courtScheduleRepository).saveBookedSlots(slots.capture(), eq(false), eq(false));
+            assertEquals(MOVE_TO_PAST_DATE_SOURCE, slots.getValue().get(0).getSource());
+        }
+
+        @Test
+        void should_throwNoSessionWithoutFallbackOrRelease_when_requestedRoomHasNoSessionAtThatTime() {
+            final String courtCentreId = UUID.randomUUID().toString();
+            final String courtRoomId = UUID.randomUUID().toString();
+            final LocalDate day = LocalDate.of(2025, 3, 3);
+
+            Assertions.assertThrows(NoSessionAvailableException.class,
+                    () -> service.moveHearingToPastDate(crownSameDayMove(courtCentreId, courtRoomId, day, "2025-03-03T10:00:00.000Z")));
+
+            verify(courtScheduleRepository).findSessionForMoveToPastDate(courtCentreId, courtRoomId, day,
+                    LocalDateTime.of(2025, 3, 3, 10, 0), CROWN_2);
+            verify(courtScheduleRepository, org.mockito.Mockito.never())
+                    .findConsecutiveSessionsForCentre(any(), any(), org.mockito.ArgumentMatchers.anyInt(), any());
+            verify(courtScheduleRepository, org.mockito.Mockito.never()).releaseOldAllocatedListings(any());
+            verify(courtScheduleRepository, org.mockito.Mockito.never()).saveBookedSlots(any(), anyBoolean(), anyBoolean());
+        }
+
+        @Test
+        void should_normaliseOffsetStartTimeToUtc_when_crownTimeWindowLookupUsed() {
+            final String courtCentreId = UUID.randomUUID().toString();
+            final String courtRoomId = UUID.randomUUID().toString();
+            final LocalDate day = LocalDate.of(2025, 6, 2);
+
+            Assertions.assertThrows(NoSessionAvailableException.class,
+                    () -> service.moveHearingToPastDate(crownSameDayMove(courtCentreId, courtRoomId, day, "2025-06-02T10:00:00+01:00")));
+
+            verify(courtScheduleRepository).findSessionForMoveToPastDate(courtCentreId, courtRoomId, day,
+                    LocalDateTime.of(2025, 6, 2, 9, 0), CROWN_2); // 10:00 BST == 09:00 UTC
+        }
+
+        @Test
+        void should_keepAnchorConsecutiveSearch_when_crownSingleDayMoveHasCourtScheduleId() {
+            final String anchorId = UUID.randomUUID().toString();
+            final LocalDate day = LocalDate.of(2025, 3, 3);
+            lenient().when(courtScheduleRepository.findConsecutiveSessions(anchorId, 1))
+                    .thenReturn(buildConsecutiveSessions(day, 1));
             lenient().when(courtScheduleRepository.saveBookedSlots(any(), eq(false), eq(false)))
                     .thenReturn(new Result().msg("").success(true));
 
-            final MoveHearingToPastDateResponse response = service.moveHearingToPastDate(request);
+            final MoveHearingToPastDateResponse response = service.moveHearingToPastDate(
+                    crownSameDayMove(UUID.randomUUID().toString(), UUID.randomUUID().toString(), day, "2025-03-03T10:00:00.000Z")
+                            .courtScheduleId(anchorId));
 
             assertEquals(1, response.sessions().size());
-            verify(courtScheduleRepository).findConsecutiveSessionsForCentre(
-                    eq(courtCentreId), eq(LocalDate.of(2025, 3, 3)), eq(1), eq(courtRoomId));
+            verify(courtScheduleRepository).findConsecutiveSessions(anchorId, 1);
+            verify(courtScheduleRepository, org.mockito.Mockito.never()).findSessionForMoveToPastDate(any(), any(), any(), any(), any());
+        }
+
+        private MoveHearingToPastDateRequest crownSameDayMove(final String courtCentreId, final String courtRoomId,
+                                                              final LocalDate day, final String startTime) {
+            return new MoveHearingToPastDateRequest()
+                    .hearingId(UUID.randomUUID().toString())
+                    .courtCentreId(courtCentreId)
+                    .courtRoomId(courtRoomId)
+                    .jurisdiction(CROWN_2)
+                    .startDate(day)
+                    .endDate(day)
+                    .startTime(startTime);
+        }
+
+        private CourtSchedule stubCrownTimeWindowSession(
+                final String courtCentreId, final String courtRoomId, final LocalDate day, final LocalDateTime startTime) {
+            final CourtSchedule session = buildConsecutiveSessions(day, 1).get(0);
+            final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule entity = new uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule();
+            entity.setCourtScheduleId(session.getCourtScheduleId());
+            when(courtScheduleRepository.findSessionForMoveToPastDate(courtCentreId, courtRoomId, day, startTime, CROWN_2))
+                    .thenReturn(Optional.of(entity));
+            when(courtScheduleRepository.getCourtSchedulesByIdList(List.of(session.getCourtScheduleId())))
+                    .thenReturn(List.of(session));
+            lenient().when(courtScheduleRepository.saveBookedSlots(any(), eq(false), eq(false)))
+                    .thenReturn(new Result().msg("").success(true));
+            return session;
+        }
+
+        @SuppressWarnings(UNCHECKED)
+        private org.mockito.ArgumentCaptor<List<AllocatedSlot>> slotsCaptor() {
+            return org.mockito.ArgumentCaptor.forClass(List.class);
         }
     }
 
@@ -2073,7 +2134,7 @@ class SlotsUpdateServiceTest {
                     .hearingId(hearingId)
                     .days(List.of(new RequestedDay().sessionDate(LocalDate.of(2025, 3, 6)).courtScheduleId("cs-target").durationInMinutes(300)));
 
-            org.junit.jupiter.api.Assertions.assertThrows(NoAllocationOnDateException.class,
+            Assertions.assertThrows(NoAllocationOnDateException.class,
                     () -> service.changeCourtRoomForMultidayHearing(request));
 
             verify(courtScheduleRepository, org.mockito.Mockito.never())
@@ -2096,7 +2157,7 @@ class SlotsUpdateServiceTest {
                     .hearingId(hearingId)
                     .days(List.of(new RequestedDay().sessionDate(d2).courtScheduleId("cs-unknown").durationInMinutes(300)));
 
-            org.junit.jupiter.api.Assertions.assertThrows(NoSessionAvailableException.class,
+            Assertions.assertThrows(NoSessionAvailableException.class,
                     () -> service.changeCourtRoomForMultidayHearing(request));
 
             verify(courtScheduleRepository, org.mockito.Mockito.never())
@@ -2168,7 +2229,7 @@ class SlotsUpdateServiceTest {
                             new RequestedDay().sessionDate(d2).courtScheduleId(CS2B).durationInMinutes(300),
                             new RequestedDay().sessionDate(d3).courtScheduleId("cs3b").durationInMinutes(300)));
 
-            org.junit.jupiter.api.Assertions.assertThrows(NoSessionAvailableException.class,
+            Assertions.assertThrows(NoSessionAvailableException.class,
                     () -> service.changeCourtRoomForMultidayHearing(request));
 
             verify(courtScheduleRepository, org.mockito.Mockito.never())
@@ -2183,6 +2244,270 @@ class SlotsUpdateServiceTest {
             allocation.setCourtScheduleId(courtScheduleId);
             allocation.setSource("NONPOLICE");
             return allocation;
+        }
+    }
+
+    /**
+     * MAGISTRATES move-to-past - main's behaviour restored (SPRDT-1447), ported from main's
+     * {@code SlotsUpdateServiceTest.MoveHearingToPastDate}.
+     */
+    /* default */
+    @Nested
+    class MagistratesMoveHearingToPastDate {
+
+        private static final String MAGISTRATES = "MAGISTRATES";
+        private static final String CROWN = "CROWN";
+        private static final String NINE_AM = "09:00";
+        private static final String NOON = "12:00";
+        private static final String MAY_FIRST = "2026-05-01";
+
+        @Test
+        void shouldBookSessionAndStampSource_whenSessionFoundForExactDate() {
+            final String hearingId = UUID.randomUUID().toString();
+            final String courtCentreId = UUID.randomUUID().toString();
+            final LocalDate startDate = LocalDate.of(2026, 5, 1);
+            final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule session = buildPastSession(startDate);
+
+            when(courtScheduleRepository.findSessionForMoveToPastDate(eq(courtCentreId), any(), eq(startDate), any(), eq(MAGISTRATES)))
+                    .thenReturn(Optional.of(session));
+            when(courtScheduleRepository.saveBookedSlots(any(), eq(false), eq(false))).thenReturn(success());
+
+            final List<BookedPastSession> responses =
+                    service.moveHearingToPastDate(hearingId, courtCentreId, null, startDate, startDate, NINE_AM, NOON, MAGISTRATES, 30);
+
+            assertEquals(1, responses.size());
+            final BookedPastSession response = responses.get(0);
+            assertEquals(hearingId, response.hearingId());
+            assertEquals(session.getCourtScheduleId(), response.courtScheduleId());
+            assertEquals(session.getCourtRoomId(), response.courtRoomId());
+            assertEquals(MAY_FIRST, response.sessionDate());
+            assertEquals(30, response.durationInMinutes());
+            assertEquals(MOVE_TO_PAST_DATE_SOURCE, response.source());
+            Assertions.assertFalse(response.overbooked());
+
+            final AllocatedSlot bookedSlot = capturedBookedSlots().get(0);
+            assertEquals(hearingId, bookedSlot.getHearingId());
+            assertEquals(session.getCourtScheduleId(), bookedSlot.getCourtScheduleId());
+            assertEquals(MOVE_TO_PAST_DATE_SOURCE, bookedSlot.getSource());
+            assertEquals(30, bookedSlot.getDuration());
+        }
+
+        @Test
+        void shouldStampSubmittedStartAndEndTimeOnBookedSlot_notTheSessionWindow() {
+            final String hearingId = UUID.randomUUID().toString();
+            final String courtCentreId = UUID.randomUUID().toString();
+            final LocalDate startDate = LocalDate.of(2026, 5, 1);
+            // the session's own window is 09:00-17:00; the booked slot must reflect the SUBMITTED 10:30-12:45
+            when(courtScheduleRepository.findSessionForMoveToPastDate(eq(courtCentreId), any(), eq(startDate), any(), eq(MAGISTRATES)))
+                    .thenReturn(Optional.of(buildPastSession(startDate)));
+            when(courtScheduleRepository.saveBookedSlots(any(), eq(false), eq(false))).thenReturn(success());
+
+            final BookedPastSession response = service.moveHearingToPastDate(
+                    hearingId, courtCentreId, null, startDate, startDate, "10:30", "12:45", MAGISTRATES, 20).get(0);
+
+            assertEquals("2026-05-01T10:30:00.000Z", response.sessionStartTime());
+            assertEquals("2026-05-01T12:45:00.000Z", response.sessionEndTime());
+            assertEquals(20, response.durationInMinutes());
+            // the persisted allocation also carries the submitted start time (not the session window)
+            assertEquals("2026-05-01T10:30:00.000Z", capturedBookedSlots().get(0).getHearingStartTime());
+        }
+
+        @Test
+        void shouldSearchWithTheSubmittedStartTimeOnTheRequestedDay() {
+            final String courtCentreId = UUID.randomUUID().toString();
+            final LocalDate startDate = LocalDate.of(2026, 5, 1);
+            when(courtScheduleRepository.findSessionForMoveToPastDate(eq(courtCentreId), any(), eq(startDate), any(), eq(MAGISTRATES)))
+                    .thenReturn(Optional.of(buildPastSession(startDate)));
+            when(courtScheduleRepository.saveBookedSlots(any(), eq(false), eq(false))).thenReturn(success());
+
+            service.moveHearingToPastDate(UUID.randomUUID().toString(), courtCentreId, null, startDate, startDate, "14:15", "15:00", MAGISTRATES, 45);
+
+            verify(courtScheduleRepository).findSessionForMoveToPastDate(eq(courtCentreId), isNull(), eq(startDate),
+                    eq(LocalDateTime.of(2026, 5, 1, 14, 15)), eq(MAGISTRATES));
+        }
+
+        @Test
+        void shouldBookOnlyWorkingDaysAcrossAMultiDayRangeInOneAtomicCall() {
+            final String courtCentreId = UUID.randomUUID().toString();
+            final LocalDate friday = LocalDate.of(2026, 7, 3);
+            final LocalDate monday = LocalDate.of(2026, 7, 6);
+
+            when(courtScheduleRepository.findSessionForMoveToPastDate(eq(courtCentreId), any(), eq(friday), any(), eq(MAGISTRATES)))
+                    .thenReturn(Optional.of(buildPastSession(friday)));
+            when(courtScheduleRepository.findSessionForMoveToPastDate(eq(courtCentreId), any(), eq(monday), any(), eq(MAGISTRATES)))
+                    .thenReturn(Optional.of(buildPastSession(monday)));
+            when(courtScheduleRepository.saveBookedSlots(any(), eq(false), eq(false))).thenReturn(success());
+
+            final List<BookedPastSession> responses = service.moveHearingToPastDate(
+                    UUID.randomUUID().toString(), courtCentreId, null, friday, monday, NINE_AM, NOON, MAGISTRATES, 30);
+
+            // Fri + Mon only (Sat/Sun skipped), never queried, one atomic booking call with both slots
+            assertEquals(2, responses.size());
+            assertEquals("2026-07-03", responses.get(0).sessionDate());
+            assertEquals("2026-07-06", responses.get(1).sessionDate());
+            verify(courtScheduleRepository, org.mockito.Mockito.never())
+                    .findSessionForMoveToPastDate(any(), any(), eq(LocalDate.of(2026, 7, 4)), any(), any());
+            assertEquals(2, capturedBookedSlots().size());
+        }
+
+        @Test
+        void shouldBookSaturday_whenWeekendOnlySpanRequested() {
+            // magistrates remand courts sit Saturdays: a weekend-only span books the requested day
+            final String courtCentreId = UUID.randomUUID().toString();
+            final LocalDate saturday = LocalDate.of(2026, 7, 25);
+            final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule session = buildPastSession(saturday);
+
+            when(courtScheduleRepository.findSessionForMoveToPastDate(eq(courtCentreId), any(), eq(saturday), any(), eq(MAGISTRATES)))
+                    .thenReturn(Optional.of(session));
+            when(courtScheduleRepository.saveBookedSlots(any(), eq(false), eq(false))).thenReturn(success());
+
+            final List<BookedPastSession> responses = service.moveHearingToPastDate(
+                    UUID.randomUUID().toString(), courtCentreId, null, saturday, saturday, "10:30", "10:50", MAGISTRATES, 20);
+
+            assertEquals(1, responses.size());
+            assertEquals("2026-07-25", responses.get(0).sessionDate());
+            assertEquals(session.getCourtScheduleId(), responses.get(0).courtScheduleId());
+        }
+
+        @Test
+        void shouldBookBothWeekendDays_forASaturdayToSundaySpan() {
+            final String courtCentreId = UUID.randomUUID().toString();
+            final LocalDate saturday = LocalDate.of(2026, 7, 25);
+            final LocalDate sunday = LocalDate.of(2026, 7, 26);
+
+            when(courtScheduleRepository.findSessionForMoveToPastDate(eq(courtCentreId), any(), eq(saturday), any(), eq(MAGISTRATES)))
+                    .thenReturn(Optional.of(buildPastSession(saturday)));
+            when(courtScheduleRepository.findSessionForMoveToPastDate(eq(courtCentreId), any(), eq(sunday), any(), eq(MAGISTRATES)))
+                    .thenReturn(Optional.of(buildPastSession(sunday)));
+            when(courtScheduleRepository.saveBookedSlots(any(), eq(false), eq(false))).thenReturn(success());
+
+            final List<BookedPastSession> responses = service.moveHearingToPastDate(
+                    UUID.randomUUID().toString(), courtCentreId, null, saturday, sunday, NINE_AM, NOON, MAGISTRATES, 30);
+
+            assertEquals(2, responses.size());
+            assertEquals("2026-07-25", responses.get(0).sessionDate());
+            assertEquals("2026-07-26", responses.get(1).sessionDate());
+        }
+
+        @Test
+        void shouldSupportCrownJurisdiction() {
+            final String courtCentreId = UUID.randomUUID().toString();
+            final LocalDate startDate = LocalDate.of(2026, 5, 1);
+
+            when(courtScheduleRepository.findSessionForMoveToPastDate(eq(courtCentreId), any(), eq(startDate), any(), eq(CROWN)))
+                    .thenReturn(Optional.of(buildPastSession(startDate)));
+            when(courtScheduleRepository.saveBookedSlots(any(), eq(false), eq(false))).thenReturn(success());
+
+            assertEquals(1, service.moveHearingToPastDate(
+                    UUID.randomUUID().toString(), courtCentreId, null, startDate, startDate, NINE_AM, NOON, CROWN, 30).size());
+        }
+
+        @Test
+        void shouldScopeSearchToTheRequestedRoom() {
+            final String courtCentreId = UUID.randomUUID().toString();
+            final String courtRoomId = UUID.randomUUID().toString();
+            final LocalDate startDate = LocalDate.of(2026, 5, 1);
+
+            when(courtScheduleRepository.findSessionForMoveToPastDate(eq(courtCentreId), eq(courtRoomId), eq(startDate), any(), eq(MAGISTRATES)))
+                    .thenReturn(Optional.of(buildPastSession(startDate)));
+            when(courtScheduleRepository.saveBookedSlots(any(), eq(false), eq(false))).thenReturn(success());
+
+            service.moveHearingToPastDate(UUID.randomUUID().toString(), courtCentreId, courtRoomId, startDate, startDate, NINE_AM, NOON, MAGISTRATES, 30);
+
+            verify(courtScheduleRepository).findSessionForMoveToPastDate(eq(courtCentreId), eq(courtRoomId), eq(startDate), any(), eq(MAGISTRATES));
+        }
+
+        @Test
+        void shouldReleasePriorAllocationBeforeBooking_whenTheHearingIsAlreadyAllocated() {
+            final String hearingId = UUID.randomUUID().toString();
+            final String courtCentreId = UUID.randomUUID().toString();
+            final LocalDate startDate = LocalDate.of(2026, 5, 1);
+
+            when(courtScheduleRepository.findSessionForMoveToPastDate(eq(courtCentreId), any(), eq(startDate), any(), eq(MAGISTRATES)))
+                    .thenReturn(Optional.of(buildPastSession(startDate)));
+            when(courtScheduleRepository.findAllocatedListingByHearingId(hearingId)).thenReturn(Optional.of(new AllocatedListing()));
+            when(courtScheduleRepository.saveBookedSlots(any(), eq(false), eq(false))).thenReturn(success());
+
+            service.moveHearingToPastDate(hearingId, courtCentreId, null, startDate, startDate, NINE_AM, NOON, MAGISTRATES, 30);
+
+            final org.mockito.InOrder inOrder = org.mockito.Mockito.inOrder(courtScheduleRepository);
+            inOrder.verify(courtScheduleRepository).releaseOldAllocatedListings(hearingId);
+            inOrder.verify(courtScheduleRepository).saveBookedSlots(any(), eq(false), eq(false));
+        }
+
+        @Test
+        void shouldThrowNoSessionException_withoutReleasingOrBooking_whenNoSessionFoundForExactDate() {
+            final String hearingId = UUID.randomUUID().toString();
+            final String courtCentreId = UUID.randomUUID().toString();
+            final LocalDate startDate = LocalDate.of(2026, 5, 1);
+
+            when(courtScheduleRepository.findSessionForMoveToPastDate(eq(courtCentreId), any(), eq(startDate), any(), eq(MAGISTRATES)))
+                    .thenReturn(Optional.empty());
+
+            Assertions.assertThrows(MoveHearingToPastDateNoSessionException.class,
+                    () -> service.moveHearingToPastDate(hearingId, courtCentreId, null, startDate, startDate, NINE_AM, NOON, MAGISTRATES, 30));
+
+            verify(courtScheduleRepository, org.mockito.Mockito.never()).releaseOldAllocatedListings(any());
+            verify(courtScheduleRepository, org.mockito.Mockito.never()).saveBookedSlots(any(), anyBoolean(), anyBoolean());
+        }
+
+        @Test
+        void shouldBookNoDayWhenAnyDayInRangeHasNoSession() {
+            final String courtCentreId = UUID.randomUUID().toString();
+            final LocalDate day1 = LocalDate.of(2026, 7, 1);
+            final LocalDate day2 = LocalDate.of(2026, 7, 2);
+
+            when(courtScheduleRepository.findSessionForMoveToPastDate(eq(courtCentreId), any(), eq(day1), any(), eq(MAGISTRATES)))
+                    .thenReturn(Optional.of(buildPastSession(day1)));
+            when(courtScheduleRepository.findSessionForMoveToPastDate(eq(courtCentreId), any(), eq(day2), any(), eq(MAGISTRATES)))
+                    .thenReturn(Optional.empty());
+
+            Assertions.assertThrows(MoveHearingToPastDateNoSessionException.class,
+                    () -> service.moveHearingToPastDate(UUID.randomUUID().toString(), courtCentreId, null, day1, day2, NINE_AM, NOON, MAGISTRATES, 30));
+
+            // atomic - all sessions resolved before any booking, so nothing is booked when one day misses
+            verify(courtScheduleRepository, org.mockito.Mockito.never()).saveBookedSlots(any(), anyBoolean(), anyBoolean());
+        }
+
+        @Test
+        void shouldThrowNoSessionException_whenPersistFails() {
+            final String courtCentreId = UUID.randomUUID().toString();
+            final LocalDate startDate = LocalDate.of(2026, 5, 1);
+
+            when(courtScheduleRepository.findSessionForMoveToPastDate(eq(courtCentreId), any(), eq(startDate), any(), eq(MAGISTRATES)))
+                    .thenReturn(Optional.of(buildPastSession(startDate)));
+            when(courtScheduleRepository.saveBookedSlots(any(), eq(false), eq(false)))
+                    .thenReturn(new Result().msg("could not persist").success(false));
+
+            Assertions.assertThrows(MoveHearingToPastDateNoSessionException.class,
+                    () -> service.moveHearingToPastDate(UUID.randomUUID().toString(), courtCentreId, null, startDate, startDate, NINE_AM, NOON, MAGISTRATES, 30));
+        }
+
+        private Result success() {
+            return new Result().msg("").success(true);
+        }
+
+        @SuppressWarnings(UNCHECKED)
+        private List<AllocatedSlot> capturedBookedSlots() {
+            final org.mockito.ArgumentCaptor<List<AllocatedSlot>> captor = org.mockito.ArgumentCaptor.forClass(List.class);
+            verify(courtScheduleRepository).saveBookedSlots(captor.capture(), eq(false), eq(false));
+            return captor.getValue();
+        }
+
+        private uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule buildPastSession(final LocalDate date) {
+            final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule session = new uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule();
+            session.setCourtScheduleId(UUID.randomUUID().toString());
+            session.setOuCode("B01LY00");
+            session.setCourtRoomId(UUID.randomUUID().toString());
+            session.setCourtRoomNumber(1);
+            session.setSessionDate(date);
+            session.setSessionStartTime(date.atTime(9, 0).toInstant(java.time.ZoneOffset.UTC));
+            session.setSessionEndTime(date.atTime(17, 0).toInstant(java.time.ZoneOffset.UTC));
+            session.setIsDraft(false);
+            session.setBusinessType("NGAP");
+            session.setSlotBased(false);
+            session.setAvailableDuration(240);
+            return session;
         }
     }
 }

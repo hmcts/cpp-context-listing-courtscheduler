@@ -19,6 +19,7 @@ import uk.gov.moj.cpp.courtscheduler.openapi.model.MagsSearchAndBookRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.MagsSearchAndBookResponse;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.MoveHearingToPastDateRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.MoveHearingToPastDateResponse;
+import uk.gov.moj.cpp.courtscheduler.domain.BookedPastSession;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.RequestedDay;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.RequestedSlots;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.Result;
@@ -28,6 +29,7 @@ import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
 import uk.gov.moj.cpp.courtscheduler.exception.CourtScheduleIdNotMatchingException;
 import uk.gov.moj.cpp.courtscheduler.exception.CrownFallbackInvalidRequestException;
 import uk.gov.moj.cpp.courtscheduler.exception.CrownFallbackNoSessionException;
+import uk.gov.moj.cpp.courtscheduler.exception.MoveHearingToPastDateNoSessionException;
 import uk.gov.moj.cpp.courtscheduler.exception.NoAllocationOnDateException;
 import uk.gov.moj.cpp.courtscheduler.exception.NoSessionAvailableException;
 import uk.gov.moj.cpp.courtscheduler.exception.ProvisionalSlotNotFoundException;
@@ -37,8 +39,13 @@ import uk.gov.moj.cpp.courtscheduler.repository.AllocatedListingRepository;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 import uk.gov.moj.cpp.courtscheduler.repository.ProvisionalBookingRepository;
 
+import java.time.DayOfWeek;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -47,6 +54,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -87,6 +95,7 @@ public class SlotsUpdateService {
     private static final String SOURCE_EXEMPT_SAB = "EXEMPT_SAB";
     private static final String SOURCE_AUTO_CREATE_SAB = "AUTO_CREATE_SAB";
     private static final String JURISDICTION_CROWN = "CROWN";
+    private static final String JURISDICTION_MAGISTRATES = "MAGISTRATES";
 
     @Inject
     private CourtScheduleRepository courtScheduleRepository;
@@ -597,14 +606,19 @@ public class SlotsUpdateService {
     }
 
     /**
-     * Move a hearing to a (typically past) date (SPRDT-1089, AC7; courtRoomId added to mirror
-     * main's contract — see the review artifact this reconciles). Releases the prior allocation,
-     * then books CONSECUTIVE weekday sessions in one room + business type at the centre — CROWN via
-     * an optional {@code courtScheduleId} anchor or a {@code courtRoomId}-scoped centre search,
-     * MAGISTRATES always via the (equally {@code courtRoomId}-scoped) centre search. When the anchor
+     * CROWN move of a hearing to a past date (SPRDT-1089, AC7; courtRoomId added to mirror main's
+     * contract — see the review artifact this reconciles). Releases the prior allocation, then books
+     * CONSECUTIVE weekday sessions in one room + business type at the centre, via an optional
+     * {@code courtScheduleId} anchor or a {@code courtRoomId}-scoped centre search. When the anchor
      * is used, its own room already applies and {@code courtRoomId} is not separately enforced.
-     * source=MOVE_TO_PAST_DATE. The past-only rule is owned by the caller (listing); courtscheduler
-     * books whatever consecutive sessions it finds and does not reject future dates.
+     * source=MOVE_TO_PAST_DATE.
+     *
+     * <p>CROWN rulings of 2026-10-08 (SPRDT-1447): a single-day move without an anchor books the
+     * session in the requested room, on the requested date, whose window contains the requested
+     * start time - no fallback to another room; and any move that finds no past session is a 422
+     * NO_SESSION_FOUND (no exploratory empty success). MAGISTRATES moves never reach this method: they take main's
+     * exact-date path ({@link #moveHearingToPastDate(String, String, String, LocalDate, LocalDate,
+     * String, String, String, int)}, SPRDT-1447).
      */
     public MoveHearingToPastDateResponse moveHearingToPastDate(final MoveHearingToPastDateRequest request) {
         LOGGER.info("[MOVE-PAST] hearingId: {}, centre: {}, courtRoomId: {}, jurisdiction: {}, startDate: {}, endDate: {}, durationMins: {}",
@@ -620,9 +634,7 @@ public class SlotsUpdateService {
         // (e.g. a multi-day trial's total), unrelated to how many days THIS move targets, and
         // letting it drive daysNeeded here silently turned an ordinary same-day move into an
         // unsatisfiable multi-consecutive-day search. Mirrors SPRDT-1220's clamp for the
-        // update-hearing-for-listing path. isGenuineDateRange is reused below so the empty-sessions
-        // branch's exploratory-vs-error decision stays in sync with this sizing.
-        final boolean isGenuineDateRange = request.getEndDate() != null && request.getEndDate().isAfter(request.getStartDate());
+        // update-hearing-for-listing path.
         final boolean isExplicitSameDayMove = request.getEndDate() != null && request.getEndDate().isEqual(request.getStartDate());
         final int daysNeeded = isExplicitSameDayMove
                 ? 1
@@ -631,39 +643,27 @@ public class SlotsUpdateService {
 
         // Select (search + validate) the past sessions BEFORE touching the prior allocation, so a search
         // miss can never orphan the hearing — the release is deferred until we have sessions to book onto.
-        final List<CourtSchedule> sessions;
-        if (JURISDICTION_CROWN.equalsIgnoreCase(request.getJurisdiction())) {
-            // CROWN consecutive run: anchor (when present) keys findConsecutiveSessions; otherwise search the
-            // court centre via findConsecutiveSessionsForCentre (findConsecutiveSessions needs a courtScheduleId).
-            final List<CourtSchedule> candidates = (request.getCourtScheduleId() != null && !request.getCourtScheduleId().isBlank())
-                    ? courtScheduleRepository.findConsecutiveSessions(request.getCourtScheduleId(), daysNeeded)
-                    : courtScheduleRepository.findConsecutiveSessionsForCentre(
-                            request.getCourtCentreId(), request.getStartDate(), daysNeeded, request.getCourtRoomId());
-            sessions = selectConsecutiveSessions(candidates, daysNeeded, request.getHearingId(), perDay);
+        final boolean hasAnchor = request.getCourtScheduleId() != null && !request.getCourtScheduleId().isBlank();
+        final List<CourtSchedule> candidates;
+        if (isExplicitSameDayMove && !hasAnchor) {
+            // CROWN ruling (2026-10-08): the requested room, date and start time - no room fallback.
+            candidates = findCrownPastSession(request);
+        } else if (hasAnchor) {
+            // CROWN consecutive run keyed on the anchor (findConsecutiveSessions needs a courtScheduleId).
+            candidates = courtScheduleRepository.findConsecutiveSessions(request.getCourtScheduleId(), daysNeeded);
         } else {
-            // MAGISTRATES: consecutive past weekdays in the centre (same room + business type),
-            // mirroring the CROWN no-anchor path — no sparse allocation.
-            sessions = selectConsecutiveSessions(
-                    courtScheduleRepository.findConsecutiveSessionsForCentre(
-                            request.getCourtCentreId(), request.getStartDate(), daysNeeded, request.getCourtRoomId()),
-                    daysNeeded, request.getHearingId(), perDay);
+            candidates = courtScheduleRepository.findConsecutiveSessionsForCentre(
+                    request.getCourtCentreId(), request.getStartDate(), daysNeeded, request.getCourtRoomId());
         }
+        final List<CourtSchedule> sessions = selectConsecutiveSessions(candidates, daysNeeded, request.getHearingId(), perDay);
 
         if (sessions.isEmpty()) {
-            // A GENUINE date range (endDate strictly after startDate) that yields nothing is
-            // exploratory - leave the existing allocation intact. Everything else (no endDate at
-            // all, OR endDate present but equal to startDate - the shape every request now takes
-            // since courtRoomId/startTime/endTime became mandatory, main-contract alignment) is a
-            // single-date request: no session for it is a hard 404, not a silent empty success.
-            // (isGenuineDateRange computed above, once, and reused here so this stays in sync with
-            // the daysNeeded sizing.)
-            if (!isGenuineDateRange) {
-                throw new NoSessionAvailableException(
-                        "No past session available for hearingId " + request.getHearingId()
-                                + " starting " + request.getStartDate());
-            }
-            return new MoveHearingToPastDateResponse(
-                    request.getHearingId(), SOURCE_MOVE_TO_PAST_DATE, Collections.emptyList());
+            // CROWN ruling (2026-10-08): no past session is always a 422 NO_SESSION_FOUND - including
+            // a multi-day range, which used to return an exploratory empty success. Nothing has been
+            // released yet, so the hearing keeps its current allocation.
+            throw new NoSessionAvailableException(
+                    "No past session available for hearingId " + request.getHearingId()
+                            + " starting " + request.getStartDate());
         }
 
         // Only now that we have sessions to book: release the prior allocation, then persist the past booking.
@@ -677,6 +677,169 @@ public class SlotsUpdateService {
         persistSessions(sessions, request.getHearingId(), false, perDay, SOURCE_MOVE_TO_PAST_DATE);
 
         return new MoveHearingToPastDateResponse(request.getHearingId(), SOURCE_MOVE_TO_PAST_DATE, sessions);
+    }
+
+    /**
+     * The single CROWN session for a same-day move: in the requested room, on the requested date,
+     * whose window contains the requested start time (UTC wall clock, the frame session times are
+     * stored in). Empty when there is none - never another room.
+     */
+    private List<CourtSchedule> findCrownPastSession(final MoveHearingToPastDateRequest request) {
+        final LocalDateTime startTime = request.getStartTime() == null || request.getStartTime().isBlank()
+                ? null
+                : ZonedDateTime.parse(request.getStartTime()).withZoneSameInstant(ZoneOffset.UTC).toLocalDateTime();
+        return courtScheduleRepository
+                .findSessionForMoveToPastDate(request.getCourtCentreId(), request.getCourtRoomId(),
+                        request.getStartDate(), startTime, JURISDICTION_CROWN)
+                .map(session -> courtScheduleRepository.getCourtSchedulesByIdList(List.of(session.getCourtScheduleId())))
+                .orElseGet(Collections::emptyList);
+    }
+
+    /**
+     * MAGISTRATES move to past date - main's behaviour, restored (SPRDT-1447; dropped by the 8de19ce
+     * main merge). Expands [startDate, endDate] into sitting days (see {@link #sittingDays}) and books
+     * the session on every day whose window contains the submitted start time-of-day, in the
+     * requested room (any court_session, any day of the week). All sessions are resolved first, so if
+     * any day has no matching session the whole move is rejected before anything is released or
+     * booked; then the prior allocation is released (payback) and every day booked in one call.
+     */
+    @SuppressWarnings("java:S107")
+    public List<BookedPastSession> moveHearingToPastDate(final String hearingId,
+                                                         final String courtCentreId,
+                                                         final String courtRoomId,
+                                                         final LocalDate startDate,
+                                                         final LocalDate endDate,
+                                                         final String hearingStartTime,
+                                                         final String hearingEndTime,
+                                                         final String jurisdiction,
+                                                         final int durationInMinutes) {
+        final String effectiveJurisdiction = (jurisdiction == null || jurisdiction.isBlank())
+                ? JURISDICTION_MAGISTRATES : jurisdiction.toUpperCase(Locale.ROOT);
+        final LocalDate effectiveEndDate = endDate == null ? startDate : endDate;
+        final List<LocalDate> sittingDays = sittingDays(startDate, effectiveEndDate);
+        if (sittingDays.isEmpty()) {
+            // only reachable when endDate is before startDate - an empty span has no day to book
+            throw new MoveHearingToPastDateNoSessionException(
+                    "No day between " + startDate + " and " + effectiveEndDate);
+        }
+
+        final List<uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule> sessions = new ArrayList<>();
+        for (final LocalDate day : sittingDays) {
+            sessions.add(findPastSession(courtCentreId, courtRoomId, day, hearingStartTime, effectiveJurisdiction));
+        }
+
+        final List<AllocatedSlot> slots = new ArrayList<>();
+        for (int i = 0; i < sittingDays.size(); i++) {
+            slots.add(buildAllocatedSlotForPastDateMove(hearingId, durationInMinutes,
+                    sittingDays.get(i), hearingStartTime, sessions.get(i)));
+        }
+
+        // Only now that every day has a session: release the prior allocation (payback), then book.
+        if (courtScheduleRepository.findAllocatedListingByHearingId(hearingId).isPresent()) {
+            LOGGER.info("[MOVE-PAST] Releasing prior allocation - hearingId: {}", Encode.forJava(hearingId));
+            courtScheduleRepository.releaseOldAllocatedListings(hearingId);
+        }
+        final Result persistResult = courtScheduleRepository.saveBookedSlots(slots, false, false);
+        if (!Boolean.TRUE.equals(persistResult.getSuccess())) {
+            throw new MoveHearingToPastDateNoSessionException(
+                    "Move hearing to past date failed to persist allocation for hearingId " + hearingId + ": " + persistResult.getMsg());
+        }
+
+        final List<BookedPastSession> responses = new ArrayList<>();
+        for (int i = 0; i < sittingDays.size(); i++) {
+            responses.add(toBookedPastSession(hearingId, durationInMinutes,
+                    sittingDays.get(i), hearingStartTime, hearingEndTime, sessions.get(i)));
+        }
+        return responses;
+    }
+
+    private uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule findPastSession(final String courtCentreId,
+                                                                                    final String courtRoomId,
+                                                                                    final LocalDate day,
+                                                                                    final String hearingStartTime,
+                                                                                    final String jurisdiction) {
+        final LocalDateTime sessionStartDateTime = (hearingStartTime == null || hearingStartTime.isBlank())
+                ? null : LocalDateTime.of(day, LocalTime.parse(hearingStartTime));
+        return courtScheduleRepository
+                .findSessionForMoveToPastDate(courtCentreId, courtRoomId, day, sessionStartDateTime, jurisdiction)
+                .orElseThrow(() -> new MoveHearingToPastDateNoSessionException(
+                        "No session available at courtCentreId=" + courtCentreId + " on " + day));
+    }
+
+    /**
+     * Weekdays are always sitting days, and mid-span weekends in a mixed range stay skipped
+     * (multi-day hearings do not sit over the weekend). A span containing no weekday at all - a
+     * single Saturday/Sunday, or a Sat-Sun range - uses the requested days verbatim: weekend
+     * sessions are real (e.g. magistrates remand courts sit Saturdays), so whether such a day is
+     * bookable is the per-day session lookup's decision, not a calendar rule.
+     */
+    private static List<LocalDate> sittingDays(final LocalDate startDate, final LocalDate endDate) {
+        final List<LocalDate> allDays = new ArrayList<>();
+        final List<LocalDate> weekdays = new ArrayList<>();
+        LocalDate cursor = startDate;
+        while (!cursor.isAfter(endDate)) {
+            allDays.add(cursor);
+            final DayOfWeek dow = cursor.getDayOfWeek();
+            if (dow != DayOfWeek.SATURDAY && dow != DayOfWeek.SUNDAY) {
+                weekdays.add(cursor);
+            }
+            cursor = cursor.plusDays(1);
+        }
+        return weekdays.isEmpty() ? allDays : weekdays;
+    }
+
+    private static AllocatedSlot buildAllocatedSlotForPastDateMove(final String hearingId, final int durationInMinutes,
+                                                                   final LocalDate day, final String hearingStartTime,
+                                                                   final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule session) {
+        final AllocatedSlot slot = new AllocatedSlot();
+        slot.setHearingId(hearingId);
+        slot.setCourtScheduleId(session.getCourtScheduleId());
+        slot.setOuCode(session.getOuCode());
+        slot.setDuration(durationInMinutes);
+        slot.setSessionDate(day.toString());
+        slot.setSource(SOURCE_MOVE_TO_PAST_DATE);
+        // Booked slot reflects the SUBMITTED start time-of-day on this day, not the session window.
+        final String submittedStart = submittedIso(day, hearingStartTime);
+        if (submittedStart != null) {
+            slot.setHearingStartTime(submittedStart);
+        } else if (session.getSessionStartTime() != null) {
+            slot.setHearingStartTime(DateUtils.toIsoString(session.getSessionStartTime()));
+        }
+        return slot;
+    }
+
+    private static BookedPastSession toBookedPastSession(final String hearingId, final int durationInMinutes,
+                                                         final LocalDate day, final String hearingStartTime,
+                                                         final String hearingEndTime, final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule session) {
+        final boolean overbooked = session.isSlotBased()
+                ? (session.getAvailableSlots() != null && session.getAvailableSlots() <= 0)
+                : (session.getAvailableDuration() != null && session.getAvailableDuration() < durationInMinutes);
+
+        // sessionStartTime/sessionEndTime carry the SUBMITTED start/end time-of-day on this sitting
+        // day (falling back to the court-schedule window only if a time-of-day was not supplied).
+        final String submittedStart = submittedIso(day, hearingStartTime);
+        final String submittedEnd = submittedIso(day, hearingEndTime);
+        return new BookedPastSession(
+                hearingId,
+                session.getCourtScheduleId(),
+                session.getCourtRoomId(),
+                day.toString(),
+                submittedStart != null ? submittedStart
+                        : (session.getSessionStartTime() != null ? DateUtils.toIsoString(session.getSessionStartTime()) : null),
+                submittedEnd != null ? submittedEnd
+                        : (session.getSessionEndTime() != null ? DateUtils.toIsoString(session.getSessionEndTime()) : null),
+                durationInMinutes,
+                session.isDraft(),
+                session.getBusinessType(),
+                SOURCE_MOVE_TO_PAST_DATE,
+                overbooked);
+    }
+
+    private static String submittedIso(final LocalDate day, final String timeOfDay) {
+        if (timeOfDay == null || timeOfDay.isBlank()) {
+            return null;
+        }
+        return DateUtils.toIsoString(LocalDateTime.of(day, LocalTime.parse(timeOfDay)));
     }
 
     /**
