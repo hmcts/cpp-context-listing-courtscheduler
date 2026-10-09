@@ -217,6 +217,8 @@ class JudiciaryAssignmentServiceTest {
                 buildCourtScheduleWithHouse(s2, "H1")));
         when(referenceDataMapperService.findById(jid)).thenReturn(Optional.of(buildJudiciary(jid)));
         when(courtScheduleJudiciaryRepository.deleteAllAssignmentsForCourtScheduleIds(anyList())).thenReturn(2);
+        when(judiciaryChangeDetectionService.buildCourtScheduleJudiciaryHashMap(anyList())).thenReturn(Map.of());
+        when(judiciaryChangeDetectionService.findChangedCourtScheduleIds(any(), any())).thenReturn(List.of());
 
         final AssignJudiciaryToSessionsRequest req = AssignJudiciaryToSessionsRequest.builder()
                 .withCourtScheduleIds(of(s1, s2))
@@ -278,6 +280,8 @@ class JudiciaryAssignmentServiceTest {
         final String s1 = UUID_8A9F3E44;
         when(courtScheduleRepository.findByCourtScheduleIds(anyList())).thenReturn(of(buildCourtScheduleWithHouse(s1, "H1")));
         when(courtScheduleJudiciaryRepository.deleteAllAssignmentsForCourtScheduleIds(anyList())).thenReturn(1);
+        when(judiciaryChangeDetectionService.buildCourtScheduleJudiciaryHashMap(anyList())).thenReturn(Map.of());
+        when(judiciaryChangeDetectionService.findChangedCourtScheduleIds(any(), any())).thenReturn(List.of());
 
         final AssignJudiciaryToSessionsRequest req = AssignJudiciaryToSessionsRequest.builder()
                 .withCourtScheduleIds(of(s1))
@@ -347,6 +351,7 @@ class JudiciaryAssignmentServiceTest {
         when(courtScheduleRepository.findByCourtScheduleIds(anyList())).thenReturn(of(buildCourtScheduleWithHouse(s1, "H1")));
         when(referenceDataMapperService.findById(jid)).thenReturn(Optional.empty());
         when(courtScheduleJudiciaryRepository.deleteAllAssignmentsForCourtScheduleIds(anyList())).thenReturn(0);
+        when(judiciaryChangeDetectionService.buildCourtScheduleJudiciaryHashMap(anyList())).thenReturn(Map.of());
 
         final AssignJudiciaryToSessionsRequest req = AssignJudiciaryToSessionsRequest.builder()
                 .withCourtScheduleIds(of(s1))
@@ -403,6 +408,8 @@ class JudiciaryAssignmentServiceTest {
         when(courtScheduleRepository.findByCourtScheduleIds(anyList())).thenReturn(of(buildCourtScheduleWithHouse(s1, "H1")));
         when(referenceDataMapperService.findById(jid)).thenReturn(Optional.of(buildJudiciary(jid)));
         when(courtScheduleJudiciaryRepository.deleteAllAssignmentsForCourtScheduleIds(anyList())).thenReturn(0);
+        when(judiciaryChangeDetectionService.buildCourtScheduleJudiciaryHashMap(anyList())).thenReturn(Map.of());
+        when(judiciaryChangeDetectionService.findChangedCourtScheduleIds(any(), any())).thenReturn(List.of());
 
         final AssignJudiciaryToSessionsRequest req = AssignJudiciaryToSessionsRequest.builder()
                 .withCourtScheduleIds(of(s1))

@@ -3619,6 +3619,133 @@ class CourtSchedulerIT extends AbstractIT {
         assertThat(StubUtil.countChangeJudiciaryForHearingsRequests(), is(commandCountBefore));
     }
 
+    // -----------------------------------------------------------------------
+    // change-judiciary-for-hearings command integration (assign-judiciary-to-sessions)
+    // -----------------------------------------------------------------------
+
+    @Test
+    void shouldSendChangeJudiciaryForHearingsCommandWhenAssigningJudiciaryToSessionsWithAllocatedHearing() throws Exception {
+        StubUtil.stubChangeJudiciaryForHearingsCommand();
+
+        final CourtSchedule courtSchedule = createTestCourtScheduleWithCourthouse(IT_SHARED_COURTHOUSE);
+        databaseSeeder.insertCourtSchedule(courtSchedule);
+
+        final AllocatedListing allocatedListing = getAllocatedListing(courtSchedule);
+        databaseSeeder.insertAllocatedListing(allocatedListing);
+
+        final String requestPayload = createObjectBuilder()
+                .add(P_COURT_SCHEDULE_IDS, createArrayBuilder()
+                        .add(courtSchedule.getCourtScheduleId())
+                        .build())
+                .add(P_JUDICIARY, createArrayBuilder()
+                        .add(assignToSessionsJudiciaryLine(STUB_JUDICIARY_MAGISTRATE_1, LABEL_MAGISTRATE, true, false))
+                        .build())
+                .build()
+                .toString();
+
+        final Response response = postCommand(ASSIGN_JUDICIARY_TO_SESSIONS_URL,
+                ASSIGN_JUDICIARY_TO_SESSIONS_CONTENT_TYPE,
+                USER_ID,
+                requestPayload);
+
+        assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
+        assertThat(StubUtil.countSchemaShapedChangeJudiciaryForHearingsRequestsFor(allocatedListing.getHearingId()),
+                greaterThan(0));
+    }
+
+    @Test
+    void shouldNotSendChangeJudiciaryForHearingsCommandWhenAssigningJudiciaryToSessionsWithNoAllocatedHearings() throws Exception {
+        StubUtil.stubChangeJudiciaryForHearingsCommand();
+        final int commandCountBefore = StubUtil.countChangeJudiciaryForHearingsRequests();
+
+        final CourtSchedule courtSchedule = createTestCourtScheduleWithCourthouse(IT_SHARED_COURTHOUSE);
+        databaseSeeder.insertCourtSchedule(courtSchedule);
+        // No allocated listing — judiciary changes but no hearings to notify
+
+        final String requestPayload = createObjectBuilder()
+                .add(P_COURT_SCHEDULE_IDS, createArrayBuilder()
+                        .add(courtSchedule.getCourtScheduleId())
+                        .build())
+                .add(P_JUDICIARY, createArrayBuilder()
+                        .add(assignToSessionsJudiciaryLine(STUB_JUDICIARY_MAGISTRATE_1, LABEL_MAGISTRATE, true, false))
+                        .build())
+                .build()
+                .toString();
+
+        final Response response = postCommand(ASSIGN_JUDICIARY_TO_SESSIONS_URL,
+                ASSIGN_JUDICIARY_TO_SESSIONS_CONTENT_TYPE,
+                USER_ID,
+                requestPayload);
+
+        assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
+        assertThat(StubUtil.countChangeJudiciaryForHearingsRequests(), is(commandCountBefore));
+    }
+
+    // -----------------------------------------------------------------------
+    // change-judiciary-for-hearings command integration (remove-all-judiciary)
+    // -----------------------------------------------------------------------
+
+    @Test
+    void shouldSendChangeJudiciaryForHearingsCommandWhenRemovingAllJudiciaryFromSessionWithAllocatedHearing() throws Exception {
+        StubUtil.stubChangeJudiciaryForHearingsCommand();
+
+        final CourtSchedule courtSchedule = createTestCourtSchedule();
+        databaseSeeder.insertCourtSchedule(courtSchedule);
+
+        final CourtScheduleJudiciary courtScheduleJudiciary = createTestCourtScheduleJudiciary(
+                courtSchedule.getCourtScheduleId());
+        databaseSeeder.saveJudiciarySchedule(courtScheduleJudiciary);
+
+        final AllocatedListing allocatedListing = getAllocatedListing(courtSchedule);
+        databaseSeeder.insertAllocatedListing(allocatedListing);
+
+        final String requestPayload = createObjectBuilder()
+                .add("courtScheduleIds", createArrayBuilder()
+                        .add(courtSchedule.getCourtScheduleId())
+                        .build())
+                .build()
+                .toString();
+
+        final Response response = postCommand(REMOVE_ALL_JUDICIARY_URL,
+                REMOVE_ALL_JUDICIARY_CONTENT_TYPE,
+                SYSTEM_USER_ID,
+                requestPayload);
+
+        assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
+        // After removal the judiciary array is empty, so use body-contains check for the hearing ID
+        assertThat(StubUtil.countChangeJudiciaryForHearingsRequestsContaining(allocatedListing.getHearingId()),
+                greaterThan(0));
+    }
+
+    @Test
+    void shouldNotSendChangeJudiciaryForHearingsCommandWhenRemovingAllJudiciaryFromSessionWithNoAllocatedHearings() throws Exception {
+        StubUtil.stubChangeJudiciaryForHearingsCommand();
+        final int commandCountBefore = StubUtil.countChangeJudiciaryForHearingsRequests();
+
+        final CourtSchedule courtSchedule = createTestCourtSchedule();
+        databaseSeeder.insertCourtSchedule(courtSchedule);
+
+        final CourtScheduleJudiciary courtScheduleJudiciary = createTestCourtScheduleJudiciary(
+                courtSchedule.getCourtScheduleId());
+        databaseSeeder.saveJudiciarySchedule(courtScheduleJudiciary);
+        // No allocated listing — judiciary removed but no hearings to notify
+
+        final String requestPayload = createObjectBuilder()
+                .add("courtScheduleIds", createArrayBuilder()
+                        .add(courtSchedule.getCourtScheduleId())
+                        .build())
+                .build()
+                .toString();
+
+        final Response response = postCommand(REMOVE_ALL_JUDICIARY_URL,
+                REMOVE_ALL_JUDICIARY_CONTENT_TYPE,
+                SYSTEM_USER_ID,
+                requestPayload);
+
+        assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
+        assertThat(StubUtil.countChangeJudiciaryForHearingsRequests(), is(commandCountBefore));
+    }
+
     @Test
     void shouldRemoveAllJudiciaryAssignmentsForCourtSchedules() throws Exception {
         final CourtSchedule courtScheduleOne = createTestCourtSchedule();

@@ -23,6 +23,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class JudiciaryChangeDetectionServiceTest {
 
+    private static final String JUDGE_1 = "judge-1";
+
     @InjectMocks
     private JudiciaryChangeDetectionService judiciaryChangeDetectionService;
 
@@ -41,7 +43,7 @@ class JudiciaryChangeDetectionServiceTest {
     @Test
     void buildHashMap_shouldGroupReturnedEntitiesByCourtScheduleId() {
         final String scheduleId = "schedule-1";
-        final CourtScheduleJudiciary entity = buildEntity(scheduleId, "judge-1");
+        final CourtScheduleJudiciary entity = buildEntity(scheduleId, JUDGE_1);
 
         when(courtScheduleJudiciaryRepository.findInCourtScheduleIds(List.of(scheduleId)))
                 .thenReturn(List.of(entity));
@@ -58,8 +60,8 @@ class JudiciaryChangeDetectionServiceTest {
         final String scheduleId = "schedule-1";
 
         when(courtScheduleJudiciaryRepository.findInCourtScheduleIds(List.of(scheduleId)))
-                .thenReturn(List.of(buildEntity(scheduleId, "judge-1")))
-                .thenReturn(List.of(buildEntity(scheduleId, "judge-1")));
+                .thenReturn(List.of(buildEntity(scheduleId, JUDGE_1)))
+                .thenReturn(List.of(buildEntity(scheduleId, JUDGE_1)));
 
         final Map<String, List<Integer>> result1 =
                 judiciaryChangeDetectionService.buildCourtScheduleJudiciaryHashMap(List.of(scheduleId));
@@ -74,7 +76,7 @@ class JudiciaryChangeDetectionServiceTest {
         final String scheduleId = "schedule-1";
 
         when(courtScheduleJudiciaryRepository.findInCourtScheduleIds(List.of(scheduleId)))
-                .thenReturn(List.of(buildEntity(scheduleId, "judge-1")))
+                .thenReturn(List.of(buildEntity(scheduleId, JUDGE_1)))
                 .thenReturn(List.of(buildEntity(scheduleId, "judge-2")));
 
         final Map<String, List<Integer>> result1 =

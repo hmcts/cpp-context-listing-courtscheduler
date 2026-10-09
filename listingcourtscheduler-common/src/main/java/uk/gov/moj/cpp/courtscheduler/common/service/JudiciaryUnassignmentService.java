@@ -167,14 +167,14 @@ public class JudiciaryUnassignmentService {
     }
 
     @Transactional
-    public int removeAllJudiciaryByCourtScheduleIds(final List<String> courtScheduleIds) {
+    public List<String> removeAllJudiciaryByCourtScheduleIds(final List<String> courtScheduleIds) {
         if (courtScheduleIds == null || courtScheduleIds.isEmpty()) {
-            return 0;
+            return List.of();
         }
         final int deleted = courtScheduleJudiciaryRepository.deleteAllAssignmentsForCourtScheduleIds(courtScheduleIds);
         LOGGER.info("removeAllJudiciaryByCourtScheduleIds: removed {} judiciary assignment(s) for {} court schedule(s)",
                 deleted, courtScheduleIds.size());
-        return deleted;
+        return deleted > 0 ? List.copyOf(courtScheduleIds) : List.of();
     }
 
     private void logMissingReferences(final Set<String> missingJudiciaryIds,

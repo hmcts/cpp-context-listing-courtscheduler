@@ -113,8 +113,8 @@ public class JudiciaryAssignmentService {
      * and bench composition (max 4, max 2 magistrates, max 1 judge/recorder).
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void assignJudiciaryToSessions(final AssignJudiciaryToSessionsRequest request,
-                                          final String executionId) {
+    public List<String> assignJudiciaryToSessions(final AssignJudiciaryToSessionsRequest request,
+                                                  final String executionId) {
         if (request == null || request.getCourtScheduleIds() == null || request.getCourtScheduleIds().isEmpty()) {
             throw new IllegalArgumentException("courtScheduleIds must contain at least one court schedule id.");
         }
@@ -147,6 +147,11 @@ public class JudiciaryAssignmentService {
                 .collect(Collectors.toList());
         validateSameCourthouse(orderedSchedules);
 
+        final Map<String, List<Integer>> preHashMap =
+                judiciaryChangeDetectionService.buildCourtScheduleJudiciaryHashMap(courtScheduleIds);
+        LOGGER.info("Pre-assignJudiciaryToSessions: captured judiciary hash map for {} court schedule(s), executionId={}",
+                preHashMap.size(), executionId);
+
         courtScheduleJudiciaryRepository.deleteAllAssignmentsForCourtScheduleIds(courtScheduleIds);
 
         final Instant now = Instant.now();
@@ -168,6 +173,13 @@ public class JudiciaryAssignmentService {
         }
         LOGGER.info("assignJudiciaryToSessions: courtSchedules={}, sessionJudiciaries={}, persisted={}, executionId={}",
                 courtScheduleIds.size(), sessionJudiciaries.size(), persisted, executionId);
+
+        final Map<String, List<Integer>> postHashMap =
+                judiciaryChangeDetectionService.buildCourtScheduleJudiciaryHashMap(courtScheduleIds);
+        LOGGER.info("Post-assignJudiciaryToSessions: captured judiciary hash map for {} court schedule(s), executionId={}",
+                postHashMap.size(), executionId);
+
+        return judiciaryChangeDetectionService.findChangedCourtScheduleIds(preHashMap, postHashMap);
     }
 
     private IllegalArgumentException judiciaryNotFoundException(final String judicialId) {

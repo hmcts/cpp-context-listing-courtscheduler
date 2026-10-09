@@ -35,6 +35,7 @@ import uk.gov.moj.cpp.courtscheduler.common.service.JudiciaryAssignmentService;
 import uk.gov.moj.cpp.courtscheduler.common.service.JudiciaryUnassignmentService;
 import uk.gov.moj.cpp.courtscheduler.common.service.SessionsService;
 import uk.gov.moj.cpp.courtscheduler.domain.AssignJudiciariesRequest;
+import uk.gov.moj.cpp.courtscheduler.domain.AssignJudiciaryToSessionsRequest;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -56,7 +57,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.server.ResponseStatusException;
 
 @ExtendWith(MockitoExtension.class)
-@SuppressWarnings("PMD.TooManyFields")
 class CourtSchedulerApiTest {
 
     // shared
@@ -104,6 +104,8 @@ class CourtSchedulerApiTest {
             "application/vnd.courtscheduler.assign-judiciary+json";
     private static final String UNASSIGN_CONTENT_TYPE =
             "application/vnd.courtscheduler.unassign.judiciary+json";
+    private static final String JUDICIARIES = "judiciaries";
+    private static final String JUDGE_ID_1 = "judge-1";
 
     // -----------------------------------------------------------------------
     // postCourtschedulerSessionJudiciary — dispatch
@@ -207,11 +209,11 @@ class CourtSchedulerApiTest {
         final List<JsonObject> payloads = List.of(Json.createObjectBuilder().build());
 
         final Map<String, Object> judiciary = new HashMap<>();
-        judiciary.put("judiciaryId", "judge-1");
+        judiciary.put("judiciaryId", JUDGE_ID_1);
         judiciary.put("sessionIds", List.of("session-1"));
 
         final Map<String, Object> body = new HashMap<>();
-        body.put("judiciaries", List.of(judiciary));
+        body.put(JUDICIARIES, List.of(judiciary));
 
         when(request.getContentType()).thenReturn(UNASSIGN_CONTENT_TYPE);
         when(objectMapper.writeValueAsString(any())).thenReturn("{}");
@@ -233,7 +235,7 @@ class CourtSchedulerApiTest {
     @Test
     void unassignJudiciary_shouldPassSkipValidationsTrueWhenBodyContainsFlag() throws Exception {
         final Map<String, Object> body = new HashMap<>();
-        body.put("judiciaries", List.of());
+        body.put(JUDICIARIES, List.of());
         body.put("skipValidations", true);
 
         when(request.getContentType()).thenReturn(UNASSIGN_CONTENT_TYPE);
@@ -253,7 +255,7 @@ class CourtSchedulerApiTest {
     @Test
     void unassignJudiciary_shouldPassSkipValidationsFalseWhenFlagAbsentFromBody() throws Exception {
         final Map<String, Object> body = new HashMap<>();
-        body.put("judiciaries", List.of());
+        body.put(JUDICIARIES, List.of());
 
         when(request.getContentType()).thenReturn(UNASSIGN_CONTENT_TYPE);
         when(objectMapper.writeValueAsString(any())).thenReturn("{}");
@@ -273,7 +275,7 @@ class CourtSchedulerApiTest {
     void unassignJudiciary_shouldMapMultipleJudiciariedAndSessionIdsIntoServiceCall() throws Exception {
         final List<Map<String, Object>> judiciaries = new ArrayList<>();
         final Map<String, Object> j1 = new HashMap<>();
-        j1.put("judiciaryId", "judge-1");
+        j1.put("judiciaryId", JUDGE_ID_1);
         j1.put("sessionIds", List.of("session-a", "session-b"));
         final Map<String, Object> j2 = new HashMap<>();
         j2.put("judiciaryId", "judge-2");
@@ -282,7 +284,7 @@ class CourtSchedulerApiTest {
         judiciaries.add(j2);
 
         final Map<String, Object> body = new HashMap<>();
-        body.put("judiciaries", judiciaries);
+        body.put(JUDICIARIES, judiciaries);
 
         when(request.getContentType()).thenReturn(UNASSIGN_CONTENT_TYPE);
         when(objectMapper.writeValueAsString(any())).thenReturn("{}");
@@ -299,7 +301,7 @@ class CourtSchedulerApiTest {
         assertEquals(HttpStatus.ACCEPTED, response.getStatusCode());
         verify(judiciaryUnassignmentService).unassignJudiciary(
                 org.mockito.ArgumentMatchers.argThat(map ->
-                        map.containsKey("judge-1") && map.get("judge-1").size() == 2
+                        map.containsKey(JUDGE_ID_1) && map.get(JUDGE_ID_1).size() == 2
                                 && map.containsKey("judge-2") && map.get("judge-2").size() == 1),
                 anyString(),
                 org.mockito.ArgumentMatchers.eq(false));
@@ -312,7 +314,7 @@ class CourtSchedulerApiTest {
     @Test
     void unassignJudiciary_shouldThrowValidationExceptionWhenValidationFails() throws Exception {
         final Map<String, Object> body = new HashMap<>();
-        body.put("judiciaries", List.of());
+        body.put(JUDICIARIES, List.of());
         final JsonObject errors = Json.createObjectBuilder().add("error", "bad request").build();
 
         when(request.getContentType()).thenReturn(UNASSIGN_CONTENT_TYPE);
@@ -333,7 +335,7 @@ class CourtSchedulerApiTest {
     @Test
     void unassignJudiciary_shouldThrowBadRequestWhenServiceThrowsIllegalStateException() throws Exception {
         final Map<String, Object> body = new HashMap<>();
-        body.put("judiciaries", List.of());
+        body.put(JUDICIARIES, List.of());
 
         when(request.getContentType()).thenReturn(UNASSIGN_CONTENT_TYPE);
         when(objectMapper.writeValueAsString(any())).thenReturn("{}");
@@ -347,5 +349,97 @@ class CourtSchedulerApiTest {
 
         assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
         verify(changeJudiciaryForHearingsHelper, never()).createChangeJudiciaryForHearingsPayloads(anyList());
+    }
+
+    // -----------------------------------------------------------------------
+    // postBulkAssignJudiciaries
+    // -----------------------------------------------------------------------
+
+    @Test
+    void bulkAssignJudiciaries_shouldReturn202AndInvokeHelperWhenServiceSucceeds() throws Exception {
+        final Map<String, Object> body = new HashMap<>();
+        final AssignJudiciaryToSessionsRequest dto = AssignJudiciaryToSessionsRequest.builder()
+                .withCourtScheduleIds(List.of("cs-1"))
+                .build();
+        final List<String> changedIds = List.of("cs-1");
+        final List<JsonObject> payloads = List.of(Json.createObjectBuilder().build());
+
+        when(objectMapper.writeValueAsString(any())).thenReturn("{}");
+        when(assignJudiciaryToSessionsConverter.convert(any())).thenReturn(dto);
+        when(judiciaryAssignmentService.assignJudiciaryToSessions(any(AssignJudiciaryToSessionsRequest.class), anyString()))
+                .thenReturn(changedIds);
+        when(changeJudiciaryForHearingsHelper.createChangeJudiciaryForHearingsPayloads(changedIds))
+                .thenReturn(payloads);
+
+        final ResponseEntity<Void> response = courtSchedulerApi.postBulkAssignJudiciaries(body);
+
+        assertEquals(HttpStatus.ACCEPTED, response.getStatusCode());
+        verify(changeJudiciaryForHearingsHelper).createChangeJudiciaryForHearingsPayloads(changedIds);
+        verify(changeJudiciaryForHearingsHelper).sendChangeJudiciaryForHearingsCommands(payloads);
+    }
+
+    @Test
+    void bulkAssignJudiciaries_shouldThrowValidationExceptionWhenServiceThrowsIllegalArgumentException()
+            throws Exception {
+        final Map<String, Object> body = new HashMap<>();
+        final AssignJudiciaryToSessionsRequest dto = AssignJudiciaryToSessionsRequest.builder().build();
+
+        when(objectMapper.writeValueAsString(any())).thenReturn("{}");
+        when(assignJudiciaryToSessionsConverter.convert(any())).thenReturn(dto);
+        when(judiciaryAssignmentService.assignJudiciaryToSessions(any(AssignJudiciaryToSessionsRequest.class), anyString()))
+                .thenThrow(new IllegalArgumentException("invalid session"));
+
+        assertThrows(ValidationException.class, () -> courtSchedulerApi.postBulkAssignJudiciaries(body));
+
+        verify(changeJudiciaryForHearingsHelper, never()).createChangeJudiciaryForHearingsPayloads(anyList());
+    }
+
+    // -----------------------------------------------------------------------
+    // postRemoveAllJudiciaries
+    // -----------------------------------------------------------------------
+
+    @Test
+    void removeAllJudiciaries_shouldReturn202AndInvokeHelperWhenServiceSucceeds() throws Exception {
+        final Map<String, Object> body = new HashMap<>();
+        final List<String> changedIds = List.of("cs-1");
+        final List<JsonObject> payloads = List.of(Json.createObjectBuilder().build());
+
+        when(objectMapper.writeValueAsString(any())).thenReturn("{\"courtScheduleIds\":[\"cs-1\"]}");
+        when(judiciaryUnassignmentService.removeAllJudiciaryByCourtScheduleIds(List.of("cs-1")))
+                .thenReturn(changedIds);
+        when(changeJudiciaryForHearingsHelper.createChangeJudiciaryForHearingsPayloads(changedIds))
+                .thenReturn(payloads);
+
+        final ResponseEntity<Void> response = courtSchedulerApi.postRemoveAllJudiciaries(body);
+
+        assertEquals(HttpStatus.ACCEPTED, response.getStatusCode());
+        verify(changeJudiciaryForHearingsHelper).createChangeJudiciaryForHearingsPayloads(changedIds);
+        verify(changeJudiciaryForHearingsHelper).sendChangeJudiciaryForHearingsCommands(payloads);
+    }
+
+    @Test
+    void removeAllJudiciaries_shouldThrowBadRequestWhenCourtScheduleIdsMissing() throws Exception {
+        final Map<String, Object> body = new HashMap<>();
+
+        when(objectMapper.writeValueAsString(any())).thenReturn("{}");
+
+        final ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                () -> courtSchedulerApi.postRemoveAllJudiciaries(body));
+
+        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+        verify(judiciaryUnassignmentService, never()).removeAllJudiciaryByCourtScheduleIds(anyList());
+    }
+
+    @Test
+    void removeAllJudiciaries_shouldThrowBadRequestWhenCourtScheduleIdsEmpty() throws Exception {
+        final Map<String, Object> body = new HashMap<>();
+
+        when(objectMapper.writeValueAsString(any())).thenReturn("{\"courtScheduleIds\":[]}");
+
+        final ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                () -> courtSchedulerApi.postRemoveAllJudiciaries(body));
+
+        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+        verify(judiciaryUnassignmentService, never()).removeAllJudiciaryByCourtScheduleIds(anyList());
     }
 }

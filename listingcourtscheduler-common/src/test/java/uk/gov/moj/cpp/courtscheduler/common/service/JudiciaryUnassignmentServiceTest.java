@@ -61,17 +61,17 @@ class JudiciaryUnassignmentServiceTest {
         final List<String> courtScheduleIds = List.of("schedule-1", "schedule-2");
         when(courtScheduleJudiciaryRepository.deleteAllAssignmentsForCourtScheduleIds(courtScheduleIds)).thenReturn(3);
 
-        final int deleted = judiciaryUnassignmentService.removeAllJudiciaryByCourtScheduleIds(courtScheduleIds);
+        final List<String> result = judiciaryUnassignmentService.removeAllJudiciaryByCourtScheduleIds(courtScheduleIds);
 
-        assertEquals(3, deleted);
+        assertEquals(courtScheduleIds, result);
         verify(courtScheduleJudiciaryRepository).deleteAllAssignmentsForCourtScheduleIds(courtScheduleIds);
     }
 
     @Test
-    void shouldReturnZeroAndSkipDeleteWhenCourtScheduleIdsAreEmpty() {
-        final int deleted = judiciaryUnassignmentService.removeAllJudiciaryByCourtScheduleIds(List.of());
+    void shouldReturnEmptyListAndSkipDeleteWhenCourtScheduleIdsAreEmpty() {
+        final List<String> result = judiciaryUnassignmentService.removeAllJudiciaryByCourtScheduleIds(List.of());
 
-        assertEquals(0, deleted);
+        assertTrue(result.isEmpty());
         verify(courtScheduleJudiciaryRepository, never()).deleteAllAssignmentsForCourtScheduleIds(any());
     }
 
@@ -196,10 +196,10 @@ class JudiciaryUnassignmentServiceTest {
 
 
     @Test
-    void shouldReturnZeroWhenCourtScheduleIdsIsNull() {
-        final int deleted = judiciaryUnassignmentService.removeAllJudiciaryByCourtScheduleIds(null);
+    void shouldReturnEmptyListWhenCourtScheduleIdsIsNull() {
+        final List<String> result = judiciaryUnassignmentService.removeAllJudiciaryByCourtScheduleIds(null);
 
-        assertEquals(0, deleted);
+        assertTrue(result.isEmpty());
         verify(courtScheduleJudiciaryRepository, never()).deleteAllAssignmentsForCourtScheduleIds(any());
     }
 
