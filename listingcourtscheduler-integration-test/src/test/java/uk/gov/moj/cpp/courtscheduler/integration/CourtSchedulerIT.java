@@ -1,16 +1,16 @@
 package uk.gov.moj.cpp.courtscheduler.integration;
 
+import static jakarta.json.Json.createArrayBuilder;
+import static jakarta.json.Json.createObjectBuilder;
+import static jakarta.ws.rs.core.Response.Status.ACCEPTED;
+import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
+import static jakarta.ws.rs.core.Response.Status.OK;
 import static java.time.LocalDate.now;
 import static java.time.ZoneOffset.UTC;
 import static java.time.format.DateTimeFormatter.ofPattern;
 import static java.util.UUID.randomUUID;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
-import static jakarta.json.Json.createArrayBuilder;
-import static jakarta.json.Json.createObjectBuilder;
-import static jakarta.ws.rs.core.Response.Status.ACCEPTED;
-import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
-import static jakarta.ws.rs.core.Response.Status.OK;
 import static org.hamcrest.CoreMatchers.anyOf;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.notNullValue;
@@ -21,7 +21,6 @@ import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static uk.gov.moj.cpp.courtscheduler.integration.utils.RestPoller.poll;
 import static uk.gov.moj.cpp.courtscheduler.common.Jurisdiction.CROWN;
 import static uk.gov.moj.cpp.courtscheduler.common.Jurisdiction.MAGISTRATES;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.AM_SESSION_END_TIME_CANNOT_EXCEED;
@@ -43,12 +42,14 @@ import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.localDateToDa
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.sessionTimeFormatter;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.TimezoneUtils.UTC_ZONE;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.TimezoneUtils.getUtcTimeStringForDate;
+import static uk.gov.moj.cpp.courtscheduler.integration.utils.RestPoller.poll;
 import static uk.gov.moj.cpp.platform.test.data.utils.FileUtil.getPayload;
 
-import uk.gov.moj.cpp.courtscheduler.integration.utils.RequestParams;
-import uk.gov.moj.cpp.courtscheduler.integration.utils.ResponseData;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.TimezoneUtils;
+import uk.gov.moj.cpp.courtscheduler.integration.utils.RequestParams;
+import uk.gov.moj.cpp.courtscheduler.integration.utils.ResponseData;
+import uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary;
@@ -72,6 +73,8 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import jakarta.json.Json;
 import jakarta.json.JsonArray;
 import jakarta.json.JsonObject;
@@ -79,9 +82,6 @@ import jakarta.json.JsonObjectBuilder;
 import jakarta.json.JsonReader;
 import jakarta.json.JsonValue;
 import jakarta.ws.rs.core.Response;
-
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -3474,6 +3474,278 @@ class CourtSchedulerIT extends AbstractIT {
         assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
     }
 
+    // -----------------------------------------------------------------------
+    // change-judiciary-for-hearings command integration (assign)
+    // -----------------------------------------------------------------------
+
+    @Test
+    void shouldSendChangeJudiciaryForHearingsCommandWhenAssigningJudiciaryToSessionWithAllocatedHearing() throws Exception {
+        StubUtil.stubChangeJudiciaryForHearingsCommand();
+
+        final CourtSchedule courtSchedule = createTestCourtSchedule();
+        databaseSeeder.insertCourtSchedule(courtSchedule);
+
+        final AllocatedListing allocatedListing = getAllocatedListing(courtSchedule);
+        databaseSeeder.insertAllocatedListing(allocatedListing);
+
+        final String requestPayload = createObjectBuilder()
+                .add(JUDICIARIES, createArrayBuilder()
+                        .add(createObjectBuilder()
+                                .add(JUDICIARY_ID, STUB_JUDICIARY_MAGISTRATE_1)
+                                .add(SESSION_IDS, createArrayBuilder()
+                                        .add(courtSchedule.getCourtScheduleId())
+                                        .build())
+                                .build())
+                        .build())
+                .add(SKIP_VALIDATIONS, false)
+                .build()
+                .toString();
+
+        final Response response = postCommand(JUDICIARY_SESSION_URL,
+                ASSIGN_JUDICIARY_CONTENT_TYPE,
+                SYSTEM_USER_ID,
+                requestPayload);
+
+        assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
+        assertThat(StubUtil.countSchemaShapedChangeJudiciaryForHearingsRequestsFor(allocatedListing.getHearingId()),
+                greaterThan(0));
+    }
+
+    @Test
+    void shouldNotSendChangeJudiciaryForHearingsCommandWhenAssigningJudiciaryToSessionWithNoAllocatedHearings() throws Exception {
+        StubUtil.stubChangeJudiciaryForHearingsCommand();
+        final int commandCountBefore = StubUtil.countChangeJudiciaryForHearingsRequests();
+
+        final CourtSchedule courtSchedule = createTestCourtSchedule();
+        databaseSeeder.insertCourtSchedule(courtSchedule);
+        // No allocated listing — judiciary hash changes but no hearings to notify
+
+        final String requestPayload = createObjectBuilder()
+                .add(JUDICIARIES, createArrayBuilder()
+                        .add(createObjectBuilder()
+                                .add(JUDICIARY_ID, STUB_JUDICIARY_MAGISTRATE_1)
+                                .add(SESSION_IDS, createArrayBuilder()
+                                        .add(courtSchedule.getCourtScheduleId())
+                                        .build())
+                                .build())
+                        .build())
+                .add(SKIP_VALIDATIONS, false)
+                .build()
+                .toString();
+
+        final Response response = postCommand(JUDICIARY_SESSION_URL,
+                ASSIGN_JUDICIARY_CONTENT_TYPE,
+                SYSTEM_USER_ID,
+                requestPayload);
+
+        assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
+        assertThat(StubUtil.countChangeJudiciaryForHearingsRequests(), is(commandCountBefore));
+    }
+
+    // -----------------------------------------------------------------------
+    // change-judiciary-for-hearings command integration (unassign)
+    // -----------------------------------------------------------------------
+
+    @Test
+    void shouldSendChangeJudiciaryForHearingsCommandWhenUnassigningJudiciaryFromSessionWithAllocatedHearing() throws Exception {
+        StubUtil.stubChangeJudiciaryForHearingsCommand();
+
+        final CourtSchedule courtSchedule = createTestCourtSchedule();
+        databaseSeeder.insertCourtSchedule(courtSchedule);
+
+        final CourtScheduleJudiciary courtScheduleJudiciary = createTestCourtScheduleJudiciary(
+                courtSchedule.getCourtScheduleId());
+        databaseSeeder.saveJudiciarySchedule(courtScheduleJudiciary);
+
+        final AllocatedListing allocatedListing = getAllocatedListing(courtSchedule);
+        databaseSeeder.insertAllocatedListing(allocatedListing);
+
+        // skipValidations=true so the allocated listing does not block the unassignment
+        final String requestPayload = createObjectBuilder()
+                .add(JUDICIARIES, createArrayBuilder()
+                        .add(createObjectBuilder()
+                                .add(JUDICIARY_ID, courtScheduleJudiciary.getId().getJudiciaryId())
+                                .add(SESSION_IDS, createArrayBuilder()
+                                        .add(courtSchedule.getCourtScheduleId())
+                                        .build())
+                                .build())
+                        .build())
+                .add(SKIP_VALIDATIONS, true)
+                .build()
+                .toString();
+
+        final Response response = postCommand(JUDICIARY_SESSION_URL,
+                UNASSIGN_JUDICIARY_CONTENT_TYPE,
+                SYSTEM_USER_ID,
+                requestPayload);
+
+        assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
+        // After unassignment the judiciary array is empty, so use body-contains check for the hearing ID
+        assertThat(StubUtil.countChangeJudiciaryForHearingsRequestsContaining(allocatedListing.getHearingId()),
+                greaterThan(0));
+    }
+
+    @Test
+    void shouldNotSendChangeJudiciaryForHearingsCommandWhenUnassigningJudiciaryFromSessionWithNoAllocatedHearings() throws Exception {
+        StubUtil.stubChangeJudiciaryForHearingsCommand();
+        final int commandCountBefore = StubUtil.countChangeJudiciaryForHearingsRequests();
+
+        final CourtSchedule courtSchedule = createTestCourtSchedule();
+        databaseSeeder.insertCourtSchedule(courtSchedule);
+
+        final CourtScheduleJudiciary courtScheduleJudiciary = createTestCourtScheduleJudiciary(
+                courtSchedule.getCourtScheduleId());
+        databaseSeeder.saveJudiciarySchedule(courtScheduleJudiciary);
+        // No allocated listing — judiciary hash changes but no hearings to notify
+
+        final String requestPayload = createObjectBuilder()
+                .add(JUDICIARIES, createArrayBuilder()
+                        .add(createObjectBuilder()
+                                .add(JUDICIARY_ID, courtScheduleJudiciary.getId().getJudiciaryId())
+                                .add(SESSION_IDS, createArrayBuilder()
+                                        .add(courtSchedule.getCourtScheduleId())
+                                        .build())
+                                .build())
+                        .build())
+                .build()
+                .toString();
+
+        final Response response = postCommand(JUDICIARY_SESSION_URL,
+                UNASSIGN_JUDICIARY_CONTENT_TYPE,
+                SYSTEM_USER_ID,
+                requestPayload);
+
+        assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
+        assertThat(StubUtil.countChangeJudiciaryForHearingsRequests(), is(commandCountBefore));
+    }
+
+    // -----------------------------------------------------------------------
+    // change-judiciary-for-hearings command integration (assign-judiciary-to-sessions)
+    // -----------------------------------------------------------------------
+
+    @Test
+    void shouldSendChangeJudiciaryForHearingsCommandWhenAssigningJudiciaryToSessionsWithAllocatedHearing() throws Exception {
+        StubUtil.stubChangeJudiciaryForHearingsCommand();
+
+        final CourtSchedule courtSchedule = createTestCourtScheduleWithCourthouse(IT_SHARED_COURTHOUSE);
+        databaseSeeder.insertCourtSchedule(courtSchedule);
+
+        final AllocatedListing allocatedListing = getAllocatedListing(courtSchedule);
+        databaseSeeder.insertAllocatedListing(allocatedListing);
+
+        final String requestPayload = createObjectBuilder()
+                .add(P_COURT_SCHEDULE_IDS, createArrayBuilder()
+                        .add(courtSchedule.getCourtScheduleId())
+                        .build())
+                .add(P_JUDICIARY, createArrayBuilder()
+                        .add(assignToSessionsJudiciaryLine(STUB_JUDICIARY_MAGISTRATE_1, LABEL_MAGISTRATE, true, false))
+                        .build())
+                .build()
+                .toString();
+
+        final Response response = postCommand(ASSIGN_JUDICIARY_TO_SESSIONS_URL,
+                ASSIGN_JUDICIARY_TO_SESSIONS_CONTENT_TYPE,
+                USER_ID,
+                requestPayload);
+
+        assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
+        assertThat(StubUtil.countSchemaShapedChangeJudiciaryForHearingsRequestsFor(allocatedListing.getHearingId()),
+                greaterThan(0));
+    }
+
+    @Test
+    void shouldNotSendChangeJudiciaryForHearingsCommandWhenAssigningJudiciaryToSessionsWithNoAllocatedHearings() throws Exception {
+        StubUtil.stubChangeJudiciaryForHearingsCommand();
+        final int commandCountBefore = StubUtil.countChangeJudiciaryForHearingsRequests();
+
+        final CourtSchedule courtSchedule = createTestCourtScheduleWithCourthouse(IT_SHARED_COURTHOUSE);
+        databaseSeeder.insertCourtSchedule(courtSchedule);
+        // No allocated listing — judiciary changes but no hearings to notify
+
+        final String requestPayload = createObjectBuilder()
+                .add(P_COURT_SCHEDULE_IDS, createArrayBuilder()
+                        .add(courtSchedule.getCourtScheduleId())
+                        .build())
+                .add(P_JUDICIARY, createArrayBuilder()
+                        .add(assignToSessionsJudiciaryLine(STUB_JUDICIARY_MAGISTRATE_1, LABEL_MAGISTRATE, true, false))
+                        .build())
+                .build()
+                .toString();
+
+        final Response response = postCommand(ASSIGN_JUDICIARY_TO_SESSIONS_URL,
+                ASSIGN_JUDICIARY_TO_SESSIONS_CONTENT_TYPE,
+                USER_ID,
+                requestPayload);
+
+        assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
+        assertThat(StubUtil.countChangeJudiciaryForHearingsRequests(), is(commandCountBefore));
+    }
+
+    // -----------------------------------------------------------------------
+    // change-judiciary-for-hearings command integration (remove-all-judiciary)
+    // -----------------------------------------------------------------------
+
+    @Test
+    void shouldSendChangeJudiciaryForHearingsCommandWhenRemovingAllJudiciaryFromSessionWithAllocatedHearing() throws Exception {
+        StubUtil.stubChangeJudiciaryForHearingsCommand();
+
+        final CourtSchedule courtSchedule = createTestCourtSchedule();
+        databaseSeeder.insertCourtSchedule(courtSchedule);
+
+        final CourtScheduleJudiciary courtScheduleJudiciary = createTestCourtScheduleJudiciary(
+                courtSchedule.getCourtScheduleId());
+        databaseSeeder.saveJudiciarySchedule(courtScheduleJudiciary);
+
+        final AllocatedListing allocatedListing = getAllocatedListing(courtSchedule);
+        databaseSeeder.insertAllocatedListing(allocatedListing);
+
+        final String requestPayload = createObjectBuilder()
+                .add(P_COURT_SCHEDULE_IDS, createArrayBuilder()
+                        .add(courtSchedule.getCourtScheduleId())
+                        .build())
+                .build()
+                .toString();
+
+        final Response response = postCommand(REMOVE_ALL_JUDICIARY_URL,
+                REMOVE_ALL_JUDICIARY_CONTENT_TYPE,
+                SYSTEM_USER_ID,
+                requestPayload);
+
+        assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
+        // After removal the judiciary array is empty, so use body-contains check for the hearing ID
+        assertThat(StubUtil.countChangeJudiciaryForHearingsRequestsContaining(allocatedListing.getHearingId()),
+                greaterThan(0));
+    }
+
+    @Test
+    void shouldNotSendChangeJudiciaryForHearingsCommandWhenRemovingAllJudiciaryFromSessionWithNoAllocatedHearings() throws Exception {
+        StubUtil.stubChangeJudiciaryForHearingsCommand();
+        final int commandCountBefore = StubUtil.countChangeJudiciaryForHearingsRequests();
+
+        final CourtSchedule courtSchedule = createTestCourtSchedule();
+        databaseSeeder.insertCourtSchedule(courtSchedule);
+
+        final CourtScheduleJudiciary courtScheduleJudiciary = createTestCourtScheduleJudiciary(
+                courtSchedule.getCourtScheduleId());
+        databaseSeeder.saveJudiciarySchedule(courtScheduleJudiciary);
+        // No allocated listing — judiciary removed but no hearings to notify
+
+        final String requestPayload = createObjectBuilder()
+                .add(P_COURT_SCHEDULE_IDS, createArrayBuilder()
+                        .add(courtSchedule.getCourtScheduleId())
+                        .build())
+                .build()
+                .toString();
+
+        final Response response = postCommand(REMOVE_ALL_JUDICIARY_URL,
+                REMOVE_ALL_JUDICIARY_CONTENT_TYPE,
+                SYSTEM_USER_ID,
+                requestPayload);
+
+        assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
+        assertThat(StubUtil.countChangeJudiciaryForHearingsRequests(), is(commandCountBefore));
+    }
+
     @Test
     void shouldRemoveAllJudiciaryAssignmentsForCourtSchedules() throws Exception {
         final CourtSchedule courtScheduleOne = createTestCourtSchedule();
@@ -3493,7 +3765,7 @@ class CourtSchedulerIT extends AbstractIT {
                 .anyMatch(js -> js.getId().getCourtScheduleId().equals(courtScheduleTwo.getCourtScheduleId())));
 
         final String requestPayload = createObjectBuilder()
-                .add("courtScheduleIds", createArrayBuilder()
+                .add(P_COURT_SCHEDULE_IDS, createArrayBuilder()
                         .add(courtScheduleOne.getCourtScheduleId())
                         .add(courtScheduleTwo.getCourtScheduleId())
                         .build())
@@ -3517,7 +3789,7 @@ class CourtSchedulerIT extends AbstractIT {
     @Test
     void shouldReturnBadRequestWhenRemoveAllJudiciaryCourtScheduleIdsEmpty() {
         final String requestPayload = createObjectBuilder()
-                .add("courtScheduleIds", createArrayBuilder().build())
+                .add(P_COURT_SCHEDULE_IDS, createArrayBuilder().build())
                 .build()
                 .toString();
 

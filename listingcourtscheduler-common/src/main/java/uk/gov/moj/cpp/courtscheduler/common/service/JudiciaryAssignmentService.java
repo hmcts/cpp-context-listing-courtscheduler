@@ -6,7 +6,6 @@ import static org.apache.commons.collections.CollectionUtils.isEmpty;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 import static uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog.RotaProcessLogBuilder.rotaProcessLog;
 
-// (removed) replaced by Spring CommonPlatformQueryClient
 import uk.gov.moj.cpp.courtscheduler.common.exception.MissingDataError;
 import uk.gov.moj.cpp.courtscheduler.common.service.mapper.CourtScheduleJudiciaryMapper;
 import uk.gov.moj.cpp.courtscheduler.domain.AssignJudiciariesRequest;
@@ -36,14 +35,14 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import org.springframework.stereotype.Service;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
-import org.springframework.transaction.annotation.Transactional;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class JudiciaryAssignmentService {
@@ -66,13 +65,46 @@ public class JudiciaryAssignmentService {
     @Inject
     private RotaProcessLogService rotaProcessLogService;
 
+    @Inject
+    private JudiciaryChangeDetectionService judiciaryChangeDetectionService;
+
     @PersistenceContext
     private EntityManager entityManager;
 
-    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
-    public AssignJudiciariesResponse assignJudiciaries(final AssignJudiciariesRequest request,
-                                                       final String executionId) {
-        return assignJudiciaries(request, executionId, false);
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public List<String> assignJudiciaries(final AssignJudiciariesRequest request, final String executionId) {
+        final List<JudiciaryAssignment> assignments = Optional.ofNullable(request)
+                .map(AssignJudiciariesRequest::getJudiciaries)
+                .orElse(emptyList());
+
+        if (isEmpty(assignments)) {
+            return List.of();
+        }
+
+        final List<String> allCourtScheduleIds = assignments.stream()
+                .filter(Objects::nonNull)
+                .flatMap(assignment -> sanitizeSessionIds(assignment.getSessionIds()).stream())
+                .distinct()
+                .collect(Collectors.toList());
+
+        final Map<String, List<Integer>> preHashMap =
+                judiciaryChangeDetectionService.buildCourtScheduleJudiciaryHashMap(allCourtScheduleIds);
+        LOGGER.info("Pre-assignment: captured judiciary hash map for {} court schedule(s), executionId={}",
+                preHashMap.size(), executionId);
+
+        assignJudiciaries(request, executionId, false);
+
+        final Map<String, List<Integer>> postHashMap =
+                judiciaryChangeDetectionService.buildCourtScheduleJudiciaryHashMap(allCourtScheduleIds);
+        LOGGER.info("Post-assignment: captured judiciary hash map for {} court schedule(s), executionId={}",
+                postHashMap.size(), executionId);
+
+        final List<String> changedCourtScheduleIds =
+                judiciaryChangeDetectionService.findChangedCourtScheduleIds(preHashMap, postHashMap);
+        LOGGER.info("Found {} changed court schedule IDs after assignment, executionId={}",
+                changedCourtScheduleIds.size(), executionId);
+
+        return changedCourtScheduleIds;
     }
 
     /**
@@ -80,9 +112,9 @@ public class JudiciaryAssignmentService {
      * the Cartesian product of {@code judiciary} × {@code courtScheduleIds}. Validates same courthouse
      * and bench composition (max 4, max 2 magistrates, max 1 judge/recorder).
      */
-    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
-    public void assignJudiciaryToSessions(final AssignJudiciaryToSessionsRequest request,
-                                          final String executionId) {
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public List<String> assignJudiciaryToSessions(final AssignJudiciaryToSessionsRequest request,
+                                                  final String executionId) {
         if (request == null || request.getCourtScheduleIds() == null || request.getCourtScheduleIds().isEmpty()) {
             throw new IllegalArgumentException("courtScheduleIds must contain at least one court schedule id.");
         }
@@ -115,6 +147,11 @@ public class JudiciaryAssignmentService {
                 .collect(Collectors.toList());
         validateSameCourthouse(orderedSchedules);
 
+        final Map<String, List<Integer>> preHashMap =
+                judiciaryChangeDetectionService.buildCourtScheduleJudiciaryHashMap(courtScheduleIds);
+        LOGGER.info("Pre-assignJudiciaryToSessions: captured judiciary hash map for {} court schedule(s), executionId={}",
+                preHashMap.size(), executionId);
+
         courtScheduleJudiciaryRepository.deleteAllAssignmentsForCourtScheduleIds(courtScheduleIds);
 
         final Instant now = Instant.now();
@@ -136,6 +173,13 @@ public class JudiciaryAssignmentService {
         }
         LOGGER.info("assignJudiciaryToSessions: courtSchedules={}, sessionJudiciaries={}, persisted={}, executionId={}",
                 courtScheduleIds.size(), sessionJudiciaries.size(), persisted, executionId);
+
+        final Map<String, List<Integer>> postHashMap =
+                judiciaryChangeDetectionService.buildCourtScheduleJudiciaryHashMap(courtScheduleIds);
+        LOGGER.info("Post-assignJudiciaryToSessions: captured judiciary hash map for {} court schedule(s), executionId={}",
+                postHashMap.size(), executionId);
+
+        return judiciaryChangeDetectionService.findChangedCourtScheduleIds(preHashMap, postHashMap);
     }
 
     private IllegalArgumentException judiciaryNotFoundException(final String judicialId) {
@@ -313,10 +357,10 @@ public class JudiciaryAssignmentService {
                 }
 
                 final AssignmentAttempt attempt = attemptAssignment(judiciary, schedule, sessionId, now, assignment, useRepository);
-                if (attempt.isSuccess()) {
+                if (attempt.successful()) {
                     successfulAssignments++;
                 } else {
-                    failures.add(attempt.getFailure());
+                    failures.add(attempt.failureDetail());
                 }
             }
         }
@@ -331,8 +375,6 @@ public class JudiciaryAssignmentService {
         if (skipValidations && (judiciary == null || schedule == null)) {
             return true;
         }
-        // If not skipping validations, judiciary and schedule should exist (validated in validator)
-        // But we still check here as a safety measure
         return judiciary == null || schedule == null;
     }
 
@@ -384,23 +426,10 @@ public class JudiciaryAssignmentService {
         }
     }
 
-    /**
-     * Persists entity using EntityManager - used for API calls.
-     * @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW) on assignJudiciaries() ensures transaction is active.
-     * Uses merge() instead of persist() for better entity state management, similar to unassignJudiciary.
-     * merge() handles both new and existing entities, making it more robust for detached entity states.
-     * Flush is done once at the end of the method to batch operations.
-     */
     private void persistEntityWithEntityManager(final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary entity) {
-        // Use merge() which handles both new and existing entities, similar to unassignJudiciary approach
         entityManager.merge(entity);
-        // Note: flush() is called once at the end of assignJudiciaries() method to batch operations
     }
 
-    /**
-     * Persists entity using repository - used for Rota processing.
-     * DeltaSpike's BeanManagedUserTransactionStrategy handles transaction management.
-     */
     private void persistEntityWithRepository(final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary entity) {
         courtScheduleJudiciaryRepository.save(entity);
     }
@@ -435,7 +464,7 @@ public class JudiciaryAssignmentService {
                                                                final String sessionId,
                                                                final Instant timestamp,
                                                                final JudiciaryAssignment assignment) {
-        final String rotaJudiciaryId = firstNonEmpty(assignment.getRotaJudiciaryId(), 
+        final String rotaJudiciaryId = firstNonEmpty(assignment.getRotaJudiciaryId(),
                 firstNonEmpty(judiciary.getCpUserId(), judiciary.getId()));
 
         return CourtScheduleJudiciary.judiciary()
@@ -449,8 +478,8 @@ public class JudiciaryAssignmentService {
                 .withEmailAddress(nonNullOrDefault(judiciary.getEmailAddress()))
                 .withJudiciaryType(nonNullOrDefault(judiciary.getJudiciaryType()))
                 .withPosition(assignment.getPosition())
-                .withIsBenchChairman(assignment.isBenchChairman() != null ? assignment.isBenchChairman() : false)
-                .withIsDeputy(assignment.isDeputy() != null ? assignment.isDeputy() : false)
+                .withIsBenchChairman(Boolean.TRUE.equals(assignment.isBenchChairman()))
+                .withIsDeputy(Boolean.TRUE.equals(assignment.isDeputy()))
                 .withCreatedOn(timestamp)
                 .withUpdatedOn(timestamp)
                 .withActive(true)
@@ -488,11 +517,6 @@ public class JudiciaryAssignmentService {
         return false;
     }
 
-    /**
-     * Logs missing references to RotaProcessLog for monitoring purposes.
-     * This is only called when skipValidations=true to track data quality issues
-     * without failing the request.
-     */
     private void logMissingReferences(final Set<String> missingJudiciaryIds,
                                       final Set<String> missingSessionIds,
                                       final String executionId) {
@@ -518,9 +542,6 @@ public class JudiciaryAssignmentService {
         }
     }
 
-    /**
-     * Internal record to hold assignment processing results.
-     */
     private record AssignmentResult(int requestedAssignments,
                                     int successfulAssignments,
                                     List<AssignmentFailure> failures,
@@ -528,23 +549,13 @@ public class JudiciaryAssignmentService {
                                     Set<String> missingSessionIds) {
     }
 
-    /**
-     * Internal class to hold assignment attempt results.
-     */
-    private static class AssignmentAttempt {
-        private final boolean successful;
-        private final AssignmentFailure failureDetail;
+    private record AssignmentAttempt(boolean successful, AssignmentFailure failureDetail) {
 
-        private AssignmentAttempt(final boolean successful, final AssignmentFailure failureDetail) {
-            this.successful = successful;
-            this.failureDetail = failureDetail;
-        }
-
-       /* package */ static AssignmentAttempt success() {
+        /* default */ static AssignmentAttempt success() {
             return new AssignmentAttempt(true, null);
         }
 
-       /* package */ static AssignmentAttempt failure(final String judiciaryId,
+        /* default */ static AssignmentAttempt failure(final String judiciaryId,
                                          final String sessionId,
                                          final AssignmentFailureReason reason) {
             return new AssignmentAttempt(false, AssignmentFailure.builder()
@@ -553,14 +564,5 @@ public class JudiciaryAssignmentService {
                     .withReason(reason)
                     .build());
         }
-
-       /* package */ boolean isSuccess() {
-            return successful;
-        }
-
-       /* package */ AssignmentFailure getFailure() {
-            return failureDetail;
-        }
     }
 }
-
