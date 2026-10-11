@@ -18,7 +18,6 @@ import uk.gov.moj.cpp.courtscheduler.cache.CacheService;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.Judiciary;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.BusinessType;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtRoom;
-import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtRoomSessionAllocation;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.OrganisationUnit;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.Venue;
 
@@ -76,7 +75,6 @@ public class ReferenceDataCache {
     public static final String ROTA_BUSINESS_TYPES_CACHE_KEY = "RotaBusinessTypes";
     public static final String ROTA_JUDICIARIES_CACHE_KEY = "RotaJudiciaries_";
     public static final String ROTA_COURTROOMS_CACHE_KEY = "RotaCourtRooms_";
-    public static final String ROTA_COURT_ROOM_SESSION_ALLOCATIONS_KEY = "RotaCourtRoomSessionAllocations_";
     public static final String ORGANISATION_UNIT_CACHE_PREFIX = "OrganisationUnit_";
 
     public Optional<BusinessType> getRotaBusinessTypeByCode(final String businessTypeCode) {
@@ -108,14 +106,6 @@ public class ReferenceDataCache {
             return getCourtRoomsFromTheCache();
         } else {
             return referenceDataService.getRotaCourtRoomMappings();
-        }
-    }
-
-    public List<CourtRoomSessionAllocation> getCourtRoomSessionAllocations() {
-        if (parseBoolean(redisCommonCacheEnabled)) {
-            return getCourtRoomSessionAllocationsFromTheCache();
-        } else {
-            return referenceDataService.getCourtRoomSessionAllocationsMap();
         }
     }
 
@@ -235,24 +225,6 @@ public class ReferenceDataCache {
         }
     }
 
-    private List<CourtRoomSessionAllocation> getCourtRoomSessionAllocationsFromTheCache() {
-        final String cacheResult = cacheService.get(ROTA_COURT_ROOM_SESSION_ALLOCATIONS_KEY);
-
-        if (isNull(cacheResult)) {
-            LOGGER.debug("no cache result found for courtRoomSessionAllocations in getCourtRoomSessionAllocationsFromTheCache");
-            return processCourtRoomSessionAllocations();
-        } else {
-            try {
-                LOGGER.debug("cacheResult has been found for courtRoomSessionAllocations in getCourtRoomSessionAllocationsFromTheCache");
-                return objectMapper.readValue(cacheResult, new TypeReference<>() {
-                });
-            } catch (final JsonProcessingException jsonProcessingException) {
-                LOGGER.error("exception whilst reading cacheResult and converting to List<CourtRoomSessionAllocation> with exception: {}", Encode.forJava(jsonProcessingException.getMessage()), jsonProcessingException);
-            }
-            return emptyList();
-        }
-    }
-
     private Optional<CourtRoom> getCourtRoomByIdFromTheCache(final String courtRoomId) {
         final String cacheResult = cacheService.get(ROTA_COURTROOM_CACHE_PREFIX + courtRoomId);
 
@@ -359,20 +331,6 @@ public class ReferenceDataCache {
             }
         } catch (final JsonProcessingException jsonProcessingException) {
             LOGGER.error("exception whilst adding into the cache for CourtRooms with exception: {}", Encode.forJava(jsonProcessingException.getMessage()), jsonProcessingException);
-        }
-        return emptyList();
-    }
-
-    private List<CourtRoomSessionAllocation> processCourtRoomSessionAllocations() {
-        final List<CourtRoomSessionAllocation> courtRoomSessionAllocations = referenceDataService.getCourtRoomSessionAllocationsMap();
-
-        try {
-            if (isNotEmpty(courtRoomSessionAllocations)) {
-                cacheService.add(ROTA_COURT_ROOM_SESSION_ALLOCATIONS_KEY, objectMapper.writeValueAsString(courtRoomSessionAllocations), redisCommonCacheKey5MinsTTLSeconds());
-                return courtRoomSessionAllocations;
-            }
-        } catch (final JsonProcessingException jsonProcessingException) {
-            LOGGER.error("exception whilst adding into the cache for CourtRoomSessionAllocations with exception: {}", Encode.forJava(jsonProcessingException.getMessage()), jsonProcessingException);
         }
         return emptyList();
     }

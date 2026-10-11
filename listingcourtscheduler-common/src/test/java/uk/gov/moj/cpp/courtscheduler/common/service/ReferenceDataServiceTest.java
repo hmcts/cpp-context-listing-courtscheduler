@@ -19,7 +19,6 @@ import uk.gov.moj.cpp.courtscheduler.common.converter.JsonObjectToObjectConverte
 
 import uk.gov.moj.cpp.courtscheduler.openapi.model.BusinessType;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtRoom;
-import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtRoomSessionAllocation;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.Judiciary;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.Venue;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog;
@@ -125,16 +124,6 @@ class ReferenceDataServiceTest {
         if (judiciaries.size() > SECOND_JUDICIARY_INDEX) {
             assertThat(judiciaries.get(SECOND_JUDICIARY_INDEX).getRequestedName(), Matchers.is("HER HONOUR JUDGE N SHANT QC, HONORARY RECORDER OF DERBY"));
         }
-    }
-
-    @Test
-    void shouldGetCourtRoomSessionAllocationsMap() {
-        final JsonObject courtRoomSessionAllocationsJson = getPayload("/test-data/referencedata-court-room-session-allocations.json");
-        final JsonObject envelope = courtRoomSessionAllocationsJson;
-
-        when(commonPlatformQueryClient.getReferenceData(any(), any(), any())).thenReturn(envelope);
-        final List<CourtRoomSessionAllocation> courtRoomSessionAllocations = referenceDataService.getCourtRoomSessionAllocationsMap();
-        assertTrue(isNotEmpty(courtRoomSessionAllocations));
     }
 
     @Test

@@ -5,7 +5,6 @@ import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.setupLogg
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.setupUserAsSystemUser;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.stubGetCpCourtRooms;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.stubGetReferenceCourtRooms;
-import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.stubGetReferenceDataCourtRoomSessionAllocations;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.stubGetReferenceDataJudiciaries;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.stubGetReferenceDataJudiciarySpecialisms;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.stubGetReferenceDataRotaBusinessTypes;
@@ -89,7 +88,6 @@ public class AbstractIT {
     public static void setUp() {
         setupLoggedInUsersPermissionQueryStub(USER_ID.toString());
         setupUserAsSystemUser(SYSTEM_USER_ID.toString());
-        stubGetReferenceDataCourtRoomSessionAllocations("referencedata.rota-courtroom-sessionallocations.json");
         stubGetReferenceDataJudiciaries("referencedata.judiciaries.json");
         stubGetReferenceDataJudiciarySpecialisms("referencedata.judiciary-specialisms.json");
         setupReferenceDataStubs();

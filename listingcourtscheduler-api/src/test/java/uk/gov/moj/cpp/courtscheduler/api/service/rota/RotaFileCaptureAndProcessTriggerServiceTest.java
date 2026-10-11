@@ -63,7 +63,6 @@ class RotaFileCaptureAndProcessTriggerServiceTest {
         doNothing().when(rotaFileProcessorService).downloadAndProcessForEachFile(  eq(blobContent), eq(blobName), eq(leaseId));
         doNothing().when(referenceDataMapperService).loadJudiciaries();
         doNothing().when(referenceDataMapperService).loadCourtRooms();
-        doNothing().when(referenceDataMapperService).loadCourtRoomSessionAllocations();
 
         rotaFileCaptureAndProcessTriggerService.captureRotaFilesAndProcessEach(false, "new");
 

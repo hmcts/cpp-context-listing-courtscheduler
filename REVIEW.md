@@ -97,7 +97,7 @@ Wiremock 3.9 + Azurite + the api container). All 17 IT classes live there.
 | File | Why |
 |---|---|
 | `wiremock/mappings/identity-denied-user.json` | Stub for the negative-auth user used by `AuthorizationIntegrationTest`. Returns empty `permissions[]` so the auth filter denies. |
-| `wiremock/mappings/referencedata-*.json` (6 files) | Stubs the upstream `referencedata-query-api` responses — court rooms, business types, judiciaries, public holidays, courtroom-session-allocations, courtroom-mappings. The legacy ITs spoke to a separately-spun-up Justice Services framework instance; the new ITs run as a self-contained docker-compose stack. |
+| `wiremock/mappings/referencedata-*.json` (6 files) | Stubs the upstream `referencedata-query-api` responses — court rooms, business types, judiciaries, public holidays, organisation units, courtroom-mappings. The legacy ITs spoke to a separately-spun-up Justice Services framework instance; the new ITs run as a self-contained docker-compose stack. |
 | `wiremock/__files/referencedata.judiciaries.json` | Body file referenced from one of the stub mappings. |
 
 The two **modified** identity stubs (`identity-court-schedule-user.json`,

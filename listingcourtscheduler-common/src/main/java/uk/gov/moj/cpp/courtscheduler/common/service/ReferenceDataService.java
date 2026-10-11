@@ -19,7 +19,6 @@ import static uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog.RotaPr
 import uk.gov.moj.cpp.courtscheduler.common.JsonObjects;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.BusinessType;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtRoom;
-import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtRoomSessionAllocation;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.Judiciary;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.OrganisationUnit;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.Venue;
@@ -66,7 +65,6 @@ public class ReferenceDataService {
     private static final String ROTA_BUSINESS_TYPES_PATH = REFERENCEDATA_BASE_PATH + "/rota-business-types";
     private static final String ROTA_COURT_ROOM_MAPPINGS_PATH = REFERENCEDATA_BASE_PATH + "/cp-rota-courtroom-mappings";
     private static final String JUDICIARIES_PATH = REFERENCEDATA_BASE_PATH + "/judiciaries";
-    private static final String COURT_ROOM_SESSION_ALLOCATIONS_PATH = REFERENCEDATA_BASE_PATH + "/courtroom-session-allocations";
     private static final String OU_COURT_ROOMS_PATH = REFERENCEDATA_BASE_PATH + "/courtrooms";
     private static final String ORGANISATION_UNITS_PATH_PREFIX = REFERENCEDATA_BASE_PATH + "/organisation-units/";
 
@@ -77,7 +75,6 @@ public class ReferenceDataService {
     // judiciaries endpoint and drops the 'query' segment — verified against
     // ~/devenv/project/msjs/cpp-context-reference-data/referencedata-query/referencedata-query-api/src/raml/referencedata-query-api.raml line 1158.
     private static final String ACCEPT_JUDICIARIES = "application/vnd.reference-data.judiciaries+json";
-    private static final String ACCEPT_COURT_ROOM_SESSION_ALLOCATIONS = "application/vnd.referencedata.query.courtroom-session-allocations+json";
     // /courtrooms uses 'ou-courtrooms' as the response token, not 'query.courtrooms'.
     // Verified against the referencedata-query-api RAML and matches the constant
     // cp-court-list-publishing-service uses (ACCEPT_OU_COURTROOMS).
@@ -422,22 +419,6 @@ public class ReferenceDataService {
                 .requestedName(getStringOrElse(jsonObject, "requestedName", null));
     }
 
-    public List<CourtRoomSessionAllocation> getCourtRoomSessionAllocationsMap() {
-        final JsonObject payload = commonPlatformQueryClient.getReferenceData(
-                COURT_ROOM_SESSION_ALLOCATIONS_PATH, ACCEPT_COURT_ROOM_SESSION_ALLOCATIONS, Map.of());
-
-        final List<CourtRoomSessionAllocation> courtRoomSessionAllocations = new ArrayList<>();
-        JsonObjects.getJsonArray(payload, "courtRoomSessionAllocations").ifPresent(courtRoomSessionAllocationsJsonArray -> {
-            for(final JsonValue jsonValue: courtRoomSessionAllocationsJsonArray) {
-                final JsonObject jsonObject = (JsonObject) jsonValue;
-                courtRoomSessionAllocations.add(toCourtRoomSessionAllocation(jsonObject));
-            }
-        });
-
-
-        return courtRoomSessionAllocations;
-    }
-
     /**
      * Looks up a court centre (organisation unit) by its UUID and returns its configured default
      * session start time. Returns {@link Optional#empty()} when the id is blank, the organisation
@@ -527,21 +508,6 @@ public class ReferenceDataService {
                 .titlePrefixWelsh(getStringOrElse(jsonObject, "titlePrefixWelsh", null))
                 .specialisms(specialisms)
                 .requestedName(getStringOrElse(jsonObject, "requestedName", null));
-    }
-
-    private CourtRoomSessionAllocation toCourtRoomSessionAllocation(final JsonObject jsonObject) {
-        return new CourtRoomSessionAllocation()
-                .id(jsonObject.getString("id"))
-                .courtRoomId(jsonObject.getInt("courtRoomId"))
-                .oucode(jsonObject.getString("oucode"))
-                .maxSlot(getIntOrElse(jsonObject, "maxSlot", 0))
-                .maxDurationMins(getIntOrElse(jsonObject, "maxDurationMins", 0))
-                .courtSession(getStringOrElse(jsonObject, "courtSession", null))
-                .rotaBusinessTypeCode(getStringOrElse(jsonObject, "rotaBusinessTypeCode", null))
-                .validFrom(getStringOrElse(jsonObject, "validFrom", null))
-                .validTo(getStringOrElse(jsonObject, "validTo", null))
-                .sessionStartTime(getStringOrElse(jsonObject, "sessionStartTime", null))
-                .sessionEndTime(getStringOrElse(jsonObject, "sessionEndTime", null));
     }
 
     private CourtRoom toCpCourtRoom(final JsonObject jsonObject, final JsonObject ou) {

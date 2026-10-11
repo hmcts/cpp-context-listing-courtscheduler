@@ -1693,21 +1693,6 @@ components:
         courtroomName: { type: string, nullable: true }
         courtroomId: { type: string, nullable: true }
 
-    CourtRoomSessionAllocation:
-      type: object
-      properties:
-        id: { type: string, nullable: true }
-        courtRoomId: { type: integer, nullable: true }
-        oucode: { type: string, nullable: true }
-        maxSlot: { type: integer, default: 0 }
-        maxDurationMins: { type: integer, default: 0 }
-        rotaBusinessTypeCode: { type: string, nullable: true }
-        courtSession: { type: string, nullable: true }
-        validFrom: { type: string, nullable: true }
-        validTo: { type: string, nullable: true }
-        sessionStartTime: { type: string, nullable: true }
-        sessionEndTime: { type: string, nullable: true }
-
     Venue:
       type: object
       properties:
