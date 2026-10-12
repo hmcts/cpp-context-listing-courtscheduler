@@ -19,7 +19,6 @@ import static uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataCache.RO
 import static uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataCache.ROTA_COURTROOMS_CACHE_KEY;
 import static uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataCache.ROTA_COURTROOM_BY_VENUE_CACHE_PREFIX;
 import static uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataCache.ROTA_COURTROOM_CACHE_PREFIX;
-import static uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataCache.ROTA_COURT_ROOM_SESSION_ALLOCATIONS_KEY;
 import static uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataCache.ROTA_JUDICIARIES_CACHE_KEY;
 import static uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataCache.CP_COURTROOM_CACHE_PREFIX;
 
@@ -30,7 +29,6 @@ import uk.gov.moj.cpp.platform.test.data.utils.FileUtil;
 import uk.gov.moj.cpp.courtscheduler.cache.CacheService;
 import uk.gov.moj.cpp.courtscheduler.domain.BusinessType;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtRoomSessionAllocation;
 import uk.gov.moj.cpp.courtscheduler.domain.Judiciary;
 import uk.gov.moj.cpp.courtscheduler.domain.Venue;
 
@@ -234,40 +232,6 @@ class ReferenceDataCacheTest {
 
         assertTrue(isEmpty(judiciaries));
         verify(cacheService).get(ROTA_JUDICIARIES_CACHE_KEY);
-    }
-
-    @Test
-    void shouldReturnCourtRoomSessionAllocationsFromCacheWhenCacheEnabled() {
-        setCommonCacheEnabled();
-        setCourtRoomSessionAllocationsCache();
-
-        referenceDataCache.getCourtRoomSessionAllocations();
-
-        verify(cacheService).get(ROTA_COURT_ROOM_SESSION_ALLOCATIONS_KEY);
-    }
-
-    @Test
-    void shouldReturnCourtRoomSessionAllocationsFromServiceWhenCacheEnabledHoweverNotInTheCache() {
-        setCommonCacheEnabled();
-
-        when(cacheService.get(ROTA_COURT_ROOM_SESSION_ALLOCATIONS_KEY)).thenReturn(null);
-        when(referenceDataService.getCourtRoomSessionAllocationsMap()).thenReturn(List.of(CourtRoomSessionAllocation.CourtRoomSessionAllocationBuilder.aCourtRoomSessionAllocation().build()));
-
-        referenceDataCache.getCourtRoomSessionAllocations();
-
-        verify(referenceDataService).getCourtRoomSessionAllocationsMap();
-    }
-
-
-    @Test
-    void shouldReturnCourtRoomSessionAllocationsFromServiceWhenCacheDisabled() {
-        setCommonCacheDisabled();
-
-        when(referenceDataService.getCourtRoomSessionAllocationsMap()).thenReturn(List.of(CourtRoomSessionAllocation.CourtRoomSessionAllocationBuilder.aCourtRoomSessionAllocation().build()));
-
-        referenceDataCache.getCourtRoomSessionAllocations();
-
-        verify(referenceDataService).getCourtRoomSessionAllocationsMap();
     }
 
     @Test
@@ -480,11 +444,6 @@ class ReferenceDataCacheTest {
     private void setCourtRoomsCache() {
         final String judiciariesJsonStr = FileUtil.getPayload("test-data/reference-data-court-rooms.json");
         when(cacheService.get(ROTA_COURTROOMS_CACHE_KEY)).thenReturn(judiciariesJsonStr);
-    }
-
-    private void setCourtRoomSessionAllocationsCache() {
-        final String courtRoomSessionAllocationsJsonStr = FileUtil.getPayload("test-data/referencedata-court-room-session-allocations.json");
-        when(cacheService.get(ROTA_COURT_ROOM_SESSION_ALLOCATIONS_KEY)).thenReturn(courtRoomSessionAllocationsJsonStr);
     }
 
     private void setCourtRoomCache() {

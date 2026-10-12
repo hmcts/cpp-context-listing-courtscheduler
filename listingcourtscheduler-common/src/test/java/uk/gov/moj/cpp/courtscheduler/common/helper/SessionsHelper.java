@@ -15,7 +15,6 @@ public class SessionsHelper {
     public static final String REFERENCEDATA_QUERY_ROTA_COURT_ROOM_NAME = "referencedata.query.cp-rota-courtroom-mappings";
     public static final String REFERENCEDATA_QUERY_OU_COURT_ROOMS_NAME = "referencedata.query.courtrooms";
     public static final String REFERENCEDATA_QUERY_ROTA_JUDICIARIES_NAME = "referencedata.query.judiciaries";
-    public static final String REFERENCEDATA_QUERY_ROTA_COURT_ROOM_SESSION_ALLOCATIONS_NAME = "referencedata.query.courtroom-session-allocations";
     public static final String PUBLIC_HOLIDAYS = "publicHolidays";
     public static final String BUSINESS_TYPE_CODE = "typeCode";
     public static final String COURT_ROOM_ID = "courtRoomId";
