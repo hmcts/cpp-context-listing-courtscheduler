@@ -61,6 +61,7 @@ class MoveHearingToPastDateIT extends AbstractIT {
     private static final String NOTHING_BOOKED = "nothing booked";
     private static final String CR = "CR";
     private static final String OU_CRN6 = "OU-CRN6";
+    private static final String OU_CRN7 = "OU-CRN7";
     private static final String TEN_AM = "10:00";
     private static final String T_TEN_THIRTY = "T10:30:00.000Z";
     private static final String COURT_CENTRE_ID = "courtCentreId";
@@ -223,17 +224,18 @@ class MoveHearingToPastDateIT extends AbstractIT {
         // Target: a past session with full capacity.
         final String pastSession = seedSession(pastDay, roomId, "CR", centreId, "OU-CRN3", CROWN_2, 360);
 
-        final Response response = callMove(centreId, roomId, CROWN_2, pastDay, null, 360, hearingId);
+        // submitted 10:00-16:00: since the SPRDT-1447 test findings CROWN books the submitted window (360)
+        final MoveResult response = postMove(hearingId, movePayload(centreId, roomId, CROWN_2, pastDay, null, TEN_AM, 360));
 
-        assertThat(response.getStatus(), is(OK.getStatusCode()));
-        assertThat(extractSessionIds(body(response)), contains(pastSession));
+        assertThat(response.status(), is(OK.getStatusCode()));
+        assertThat(extractSessionIds(response.body()), contains(pastSession));
 
         assertThat("hearing now booked on the past session only",
                 bookedScheduleIds(hearingId), contains(pastSession));
         assertThat(PERSISTED_ALLOCATED_LISTINGS_SOURCE, bookedSources(hearingId), contains(MOVE_TO_PAST_DATE_2));
         assertThat("prior future session's capacity paid back in full",
                 databaseReader.courtScheduleById(futureSession).getAvailableDuration(), is(360));
-        assertThat("past session's capacity consumed by the moved hearing",
+        assertThat("past session's capacity consumed by the moved hearing's submitted window",
                 databaseReader.courtScheduleById(pastSession).getAvailableDuration(), is(0));
     }
 
@@ -702,6 +704,78 @@ class MoveHearingToPastDateIT extends AbstractIT {
         assertThat("current session's capacity untouched", databaseReader.courtScheduleById(futureSession).getAvailableDuration(), is(0));
     }
 
+    // ===== SPRDT-1447 test findings: no draft sessions; CROWN keeps the submitted start/end =====
+
+    @Test
+    void shouldStampSubmittedTimesAndWindowDurationForCrown() throws Exception {
+        final String centreId = UUID.randomUUID().toString();
+        final String roomId = UUID.randomUUID().toString();
+        final String hearingId = UUID.randomUUID().toString();
+        final LocalDate pastDate = lastWorkingDayBeforeToday();
+        seedTimedSession(pastDate, roomId, CR, centreId, OU_CRN7, CROWN_2, "AM", 9, 13); // session window 09:00-13:00
+
+        // submitted 10:30 -> 10:50: the hearing keeps those times, not the session's 09:00-13:00
+        final MoveResult response = postMove(hearingId,
+                moveWindowPayload(centreId, roomId, CROWN_2, pastDate + T_TEN_THIRTY, pastDate + "T10:50:00.000Z"));
+
+        assertThat(response.status(), is(OK.getStatusCode()));
+        final JsonObject slot = firstSession(response.body());
+        assertThat(slot.getString(SESSION_START_TIME), is(pastDate + T_TEN_THIRTY));
+        assertThat(slot.getString(SESSION_END_TIME), is(pastDate + "T10:50:00.000Z"));
+        assertThat(slot.getInt(DURATION_IN_MINUTES), is(20));
+        assertThat("booking carries the submitted start time",
+                databaseReader.allocatedListings().stream().filter(al -> hearingId.equals(al.getHearingId()))
+                        .map(al -> al.getHearingStartTime().toString()).toList(),
+                contains(pastDate + "T10:30:00Z"));
+    }
+
+    @Test
+    void shouldReturn422ForCrownWhenTheOnlyMatchingSessionIsDraft() throws Exception {
+        final String centreId = UUID.randomUUID().toString();
+        final String roomId = UUID.randomUUID().toString();
+        final String hearingId = UUID.randomUUID().toString();
+        final LocalDate pastDate = lastWorkingDayBeforeToday();
+        seedDraftSession(pastDate, roomId, CR, centreId, OU_CRN7, CROWN_2);
+
+        final MoveResult response = postMove(hearingId, movePayload(centreId, roomId, CROWN_2, pastDate, null, NOON, 60));
+
+        assertThat(response.status(), is(UNPROCESSABLE));
+        assertThat(response.body(), containsString(NO_SESSION_FOUND));
+        assertThat(NOTHING_BOOKED, bookedScheduleIds(hearingId), is(empty()));
+    }
+
+    @Test
+    void shouldReturn422ForMagistratesWhenTheOnlyMatchingSessionIsDraft() throws Exception {
+        final String centreId = UUID.randomUUID().toString();
+        final String roomId = UUID.randomUUID().toString();
+        final String hearingId = UUID.randomUUID().toString();
+        final LocalDate pastDate = lastWorkingDayBeforeToday();
+        seedDraftSession(pastDate, roomId, NGAP, centreId, "OU-MAG9", MAGISTRATES_2);
+
+        final MoveResult response = postMove(hearingId, movePayload(centreId, roomId, MAGISTRATES_2, pastDate, null, NOON, 60));
+
+        assertThat(response.status(), is(UNPROCESSABLE));
+        assertThat(response.body(), containsString(NO_SESSION_FOUND));
+        assertThat(NOTHING_BOOKED, bookedScheduleIds(hearingId), is(empty()));
+    }
+
+    @Test
+    void shouldBookTheFinalSessionWhenADraftCoversTheSameRoomAndTime() throws Exception {
+        final String centreId = UUID.randomUUID().toString();
+        final String roomId = UUID.randomUUID().toString();
+        final String hearingId = UUID.randomUUID().toString();
+        final LocalDate pastDate = lastWorkingDayBeforeToday();
+        // AM draft and AM final in the same room (distinct business types keep the unique index happy)
+        seedDraftSession(pastDate, roomId, "CRD", centreId, OU_CRN7, CROWN_2);
+        final String finalSession = seedTimedSession(pastDate, roomId, CR, centreId, OU_CRN7, CROWN_2, "AD", 10, 17);
+
+        final MoveResult response = postMove(hearingId, movePayload(centreId, roomId, CROWN_2, pastDate, null, NOON, 60));
+
+        assertThat(response.status(), is(OK.getStatusCode()));
+        assertThat(extractSessionIds(response.body()), contains(finalSession));
+        assertThat(bookedScheduleIds(hearingId), contains(finalSession));
+    }
+
     // --- helpers ---
 
     /**
@@ -979,6 +1053,16 @@ class MoveHearingToPastDateIT extends AbstractIT {
                                     final String courtHouseId, final String ouCode, final String jurisdiction,
                                     final String courtSession, final int startHourUtc, final int endHourUtc,
                                     final int availableDurationMinutes) throws java.sql.SQLException {
+        return seedTimedSession(sessionDate, courtRoomId, businessType, courtHouseId, ouCode, jurisdiction,
+                courtSession, startHourUtc, endHourUtc, availableDurationMinutes, false);
+    }
+
+    /** As above, optionally as a draft (is_draft=true) session. */
+    @SuppressWarnings("java:S107")
+    private String seedTimedSession(final LocalDate sessionDate, final String courtRoomId, final String businessType,
+                                    final String courtHouseId, final String ouCode, final String jurisdiction,
+                                    final String courtSession, final int startHourUtc, final int endHourUtc,
+                                    final int availableDurationMinutes, final boolean draft) throws java.sql.SQLException {
         final String id = UUID.randomUUID().toString();
         final Instant sessionStart = sessionDate.atTime(startHourUtc, 0).toInstant(ZoneOffset.UTC);
         final Instant sessionEnd = sessionDate.atTime(endHourUtc, 0).toInstant(ZoneOffset.UTC);
@@ -1010,7 +1094,7 @@ class MoveHearingToPastDateIT extends AbstractIT {
         cs.setSessionEndTime(sessionEnd);
         cs.setNationalBreakTime(sessionStart);
         cs.setIsOverbookingAllowed(false);
-        cs.setIsDraft(false);
+        cs.setIsDraft(draft);
         cs.setJurisdiction(jurisdiction);
         cs.setTotalBookedMorning(0);
         cs.setTotalBookedAfternoon(0);
@@ -1018,5 +1102,11 @@ class MoveHearingToPastDateIT extends AbstractIT {
 
         databaseSeeder.insertCourtSchedule(cs);
         return id;
+    }
+
+    /** A draft (is_draft=true) AD session, 10:00-17:00 UTC. */
+    private String seedDraftSession(final LocalDate sessionDate, final String courtRoomId, final String businessType,
+                                    final String courtHouseId, final String ouCode, final String jurisdiction) throws java.sql.SQLException {
+        return seedTimedSession(sessionDate, courtRoomId, businessType, courtHouseId, ouCode, jurisdiction, "AD", 10, 17, 360, true);
     }
 }

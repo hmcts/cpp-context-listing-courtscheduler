@@ -611,7 +611,9 @@ class HearingSlotsApiValidatorTest {
                     .courtCentreId(UUID.randomUUID().toString())
                     .courtRoomId(UUID.randomUUID().toString())
                     .jurisdiction(CROWN_2)
-                    .startDate(LocalDate.now().plusDays(1));
+                    .startDate(LocalDate.now().plusDays(1))
+                    .startTime(MAGS_START)
+                    .endTime(MAGS_START);
 
             assertEquals(EMPTY_JSON_OBJECT, validator.moveHearingToPastDateValidation(request));
         }
@@ -624,7 +626,9 @@ class HearingSlotsApiValidatorTest {
                     .courtCentreId(UUID.randomUUID().toString())
                     .courtRoomId(UUID.randomUUID().toString())
                     .jurisdiction(CROWN_2)
-                    .startDate(LocalDate.now());
+                    .startDate(LocalDate.now())
+                    .startTime(MAGS_START)
+                    .endTime(MAGS_START);
 
             assertEquals(EMPTY_JSON_OBJECT, validator.moveHearingToPastDateValidation(request));
         }
@@ -648,6 +652,21 @@ class HearingSlotsApiValidatorTest {
             // AC7 — MAGS: courtScheduleId absent, jurisdiction=MAGISTRATES, complete window => valid
             assertEquals(EMPTY_JSON_OBJECT, validator.moveHearingToPastDateValidation(
                     magsMove(MAGS_START, "2025-03-03T11:00:00.000Z")));
+        }
+
+        @Test
+        void should_returnError_when_unanchoredCrownStartTimeMissing() {
+            // SPRDT-1447 test finding: an unanchored CROWN move is looked up by time-of-day too
+            final MoveHearingToPastDateRequest request = new MoveHearingToPastDateRequest()
+                    .hearingId(UUID.randomUUID().toString())
+                    .courtCentreId(UUID.randomUUID().toString())
+                    .courtRoomId(UUID.randomUUID().toString())
+                    .jurisdiction(CROWN_2)
+                    .startDate(LocalDate.of(2025, 3, 3));
+
+            final JsonObject result = validator.moveHearingToPastDateValidation(request);
+            assertFalse(result.isEmpty());
+            assertTrue(result.getString(ERROR_MESSAGE).contains("startTime"));
         }
 
         @Test

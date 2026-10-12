@@ -1911,8 +1911,8 @@ components:
         endDate: { type: string, format: date, nullable: true }
         durationInMinutes: { type: integer, default: 0 }
         courtScheduleId: { type: string, nullable: true }
-        # The submitted window as UTC instants (e.g. 2026-07-20T10:30:00.000Z); MAGISTRATES derives the
-        # session time-of-day, the stamped start/end and the booked duration from them (main's contract).
+        # The submitted window as UTC instants (e.g. 2026-07-20T10:30:00.000Z); every move without a
+        # courtScheduleId derives the session time-of-day, the stamped start/end and the booked duration from them.
         startTime: { type: string, nullable: true }
         endTime: { type: string, nullable: true }
 

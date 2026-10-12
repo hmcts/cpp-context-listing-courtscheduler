@@ -2446,7 +2446,8 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
         params.put(COURT_CENTRE_ID, courtCentreId);
         queryString.append(SESSION_START_QUERY_CONDITION_STRING);
         params.put(SESSION_DATE, sessionDate);
-        queryString.append("AND s.jurisdiction = :jurisdiction ");
+        // SPRDT-1447 (test finding): a hearing is never moved onto a draft session, either jurisdiction.
+        queryString.append("AND s.jurisdiction = :jurisdiction AND s.is_draft = false ");
         params.put("jurisdiction", jurisdiction);
         // hearingStartTime range-containment: a 10:00 start lands an AM or AD session (whose window
         // contains 10:00) but never a PM session that starts after lunch, and vice-versa.
@@ -2459,7 +2460,7 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
             queryString.append(COURT_ROOM_ID_QUERY_CONDITION_STRING);
             params.put(COURT_ROOM_ID, courtRoomId);
         }
-        queryString.append("order by s.is_draft asc, s.court_room_number asc");
+        queryString.append("order by s.court_room_number asc");
 
         final jakarta.persistence.Query selectQuery = entityManager.createNativeQuery(queryString.toString(), NATIVE_QUERY_COURT_SCHEDULE_MAPPING_VIEW);
         params.forEach(selectQuery::setParameter);

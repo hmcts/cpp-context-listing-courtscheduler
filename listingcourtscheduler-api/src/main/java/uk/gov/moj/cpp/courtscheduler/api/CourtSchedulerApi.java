@@ -659,10 +659,12 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
      * equivalent for. startTime/endTime are absolute UTC instants. Only past dates are accepted:
      * today or later is a 422 FUTURE_DATE_NOT_ALLOWED before anything else is looked at.
      *
-     * <p>CROWN keeps the team (ccsph2) consecutive-run behaviour. MAGISTRATES takes main's path
-     * (SPRDT-1447, restored after the 8de19ce main merge dropped it): the session whose window
-     * contains the submitted start time, the submitted window as the booked duration, and the
-     * submitted start/end stamped on each returned session.</p>
+     * <p>Every move without a {@code courtScheduleId} - MAGISTRATES and CROWN alike - takes main's
+     * path (SPRDT-1447, restored after the 8de19ce main merge dropped it, extended to CROWN by the
+     * SPRDT-1447 test findings): the non-draft session in the requested room whose window contains
+     * the submitted start time, the submitted window as the booked duration, and the submitted
+     * start/end stamped on the booking and on each returned session. Only a CROWN move anchored on
+     * a {@code courtScheduleId} keeps the team (ccsph2) consecutive-run behaviour.</p>
      */
     private ResponseEntity<Map<String, Object>> moveHearingToPastDate(final String hearingId, final JsonObject payload) {
         final String startTimeRaw = getStringOrNull(payload, "startTime");
@@ -694,20 +696,21 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
         if (!validationError.isEmpty()) {
             throw new ValidationException(validationError);
         }
-        if (CROWN_JURISDICTION.equalsIgnoreCase(moveRequest.getJurisdiction())) {
+        final boolean anchored = moveRequest.getCourtScheduleId() != null && !moveRequest.getCourtScheduleId().isBlank();
+        if (CROWN_JURISDICTION.equalsIgnoreCase(moveRequest.getJurisdiction()) && anchored) {
             final MoveHearingToPastDateResponse response = slotsUpdateService.moveHearingToPastDate(moveRequest);
             return ResponseEntity.ok(toResponseMap(response));
         }
-        return moveMagistratesHearingToPastDate(hearingId, moveRequest, startInstant, endInstant);
+        return moveHearingToPastSessions(hearingId, moveRequest, startInstant, endInstant);
     }
 
     /**
-     * MAGISTRATES half of {@link #moveHearingToPastDate(String, JsonObject)} - main's controller
-     * logic: the day and time-of-day for the range-containment search AND the stamped sessions are
+     * Unanchored half of {@link #moveHearingToPastDate(String, JsonObject)}, both jurisdictions -
+     * main's controller logic: the day and time-of-day for the range-containment search AND the stamped sessions are
      * derived from the submitted instants; a multi-day move books a full court day per sitting day,
      * a single-day move the submitted window. Returned as {@code {hearingId, source, sessions[]}}.
      */
-    private ResponseEntity<Map<String, Object>> moveMagistratesHearingToPastDate(final String hearingId,
+    private ResponseEntity<Map<String, Object>> moveHearingToPastSessions(final String hearingId,
                                                                                 final MoveHearingToPastDateRequest moveRequest,
                                                                                 final ZonedDateTime startInstant,
                                                                                 final ZonedDateTime endInstant) {

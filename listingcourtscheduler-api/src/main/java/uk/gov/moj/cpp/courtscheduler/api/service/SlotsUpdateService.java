@@ -44,8 +44,6 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.time.ZoneOffset;
-import java.time.ZonedDateTime;
 import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -94,7 +92,6 @@ public class SlotsUpdateService {
     // the response/logs only.
     private static final String SOURCE_EXEMPT_SAB = "EXEMPT_SAB";
     private static final String SOURCE_AUTO_CREATE_SAB = "AUTO_CREATE_SAB";
-    private static final String JURISDICTION_CROWN = "CROWN";
     private static final String JURISDICTION_MAGISTRATES = "MAGISTRATES";
 
     @Inject
@@ -606,67 +603,39 @@ public class SlotsUpdateService {
     }
 
     /**
-     * CROWN move of a hearing to a past date (SPRDT-1089, AC7; courtRoomId added to mirror main's
-     * contract — see the review artifact this reconciles). Releases the prior allocation, then books
-     * CONSECUTIVE weekday sessions in one room + business type at the centre, via an optional
-     * {@code courtScheduleId} anchor or a {@code courtRoomId}-scoped centre search. When the anchor
-     * is used, its own room already applies and {@code courtRoomId} is not separately enforced.
-     * source=MOVE_TO_PAST_DATE.
-     *
-     * <p>CROWN rulings of 2026-10-08 (SPRDT-1447): a single-day move without an anchor books the
-     * session in the requested room, on the requested date, whose window contains the requested
-     * start time - no fallback to another room; and any move that finds no past session is a 422
-     * NO_SESSION_FOUND (no exploratory empty success). MAGISTRATES moves never reach this method: they take main's
-     * exact-date path ({@link #moveHearingToPastDate(String, String, String, LocalDate, LocalDate,
-     * String, String, String, int)}, SPRDT-1447).
+     * CROWN move anchored on a {@code courtScheduleId} (SPRDT-1089, AC7): books CONSECUTIVE weekday
+     * sessions sharing the anchor's room / business type / draft state, releasing the prior
+     * allocation first (SPRDT-1333 payback). source=MOVE_TO_PAST_DATE. Finding no eligible run is a
+     * 422 NO_SESSION_FOUND with nothing released. Left as SPRDT-1089 built it - no caller sends an
+     * anchor today. Every move WITHOUT an anchor - both jurisdictions - takes
+     * {@link #moveHearingToPastDate(String, String, String, LocalDate, LocalDate, String, String, String, int)}.
      */
     public MoveHearingToPastDateResponse moveHearingToPastDate(final MoveHearingToPastDateRequest request) {
-        LOGGER.info("[MOVE-PAST] hearingId: {}, centre: {}, courtRoomId: {}, jurisdiction: {}, startDate: {}, endDate: {}, durationMins: {}",
-                Encode.forJava(request.getHearingId()), Encode.forJava(request.getCourtCentreId()), Encode.forJava(request.getCourtRoomId()), request.getJurisdiction(),
+        LOGGER.info("[MOVE-PAST] anchored - hearingId: {}, courtScheduleId: {}, startDate: {}, endDate: {}, durationMins: {}",
+                Encode.forJava(request.getHearingId()), Encode.forJava(request.getCourtScheduleId()),
                 request.getStartDate(), request.getEndDate(), request.getDurationInMinutes());
+        if (request.getCourtScheduleId() == null || request.getCourtScheduleId().isBlank()) {
+            throw new IllegalArgumentException("An anchored move needs a courtScheduleId");
+        }
 
-        // A GENUINE date range (endDate strictly after startDate) sizes the block from the calendar
-        // span; with no endDate at all, duration keeps driving it (legacy shape - some callers still
-        // omit endDate and rely on durationInMinutes alone). But endDate PRESENT and EQUAL to
-        // startDate - the shape every request now takes since courtRoomId/startTime/endTime became
-        // mandatory, main-contract alignment - is an explicit single-date move: exactly one day is
-        // needed regardless of durationInMinutes. That field is the hearing's own overall estimate
-        // (e.g. a multi-day trial's total), unrelated to how many days THIS move targets, and
-        // letting it drive daysNeeded here silently turned an ordinary same-day move into an
-        // unsatisfiable multi-consecutive-day search. Mirrors SPRDT-1220's clamp for the
-        // update-hearing-for-listing path.
+        // endDate PRESENT and EQUAL to startDate is an explicit single-date move: exactly one day,
+        // regardless of durationInMinutes (the hearing's overall estimate) - mirrors SPRDT-1220.
         final boolean isExplicitSameDayMove = request.getEndDate() != null && request.getEndDate().isEqual(request.getStartDate());
         final int daysNeeded = isExplicitSameDayMove
                 ? 1
                 : daysNeeded(request.getDurationInMinutes(), request.getStartDate(), request.getEndDate());
         final int perDay = perDayDuration(request.getDurationInMinutes(), daysNeeded);
 
-        // Select (search + validate) the past sessions BEFORE touching the prior allocation, so a search
-        // miss can never orphan the hearing — the release is deferred until we have sessions to book onto.
-        final boolean hasAnchor = request.getCourtScheduleId() != null && !request.getCourtScheduleId().isBlank();
-        final List<CourtSchedule> candidates;
-        if (isExplicitSameDayMove && !hasAnchor) {
-            // CROWN ruling (2026-10-08): the requested room, date and start time - no room fallback.
-            candidates = findCrownPastSession(request);
-        } else if (hasAnchor) {
-            // CROWN consecutive run keyed on the anchor (findConsecutiveSessions needs a courtScheduleId).
-            candidates = courtScheduleRepository.findConsecutiveSessions(request.getCourtScheduleId(), daysNeeded);
-        } else {
-            candidates = courtScheduleRepository.findConsecutiveSessionsForCentre(
-                    request.getCourtCentreId(), request.getStartDate(), daysNeeded, request.getCourtRoomId());
-        }
+        // Select (search + validate) BEFORE touching the prior allocation, so a miss never orphans the hearing.
+        final List<CourtSchedule> candidates =
+                courtScheduleRepository.findConsecutiveSessions(request.getCourtScheduleId(), daysNeeded);
         final List<CourtSchedule> sessions = selectConsecutiveSessions(candidates, daysNeeded, request.getHearingId(), perDay);
-
         if (sessions.isEmpty()) {
-            // CROWN ruling (2026-10-08): no past session is always a 422 NO_SESSION_FOUND - including
-            // a multi-day range, which used to return an exploratory empty success. Nothing has been
-            // released yet, so the hearing keeps its current allocation.
             throw new NoSessionAvailableException(
                     "No past session available for hearingId " + request.getHearingId()
                             + " starting " + request.getStartDate());
         }
 
-        // Only now that we have sessions to book: release the prior allocation, then persist the past booking.
         final Optional<AllocatedListing> prior =
                 courtScheduleRepository.findAllocatedListingByHearingId(request.getHearingId());
         if (prior.isPresent()) {
@@ -680,24 +649,9 @@ public class SlotsUpdateService {
     }
 
     /**
-     * The single CROWN session for a same-day move: in the requested room, on the requested date,
-     * whose window contains the requested start time (UTC wall clock, the frame session times are
-     * stored in). Empty when there is none - never another room.
-     */
-    private List<CourtSchedule> findCrownPastSession(final MoveHearingToPastDateRequest request) {
-        final LocalDateTime startTime = request.getStartTime() == null || request.getStartTime().isBlank()
-                ? null
-                : ZonedDateTime.parse(request.getStartTime()).withZoneSameInstant(ZoneOffset.UTC).toLocalDateTime();
-        return courtScheduleRepository
-                .findSessionForMoveToPastDate(request.getCourtCentreId(), request.getCourtRoomId(),
-                        request.getStartDate(), startTime, JURISDICTION_CROWN)
-                .map(session -> courtScheduleRepository.getCourtSchedulesByIdList(List.of(session.getCourtScheduleId())))
-                .orElseGet(Collections::emptyList);
-    }
-
-    /**
-     * MAGISTRATES move to past date - main's behaviour, restored (SPRDT-1447; dropped by the 8de19ce
-     * main merge). Expands [startDate, endDate] into sitting days (see {@link #sittingDays}) and books
+     * Move to past date WITHOUT an anchor, both jurisdictions - main's MAGISTRATES behaviour, restored
+     * (SPRDT-1447; dropped by the 8de19ce main merge) and applied to CROWN too (SPRDT-1447 test
+     * findings). Expands [startDate, endDate] into sitting days (see {@link #sittingDays}) and books
      * the session on every day whose window contains the submitted start time-of-day, in the
      * requested room (any court_session, any day of the week). All sessions are resolved first, so if
      * any day has no matching session the whole move is rejected before anything is released or

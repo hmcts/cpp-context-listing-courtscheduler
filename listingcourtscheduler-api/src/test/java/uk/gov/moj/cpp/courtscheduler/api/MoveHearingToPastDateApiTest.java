@@ -188,14 +188,32 @@ class MoveHearingToPastDateApiTest {
                 eq(LocalDate.parse(MAY_FIRST)), eq(LocalDate.parse(MAY_FIRST)), eq("10:30"), eq("10:50"), eq(MAGISTRATES), eq(20));
     }
 
+    /** SPRDT-1447 test finding: an unanchored CROWN move takes the shared path - submitted times and window. */
     @Test
-    void shouldRouteCrownToTheTeamPath_notTheMagistratesPath() {
+    void shouldRouteUnanchoredCrownToTheSharedPath_withTheSubmittedWindow() {
+        final String hearingId = randomUUID().toString();
+        final String courtCentreId = randomUUID().toString();
+        when(slotsUpdateService.moveHearingToPastDate(eq(hearingId), eq(courtCentreId), any(),
+                eq(LocalDate.parse(MAY_FIRST)), eq(LocalDate.parse(MAY_FIRST)), eq(NINE_AM), eq("09:30"), eq(CROWN), eq(30)))
+                .thenReturn(List.of(stubSession(hearingId, MAY_FIRST, 30)));
+
+        final ResponseEntity<Map<String, Object>> response = move(hearingId,
+                movePayload(courtCentreId, CROWN, MAY_FIRST_NINE_AM, MAY_FIRST_NINE_THIRTY));
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals(MAY_FIRST_NINE_AM, sessions(response).get(0).get("sessionStartTime"));
+        verify(slotsUpdateService, never()).moveHearingToPastDate(any(MoveHearingToPastDateRequest.class));
+    }
+
+    @Test
+    void shouldRouteAnchoredCrownToTheTeamPath() {
         final String hearingId = randomUUID().toString();
         when(slotsUpdateService.moveHearingToPastDate(any(MoveHearingToPastDateRequest.class)))
                 .thenReturn(new MoveHearingToPastDateResponse(hearingId, MOVE_TO_PAST_DATE, Collections.emptyList()));
+        final Map<String, Object> body = movePayload(randomUUID().toString(), CROWN, MAY_FIRST_NINE_AM, MAY_FIRST_NINE_THIRTY);
+        body.put("courtScheduleId", randomUUID().toString());
 
-        final ResponseEntity<Map<String, Object>> response = move(hearingId,
-                movePayload(randomUUID().toString(), CROWN, MAY_FIRST_NINE_AM, MAY_FIRST_NINE_THIRTY));
+        final ResponseEntity<Map<String, Object>> response = move(hearingId, body);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         verify(slotsUpdateService).moveHearingToPastDate(any(MoveHearingToPastDateRequest.class));

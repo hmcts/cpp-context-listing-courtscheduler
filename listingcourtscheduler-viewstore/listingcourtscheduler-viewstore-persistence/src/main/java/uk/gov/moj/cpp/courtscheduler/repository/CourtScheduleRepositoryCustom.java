@@ -96,7 +96,7 @@ public interface CourtScheduleRepositoryCustom {
      * MAGISTRATES move-hearing-to-past-date session lookup, restored from main (SPRDT-1447; lost in
      * the 8de19ce main merge): exact date + jurisdiction at the centre, optionally scoped to a room,
      * optionally range-containing {@code sessionStartTime} - any court_session (AM/PM/AD), any day of
-     * the week. Non-draft first, then lowest room number.
+     * the week. Draft sessions are never returned (SPRDT-1447); lowest room number first.
      */
     Optional<CourtSchedule> findSessionForMoveToPastDate(String courtCentreId,
                                                          String courtRoomId,
