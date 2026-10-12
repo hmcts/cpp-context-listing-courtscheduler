@@ -4,26 +4,20 @@ import static java.lang.String.format;
 import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
 import static java.util.UUID.randomUUID;
-import static org.apache.commons.lang3.ObjectUtils.defaultIfNull;
 import static org.apache.commons.lang3.StringUtils.isNotEmpty;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.MissingDataError.ROTA_PROCESSING_ERROR;
-import static uk.gov.moj.cpp.courtscheduler.common.utils.ProcessingDataInfoMessages.SESSION_ALLOCATION_MAX_SLOT_UPDATE_MSG;
 import static uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule.CourtScheduleBuilder.courtSchedule;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.ALL_DAY;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.BUSINESS_TYPE;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.LINKED_SESSION_ID;
-import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.SESSION;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.SESSION_DATE;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload.COURT_LISTING;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.DEFAULT_ALL_DAY_END_TIME;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.DEFAULT_ALL_DAY_START_TIME;
-import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.resolveSessionTime;
 import static uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog.RotaProcessLogBuilder.rotaProcessLog;
 
 // (removed) replaced by Spring CommonPlatformQueryClient
-import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataMapperService;
 import uk.gov.moj.cpp.courtscheduler.common.service.RotaProcessLogService;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtRoomSessionAllocation;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
@@ -49,13 +43,7 @@ public class RotaDataEnricher {
     private static final String EXCEPTION_MSG = "Exception while processing CourtListingProfile : %s";
 
     @Inject
-    private ReferenceDataMapperService referenceDataMapperService;
-
-    @Inject
     private MissingReferenceDataMappingLogger missingReferenceDataMappingLogger;
-
-    @Inject
-    private CourtSession courtSession;
 
     @Inject
     private CourtScheduleEnricher courtScheduleEnricher;
@@ -122,7 +110,7 @@ public class RotaDataEnricher {
                 addCourtSchedule(courtSchedules, newCourtSchedule);
             }
         } else {
-            newCourtSchedule = updateExistingCourtSchedule(courtSchedule, listingProfile.get(SESSION), activeCourtSchedulesByOuCodesWithinRotaPeriod);
+            newCourtSchedule = updateExistingCourtSchedule(courtSchedule, activeCourtSchedulesByOuCodesWithinRotaPeriod);
             courtSchedules.put(courtSchedule.getListingProfileId(), newCourtSchedule);
         }
     }
@@ -135,24 +123,12 @@ public class RotaDataEnricher {
 
 
     private CourtSchedule updateExistingCourtSchedule(final CourtSchedule courtSchedule,
-                                                      final String sessionStr,
                                                       final List<CourtSchedule> activeCourtSchedulesByOuCodesWithinDateRange) {
-
-        final String listingSession = courtSession.getCourtSession(courtSchedule.getSessionDate(), sessionStr);
-        final Optional<CourtRoomSessionAllocation> sessionAllocation  = referenceDataMapperService.findByOuCodeAndRoomIdAndListingSessionAndBusinessType(courtSchedule.getOuCode(), courtSchedule.getCourtRoomNumber(), listingSession, courtSchedule.getBusinessType());
         final CourtSchedule.CourtScheduleBuilder courtScheduleBuilder = courtSchedule().withCourtSchedule(courtSchedule);
 
-        // Precedence: refdata allocation time > hardcoded defaults.
-        // (Rota file rows do not carry custom session times; custom times are only honoured
-        // on the courtscheduler.create API path - see SessionsService.)
-        final String refDataStartTime = sessionAllocation.map(CourtRoomSessionAllocation::getSessionStartTime).orElse(null);
-        final String refDataEndTime = sessionAllocation.map(CourtRoomSessionAllocation::getSessionEndTime).orElse(null);
-        final String resolvedStartTime = resolveSessionTime(null, refDataStartTime, DEFAULT_ALL_DAY_START_TIME);
-        final String resolvedEndTime = resolveSessionTime(null, refDataEndTime, DEFAULT_ALL_DAY_END_TIME);
-
         courtScheduleBuilder.withCourtSession(ALL_DAY)
-                .withSessionStartTime(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), resolvedStartTime))
-                .withSessionEndTime(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), resolvedEndTime));
+                .withSessionStartTime(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), DEFAULT_ALL_DAY_START_TIME))
+                .withSessionEndTime(DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), DEFAULT_ALL_DAY_END_TIME));
 
         final Optional<CourtSchedule> courtScheduleOptional = activeCourtSchedulesByOuCodesWithinDateRange.stream()
                 .filter(activeCourtSchedule -> activeCourtSchedule.getCourtRoomId().equals(courtSchedule.getCourtRoomId())
@@ -167,20 +143,6 @@ public class RotaDataEnricher {
             courtScheduleBuilder.withCourtScheduleId(randomUUID().toString());
         }
 
-        if (sessionAllocation.isPresent()) {
-            final CourtRoomSessionAllocation allocation = sessionAllocation.get();
-
-            final int allocationMaxSlot = defaultIfNull(allocation.getMaxSlot(), 0);
-            courtScheduleBuilder.withMaxSlots(defaultIfNull(courtSchedule.getMaxSlots(), 0) + allocationMaxSlot);
-            courtScheduleBuilder.withAvailableSlots(defaultIfNull(courtSchedule.getAvailableSlots(), 0) + allocationMaxSlot);
-
-            final int allocationMaxDurationMins = defaultIfNull(allocation.getMaxDurationMins(), 0);
-            courtScheduleBuilder.withMaxDuration(defaultIfNull(courtSchedule.getMaxDuration(), 0) + allocationMaxDurationMins);
-            courtScheduleBuilder.withAvailableDuration(defaultIfNull(courtSchedule.getAvailableDuration(), 0) + allocationMaxDurationMins);
-
-            logger.info(format(SESSION_ALLOCATION_MAX_SLOT_UPDATE_MSG, allocation.getOucode(), allocation.getCourtRoomId(),courtScheduleBuilder.getSessionDate(), allocation.getCourtSession(),
-                    allocation.getRotaBusinessTypeCode(), courtScheduleBuilder.getMaxSlots(), courtScheduleBuilder.getMaxDuration()));
-        }
         return courtScheduleBuilder.build();
     }
 }

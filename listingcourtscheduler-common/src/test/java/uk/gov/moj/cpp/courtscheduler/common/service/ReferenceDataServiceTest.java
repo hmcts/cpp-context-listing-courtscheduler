@@ -16,7 +16,6 @@ import static uk.gov.moj.cpp.courtscheduler.common.helper.SessionsHelper.REFEREN
 import static uk.gov.moj.cpp.courtscheduler.common.helper.SessionsHelper.REFERENCEDATA_QUERY_ROTA_BUSINESS_TYPES_NAME;
 import static uk.gov.moj.cpp.courtscheduler.common.helper.SessionsHelper.REFERENCEDATA_QUERY_ROTA_COURT_ROOM_NAME;
 import static uk.gov.moj.cpp.courtscheduler.common.helper.SessionsHelper.REFERENCEDATA_QUERY_OU_COURT_ROOMS_NAME;
-import static uk.gov.moj.cpp.courtscheduler.common.helper.SessionsHelper.REFERENCEDATA_QUERY_ROTA_COURT_ROOM_SESSION_ALLOCATIONS_NAME;
 import static uk.gov.moj.cpp.courtscheduler.common.helper.SessionsHelper.REFERENCEDATA_QUERY_ROTA_JUDICIARIES_NAME;
 import static uk.gov.moj.cpp.courtscheduler.common.helper.SessionsHelper.getPayload;
 import static uk.gov.moj.cpp.courtscheduler.common.helper.SessionsHelper.mockBusinessType;
@@ -26,7 +25,6 @@ import uk.gov.moj.cpp.courtscheduler.common.converter.JsonObjectToObjectConverte
 
 import uk.gov.moj.cpp.courtscheduler.domain.BusinessType;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtRoomSessionAllocation;
 import uk.gov.moj.cpp.courtscheduler.domain.Judiciary;
 import uk.gov.moj.cpp.courtscheduler.domain.Venue;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog;
@@ -130,16 +128,6 @@ class ReferenceDataServiceTest {
         if (judiciaries.size() > 1) {
             assertThat(judiciaries.get(1).getRequestedName(), Matchers.is("HER HONOUR JUDGE N SHANT QC, HONORARY RECORDER OF DERBY"));
         }
-    }
-
-    @Test
-    void shouldGetCourtRoomSessionAllocationsMap() {
-        final JsonObject courtRoomSessionAllocationsJson = getPayload("/test-data/referencedata-court-room-session-allocations.json");
-        final JsonObject envelope = courtRoomSessionAllocationsJson;
-
-        when(commonPlatformQueryClient.getReferenceData(any(), any(), any())).thenReturn(envelope);
-        final List<CourtRoomSessionAllocation> courtRoomSessionAllocations = referenceDataService.getCourtRoomSessionAllocationsMap();
-        assertTrue(isNotEmpty(courtRoomSessionAllocations));
     }
 
     @Test

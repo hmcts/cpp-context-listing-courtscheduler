@@ -37,14 +37,12 @@ public class StubUtil {
 
     private static final String QUERY_RELATIVE_URL_BUSINESS_TYPE        = REFERENCEDATA_BASE + "/rota-business-types";
     private static final String QUERY_RELATIVE_URL_ROTA_COURTROOMS      = REFERENCEDATA_BASE + "/cp-rota-courtroom-mappings";
-    private static final String QUERY_RELATIVE_URL_SESSION_ALLOCATIONS  = REFERENCEDATA_BASE + "/courtroom-session-allocations";
     private static final String QUERY_RELATIVE_URL_JUDICIARIES          = REFERENCEDATA_BASE + "/judiciaries";
     private static final String QUERY_RELATIVE_URL_JUDICIARY_SPECIALISMS = REFERENCEDATA_BASE + "/judiciary-specialisms";
     private static final String QUERY_RELATIVE_URL_CP_COURTROOMS        = REFERENCEDATA_BASE + "/courtrooms";
 
     private static final String ROTA_BUSINESS_TYPES_QUERY_MEDIA_TYPE        = "application/vnd.referencedata.query.rota-business-types+json";
     private static final String ROTA_COURTROOMS_QUERY_MEDIA_TYPE            = "application/vnd.referencedata.query.cp-rota-courtroom-mappings+json";
-    private static final String SESSION_ALLOCATIONS_QUERY_MEDIA_TYPE        = "application/vnd.referencedata.query.courtroom-session-allocations+json";
     private static final String JUDICIARIES_QUERY_MEDIA_TYPE                = "application/vnd.reference-data.judiciaries+json";
     private static final String JUDICIARY_SPECIALISMS_QUERY_MEDIA_TYPE      = "application/vnd.referencedata.query.judiciary-specialisms+json";
     private static final String CP_COURTROOMS_QUERY_MEDIA_TYPE              = "application/vnd.referencedata.ou-courtrooms+json";
@@ -113,14 +111,6 @@ public class StubUtil {
                 .willReturn(WireMock.aResponse()
                         .withStatus(200)
                         .withHeader(HttpHeaders.CONTENT_TYPE, ROTA_COURTROOMS_QUERY_MEDIA_TYPE)
-                        .withBody(getPayload(responsePath))));
-    }
-
-    public static StubMapping stubGetReferenceDataCourtRoomSessionAllocations(final String responsePath) {
-        return CLIENT.register(WireMock.get(WireMock.urlPathEqualTo(QUERY_RELATIVE_URL_SESSION_ALLOCATIONS))
-                .willReturn(WireMock.aResponse()
-                        .withStatus(200)
-                        .withHeader(HttpHeaders.CONTENT_TYPE, SESSION_ALLOCATIONS_QUERY_MEDIA_TYPE)
                         .withBody(getPayload(responsePath))));
     }
 

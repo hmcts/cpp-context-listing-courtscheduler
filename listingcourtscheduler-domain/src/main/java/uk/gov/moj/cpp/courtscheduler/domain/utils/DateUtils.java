@@ -248,7 +248,7 @@ public class DateUtils {
     /**
      * Resolves a session start/end time using the precedence:
      *   1. customTime (e.g. value supplied on the API request) - takes precedence if non-blank
-     *   2. refDataTime (e.g. value from CourtRoomSessionAllocation refdata) - used if customTime is blank
+     *   2. refDataTime (a time configured in reference data) - used if customTime is blank
      *   3. defaultTime - fallback (typically a hardcoded DEFAULT_*_TIME constant)
      *
      * @param customTime  caller-supplied override (e.g. API request body), may be blank/null
