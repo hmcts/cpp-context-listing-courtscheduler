@@ -171,10 +171,17 @@ public class JudiciaryUnassignmentService {
         if (courtScheduleIds == null || courtScheduleIds.isEmpty()) {
             return List.of();
         }
+        final Map<String, List<Integer>> preHashMap =
+                judiciaryChangeDetectionService.buildCourtScheduleJudiciaryHashMap(courtScheduleIds);
         final int deleted = courtScheduleJudiciaryRepository.deleteAllAssignmentsForCourtScheduleIds(courtScheduleIds);
         LOGGER.info("removeAllJudiciaryByCourtScheduleIds: removed {} judiciary assignment(s) for {} court schedule(s)",
                 deleted, courtScheduleIds.size());
-        return deleted > 0 ? List.copyOf(courtScheduleIds) : List.of();
+        if (deleted == 0) {
+            return List.of();
+        }
+        final Map<String, List<Integer>> postHashMap =
+                judiciaryChangeDetectionService.buildCourtScheduleJudiciaryHashMap(courtScheduleIds);
+        return judiciaryChangeDetectionService.findChangedCourtScheduleIds(preHashMap, postHashMap);
     }
 
     private void logMissingReferences(final Set<String> missingJudiciaryIds,

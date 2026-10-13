@@ -113,7 +113,7 @@ public interface CourtScheduleJudiciaryRepository
             nativeQuery = true)
     int deleteRedundantRotaData(@Param("numberOfDays") int numberOfDays);
 
-    @Modifying
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Transactional
     @Query(value = "DELETE FROM court_schedule_judiciary WHERE court_schedule_id IN (:courtScheduleIds)",
             nativeQuery = true)

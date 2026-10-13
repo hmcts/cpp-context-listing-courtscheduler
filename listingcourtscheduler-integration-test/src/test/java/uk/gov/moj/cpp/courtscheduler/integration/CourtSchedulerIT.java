@@ -3747,6 +3747,45 @@ class CourtSchedulerIT extends AbstractIT {
     }
 
     @Test
+    void shouldNotSendChangeJudiciaryCommandForSessionWithNoJudiciaryWhenBatchIncludesSessionWithJudiciary() throws Exception {
+        // Regression: when a remove-all batch mixes a session that has judiciary with one that
+        // doesn't, only the session that actually had judiciary should appear in the changed-IDs list
+        // and trigger a change-judiciary-for-hearings command. The empty session must not fire a
+        // spurious command just because another session in the same batch had rows deleted.
+        StubUtil.stubChangeJudiciaryForHearingsCommand();
+
+        final CourtSchedule sessionWithJudiciary = createTestCourtSchedule();
+        databaseSeeder.insertCourtSchedule(sessionWithJudiciary);
+        databaseSeeder.saveJudiciarySchedule(createTestCourtScheduleJudiciary(sessionWithJudiciary.getCourtScheduleId()));
+        final AllocatedListing hearingOnSessionWithJudiciary = getAllocatedListing(sessionWithJudiciary);
+        databaseSeeder.insertAllocatedListing(hearingOnSessionWithJudiciary);
+
+        final CourtSchedule sessionWithoutJudiciary = createTestCourtSchedule();
+        databaseSeeder.insertCourtSchedule(sessionWithoutJudiciary);
+        final AllocatedListing hearingOnSessionWithoutJudiciary = getAllocatedListing(sessionWithoutJudiciary);
+        databaseSeeder.insertAllocatedListing(hearingOnSessionWithoutJudiciary);
+
+        final String requestPayload = createObjectBuilder()
+                .add(P_COURT_SCHEDULE_IDS, createArrayBuilder()
+                        .add(sessionWithJudiciary.getCourtScheduleId())
+                        .add(sessionWithoutJudiciary.getCourtScheduleId())
+                        .build())
+                .build()
+                .toString();
+
+        final Response response = postCommand(REMOVE_ALL_JUDICIARY_URL,
+                REMOVE_ALL_JUDICIARY_CONTENT_TYPE,
+                SYSTEM_USER_ID,
+                requestPayload);
+
+        assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
+        assertThat(StubUtil.countChangeJudiciaryForHearingsRequestsContaining(hearingOnSessionWithJudiciary.getHearingId()),
+                greaterThan(0));
+        assertThat(StubUtil.countChangeJudiciaryForHearingsRequestsContaining(hearingOnSessionWithoutJudiciary.getHearingId()),
+                is(0));
+    }
+
+    @Test
     void shouldRemoveAllJudiciaryAssignmentsForCourtSchedules() throws Exception {
         final CourtSchedule courtScheduleOne = createTestCourtSchedule();
         final CourtSchedule courtScheduleTwo = createTestCourtSchedule();
@@ -4015,6 +4054,41 @@ class CourtSchedulerIT extends AbstractIT {
         final List<CourtScheduleJudiciary> judiciaries = databaseReader.courtScheduleJudiciaries();
         assertFalse(judiciaries.stream().anyMatch(js -> priorJudiciaryId.equals(js.getId().getJudiciaryId())));
         assertTrue(judiciaries.stream().anyMatch(js -> STUB_JUDICIARY_MAGISTRATE_1.equals(js.getId().getJudiciaryId())
+                && courtSchedule.getCourtScheduleId().equals(js.getId().getCourtScheduleId())));
+    }
+
+    @Test
+    void shouldAssignJudiciaryToSessionsReturn202WhenKeepingExistingJudgeAndAddingMagistrate() throws Exception {
+        // Regression: re-saving a session that already has STUB_JUDICIARY_MAGISTRATE_1 and keeps it
+        // while adding STUB_JUDICIARY_MAGISTRATE_2 used to throw StaleStateException (500) because
+        // the pre-snapshot loaded the entity into the persistence context and the subsequent native
+        // bulk DELETE left a stale managed copy that caused merge() to issue an UPDATE hitting 0 rows.
+        final CourtSchedule courtSchedule = createTestCourtScheduleWithCourthouse(IT_SHARED_COURTHOUSE);
+        databaseSeeder.insertCourtSchedule(courtSchedule);
+        databaseSeeder.saveJudiciarySchedule(
+                createTestCourtScheduleJudiciary(courtSchedule.getCourtScheduleId(), STUB_JUDICIARY_MAGISTRATE_1, "Mr"));
+
+        final String requestPayload = createObjectBuilder()
+                .add(P_COURT_SCHEDULE_IDS, createArrayBuilder().add(courtSchedule.getCourtScheduleId()).build())
+                .add(P_JUDICIARY, createArrayBuilder()
+                        .add(assignToSessionsJudiciaryLine(STUB_JUDICIARY_MAGISTRATE_1, LABEL_MAGISTRATE, true, false))
+                        .add(assignToSessionsJudiciaryLine(STUB_JUDICIARY_MAGISTRATE_2, LABEL_MAGISTRATE, false, false))
+                        .build())
+                .build()
+                .toString();
+
+        final Response response = postCommand(ASSIGN_JUDICIARY_TO_SESSIONS_URL,
+                ASSIGN_JUDICIARY_TO_SESSIONS_CONTENT_TYPE,
+                USER_ID,
+                requestPayload);
+
+        assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
+        Thread.sleep(500);
+
+        final List<CourtScheduleJudiciary> judiciaries = databaseReader.courtScheduleJudiciaries();
+        assertTrue(judiciaries.stream().anyMatch(js -> STUB_JUDICIARY_MAGISTRATE_1.equals(js.getId().getJudiciaryId())
+                && courtSchedule.getCourtScheduleId().equals(js.getId().getCourtScheduleId())));
+        assertTrue(judiciaries.stream().anyMatch(js -> STUB_JUDICIARY_MAGISTRATE_2.equals(js.getId().getJudiciaryId())
                 && courtSchedule.getCourtScheduleId().equals(js.getId().getCourtScheduleId())));
     }
 

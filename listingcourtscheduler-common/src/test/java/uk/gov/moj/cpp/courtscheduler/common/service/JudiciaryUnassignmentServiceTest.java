@@ -57,14 +57,33 @@ class JudiciaryUnassignmentServiceTest {
     private EntityManager entityManager;
 
     @Test
-    void shouldDeleteAllJudiciaryAssignmentsForProvidedCourtScheduleIds() {
+    void shouldReturnOnlyChangedCourtScheduleIdsWhenDeletingAllJudiciaryAssignments() {
         final List<String> courtScheduleIds = List.of("schedule-1", "schedule-2");
+        when(judiciaryChangeDetectionService.buildCourtScheduleJudiciaryHashMap(courtScheduleIds))
+                .thenReturn(Map.of("schedule-1", List.of(1), "schedule-2", List.of(2)))
+                .thenReturn(Map.of());
         when(courtScheduleJudiciaryRepository.deleteAllAssignmentsForCourtScheduleIds(courtScheduleIds)).thenReturn(3);
+        when(judiciaryChangeDetectionService.findChangedCourtScheduleIds(any(), any())).thenReturn(courtScheduleIds);
 
         final List<String> result = judiciaryUnassignmentService.removeAllJudiciaryByCourtScheduleIds(courtScheduleIds);
 
         assertEquals(courtScheduleIds, result);
         verify(courtScheduleJudiciaryRepository).deleteAllAssignmentsForCourtScheduleIds(courtScheduleIds);
+    }
+
+    @Test
+    void shouldNotReportSessionWithNoJudiciaryAsChangedWhenDeletingAll() {
+        final List<String> courtScheduleIds = List.of("schedule-with-judiciary", "schedule-without-judiciary");
+        when(judiciaryChangeDetectionService.buildCourtScheduleJudiciaryHashMap(courtScheduleIds))
+                .thenReturn(Map.of("schedule-with-judiciary", List.of(42)))
+                .thenReturn(Map.of());
+        when(courtScheduleJudiciaryRepository.deleteAllAssignmentsForCourtScheduleIds(courtScheduleIds)).thenReturn(1);
+        when(judiciaryChangeDetectionService.findChangedCourtScheduleIds(any(), any()))
+                .thenReturn(List.of("schedule-with-judiciary"));
+
+        final List<String> result = judiciaryUnassignmentService.removeAllJudiciaryByCourtScheduleIds(courtScheduleIds);
+
+        assertEquals(List.of("schedule-with-judiciary"), result);
     }
 
     @Test
