@@ -64,6 +64,7 @@ class MoveHearingToPastDateIT extends AbstractIT {
     private static final String OU_CRN7 = "OU-CRN7";
     private static final String TEN_AM = "10:00";
     private static final String T_TEN_THIRTY = "T10:30:00.000Z";
+    private static final String T_TEN_FIFTY = "T10:50:00.000Z";
     private static final String COURT_CENTRE_ID = "courtCentreId";
     private static final String SESSIONS = "sessions";
     private static final String COURT_SCHEDULE_ID = "courtScheduleId";
@@ -371,13 +372,13 @@ class MoveHearingToPastDateIT extends AbstractIT {
 
         // submitted 10:30 -> 10:50 = a 20-minute single-day window
         final MoveResult response = postMove(hearingId,
-                moveWindowPayload(centreId, roomId, MAGISTRATES_2, pastDate + T_TEN_THIRTY, pastDate + "T10:50:00.000Z"));
+                moveWindowPayload(centreId, roomId, MAGISTRATES_2, pastDate + T_TEN_THIRTY, pastDate + T_TEN_FIFTY));
 
         assertThat(response.status(), is(OK.getStatusCode()));
         final JsonObject slot = firstSession(response.body());
         // the SUBMITTED times (not the session's 10:00-17:00 window) + the computed window duration
         assertThat(slot.getString(SESSION_START_TIME), is(pastDate + T_TEN_THIRTY));
-        assertThat(slot.getString(SESSION_END_TIME), is(pastDate + "T10:50:00.000Z"));
+        assertThat(slot.getString(SESSION_END_TIME), is(pastDate + T_TEN_FIFTY));
         assertThat(slot.getInt(DURATION_IN_MINUTES), is(20));
     }
 
@@ -716,12 +717,12 @@ class MoveHearingToPastDateIT extends AbstractIT {
 
         // submitted 10:30 -> 10:50: the hearing keeps those times, not the session's 09:00-13:00
         final MoveResult response = postMove(hearingId,
-                moveWindowPayload(centreId, roomId, CROWN_2, pastDate + T_TEN_THIRTY, pastDate + "T10:50:00.000Z"));
+                moveWindowPayload(centreId, roomId, CROWN_2, pastDate + T_TEN_THIRTY, pastDate + T_TEN_FIFTY));
 
         assertThat(response.status(), is(OK.getStatusCode()));
         final JsonObject slot = firstSession(response.body());
         assertThat(slot.getString(SESSION_START_TIME), is(pastDate + T_TEN_THIRTY));
-        assertThat(slot.getString(SESSION_END_TIME), is(pastDate + "T10:50:00.000Z"));
+        assertThat(slot.getString(SESSION_END_TIME), is(pastDate + T_TEN_FIFTY));
         assertThat(slot.getInt(DURATION_IN_MINUTES), is(20));
         assertThat("booking carries the submitted start time",
                 databaseReader.allocatedListings().stream().filter(al -> hearingId.equals(al.getHearingId()))
