@@ -206,6 +206,23 @@ class MoveHearingToPastDateApiTest {
         verify(slotsUpdateService, never()).moveHearingToPastDate(any(MoveHearingToPastDateRequest.class));
     }
 
+    /** An offset start/end (10:00-11:00 BST) is looked up and stamped as UTC wall clock (09:00-10:00). */
+    @Test
+    void shouldConvertAnOffsetStartAndEndTimeToUtc() {
+        final String hearingId = randomUUID().toString();
+        final String courtCentreId = randomUUID().toString();
+        when(slotsUpdateService.moveHearingToPastDate(eq(hearingId), eq(courtCentreId), any(),
+                eq(LocalDate.parse(MAY_FIRST)), eq(LocalDate.parse(MAY_FIRST)), eq(NINE_AM), eq("10:00"), eq(CROWN), eq(60)))
+                .thenReturn(List.of(stubSession(hearingId, MAY_FIRST, 60)));
+
+        final ResponseEntity<Map<String, Object>> response = move(hearingId,
+                movePayload(courtCentreId, CROWN, "2026-05-01T10:00:00+01:00", "2026-05-01T11:00:00+01:00"));
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        verify(slotsUpdateService).moveHearingToPastDate(eq(hearingId), eq(courtCentreId), any(),
+                eq(LocalDate.parse(MAY_FIRST)), eq(LocalDate.parse(MAY_FIRST)), eq(NINE_AM), eq("10:00"), eq(CROWN), eq(60));
+    }
+
     @Test
     void shouldRouteAnchoredCrownToTheTeamPath() {
         final String hearingId = randomUUID().toString();

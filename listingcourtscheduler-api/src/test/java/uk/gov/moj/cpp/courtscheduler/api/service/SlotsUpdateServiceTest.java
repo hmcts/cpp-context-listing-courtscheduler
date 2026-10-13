@@ -1844,6 +1844,223 @@ class SlotsUpdateServiceTest {
         }
     }
 
+    /* default */
+    @Nested
+    class ChangeCourtRoomForMultidayHearing {
+
+        @Test
+        void should_releaseAndBookOnlyChangedDays_when_validRequest() {
+            // d1/d2/d3 currently allocated (room1); request re-allocates d2 and d3 only, onto room2
+            // sessions with DIFFERENT per-day durations. d1 is untouched; response reflects d2/d3 only.
+            final String hearingId = UUID.randomUUID().toString();
+            final LocalDate d1 = LocalDate.of(2025, 3, 3);
+            final LocalDate d2 = LocalDate.of(2025, 3, 4);
+            final LocalDate d3 = LocalDate.of(2025, 3, 5);
+
+            final List<AllocatedListing> existingAllocations = List.of(
+                    existingAllocation(hearingId, CS1),
+                    existingAllocation(hearingId, CS2),
+                    existingAllocation(hearingId, CS3));
+            when(allocatedListingRepository.findByHearingId(hearingId)).thenReturn(existingAllocations);
+            when(courtScheduleRepository.getCourtSchedulesByIdList(List.of(CS1, CS2, CS3)))
+                    .thenReturn(List.of(
+                            buildSessionWithId(d1, CS1),
+                            buildSessionWithId(d2, CS2),
+                            buildSessionWithId(d3, CS3)));
+            when(courtScheduleRepository.getCourtSchedulesByIdList(List.of(CS2B, CS3B)))
+                    .thenReturn(List.of(
+                            buildSessionWithId(d2, CS2B),
+                            buildSessionWithId(d3, CS3B)));
+
+            final ChangeCourtRoomForMultidayHearingRequest request = new ChangeCourtRoomForMultidayHearingRequest()
+                    .hearingId(hearingId)
+                    .days(List.of(
+                            new RequestedDay().sessionDate(d2).courtScheduleId(CS2B).durationInMinutes(300),
+                            new RequestedDay().sessionDate(d3).courtScheduleId("cs3b").durationInMinutes(200)));
+
+            @SuppressWarnings(UNCHECKED)
+            final org.mockito.ArgumentCaptor<List<AllocatedSlot>> slotsCaptor =
+                    org.mockito.ArgumentCaptor.forClass(List.class);
+            // Booking for changeCourtRoomForMultidayHearing must go through the NO-RELEASE variant
+            // (releaseExistingHearingAllocations=false): the service already scoped its own release
+            // to just the changed dates via releaseAllocatedListingsForDates, and the plain 3-arg
+            // saveBookedSlots would trigger CourtScheduleRepository's internal hearing-wide release,
+            // wiping out the untouched day's allocation (the production bug this test guards against).
+            when(courtScheduleRepository.saveBookedSlots(slotsCaptor.capture(), eq(false), eq(false), eq(false)))
+                    .thenReturn(new Result().msg("").success(true));
+
+            final ChangeCourtRoomForMultidayHearingResponse response =
+                    service.changeCourtRoomForMultidayHearing(request);
+
+            verify(courtScheduleRepository).releaseAllocatedListingsForDates(hearingId, List.of(d2, d3));
+            verify(courtScheduleRepository, org.mockito.Mockito.times(2))
+                    .saveBookedSlots(any(), eq(false), eq(false), eq(false));
+            verify(courtScheduleRepository, org.mockito.Mockito.never())
+                    .saveBookedSlots(any(), anyBoolean(), anyBoolean());
+
+            final List<AllocatedSlot> booked = slotsCaptor.getAllValues().stream()
+                    .flatMap(List::stream).toList();
+            assertEquals(2, booked.size());
+            assertTrue(booked.stream().anyMatch(s -> CS2B.equals(s.getCourtScheduleId()) && s.getDuration() == 300));
+            assertTrue(booked.stream().anyMatch(s -> CS3B.equals(s.getCourtScheduleId()) && s.getDuration() == 200));
+
+            assertEquals("CHANGE_COURT_ROOM_MULTIDAY", response.source());
+            assertEquals(hearingId, response.hearingId());
+            assertEquals(2, response.allocatedSchedules().size());
+            assertEquals(List.of(CS2B, CS3B), response.allocatedSchedules().stream()
+                    .map(CourtSchedule::getCourtScheduleId).toList());
+        }
+
+        @Test
+        void should_beIdempotentNoop_when_targetIsCurrentAllocation() {
+            // Requesting d2's OWN current schedule id is a no-op: no release, no persist, but the
+            // session still appears in the response.
+            final String hearingId = UUID.randomUUID().toString();
+            final LocalDate d2 = LocalDate.of(2025, 3, 4);
+
+            final List<AllocatedListing> existingAllocations = List.of(existingAllocation(hearingId, CS2));
+            when(allocatedListingRepository.findByHearingId(hearingId)).thenReturn(existingAllocations);
+            when(courtScheduleRepository.getCourtSchedulesByIdList(List.of(CS2)))
+                    .thenReturn(List.of(buildSessionWithId(d2, CS2)));
+
+            final ChangeCourtRoomForMultidayHearingRequest request = new ChangeCourtRoomForMultidayHearingRequest()
+                    .hearingId(hearingId)
+                    .days(List.of(new RequestedDay().sessionDate(d2).courtScheduleId("cs2").durationInMinutes(360)));
+
+            final ChangeCourtRoomForMultidayHearingResponse response =
+                    service.changeCourtRoomForMultidayHearing(request);
+
+            verify(courtScheduleRepository, org.mockito.Mockito.never())
+                    .releaseAllocatedListingsForDates(any(), any());
+            verify(courtScheduleRepository, org.mockito.Mockito.never())
+                    .saveBookedSlots(any(), anyBoolean(), anyBoolean());
+            assertEquals(1, response.allocatedSchedules().size());
+            assertEquals(CS2, response.allocatedSchedules().get(0).getCourtScheduleId());
+        }
+
+        @Test
+        void should_throwNoAllocationOnDate_when_hearingHasNoAllocationOnRequestedDate() {
+            final String hearingId = UUID.randomUUID().toString();
+            final List<AllocatedListing> existingAllocations = List.of(existingAllocation(hearingId, CS1));
+            when(allocatedListingRepository.findByHearingId(hearingId)).thenReturn(existingAllocations);
+
+            final ChangeCourtRoomForMultidayHearingRequest request = new ChangeCourtRoomForMultidayHearingRequest()
+                    .hearingId(hearingId)
+                    .days(List.of(new RequestedDay().sessionDate(LocalDate.of(2025, 3, 6)).courtScheduleId("cs-target").durationInMinutes(300)));
+
+            Assertions.assertThrows(NoAllocationOnDateException.class,
+                    () -> service.changeCourtRoomForMultidayHearing(request));
+
+            verify(courtScheduleRepository, org.mockito.Mockito.never())
+                    .releaseAllocatedListingsForDates(any(), any());
+            verify(courtScheduleRepository, org.mockito.Mockito.never())
+                    .saveBookedSlots(any(), anyBoolean(), anyBoolean());
+        }
+
+        @Test
+        void should_throwNoSessionAvailable_when_targetCourtScheduleIdUnknown() {
+            final String hearingId = UUID.randomUUID().toString();
+            final LocalDate d2 = LocalDate.of(2025, 3, 4);
+            final List<AllocatedListing> existingAllocations = List.of(existingAllocation(hearingId, CS2));
+            when(allocatedListingRepository.findByHearingId(hearingId)).thenReturn(existingAllocations);
+            when(courtScheduleRepository.getCourtSchedulesByIdList(List.of(CS2)))
+                    .thenReturn(List.of(buildSessionWithId(d2, CS2)));
+            // "cs-unknown" is not returned by getCourtSchedulesByIdList (default empty list)
+
+            final ChangeCourtRoomForMultidayHearingRequest request = new ChangeCourtRoomForMultidayHearingRequest()
+                    .hearingId(hearingId)
+                    .days(List.of(new RequestedDay().sessionDate(d2).courtScheduleId("cs-unknown").durationInMinutes(300)));
+
+            Assertions.assertThrows(NoSessionAvailableException.class,
+                    () -> service.changeCourtRoomForMultidayHearing(request));
+
+            verify(courtScheduleRepository, org.mockito.Mockito.never())
+                    .releaseAllocatedListingsForDates(any(), any());
+            verify(courtScheduleRepository, org.mockito.Mockito.never())
+                    .saveBookedSlots(any(), anyBoolean(), anyBoolean());
+        }
+
+        @Test
+        void should_bookOverbooked_when_targetHasInsufficientCapacityAndOverbookingNotAllowed() {
+            final String hearingId = UUID.randomUUID().toString();
+            final LocalDate d2 = LocalDate.of(2025, 3, 4);
+            final List<AllocatedListing> existingAllocations = List.of(existingAllocation(hearingId, CS2));
+            when(allocatedListingRepository.findByHearingId(hearingId)).thenReturn(existingAllocations);
+            when(courtScheduleRepository.getCourtSchedulesByIdList(List.of(CS2)))
+                    .thenReturn(List.of(buildSessionWithId(d2, CS2)));
+            final CourtSchedule fullSession = buildSessionWithId(d2, CS2B);
+            fullSession.setMaxDuration(360);
+            fullSession.setTotalBooked(360);
+            fullSession.setAvailableDuration(0);
+            fullSession.setOverbookingAllowed(false);
+            when(courtScheduleRepository.getCourtSchedulesByIdList(List.of(CS2B)))
+                    .thenReturn(List.of(fullSession));
+            @SuppressWarnings(UNCHECKED)
+            final org.mockito.ArgumentCaptor<List<AllocatedSlot>> slotsCaptor =
+                    org.mockito.ArgumentCaptor.forClass(List.class);
+            when(courtScheduleRepository.saveBookedSlots(slotsCaptor.capture(), eq(false), eq(false), eq(false)))
+                    .thenReturn(new Result().msg("").success(true));
+
+            final ChangeCourtRoomForMultidayHearingRequest request = new ChangeCourtRoomForMultidayHearingRequest()
+                    .hearingId(hearingId)
+                    .days(List.of(new RequestedDay().sessionDate(d2).courtScheduleId(CS2B).durationInMinutes(300)));
+
+            final ChangeCourtRoomForMultidayHearingResponse response =
+                    service.changeCourtRoomForMultidayHearing(request);
+
+            verify(courtScheduleRepository).releaseAllocatedListingsForDates(hearingId, List.of(d2));
+            verify(courtScheduleRepository).saveBookedSlots(any(), eq(false), eq(false), eq(false));
+            final List<AllocatedSlot> booked = slotsCaptor.getAllValues().stream()
+                    .flatMap(List::stream).toList();
+            assertTrue(booked.stream().anyMatch(s -> CS2B.equals(s.getCourtScheduleId())));
+            assertTrue(booked.stream().allMatch(s -> "MULTIDAY_COURTROOM_CHANGE".equals(s.getSource())));
+            assertEquals("CHANGE_COURT_ROOM_MULTIDAY", response.source());
+            assertEquals(1, response.allocatedSchedules().size());
+            assertEquals(CS2B, response.allocatedSchedules().get(0).getCourtScheduleId());
+        }
+
+        @Test
+        void should_mutateNothing_when_oneOfMultipleDaysIsInvalid() {
+            // d2 is valid, d3's target session is unknown => the WHOLE request fails, and NOT EVEN d2
+            // is released or booked (validate-all-first).
+            final String hearingId = UUID.randomUUID().toString();
+            final LocalDate d2 = LocalDate.of(2025, 3, 4);
+            final LocalDate d3 = LocalDate.of(2025, 3, 5);
+            final List<AllocatedListing> existingAllocations = List.of(
+                    existingAllocation(hearingId, CS2), existingAllocation(hearingId, CS3));
+            when(allocatedListingRepository.findByHearingId(hearingId)).thenReturn(existingAllocations);
+            when(courtScheduleRepository.getCourtSchedulesByIdList(List.of(CS2, CS3)))
+                    .thenReturn(List.of(buildSessionWithId(d2, CS2), buildSessionWithId(d3, CS3)));
+
+            final CourtSchedule validTarget = buildSessionWithId(d2, CS2B);
+            // cs3b is unknown (not returned) => target lookup yields null => NoSessionAvailableException
+            when(courtScheduleRepository.getCourtSchedulesByIdList(List.of(CS2B, CS3B)))
+                    .thenReturn(List.of(validTarget));
+
+            final ChangeCourtRoomForMultidayHearingRequest request = new ChangeCourtRoomForMultidayHearingRequest()
+                    .hearingId(hearingId)
+                    .days(List.of(
+                            new RequestedDay().sessionDate(d2).courtScheduleId(CS2B).durationInMinutes(300),
+                            new RequestedDay().sessionDate(d3).courtScheduleId("cs3b").durationInMinutes(300)));
+
+            Assertions.assertThrows(NoSessionAvailableException.class,
+                    () -> service.changeCourtRoomForMultidayHearing(request));
+
+            verify(courtScheduleRepository, org.mockito.Mockito.never())
+                    .releaseAllocatedListingsForDates(any(), any());
+            verify(courtScheduleRepository, org.mockito.Mockito.never())
+                    .saveBookedSlots(any(), anyBoolean(), anyBoolean());
+        }
+
+        private AllocatedListing existingAllocation(final String hearingId, final String courtScheduleId) {
+            final AllocatedListing allocation = new AllocatedListing();
+            allocation.setHearingId(hearingId);
+            allocation.setCourtScheduleId(courtScheduleId);
+            allocation.setSource("NONPOLICE");
+            return allocation;
+        }
+    }
+
     /**
      * Unanchored move-to-past, both jurisdictions - main's MAGISTRATES behaviour restored (SPRDT-1447,
      * ported from main's {@code SlotsUpdateServiceTest.MoveHearingToPastDate}) and applied to CROWN.
