@@ -34,6 +34,8 @@ class JudiciaryUnassignmentServiceTest {
     private static final String JUDICIARY_1 = "judiciary-1";
     private static final String SESSION_1 = "session-1";
     private static final String EXECUTION_ID = "exec-id";
+    private static final String SESSION_WITH_JUDICIARY = "schedule-with-judiciary";
+    private static final String SESSION_WITHOUT_JUDICIARY = "schedule-without-judiciary";
 
     @InjectMocks
     private JudiciaryUnassignmentService judiciaryUnassignmentService;
@@ -73,17 +75,17 @@ class JudiciaryUnassignmentServiceTest {
 
     @Test
     void shouldNotReportSessionWithNoJudiciaryAsChangedWhenDeletingAll() {
-        final List<String> courtScheduleIds = List.of("schedule-with-judiciary", "schedule-without-judiciary");
+        final List<String> courtScheduleIds = List.of(SESSION_WITH_JUDICIARY, SESSION_WITHOUT_JUDICIARY);
         when(judiciaryChangeDetectionService.buildCourtScheduleJudiciaryHashMap(courtScheduleIds))
-                .thenReturn(Map.of("schedule-with-judiciary", List.of(42)))
+                .thenReturn(Map.of(SESSION_WITH_JUDICIARY, List.of(42)))
                 .thenReturn(Map.of());
         when(courtScheduleJudiciaryRepository.deleteAllAssignmentsForCourtScheduleIds(courtScheduleIds)).thenReturn(1);
         when(judiciaryChangeDetectionService.findChangedCourtScheduleIds(any(), any()))
-                .thenReturn(List.of("schedule-with-judiciary"));
+                .thenReturn(List.of(SESSION_WITH_JUDICIARY));
 
         final List<String> result = judiciaryUnassignmentService.removeAllJudiciaryByCourtScheduleIds(courtScheduleIds);
 
-        assertEquals(List.of("schedule-with-judiciary"), result);
+        assertEquals(List.of(SESSION_WITH_JUDICIARY), result);
     }
 
     @Test
