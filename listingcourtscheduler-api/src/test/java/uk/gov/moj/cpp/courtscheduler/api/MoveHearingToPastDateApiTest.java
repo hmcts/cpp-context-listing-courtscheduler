@@ -66,6 +66,7 @@ class MoveHearingToPastDateApiTest {
     private static final String FUTURE_DATE_NOT_ALLOWED = "FUTURE_DATE_NOT_ALLOWED";
     private static final String HEARING_ID = "hearingId";
     private static final String NINE_AM = "09:00";
+    private static final String NINE_THIRTY = "09:30";
     private static final String MAY_FIRST_NINE_AM = "2026-05-01T09:00:00.000Z";
     private static final String MAY_FIRST_NINE_THIRTY = "2026-05-01T09:30:00.000Z";
     private static final int MULTI_DAY_DURATION_MINUTES = 360;
@@ -129,7 +130,7 @@ class MoveHearingToPastDateApiTest {
 
         // single-day 09:00 -> 09:30 = 30-minute submitted window
         when(slotsUpdateService.moveHearingToPastDate(eq(hearingId), eq(courtCentreId), any(),
-                eq(LocalDate.parse(MAY_FIRST)), eq(LocalDate.parse(MAY_FIRST)), eq(NINE_AM), eq("09:30"), eq(MAGISTRATES), eq(30)))
+                eq(LocalDate.parse(MAY_FIRST)), eq(LocalDate.parse(MAY_FIRST)), eq(NINE_AM), eq(NINE_THIRTY), eq(MAGISTRATES), eq(30)))
                 .thenReturn(List.of(stub));
 
         final ResponseEntity<Map<String, Object>> response = move(hearingId,
@@ -194,7 +195,7 @@ class MoveHearingToPastDateApiTest {
         final String hearingId = randomUUID().toString();
         final String courtCentreId = randomUUID().toString();
         when(slotsUpdateService.moveHearingToPastDate(eq(hearingId), eq(courtCentreId), any(),
-                eq(LocalDate.parse(MAY_FIRST)), eq(LocalDate.parse(MAY_FIRST)), eq(NINE_AM), eq("09:30"), eq(CROWN), eq(30)))
+                eq(LocalDate.parse(MAY_FIRST)), eq(LocalDate.parse(MAY_FIRST)), eq(NINE_AM), eq(NINE_THIRTY), eq(CROWN), eq(30)))
                 .thenReturn(List.of(stubSession(hearingId, MAY_FIRST, 30)));
 
         final ResponseEntity<Map<String, Object>> response = move(hearingId,
@@ -244,9 +245,9 @@ class MoveHearingToPastDateApiTest {
     @Test
     void shouldReturn422_whenMoveIsForToday() {
         final ResponseEntity<Map<String, Object>> magistrates = move(randomUUID().toString(),
-                movePayload(randomUUID().toString(), MAGISTRATES, daysAgo(0, NINE_AM), daysAgo(0, "09:30")));
+                movePayload(randomUUID().toString(), MAGISTRATES, daysAgo(0, NINE_AM), daysAgo(0, NINE_THIRTY)));
         final ResponseEntity<Map<String, Object>> crown = move(randomUUID().toString(),
-                movePayload(randomUUID().toString(), CROWN, daysAgo(0, NINE_AM), daysAgo(0, "09:30")));
+                movePayload(randomUUID().toString(), CROWN, daysAgo(0, NINE_AM), daysAgo(0, NINE_THIRTY)));
 
         assertEquals(UNPROCESSABLE, magistrates.getStatusCode().value());
         assertEquals(FUTURE_DATE_NOT_ALLOWED, magistrates.getBody().get(ERROR_CODE));
