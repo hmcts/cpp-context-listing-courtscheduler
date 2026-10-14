@@ -28,9 +28,28 @@
           },
           "isDraft": {
             "type": "boolean"
+          },
+          "hearingId": {
+            "type": "string"
+          },
+          "sessionStartTime": {
+            "type": "string"
+          },
+          "sessionEndTime": {
+            "type": "string"
+          },
+          "durationInMinutes": {
+            "type": "integer"
+          },
+          "source": {
+            "type": "string"
+          },
+          "overbooked": {
+            "type": "boolean"
           }
         }
-      }
+      },
+      "description": "MAGISTRATES: one item per booked day with main's fields - sessionStartTime/sessionEndTime are the SUBMITTED start/end on that day and durationInMinutes the submitted window. CROWN: the booked court-schedule sessions."
     }
   },
   "required": [
