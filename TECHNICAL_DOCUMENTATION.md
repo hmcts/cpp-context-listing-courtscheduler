@@ -400,18 +400,17 @@ Supports complex filtering:
 #### POST `/hearings/{hearingId}` (move-hearing-to-past-date)
 **Purpose:** Move a hearing to past-dated court-schedule session(s), both jurisdictions. Restored from main (SPRDT-985/987) by SPRDT-1447 after the main merge `8de19ce` dropped it; extended to Crown by the SPRDT-1447 test findings.
 
-**Request:** `application/vnd.courtscheduler.move-hearing-to-past-date+json` (`courtCentreId`, `courtRoomId`, `jurisdiction`, `startTime`, `endTime` as UTC instants; optional `durationInMinutes`, `courtScheduleId`)
+**Request:** `application/vnd.courtscheduler.move-hearing-to-past-date+json` (`courtCentreId`, `courtRoomId`, `jurisdiction`, `startTime`, `endTime` as UTC instants; optional `durationInMinutes`)
 
 **Response:** `{hearingId, source, sessions[]}` (`application/vnd.courtscheduler.move-hearing-to-past-date.response+json`)
 
 **Business Logic:**
 - Past dates only: `startTime`/`endTime` on or after today (UTC) is a 422 `FUTURE_DATE_NOT_ALLOWED`
-- Draft sessions are never booked by a move without `courtScheduleId`, either jurisdiction
-- Without `courtScheduleId` (both jurisdictions — the only shape listing sends): for each sitting day (weekdays; a weekend-only span books the requested days) finds the active, non-draft session in `courtRoomId` at `courtCentreId` whose window contains the `startTime` time-of-day — any `court_session` (AM/PM/AD), lowest room number first — no fallback to another room
-- The booked duration is the submitted window (a full court day, 360 minutes, per day for a multi-day span); the submitted start/end are stamped on the booking and returned on each session
-- CROWN with `courtScheduleId` (no current caller): consecutive weekday sessions sharing the anchor's room + business type + draft state (SPRDT-1089, unchanged); the hearing's `durationInMinutes` per day
+- A multi-day CROWN move is not supported: 422 `MULTI_DAY_NOT_ALLOWED`
+- For each sitting day (weekdays; a weekend-only span books the requested days) finds the active, non-draft session in `courtRoomId` at `courtCentreId` whose window contains the `startTime` time-of-day — any `court_session` (AM/PM/AD), lowest room number first — no fallback to another room. Draft sessions are never booked.
+- The booked duration is the submitted window (a full court day, 360 minutes, per day for a MAGISTRATES multi-day span); the submitted start/end are stamped on the booking and returned on each session
 - Every day is resolved before anything changes; the hearing's prior allocation is then released (payback, SPRDT-1333) and the new session(s) booked with `source=MOVE_TO_PAST_DATE`
-- 422 `NO_SESSION_FOUND` when any day has no matching session — including a multi-day range (nothing is released or booked) — or the allocation cannot be persisted
+- 422 `NO_SESSION_FOUND` when any day has no matching session (nothing is released or booked) or the allocation cannot be persisted
 
 ### Provisional Booking Endpoints
 

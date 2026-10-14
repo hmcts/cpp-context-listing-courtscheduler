@@ -44,7 +44,6 @@ import org.slf4j.LoggerFactory;
 
 @Service
 public class HearingSlotsApiValidator {
-    private static final String MAGISTRATES_JURISDICTION = "MAGISTRATES";
     private static final Logger LOGGER = LoggerFactory.getLogger(HearingSlotsApiValidator.class.getName());
 
    /* package */ static final String SHOULD_BE_ENTERED = " should be entered";
@@ -280,11 +279,8 @@ public class HearingSlotsApiValidator {
         if (request.getEndDate() != null && request.getEndDate().isBefore(request.getStartDate())) {
             return buildErrorResponse("endDate must not be before startDate");
         }
-        // Every unanchored move (MAGISTRATES, and CROWN without courtScheduleId) looks the session up by
-        // the startTime time-of-day, so the instant itself is required.
-        final boolean anchoredCrown = !MAGISTRATES_JURISDICTION.equalsIgnoreCase(request.getJurisdiction())
-                && !isBlank(request.getCourtScheduleId());
-        if (!anchoredCrown && isBlank(request.getStartTime())) {
+        // Every move looks the session up by the startTime time-of-day, so the instant itself is required.
+        if (isBlank(request.getStartTime())) {
             return getMessage("startTime");
         }
         if (isBlank(request.getStartTime()) != isBlank(request.getEndTime())) {

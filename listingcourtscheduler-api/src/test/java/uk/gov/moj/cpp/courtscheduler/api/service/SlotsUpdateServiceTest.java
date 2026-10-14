@@ -29,8 +29,6 @@ import uk.gov.moj.cpp.courtscheduler.openapi.model.Hearing;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.ListHearingSlotsResponse;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.MagsSearchAndBookRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.MagsSearchAndBookResponse;
-import uk.gov.moj.cpp.courtscheduler.openapi.model.MoveHearingToPastDateRequest;
-import uk.gov.moj.cpp.courtscheduler.domain.MoveHearingToPastDateResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.BookedPastSession;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.ProvisionalBookingInfo;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.RequestedDay;
@@ -1770,80 +1768,6 @@ class SlotsUpdateServiceTest {
     // ─── AC7: move-hearing-to-past-date ───────────────────────────────────────
 
     /* default */
-    /** CROWN moves anchored on a courtScheduleId - the team (ccsph2) consecutive path, as SPRDT-1089 built it. */
-    @Nested
-    class MoveHearingToPastDate {
-
-        private static final String ANCHOR_DATE_START = "2025-03-03T10:00:00.000Z";
-
-        @Test
-        void should_bookConsecutiveSessions_when_crownMoveIsAnchored() {
-            final String anchorId = UUID.randomUUID().toString();
-            final LocalDate day = LocalDate.of(2025, 3, 3);
-            final List<CourtSchedule> run = buildConsecutiveSessions(day, 2); // Mon + Tue
-            when(courtScheduleRepository.findConsecutiveSessions(anchorId, 2)).thenReturn(run);
-            when(courtScheduleRepository.saveBookedSlots(any(), eq(false), eq(false))).thenReturn(new Result().msg("").success(true));
-
-            final MoveHearingToPastDateResponse response = service.moveHearingToPastDate(
-                    anchoredMove(anchorId, day, day.plusDays(1)).durationInMinutes(720));
-
-            assertEquals(MOVE_TO_PAST_DATE_SOURCE, response.source());
-            assertEquals(2, response.sessions().size());
-            final org.mockito.ArgumentCaptor<List<AllocatedSlot>> slots = slotsCaptor();
-            verify(courtScheduleRepository).saveBookedSlots(slots.capture(), eq(false), eq(false));
-            assertTrue(slots.getValue().stream().allMatch(slot -> MOVE_TO_PAST_DATE_SOURCE.equals(slot.getSource())));
-        }
-
-        @Test
-        void should_needExactlyOneDay_when_anchoredMoveEndDateEqualsStartDateRegardlessOfDuration() {
-            final String anchorId = UUID.randomUUID().toString();
-            final LocalDate day = LocalDate.of(2025, 3, 3);
-            when(courtScheduleRepository.findConsecutiveSessions(anchorId, 1)).thenReturn(buildConsecutiveSessions(day, 1));
-            when(courtScheduleRepository.saveBookedSlots(any(), eq(false), eq(false))).thenReturn(new Result().msg("").success(true));
-
-            final MoveHearingToPastDateResponse response = service.moveHearingToPastDate(
-                    anchoredMove(anchorId, day, day).durationInMinutes(1800)); // a large overall estimate
-
-            assertEquals(1, response.sessions().size());
-            verify(courtScheduleRepository).findConsecutiveSessions(anchorId, 1);
-        }
-
-        @Test
-        void should_throwNoSessionWithoutRelease_when_anchoredRunFindsNothing() {
-            final String anchorId = UUID.randomUUID().toString();
-            final LocalDate day = LocalDate.of(2025, 1, 10);
-
-            Assertions.assertThrows(NoSessionAvailableException.class,
-                    () -> service.moveHearingToPastDate(anchoredMove(anchorId, day, LocalDate.of(2025, 1, 13))));
-
-            verify(courtScheduleRepository, org.mockito.Mockito.never()).releaseOldAllocatedListings(any());
-        }
-
-        @Test
-        void should_reject_when_moveHasNoAnchor() {
-            final LocalDate day = LocalDate.of(2025, 3, 3);
-            Assertions.assertThrows(IllegalArgumentException.class,
-                    () -> service.moveHearingToPastDate(anchoredMove(null, day, day)));
-        }
-
-        private MoveHearingToPastDateRequest anchoredMove(final String anchorId, final LocalDate startDate, final LocalDate endDate) {
-            return new MoveHearingToPastDateRequest()
-                    .hearingId(UUID.randomUUID().toString())
-                    .courtCentreId(UUID.randomUUID().toString())
-                    .courtRoomId(UUID.randomUUID().toString())
-                    .jurisdiction(CROWN_2)
-                    .startDate(startDate)
-                    .endDate(endDate)
-                    .startTime(ANCHOR_DATE_START)
-                    .courtScheduleId(anchorId);
-        }
-
-        @SuppressWarnings(UNCHECKED)
-        private org.mockito.ArgumentCaptor<List<AllocatedSlot>> slotsCaptor() {
-            return org.mockito.ArgumentCaptor.forClass(List.class);
-        }
-    }
-
     /* default */
     @Nested
     class ChangeCourtRoomForMultidayHearing {
@@ -2062,12 +1986,12 @@ class SlotsUpdateServiceTest {
     }
 
     /**
-     * Unanchored move-to-past, both jurisdictions - main's MAGISTRATES behaviour restored (SPRDT-1447,
-     * ported from main's {@code SlotsUpdateServiceTest.MoveHearingToPastDate}) and applied to CROWN.
+     * Move-to-past, both jurisdictions - main's MAGISTRATES behaviour restored (SPRDT-1447, ported
+     * from main's {@code SlotsUpdateServiceTest.MoveHearingToPastDate}) and applied to CROWN.
      */
     /* default */
     @Nested
-    class UnanchoredMoveHearingToPastDate {
+    class MoveHearingToPastDate {
 
         private static final String MAGISTRATES = "MAGISTRATES";
         private static final String CROWN = "CROWN";

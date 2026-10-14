@@ -49,7 +49,7 @@
           }
         }
       },
-      "description": "Moves without courtScheduleId (both jurisdictions): one item per booked day - sessionStartTime/sessionEndTime are the SUBMITTED start/end on that day and durationInMinutes the submitted window. CROWN with courtScheduleId: the booked court-schedule sessions."
+      "description": "One item per booked day, both jurisdictions - sessionStartTime/sessionEndTime are the SUBMITTED start/end on that day and durationInMinutes the submitted window."
     }
   },
   "required": [

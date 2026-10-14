@@ -634,20 +634,6 @@ class HearingSlotsApiValidatorTest {
         }
 
         @Test
-        void should_passValidation_when_crownOptionalCourtScheduleIdPresent() {
-            // AC7 — courtScheduleId is optional anchor for CROWN; its presence must not fail validation
-            final MoveHearingToPastDateRequest request = new MoveHearingToPastDateRequest()
-                    .hearingId(UUID.randomUUID().toString())
-                    .courtCentreId(UUID.randomUUID().toString())
-                    .courtRoomId(UUID.randomUUID().toString())
-                    .jurisdiction(CROWN_2)
-                    .startDate(LocalDate.of(2025, 3, 3))
-                    .courtScheduleId(UUID.randomUUID().toString());
-
-            assertEquals(EMPTY_JSON_OBJECT, validator.moveHearingToPastDateValidation(request));
-        }
-
-        @Test
         void should_passValidation_when_magsJurisdictionNoAnchor() {
             // AC7 — MAGS: courtScheduleId absent, jurisdiction=MAGISTRATES, complete window => valid
             assertEquals(EMPTY_JSON_OBJECT, validator.moveHearingToPastDateValidation(
@@ -655,8 +641,8 @@ class HearingSlotsApiValidatorTest {
         }
 
         @Test
-        void should_returnError_when_unanchoredCrownStartTimeMissing() {
-            // SPRDT-1447 test finding: an unanchored CROWN move is looked up by time-of-day too
+        void should_returnError_when_crownStartTimeMissing() {
+            // SPRDT-1447 test finding: a CROWN move is looked up by time-of-day too
             final MoveHearingToPastDateRequest request = new MoveHearingToPastDateRequest()
                     .hearingId(UUID.randomUUID().toString())
                     .courtCentreId(UUID.randomUUID().toString())
