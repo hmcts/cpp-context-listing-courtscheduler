@@ -477,10 +477,10 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
         LOG.info("courtscheduler.assign-judiciary-to-sessions requested: {}", body);
         try {
             final AssignJudiciaryToSessionsRequest dto = assignJudiciaryToSessionsConverter.convert(toJsonObject(body));
-            final List<String> changedIds =
+            final List<String> changedCourtScheduleIds =
                     judiciaryAssignmentService.assignJudiciaryToSessions(dto, UUID.randomUUID().toString());
             final List<JsonObject> payloads =
-                    changeJudiciaryForHearingsHelper.createChangeJudiciaryForHearingsPayloads(changedIds);
+                    changeJudiciaryForHearingsHelper.createChangeJudiciaryForHearingsPayloads(changedCourtScheduleIds);
             changeJudiciaryForHearingsHelper.sendChangeJudiciaryForHearingsCommands(payloads);
         } catch (final IllegalArgumentException e) {
             LOG.warn("courtscheduler.assign-judiciary-to-sessions: {}", e.getMessage());
@@ -513,10 +513,10 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
             courtScheduleIds.add(courtScheduleId);
         }
 
-        final List<String> changedIds =
+        final List<String> changedCourtScheduleIds =
                 judiciaryUnassignmentService.removeAllJudiciaryByCourtScheduleIds(courtScheduleIds);
         final List<JsonObject> payloads =
-                changeJudiciaryForHearingsHelper.createChangeJudiciaryForHearingsPayloads(changedIds);
+                changeJudiciaryForHearingsHelper.createChangeJudiciaryForHearingsPayloads(changedCourtScheduleIds);
         changeJudiciaryForHearingsHelper.sendChangeJudiciaryForHearingsCommands(payloads);
         return ResponseEntity.status(HttpStatus.ACCEPTED).build();
     }
