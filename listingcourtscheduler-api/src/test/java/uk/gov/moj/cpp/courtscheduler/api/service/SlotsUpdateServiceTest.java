@@ -2206,6 +2206,80 @@ class SlotsUpdateServiceTest {
         }
 
         @Test
+        void should_bookSlotBasedTargetAsPlainChange_when_aSlotRemains() {
+            final String hearingId = UUID.randomUUID().toString();
+            final LocalDate d2 = LocalDate.of(2025, 3, 4);
+            when(allocatedListingRepository.findByHearingId(hearingId))
+                    .thenReturn(List.of(existingAllocation(hearingId, CS2)));
+            when(courtScheduleRepository.getCourtSchedulesByIdList(List.of(CS2)))
+                    .thenReturn(List.of(buildSessionWithId(d2, CS2)));
+            final CourtSchedule slotSession = buildSessionWithId(d2, CS2B);
+            slotSession.setSlotBased(true);
+            slotSession.setMaxSlots(10);
+            slotSession.setAvailableSlots(1);
+            slotSession.setMaxDuration(0);
+            slotSession.setTotalBooked(0);
+            slotSession.setAvailableDuration(0);
+            slotSession.setOverbookingAllowed(false);
+            when(courtScheduleRepository.getCourtSchedulesByIdList(List.of(CS2B)))
+                    .thenReturn(List.of(slotSession));
+            @SuppressWarnings(UNCHECKED)
+            final org.mockito.ArgumentCaptor<List<AllocatedSlot>> slotsCaptor =
+                    org.mockito.ArgumentCaptor.forClass(List.class);
+            when(courtScheduleRepository.saveBookedSlots(slotsCaptor.capture(), eq(false), eq(false), eq(false)))
+                    .thenReturn(new Result().msg("").success(true));
+
+            final ChangeCourtRoomForMultidayHearingRequest request = new ChangeCourtRoomForMultidayHearingRequest()
+                    .hearingId(hearingId)
+                    .days(List.of(new RequestedDay().sessionDate(d2).courtScheduleId(CS2B).durationInMinutes(180)));
+
+            service.changeCourtRoomForMultidayHearing(request);
+
+            final List<AllocatedSlot> booked = slotsCaptor.getAllValues().stream()
+                    .flatMap(List::stream).toList();
+            assertEquals(1, booked.size());
+            assertEquals("CHANGE_COURT_ROOM_MULTIDAY", booked.get(0).getSource());
+            assertTrue(booked.get(0).getSlotBased());
+        }
+
+        @Test
+        void should_bookSlotBasedTargetAsOverbooked_when_noSlotRemainsAndOverbookingNotAllowed() {
+            final String hearingId = UUID.randomUUID().toString();
+            final LocalDate d2 = LocalDate.of(2025, 3, 4);
+            when(allocatedListingRepository.findByHearingId(hearingId))
+                    .thenReturn(List.of(existingAllocation(hearingId, CS2)));
+            when(courtScheduleRepository.getCourtSchedulesByIdList(List.of(CS2)))
+                    .thenReturn(List.of(buildSessionWithId(d2, CS2)));
+            final CourtSchedule fullSlotSession = buildSessionWithId(d2, CS2B);
+            fullSlotSession.setSlotBased(true);
+            fullSlotSession.setMaxSlots(10);
+            fullSlotSession.setAvailableSlots(0);
+            fullSlotSession.setMaxDuration(0);
+            fullSlotSession.setTotalBooked(0);
+            fullSlotSession.setAvailableDuration(0);
+            fullSlotSession.setOverbookingAllowed(false);
+            when(courtScheduleRepository.getCourtSchedulesByIdList(List.of(CS2B)))
+                    .thenReturn(List.of(fullSlotSession));
+            @SuppressWarnings(UNCHECKED)
+            final org.mockito.ArgumentCaptor<List<AllocatedSlot>> slotsCaptor =
+                    org.mockito.ArgumentCaptor.forClass(List.class);
+            when(courtScheduleRepository.saveBookedSlots(slotsCaptor.capture(), eq(false), eq(false), eq(false)))
+                    .thenReturn(new Result().msg("").success(true));
+
+            final ChangeCourtRoomForMultidayHearingRequest request = new ChangeCourtRoomForMultidayHearingRequest()
+                    .hearingId(hearingId)
+                    .days(List.of(new RequestedDay().sessionDate(d2).courtScheduleId(CS2B).durationInMinutes(180)));
+
+            service.changeCourtRoomForMultidayHearing(request);
+
+            final List<AllocatedSlot> booked = slotsCaptor.getAllValues().stream()
+                    .flatMap(List::stream).toList();
+            assertEquals(1, booked.size());
+            assertEquals("MULTIDAY_COURTROOM_CHANGE", booked.get(0).getSource());
+            assertTrue(booked.get(0).getSlotBased());
+        }
+
+        @Test
         void should_mutateNothing_when_oneOfMultipleDaysIsInvalid() {
             // d2 is valid, d3's target session is unknown => the WHOLE request fails, and NOT EVEN d2
             // is released or booked (validate-all-first).
