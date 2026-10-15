@@ -1445,9 +1445,17 @@ The version defaults to `0.0.999`. Override it with `-DARTEFACT_VERSION=x.y.z`. 
 ### 16.3 Run locally
 
 ```bash
-./gradlew :listingcourtscheduler-api:bootJar
-cd listingcourtscheduler-api
-docker compose up --build        # Postgres on :55434, app on :8083
+# PostgreSQL on :55434 (database, user and password: courtscheduler)
+docker compose -f listingcourtscheduler-api/docker-compose.yml up -d db
+# Optional: WireMock stubs for Reference Data and Users & Groups on :8189
+docker compose -f listingcourtscheduler-integration-test/docker/docker-compose.integration.yml up -d wiremock
+
+export CSCHED_DATASOURCE_URL=jdbc:postgresql://localhost:55434/courtscheduler
+export CSCHED_DATASOURCE_USERNAME=courtscheduler
+export CSCHED_DATASOURCE_PASSWORD=courtscheduler
+export CSCHED_BASE_URL=http://localhost:8189
+./gradlew :listingcourtscheduler-api:bootRun
+
 curl http://localhost:8083/listingcourtscheduler-api/rest/courtscheduler/actuator/health
 ```
 
