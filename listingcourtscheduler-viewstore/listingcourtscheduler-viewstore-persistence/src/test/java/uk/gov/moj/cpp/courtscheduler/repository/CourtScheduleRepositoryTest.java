@@ -58,6 +58,7 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
     private static final String MAGISTRATES_2 = "MAGISTRATES";
     private static final String PROFILE_A = "PROFILE-A";
     private static final String TRF_2 = "TRF";
+    private static final String PLE = "PLE";
 
 
     @Autowired
@@ -276,6 +277,49 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
         assertEquals(2, result.size());
         assertTrue(result.stream().noneMatch(uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule::getSlotBased));
         assertTrue(result.stream().allMatch(cs -> "CR01".equals(cs.getCourtRoomId())));
+    }
+
+    // SPRDT-1475: every session of a CROWN multiday block shares one business type. These two tests
+    // pin the rota_business_type predicate behind crown.search.and.book: the anchored consecutive
+    // search and the extend-tail search, each against a room that runs two business types a day.
+
+    @Test
+    void adSessionsInRangeShouldReturnOnlyTheRequestedBusinessTypeWhenTheRoomRunsTwo() {
+        final LocalDate monday  = LocalDate.of(2026, 7, 6);
+        final LocalDate tuesday = LocalDate.of(2026, 7, 7);
+        final String ouCode = "B99MC10";
+
+        for (final LocalDate date : List.of(monday, tuesday)) {
+            courtScheduleRepository.save(createCourtSchedule(ouCode, ADULT_2, date, CR01_2, TRF_2, "AD"));
+            courtScheduleRepository.save(createCourtSchedule(ouCode, ADULT_2, date, CR01_2, PLE, "AD"));
+        }
+
+        final List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> result =
+                courtScheduleRepository.findAdSessionsInRange(ouCode, CR01_2, TRF_2, monday, tuesday, false);
+
+        assertEquals(2, result.size());
+        assertTrue(result.stream().allMatch(cs -> TRF_2.equals(cs.getBusinessType())));
+    }
+
+    @Test
+    void consecutiveSessionsShouldKeepTheAnchorsBusinessTypeWhenTheRoomRunsTwo() {
+        final LocalDate monday  = LocalDate.of(2026, 7, 13);
+        final LocalDate tuesday = LocalDate.of(2026, 7, 14);
+        final String ouCode = "B99MC11";
+
+        final CourtSchedule anchor = courtScheduleRepository.save(
+                createCourtSchedule(ouCode, ADULT_2, monday, CR01_2, TRF_2, "AD"));
+        courtScheduleRepository.save(createCourtSchedule(ouCode, ADULT_2, monday, CR01_2, PLE, "AD"));
+        final CourtSchedule tuesdaySameType = courtScheduleRepository.save(
+                createCourtSchedule(ouCode, ADULT_2, tuesday, CR01_2, TRF_2, "AD"));
+        courtScheduleRepository.save(createCourtSchedule(ouCode, ADULT_2, tuesday, CR01_2, PLE, "AD"));
+
+        final List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> result =
+                courtScheduleRepository.findConsecutiveSessions(anchor.getCourtScheduleId(), 2);
+
+        assertEquals(List.of(anchor.getCourtScheduleId(), tuesdaySameType.getCourtScheduleId()),
+                result.stream().map(uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule::getCourtScheduleId).toList());
+        assertTrue(result.stream().allMatch(cs -> TRF_2.equals(cs.getBusinessType())));
     }
 
     @Test
