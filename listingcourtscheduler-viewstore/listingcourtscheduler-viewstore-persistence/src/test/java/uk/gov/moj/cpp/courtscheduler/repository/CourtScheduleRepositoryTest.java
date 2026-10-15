@@ -121,6 +121,33 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
         assertEquals(0, reloaded.getAvailableDuration());
     }
 
+    /**
+     * The validate-create duplicate check must follow the unique indexes of changeset 051, which
+     * include is_draft: a draft and a final session for the same courtroom, business type and date
+     * do not clash, so each draft state only sees its own sessions.
+     */
+    @Test
+    void similarSessionsShouldOnlyReturnSessionsWithTheRequestedDraftState() {
+        final LocalDate sessionDate = LocalDate.of(2026, 10, 29);
+        final CourtSchedule finalSession = createCourtSchedule("C06MC00", ADULT_2, sessionDate, CR01_2, TRF_2, "AD");
+        final CourtSchedule draftSession = createCourtSchedule("C06MC00", ADULT_2, sessionDate, CR01_2, TRF_2, "AD");
+        draftSession.setIsDraft(true);
+        courtScheduleRepository.save(finalSession);
+        courtScheduleRepository.save(draftSession);
+        em.flush();
+        em.clear();
+
+        final List<CourtSchedule> draftMatches = courtScheduleRepository.getSimilarSessions(
+                "CHC06MC00", CR01_2, TRF_2, sessionDate, sessionDate, CROWN_2, true);
+        final List<CourtSchedule> finalMatches = courtScheduleRepository.getSimilarSessions(
+                "CHC06MC00", CR01_2, TRF_2, sessionDate, sessionDate, CROWN_2, false);
+
+        assertEquals(List.of(draftSession.getCourtScheduleId()),
+                draftMatches.stream().map(CourtSchedule::getCourtScheduleId).toList());
+        assertEquals(List.of(finalSession.getCourtScheduleId()),
+                finalMatches.stream().map(CourtSchedule::getCourtScheduleId).toList());
+    }
+
     @Test
     void courtSchedulesByIdListShouldReturnEmptyListForEmptyOrNullInput() {
         assertTrue(courtScheduleRepository.getCourtSchedulesByIdList(new ArrayList<>()).isEmpty());
