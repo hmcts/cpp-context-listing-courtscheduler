@@ -1457,10 +1457,6 @@ export CSCHED_BASE_URL=http://localhost:8189
 ./gradlew :listingcourtscheduler-api:bootRun
 
 curl http://localhost:8083/listingcourtscheduler-api/rest/courtscheduler/actuator/health
-
-# Alternatively, run the app in Docker too (Postgres on :55434, app on :8083)
-./gradlew :listingcourtscheduler-api:bootJar
-docker compose -f listingcourtscheduler-api/docker-compose.yml up --build
 ```
 
 ### 16.4 Adding or changing an endpoint
@@ -1706,7 +1702,7 @@ Details are in [MIGRATION.md](MIGRATION.md) (regression audit) and [breaking.md]
   const content = document.getElementById('content');
   content.innerHTML = marked.parse(mdText, { renderer: renderer, gfm: true });
   content.insertAdjacentHTML('beforeend',
-    '<p class="footer">Generated from <code>doc/COURT_SCHEDULER_GUIDE.md</code>. Edit the Markdown, then run <code>python3 doc/build_html.py</code> to regenerate this file.</p>');
+    '<p class="footer">Generated from <code>doc/COURT_SCHEDULER_GUIDE.md</code>. It is a rendered copy of that file.</p>');
 
   // Heading ids (GitHub-style) and TOC.
   const tocList = document.getElementById('tocList');

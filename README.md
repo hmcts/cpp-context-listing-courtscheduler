@@ -44,7 +44,7 @@ Other references:
 - [`CLAUDE.md`](CLAUDE.md) is a condensed command and architecture reference for Claude Code.
 - [`.github/CONTRIBUTING.md`](.github/CONTRIBUTING.md) explains how to contribute.
 
-The HTML guide is generated from the Markdown. After editing the Markdown, run `python3 doc/build_html.py`.
+The HTML guide is a rendered copy of the Markdown. Keep the two in step when you edit either.
 
 ## API contract (OpenAPI)
 
@@ -134,15 +134,6 @@ For the test layers, the scenario checklist and how to triage defects, see the [
 4. Check that it's up: <http://localhost:8083/listingcourtscheduler-api/rest/courtscheduler/actuator/health>
 
 Liquibase applies the database migrations on startup. Authorisation is off by default locally (`CSCHED_AUTHZ_ENABLED=false`), but requests should still send a `CJSCPPUID` header. The rota endpoints also need Azure Blob settings (see [Configuration](#configuration)).
-
-To run the app in Docker as well, build the jar and start the whole local stack:
-
-```bash
-./gradlew :listingcourtscheduler-api:bootJar
-docker compose -f listingcourtscheduler-api/docker-compose.yml up --build
-```
-
-Extra environment variables for the app container can go in `listingcourtscheduler-api/.env`, or in another file named by `ENV_FILE`. The file is optional.
 
 The integration stack uses host port `55433` and the local database uses `55434`, so both can run at the same time. The app in either stack binds `8083`.
 
