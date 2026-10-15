@@ -365,6 +365,7 @@ paths:
             Booking failed with errorCode NO_SESSION_FOUND when no session (or qualifying
             consecutive run) is available for the request, FUTURE_DATE_NOT_ALLOWED when a
             move-hearing-to-past-date startTime/endTime is not strictly before today (UTC),
+            MULTI_DAY_NOT_ALLOWED for a multi-day CROWN move-hearing-to-past-date,
             NO_ALLOCATION_ON_DATE when
             change-court-room-for-multiday-hearing is requested for a date the hearing isn't
             currently allocated on, or — for a crown.search.and.book resize of an existing
@@ -1910,9 +1911,8 @@ components:
         startDate: { type: string, format: date, nullable: true }
         endDate: { type: string, format: date, nullable: true }
         durationInMinutes: { type: integer, default: 0 }
-        courtScheduleId: { type: string, nullable: true }
-        # The submitted window as UTC instants (e.g. 2026-07-20T10:30:00.000Z); MAGISTRATES derives the
-        # session time-of-day, the stamped start/end and the booked duration from them (main's contract).
+        # The submitted window as UTC instants (e.g. 2026-07-20T10:30:00.000Z); every move derives the
+        # session time-of-day, the stamped start/end and the booked duration from them.
         startTime: { type: string, nullable: true }
         endTime: { type: string, nullable: true }
 

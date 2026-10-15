@@ -44,7 +44,6 @@ import org.slf4j.LoggerFactory;
 
 @Service
 public class HearingSlotsApiValidator {
-    private static final String MAGISTRATES_JURISDICTION = "MAGISTRATES";
     private static final Logger LOGGER = LoggerFactory.getLogger(HearingSlotsApiValidator.class.getName());
 
    /* package */ static final String SHOULD_BE_ENTERED = " should be entered";
@@ -255,8 +254,8 @@ public class HearingSlotsApiValidator {
      *
      * <p>{@code hearingId}, {@code jurisdiction}, {@code courtRoomId} and {@code startDate}
      * (derived from {@code startTime}) are mandatory. {@code courtScheduleId} is an OPTIONAL CROWN
-     * anchor. MAGISTRATES also needs the {@code startTime} instant itself (its session lookup uses
-     * the time-of-day), and a window must be complete ({@code startTime} and {@code endTime} both
+     * anchor. Every move without that anchor also needs the {@code startTime} instant itself (its
+     * session lookup uses the time-of-day), and a window must be complete ({@code startTime} and {@code endTime} both
      * present) and not reversed (SPRDT-1447). Returns {@code EMPTY_JSON_OBJECT} when valid. The
      * past-only rule is enforced before validation, in {@code CourtSchedulerApi}.</p>
      */
@@ -280,7 +279,8 @@ public class HearingSlotsApiValidator {
         if (request.getEndDate() != null && request.getEndDate().isBefore(request.getStartDate())) {
             return buildErrorResponse("endDate must not be before startDate");
         }
-        if (MAGISTRATES_JURISDICTION.equalsIgnoreCase(request.getJurisdiction()) && isBlank(request.getStartTime())) {
+        // Every move looks the session up by the startTime time-of-day, so the instant itself is required.
+        if (isBlank(request.getStartTime())) {
             return getMessage("startTime");
         }
         if (isBlank(request.getStartTime()) != isBlank(request.getEndTime())) {
