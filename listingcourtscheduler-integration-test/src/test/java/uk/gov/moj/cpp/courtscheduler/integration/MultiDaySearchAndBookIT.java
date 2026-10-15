@@ -51,6 +51,7 @@ import org.junit.jupiter.params.provider.ValueSource;
  */
 class MultiDaySearchAndBookIT extends AbstractIT {
     private static final String BTX_2 = "BTX";
+    private static final String BTY = "BTY";
     private static final String MOVE_2 = "MOVE";
     private static final String OU_A = "OU-A";
 
@@ -461,6 +462,84 @@ class MultiDaySearchAndBookIT extends AbstractIT {
                 databaseReader.allocatedListings().size(), is(allocatedListingsBefore));
     }
 
+    // --- SPRDT-1475: every session of a multiday block shares one business type. Listing sends the
+    // hearing's main courtroom with the anchor, so a same-start extension pins the tail to that room;
+    // the pinned room must not lift the business-type constraint. ---
+
+    @Test
+    void shouldRejectExtendIntoPinnedRoomWhenItsTailSessionHasAnotherBusinessType() throws Exception {
+        final String blockRoomId = UUID.randomUUID().toString();
+        final String mainRoomId = UUID.randomUUID().toString();
+        final String hearingId = UUID.randomUUID().toString();
+        final LocalDate day3 = ANCHOR_MONDAY.plusDays(2);
+
+        final String day1Id = seedSession(ANCHOR_MONDAY, blockRoomId, BTX_2, CENTRE_A, OU_A, false, false, 360);
+        final String day2Id = seedSession(ANCHOR_MONDAY.plusDays(1), blockRoomId, BTX_2, CENTRE_A, OU_A, false, false, 360);
+        seedSession(day3, mainRoomId, BTY, CENTRE_A, OU_A, false, false, 360);
+        databaseSeeder.insertAllocatedListing(allocatedListing(day1Id, hearingId, 360));
+        databaseSeeder.insertAllocatedListing(allocatedListing(day2Id, hearingId, 360));
+
+        final Response response = callCrown(day1Id, CENTRE_A, ANCHOR_MONDAY, day3, mainRoomId, 1080, hearingId);
+
+        assertThat(response.getStatus(), is(422));
+        final JsonObject error = createReader(new StringReader(body(response))).readObject();
+        assertThat(error.getString("errorCode"), is("NO_AVAILABILITY"));
+        assertThat(error.getJsonArray("unavailableDates").getString(0), is(day3.toString()));
+        assertThat("the block keeps its two days — no tail row in another business type",
+                bookedCourtScheduleIds(hearingId), containsInAnyOrder(day1Id, day2Id));
+    }
+
+    @Test
+    void shouldExtendIntoPinnedRoomOnTheSessionOfTheBlocksBusinessType() throws Exception {
+        final String blockRoomId = UUID.randomUUID().toString();
+        final String mainRoomId = UUID.randomUUID().toString();
+        final String hearingId = UUID.randomUUID().toString();
+        final LocalDate day3 = ANCHOR_MONDAY.plusDays(2);
+
+        final String day1Id = seedSession(ANCHOR_MONDAY, blockRoomId, BTX_2, CENTRE_A, OU_A, false, false, 360);
+        final String day2Id = seedSession(ANCHOR_MONDAY.plusDays(1), blockRoomId, BTX_2, CENTRE_A, OU_A, false, false, 360);
+        // The main courtroom runs both business types on day 3; only the BTX session may be booked.
+        seedSession(day3, mainRoomId, BTY, CENTRE_A, OU_A, false, false, 360);
+        final String day3SameTypeId = seedSession(day3, mainRoomId, BTX_2, CENTRE_A, OU_A, false, false, 360);
+        databaseSeeder.insertAllocatedListing(allocatedListing(day1Id, hearingId, 360));
+        databaseSeeder.insertAllocatedListing(allocatedListing(day2Id, hearingId, 360));
+
+        final Response response = callCrown(day1Id, CENTRE_A, ANCHOR_MONDAY, day3, mainRoomId, 1080, hearingId);
+
+        assertThat(response.getStatus(), is(OK.getStatusCode()));
+        assertThat(extractCourtScheduleIds(body(response)), contains(day1Id, day2Id, day3SameTypeId));
+        final List<AllocatedListing> rows = databaseReader.allocatedListings().stream()
+                .filter(al -> hearingId.equals(al.getHearingId()))
+                .collect(Collectors.toList());
+        assertThat(rows.stream().map(AllocatedListing::getCourtScheduleId).collect(Collectors.toList()),
+                containsInAnyOrder(day1Id, day2Id, day3SameTypeId));
+        assertThat("every day of the block has the block's business type",
+                rows.stream().map(AllocatedListing::getRotaBusinessType).collect(Collectors.toList()),
+                containsInAnyOrder(BTX_2, BTX_2, BTX_2));
+    }
+
+    @Test
+    void shouldNotMoveBlockOntoARunThatChangesBusinessTypeAfterTheNewAnchor() throws Exception {
+        final String blockRoomId = UUID.randomUUID().toString();
+        final String newRoomId = UUID.randomUUID().toString();
+        final String hearingId = UUID.randomUUID().toString();
+        final LocalDate newMonday = ANCHOR_MONDAY.plusWeeks(1);
+
+        final String day1Id = seedSession(ANCHOR_MONDAY, blockRoomId, BTX_2, CENTRE_A, OU_A, false, false, 360);
+        final String day2Id = seedSession(ANCHOR_MONDAY.plusDays(1), blockRoomId, BTX_2, CENTRE_A, OU_A, false, false, 360);
+        databaseSeeder.insertAllocatedListing(allocatedListing(day1Id, hearingId, 360));
+        databaseSeeder.insertAllocatedListing(allocatedListing(day2Id, hearingId, 360));
+        // New anchor is BTX, but the room's next day only runs BTY — not a valid 2-day run.
+        final String newAnchorId = seedSession(newMonday, newRoomId, BTX_2, CENTRE_A, OU_A, false, false, 360);
+        seedSession(newMonday.plusDays(1), newRoomId, BTY, CENTRE_A, OU_A, false, false, 360);
+
+        final Response response = callCrown(newAnchorId, CENTRE_A, newMonday, 720, hearingId);
+
+        assertThat(response.getStatus(), is(OK.getStatusCode()));
+        assertThat("no run crosses a business-type boundary", extractCourtScheduleIds(body(response)), is(empty()));
+        assertThat("the existing block is left intact", bookedCourtScheduleIds(hearingId), containsInAnyOrder(day1Id, day2Id));
+    }
+
     // --- Gap #8: required-field validation enforced at the RAML/schema layer ---
 
     @ParameterizedTest(name = "shouldReturn400 when required field {0} is missing")
@@ -502,6 +581,33 @@ class MultiDaySearchAndBookIT extends AbstractIT {
                 .build()
                 .toString();
         return postCommand("/hearings/" + hearingId, ACCEPT, SYSTEM_USER_ID, payload);
+    }
+
+    /** The update-hearing-for-listing shape: anchor plus the requested window's endDate and the main courtroom. */
+    private Response callCrown(final String anchorCourtScheduleId,
+                               final String courtCentreId,
+                               final LocalDate hearingDate,
+                               final LocalDate endDate,
+                               final String courtRoomId,
+                               final int durationInMinutes,
+                               final String hearingId) {
+        final String payload = Json.createObjectBuilder()
+                .add("courtCentreId", courtCentreId)
+                .add("hearingDate", hearingDate.toString())
+                .add("endDate", endDate.toString())
+                .add("courtRoomId", courtRoomId)
+                .add("durationInMinutes", durationInMinutes)
+                .add("courtScheduleId", anchorCourtScheduleId)
+                .build()
+                .toString();
+        return postCommand("/hearings/" + hearingId, ACCEPT, SYSTEM_USER_ID, payload);
+    }
+
+    private List<String> bookedCourtScheduleIds(final String hearingId) {
+        return databaseReader.allocatedListings().stream()
+                .filter(al -> hearingId.equals(al.getHearingId()))
+                .map(AllocatedListing::getCourtScheduleId)
+                .collect(Collectors.toList());
     }
 
     private static String body(final Response response) {
