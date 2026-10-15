@@ -1341,6 +1341,10 @@ export CSCHED_BASE_URL=http://localhost:8189
 ./gradlew :listingcourtscheduler-api:bootRun
 
 curl http://localhost:8083/listingcourtscheduler-api/rest/courtscheduler/actuator/health
+
+# Alternatively, run the app in Docker too (Postgres on :55434, app on :8083)
+./gradlew :listingcourtscheduler-api:bootJar
+docker compose -f listingcourtscheduler-api/docker-compose.yml up --build
 ```
 
 ### 16.4 Adding or changing an endpoint

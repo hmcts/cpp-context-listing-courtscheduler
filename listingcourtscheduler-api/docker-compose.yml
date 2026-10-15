@@ -1,5 +1,3 @@
-version: '3.8'
-
 # Prod-style local-dev compose for listingcourtscheduler. Mirrors the layout used by
 # cp-court-list-publishing-service: a single Spring Boot service backed by a
 # Postgres instance, configured entirely through environment variables that match
@@ -27,10 +25,11 @@ services:
   listingcourtscheduler-api:
     container_name: CP_CSCHED_app
     env_file:
-      - ${ENV_FILE:-.env}
+      - path: ${ENV_FILE:-.env}
+        required: false
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: docker/Dockerfile
       args:
         http_proxy: ${http_proxy}
         https_proxy: ${https_proxy}
