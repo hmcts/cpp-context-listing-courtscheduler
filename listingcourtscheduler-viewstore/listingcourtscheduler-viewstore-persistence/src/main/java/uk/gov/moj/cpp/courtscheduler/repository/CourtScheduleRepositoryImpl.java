@@ -1279,9 +1279,9 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
                   AND s.session_start >= :startDate
                   AND s.session_start <= :endDate
                 """);
-        // A same-room continuation keeps the block's business type; the SPRDT-1273 extend path
-        // passes null when the tail is pinned to the caller's main courtroom, whose sessions may
-        // run under any business type.
+        // Every session of a CROWN multiday block shares one business type: the anchored consecutive
+        // search passes the anchor's and the extend tail passes the block's last day's (SPRDT-1475).
+        // null is kept only for the findAdSessionsInRange contract.
         if (businessType != null) {
             queryStr.append("  AND s.rota_business_type = :businessType\n");
         }

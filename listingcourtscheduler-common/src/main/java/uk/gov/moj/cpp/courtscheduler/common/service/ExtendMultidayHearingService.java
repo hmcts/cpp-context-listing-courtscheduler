@@ -63,7 +63,8 @@ public class ExtendMultidayHearingService {
      * SPRDT-1273: {@code requestedCourtRoomId} (a court_schedule.court_room_id UUID) pins the room
      * the EXTEND tail days are booked into — the hearing's main courtroom as submitted on
      * update-hearing-for-listing. When absent the tail continues in the block's LAST session's
-     * room. Existing allocation rows are never touched, so per-day rooms set earlier via
+     * room. Either way the tail keeps the LAST session's business type (SPRDT-1475). Existing
+     * allocation rows are never touched, so per-day rooms set earlier via
      * change-court-room-for-multiday-hearing survive a resize.
      *
      * <p>SPRDT-1274: {@code earliestHearingTime} (ISO-8601 zoned timestamp) is the user-supplied
@@ -131,9 +132,10 @@ public class ExtendMultidayHearingService {
         // match the UUID column, so the tail search silently found nothing.
         final boolean roomPinnedByRequest = requestedCourtRoomId != null && !requestedCourtRoomId.isBlank();
         final String courtRoomId = roomPinnedByRequest ? requestedCourtRoomId : lastSession.getCourtRoomId();
-        // Business type only constrains a same-room continuation; a caller-pinned room may run its
-        // sessions under a different business type, so the filter is dropped there.
-        final String businessType = roomPinnedByRequest ? null : lastSession.getBusinessType();
+        // SPRDT-1475: the tail keeps the LAST day's business type, also when the caller pins the
+        // room — a pinned room with no session of that type on a tail day is NO_AVAILABILITY, never
+        // a block spanning two business types.
+        final String businessType = lastSession.getBusinessType();
 
         final List<LocalDate> tailDays = computeBusinessDays(maxDate, newEnd);
 
@@ -193,8 +195,8 @@ public class ExtendMultidayHearingService {
 
     /**
      * The new row is built from the BOOKED SESSION (not from an existing allocation row): when the
-     * tail is pinned to the caller's main courtroom the session's room/businessType differ from the
-     * block's earlier rows, and copying them from a template row would record the wrong room.
+     * tail is pinned to the caller's main courtroom the session's room differs from the block's
+     * earlier rows, and copying them from a template row would record the wrong room.
      * hearingStartTime deliberately carries the session's start time — the accepted SPRDT-1274
      * discrepancy: allocated_listings holds session time, the listing viewstore holds the
      * user-supplied time.
