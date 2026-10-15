@@ -52,13 +52,17 @@ public interface CourtScheduleRepository
                                                                @Param(START_DATE) LocalDate startDate,
                                                                @Param(END_DATE) LocalDate endDate);
 
-    @Query("SELECT cs FROM CourtSchedule cs WHERE cs.courtHouseId = :courtCentreId AND cs.courtRoomId = :courtRoomId AND cs.active = true AND cs.businessType = :businessType AND cs.sessionDate BETWEEN :startDate AND :endDate AND cs.jurisdiction = :jurisdiction")
+    // isDraft is primitive on purpose: a null would compare as "cs.draft = null", match nothing and
+    // silently switch the duplicate check off. Draft and final sessions never clash with each other,
+    // the same as the is_draft column in the unique indexes of changeset 051.
+    @Query("SELECT cs FROM CourtSchedule cs WHERE cs.courtHouseId = :courtCentreId AND cs.courtRoomId = :courtRoomId AND cs.active = true AND cs.businessType = :businessType AND cs.sessionDate BETWEEN :startDate AND :endDate AND cs.jurisdiction = :jurisdiction AND cs.draft = :isDraft")
     List<CourtSchedule> getSimilarSessions(@Param("courtCentreId") String courtCentreId,
                                            @Param("courtRoomId") String courtRoomId,
                                            @Param(BUSINESS_TYPE) String businessType,
                                            @Param(START_DATE) LocalDate startDate,
                                            @Param(END_DATE) LocalDate endDate,
-                                           @Param("jurisdiction") String jurisdiction);
+                                           @Param("jurisdiction") String jurisdiction,
+                                           @Param("isDraft") boolean isDraft);
 
     @Modifying
     @Transactional

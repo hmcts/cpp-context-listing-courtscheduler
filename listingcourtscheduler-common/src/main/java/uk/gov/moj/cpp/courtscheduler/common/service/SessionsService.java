@@ -903,10 +903,12 @@ public class SessionsService {
         logger.info("validateSessionIntegrity to check session integrity");
         
         final String jurisdiction = nonNull(session.getJurisdiction()) ? session.getJurisdiction() : MAGISTRATES.getJurisdiction();
+        // Same null handling as create(): a session without isDraft is persisted as final.
+        final boolean isDraft = TRUE.equals(session.getIsDraft());
         
         long stepStart = System.currentTimeMillis();
         final List<uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule> sessionsToCompare = courtScheduleRepository
-                .getSimilarSessions(session.getCourtCentreId(), session.getCourtRoomId(), session.getBusinessType(), startDate, endDate, jurisdiction);
+                .getSimilarSessions(session.getCourtCentreId(), session.getCourtRoomId(), session.getBusinessType(), startDate, endDate, jurisdiction, isDraft);
         logger.info("[PERF] getSimilarSessions DB query took {} ms, returned {} records", System.currentTimeMillis() - stepStart, sessionsToCompare.size());
         
         stepStart = System.currentTimeMillis();
