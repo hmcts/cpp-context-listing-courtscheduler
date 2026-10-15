@@ -54,9 +54,6 @@ target/
 build/
 .gradle/
 
-# Claude Code session state
-.claude/
-
 # Subversion
 .svn/
 
