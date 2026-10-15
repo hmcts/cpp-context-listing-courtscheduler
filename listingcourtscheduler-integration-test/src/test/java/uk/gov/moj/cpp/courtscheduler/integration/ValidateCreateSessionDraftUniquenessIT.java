@@ -20,6 +20,7 @@ import java.time.LocalTime;
 import java.time.ZoneOffset;
 import java.util.UUID;
 
+import jakarta.json.JsonObjectBuilder;
 import jakarta.ws.rs.core.Response;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -27,11 +28,13 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 /**
  * POST /validate (validate.create) checks the session to be added against the sessions already
- * stored. A draft and a final session never clash, the same as the is_draft column in the unique
- * indexes of changeset 051. Inside one draft state an AD clashes with AM, PM and AD on the same
- * day; AM and PM do not clash.
+ * stored and against the other sessions in the payload. A draft and a final session never clash,
+ * the same as the is_draft column in the unique indexes of changeset 051, and a session without
+ * isDraft counts as final because that is how it is stored. Inside one draft state an AD clashes
+ * with AM, PM and AD on the same day; AM and PM do not clash.
  *
- * <p>Uses the C45GU00 court centre and its shared courtroom, which no other IT stores sessions on.</p>
+ * <p>The stored-session cases use the C45GU00 court centre and its shared courtroom, which no other
+ * IT stores sessions on.</p>
  */
 class ValidateCreateSessionDraftUniquenessIT extends AbstractIT {
 
@@ -45,6 +48,8 @@ class ValidateCreateSessionDraftUniquenessIT extends AbstractIT {
     private static final String ALL_DAY = "AD";
     private static final String MORNING = "AM";
     private static final String AFTERNOON = "PM";
+    private static final String MAGISTRATES_COURT_CENTRE_ID = "49db2271-1941-3847-a7fb-dbd92b035e40";
+    private static final String MAGISTRATES_COURT_ROOM_ID = "41a41156-0ca9-3352-999e-8d26274bb1aa";
 
     private final LocalDate weekStart = now().with(next(MONDAY));
     private final LocalDate thursday = weekStart.plusDays(3);
@@ -93,6 +98,41 @@ class ValidateCreateSessionDraftUniquenessIT extends AbstractIT {
         assertThat(body, is("{}"));
     }
 
+    @Test
+    void shouldRejectFinalSessionWhenTheSameSessionWithoutIsDraftIsInThePayload() {
+        final String payload = createObjectBuilder()
+                .add("sessions", createArrayBuilder().add(magistratesMorningSession()))
+                .add("sessionToBeAdded", magistratesMorningSession().add("isDraft", false))
+                .add("repeatPattern", onceInTheWeek())
+                .build()
+                .toString();
+
+        final Response response = postCommand(VALIDATE_URL, VALIDATE_CREATE_CONTENT_TYPE, USER_ID, payload);
+
+        assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
+        assertThat(response.readEntity(String.class), containsString(DUPLICATE_SESSIONS));
+    }
+
+    private JsonObjectBuilder magistratesMorningSession() {
+        return createObjectBuilder()
+                .add("courtCentreId", MAGISTRATES_COURT_CENTRE_ID)
+                .add("courtRoomId", MAGISTRATES_COURT_ROOM_ID)
+                .add("jurisdiction", "MAGISTRATES")
+                .add("sessionType", MORNING)
+                .add("businessType", "DVLA")
+                .add("duration", 100)
+                .add("panel", "ADULT")
+                .add("repeatDays", createArrayBuilder().add("Thursday"));
+    }
+
+    private JsonObjectBuilder onceInTheWeek() {
+        return createObjectBuilder()
+                .add("startDate", weekStart.toString())
+                .add("endDate", weekStart.plusDays(6).toString())
+                .add("repeatFor", 1)
+                .add("frequency", "ONCE");
+    }
+
     private Response validateCreate(final String sessionType, final boolean isDraft) {
         final String payload = createObjectBuilder()
                 .add("sessions", createArrayBuilder())
@@ -110,11 +150,7 @@ class ValidateCreateSessionDraftUniquenessIT extends AbstractIT {
                         .add("isOverbookingAllowed", true)
                         .add("repeatDays", createArrayBuilder().add("Thursday"))
                         .add("isDraft", isDraft))
-                .add("repeatPattern", createObjectBuilder()
-                        .add("startDate", weekStart.toString())
-                        .add("endDate", weekStart.plusDays(6).toString())
-                        .add("repeatFor", 1)
-                        .add("frequency", "ONCE"))
+                .add("repeatPattern", onceInTheWeek())
                 .build()
                 .toString();
         return postCommand(VALIDATE_URL, VALIDATE_CREATE_CONTENT_TYPE, USER_ID, payload);
