@@ -61,6 +61,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -1997,6 +1999,8 @@ class SlotsUpdateServiceTest {
         private static final String CROWN = "CROWN";
         private static final String NINE_AM = "09:00";
         private static final String NOON = "12:00";
+        private static final String TEN_AM = "10:00";
+        private static final String ELEVEN_AM = "11:00";
         private static final String MAY_FIRST = "2026-05-01";
 
         @Test
@@ -2239,6 +2243,123 @@ class SlotsUpdateServiceTest {
 
             Assertions.assertThrows(MoveHearingToPastDateNoSessionException.class,
                     () -> service.moveHearingToPastDate(UUID.randomUUID().toString(), courtCentreId, null, startDate, startDate, NINE_AM, NOON, MAGISTRATES, 30));
+        }
+
+        // ─── Restored from the pre-SPRDT-1447b Crown move tests, now on the shared method (both jurisdictions) ───
+
+        /** Restored: should_throwNoSession_when_noPastSessionAvailable - a single-day move without an endDate. */
+        @ParameterizedTest
+        @ValueSource(strings = {MAGISTRATES, CROWN})
+        void shouldThrowNoSession_whenNoPastSessionAvailable_andNoEndDate(final String jurisdiction) {
+            final LocalDate day = LocalDate.of(2025, 1, 10);
+
+            Assertions.assertThrows(MoveHearingToPastDateNoSessionException.class,
+                    () -> service.moveHearingToPastDate(UUID.randomUUID().toString(), UUID.randomUUID().toString(),
+                            UUID.randomUUID().toString(), day, null, TEN_AM, ELEVEN_AM, jurisdiction, 60));
+
+            verify(courtScheduleRepository, org.mockito.Mockito.never()).saveBookedSlots(any(), anyBoolean(), anyBoolean());
+        }
+
+        /** Restored: should_throwNoSession_when_endDateEqualsStartDateAndNoSessionAvailable - the invalid same-day move. */
+        @ParameterizedTest
+        @ValueSource(strings = {MAGISTRATES, CROWN})
+        void shouldThrowNoSessionWithoutReleasing_whenSameDayMoveHasNoSession(final String jurisdiction) {
+            final LocalDate day = LocalDate.of(2025, 1, 10);
+
+            Assertions.assertThrows(MoveHearingToPastDateNoSessionException.class,
+                    () -> service.moveHearingToPastDate(UUID.randomUUID().toString(), UUID.randomUUID().toString(),
+                            UUID.randomUUID().toString(), day, day, TEN_AM, ELEVEN_AM, jurisdiction, 60));
+
+            verify(courtScheduleRepository, org.mockito.Mockito.never()).releaseOldAllocatedListings(any());
+            verify(courtScheduleRepository, org.mockito.Mockito.never()).saveBookedSlots(any(), anyBoolean(), anyBoolean());
+        }
+
+        /** Restored: should_throwNoSession_when_genuineDateRangeFindsNothing - MAGISTRATES only (a CROWN range is rejected by the API). */
+        @Test
+        void shouldThrowNoSessionWithoutReleasing_whenMagistratesRangeFindsNothing() {
+            Assertions.assertThrows(MoveHearingToPastDateNoSessionException.class,
+                    () -> service.moveHearingToPastDate(UUID.randomUUID().toString(), UUID.randomUUID().toString(),
+                            UUID.randomUUID().toString(), LocalDate.of(2025, 1, 10), LocalDate.of(2025, 1, 13),
+                            TEN_AM, ELEVEN_AM, MAGISTRATES, 360));
+
+            verify(courtScheduleRepository, org.mockito.Mockito.never()).releaseOldAllocatedListings(any());
+            verify(courtScheduleRepository, org.mockito.Mockito.never()).saveBookedSlots(any(), anyBoolean(), anyBoolean());
+        }
+
+        /** Restored: should_scopeSearchToRequestedRoom_when_courtRoomIdSupplied. */
+        @ParameterizedTest
+        @ValueSource(strings = {MAGISTRATES, CROWN})
+        void shouldSearchOnlyTheRequestedRoom(final String jurisdiction) {
+            final String courtCentreId = UUID.randomUUID().toString();
+            final String courtRoomId = UUID.randomUUID().toString();
+            final LocalDate day = LocalDate.of(2025, 3, 3);
+            when(courtScheduleRepository.findSessionForMoveToPastDate(eq(courtCentreId), eq(courtRoomId), eq(day), any(), eq(jurisdiction)))
+                    .thenReturn(Optional.of(buildPastSession(day)));
+            when(courtScheduleRepository.saveBookedSlots(any(), eq(false), eq(false))).thenReturn(success());
+
+            service.moveHearingToPastDate(UUID.randomUUID().toString(), courtCentreId, courtRoomId, day, day, TEN_AM, ELEVEN_AM, jurisdiction, 60);
+
+            verify(courtScheduleRepository).findSessionForMoveToPastDate(eq(courtCentreId), eq(courtRoomId), eq(day), any(), eq(jurisdiction));
+        }
+
+        /** Restored: should_needExactlyOneDay_when_endDateEqualsStartDateRegardlessOfDuration. */
+        @ParameterizedTest
+        @ValueSource(strings = {MAGISTRATES, CROWN})
+        void shouldBookExactlyOneDay_forASameDayMove_regardlessOfDuration(final String jurisdiction) {
+            final String courtCentreId = UUID.randomUUID().toString();
+            final LocalDate day = LocalDate.of(2025, 3, 3);
+            when(courtScheduleRepository.findSessionForMoveToPastDate(eq(courtCentreId), any(), eq(day), any(), eq(jurisdiction)))
+                    .thenReturn(Optional.of(buildPastSession(day)));
+            when(courtScheduleRepository.saveBookedSlots(any(), eq(false), eq(false))).thenReturn(success());
+
+            final List<BookedPastSession> responses = service.moveHearingToPastDate(
+                    UUID.randomUUID().toString(), courtCentreId, null, day, day, TEN_AM, ELEVEN_AM, jurisdiction, 1800);
+
+            assertEquals(1, responses.size());
+            assertEquals(1, capturedBookedSlots().size());
+            verify(courtScheduleRepository, org.mockito.Mockito.times(1))
+                    .findSessionForMoveToPastDate(any(), any(), any(), any(), any());
+        }
+
+        /** Restored: should_bookTheRequestedRoomDateAndTimeSession_when_crownSingleDayMoveHasNoAnchor. */
+        @ParameterizedTest
+        @ValueSource(strings = {MAGISTRATES, CROWN})
+        void shouldBookTheSessionFoundForTheRequestedRoomDateAndStartTime(final String jurisdiction) {
+            final String courtCentreId = UUID.randomUUID().toString();
+            final String courtRoomId = UUID.randomUUID().toString();
+            final LocalDate day = LocalDate.of(2025, 3, 3);
+            final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule session = buildPastSession(day);
+            when(courtScheduleRepository.findSessionForMoveToPastDate(courtCentreId, courtRoomId, day,
+                    LocalDateTime.of(2025, 3, 3, 14, 0), jurisdiction)).thenReturn(Optional.of(session));
+            when(courtScheduleRepository.saveBookedSlots(any(), eq(false), eq(false))).thenReturn(success());
+
+            final List<BookedPastSession> responses = service.moveHearingToPastDate(
+                    UUID.randomUUID().toString(), courtCentreId, courtRoomId, day, day, "14:00", "15:00", jurisdiction, 60);
+
+            assertEquals(session.getCourtScheduleId(), responses.get(0).courtScheduleId());
+            final AllocatedSlot booked = capturedBookedSlots().get(0);
+            assertEquals(session.getCourtScheduleId(), booked.getCourtScheduleId());
+            assertEquals(MOVE_TO_PAST_DATE_SOURCE, booked.getSource());
+        }
+
+        /** Restored: should_throwNoSessionWithoutFallbackOrRelease_when_requestedRoomHasNoSessionAtThatTime. */
+        @ParameterizedTest
+        @ValueSource(strings = {MAGISTRATES, CROWN})
+        void shouldNotFallBackToAnotherRoomOrRelease_whenRequestedRoomHasNoSessionAtThatTime(final String jurisdiction) {
+            final String courtCentreId = UUID.randomUUID().toString();
+            final String courtRoomId = UUID.randomUUID().toString();
+            final LocalDate day = LocalDate.of(2025, 3, 3);
+
+            Assertions.assertThrows(MoveHearingToPastDateNoSessionException.class,
+                    () -> service.moveHearingToPastDate(UUID.randomUUID().toString(), courtCentreId, courtRoomId,
+                            day, day, TEN_AM, ELEVEN_AM, jurisdiction, 60));
+
+            // exactly one lookup, scoped to the requested room and time - never a room-less (centre-wide) retry
+            verify(courtScheduleRepository, org.mockito.Mockito.times(1)).findSessionForMoveToPastDate(
+                    courtCentreId, courtRoomId, day, LocalDateTime.of(2025, 3, 3, 10, 0), jurisdiction);
+            verify(courtScheduleRepository, org.mockito.Mockito.never()).findSessionForMoveToPastDate(any(), isNull(), any(), any(), any());
+            verify(courtScheduleRepository, org.mockito.Mockito.never()).releaseOldAllocatedListings(any());
+            verify(courtScheduleRepository, org.mockito.Mockito.never()).saveBookedSlots(any(), anyBoolean(), anyBoolean());
         }
 
         private Result success() {
