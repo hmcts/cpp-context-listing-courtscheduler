@@ -37,6 +37,7 @@ import uk.gov.moj.cpp.courtscheduler.api.converter.SessionsConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.UpdateCourtScheduleConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.ValidateSessionAvailabilityRequestParamConverter;
 import uk.gov.moj.cpp.courtscheduler.api.service.CourtScheduleRoomSanitiser;
+import uk.gov.moj.cpp.courtscheduler.api.service.rota.helper.ChangeJudiciaryForHearingsHelper;
 import uk.gov.moj.cpp.courtscheduler.api.service.MiService;
 import uk.gov.moj.cpp.courtscheduler.api.service.ProvisionalBookingService;
 import uk.gov.moj.cpp.courtscheduler.api.service.SlotsRemoveService;
@@ -142,6 +143,7 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
     // --- session judiciary assignment / unassignment
     private final JudiciaryAssignmentService judiciaryAssignmentService;
     private final JudiciaryUnassignmentService judiciaryUnassignmentService;
+    private final ChangeJudiciaryForHearingsHelper changeJudiciaryForHearingsHelper;
     private final AssignJudiciariesApiValidator assignJudiciariesApiValidator;
     private final JudiciariesApiValidator judiciariesApiValidator;
     private final AssignJudiciariesRequestConverter assignJudiciariesRequestConverter;
@@ -174,6 +176,7 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
                              final ValidateSessionAvailabilityRequestParamConverter validateSessionAvailabilityRequestParamConverter,
                              final JudiciaryAssignmentService judiciaryAssignmentService,
                              final JudiciaryUnassignmentService judiciaryUnassignmentService,
+                             final ChangeJudiciaryForHearingsHelper changeJudiciaryForHearingsHelper,
                              final AssignJudiciariesApiValidator assignJudiciariesApiValidator,
                              final JudiciariesApiValidator judiciariesApiValidator,
                              final AssignJudiciariesRequestConverter assignJudiciariesRequestConverter,
@@ -199,6 +202,7 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
         this.validateSessionAvailabilityRequestParamConverter = validateSessionAvailabilityRequestParamConverter;
         this.judiciaryAssignmentService = judiciaryAssignmentService;
         this.judiciaryUnassignmentService = judiciaryUnassignmentService;
+        this.changeJudiciaryForHearingsHelper = changeJudiciaryForHearingsHelper;
         this.assignJudiciariesApiValidator = assignJudiciariesApiValidator;
         this.judiciariesApiValidator = judiciariesApiValidator;
         this.assignJudiciariesRequestConverter = assignJudiciariesRequestConverter;
@@ -424,7 +428,11 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
         if (!validate.isEmpty()) {
             throw new ValidationException(validate);
         }
-        judiciaryAssignmentService.assignJudiciaries(dto, UUID.randomUUID().toString());
+        final List<String> changedCourtScheduleIds =
+                judiciaryAssignmentService.assignJudiciaries(dto, UUID.randomUUID().toString());
+        final List<JsonObject> payloads = changeJudiciaryForHearingsHelper
+                .createChangeJudiciaryForHearingsPayloads(changedCourtScheduleIds);
+        changeJudiciaryForHearingsHelper.sendChangeJudiciaryForHearingsCommands(payloads);
         return ResponseEntity.status(HttpStatus.ACCEPTED).build();
     }
 
@@ -446,12 +454,16 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
             judiciaryToSessionIds.put(judiciaryId, sessionIds);
         }
         final boolean skipValidations = Boolean.TRUE.equals(body.get("skipValidations"));
+        final List<String> changedCourtScheduleIds;
         try {
-            judiciaryUnassignmentService.unassignJudiciary(
+            changedCourtScheduleIds = judiciaryUnassignmentService.unassignJudiciary(
                     judiciaryToSessionIds, UUID.randomUUID().toString(), skipValidations);
         } catch (IllegalStateException ise) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ise.getMessage());
         }
+        final List<JsonObject> payloads = changeJudiciaryForHearingsHelper
+                .createChangeJudiciaryForHearingsPayloads(changedCourtScheduleIds);
+        changeJudiciaryForHearingsHelper.sendChangeJudiciaryForHearingsCommands(payloads);
         return ResponseEntity.status(HttpStatus.ACCEPTED).build();
     }
 
@@ -465,7 +477,11 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
         LOG.info("courtscheduler.assign-judiciary-to-sessions requested: {}", body);
         try {
             final AssignJudiciaryToSessionsRequest dto = assignJudiciaryToSessionsConverter.convert(toJsonObject(body));
-            judiciaryAssignmentService.assignJudiciaryToSessions(dto, UUID.randomUUID().toString());
+            final List<String> changedCourtScheduleIds =
+                    judiciaryAssignmentService.assignJudiciaryToSessions(dto, UUID.randomUUID().toString());
+            final List<JsonObject> payloads =
+                    changeJudiciaryForHearingsHelper.createChangeJudiciaryForHearingsPayloads(changedCourtScheduleIds);
+            changeJudiciaryForHearingsHelper.sendChangeJudiciaryForHearingsCommands(payloads);
         } catch (final IllegalArgumentException e) {
             LOG.warn("courtscheduler.assign-judiciary-to-sessions: {}", e.getMessage());
             throw new ValidationException(
@@ -497,7 +513,11 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
             courtScheduleIds.add(courtScheduleId);
         }
 
-        judiciaryUnassignmentService.removeAllJudiciaryByCourtScheduleIds(courtScheduleIds);
+        final List<String> changedCourtScheduleIds =
+                judiciaryUnassignmentService.removeAllJudiciaryByCourtScheduleIds(courtScheduleIds);
+        final List<JsonObject> payloads =
+                changeJudiciaryForHearingsHelper.createChangeJudiciaryForHearingsPayloads(changedCourtScheduleIds);
+        changeJudiciaryForHearingsHelper.sendChangeJudiciaryForHearingsCommands(payloads);
         return ResponseEntity.status(HttpStatus.ACCEPTED).build();
     }
 
