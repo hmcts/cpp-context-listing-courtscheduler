@@ -471,9 +471,9 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
      *  SessionOpenApi — SPRDT-1089 additions on /sessions/*
      * ============================================================ */
 
-    /** POST /sessions/bulk-assign-judiciaries — replace-all judiciary assignment. */
+    /** POST /sessions/assign-judiciaries — replace-all judiciary assignment. */
     @Override
-    public ResponseEntity<Void> postBulkAssignJudiciaries(final Map<String, Object> body) {
+    public ResponseEntity<Void> postAssignJudiciaries(final Map<String, Object> body) {
         LOG.info("courtscheduler.assign-judiciary-to-sessions requested: {}", body);
         try {
             final AssignJudiciaryToSessionsRequest dto = assignJudiciaryToSessionsConverter.convert(toJsonObject(body));

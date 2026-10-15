@@ -172,7 +172,7 @@ class CourtSchedulerIT extends AbstractIT {
     private static final String ASSIGN_JUDICIARY_CONTENT_TYPE = "application/vnd.courtscheduler.assign-judiciary+json";
     private static final String UNASSIGN_JUDICIARY_CONTENT_TYPE = "application/vnd.courtscheduler.unassign.judiciary+json";
     private static final String REMOVE_ALL_JUDICIARY_CONTENT_TYPE = "application/vnd.courtscheduler.remove-all-judiciary+json";
-    private static final String ASSIGN_JUDICIARY_TO_SESSIONS_URL = "/sessions/bulk-assign-judiciaries";
+    private static final String ASSIGN_JUDICIARY_TO_SESSIONS_URL = "/sessions/assign-judiciaries";
     private static final String ASSIGN_JUDICIARY_TO_SESSIONS_CONTENT_TYPE =
             "application/vnd.courtscheduler.assign-judiciary-to-sessions+json";
 
