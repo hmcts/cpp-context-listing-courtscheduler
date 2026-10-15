@@ -573,14 +573,7 @@ class MultiDaySearchAndBookIT extends AbstractIT {
                                final LocalDate hearingDate,
                                final int durationInMinutes,
                                final String hearingId) {
-        final String payload = Json.createObjectBuilder()
-                .add("courtCentreId", courtCentreId)
-                .add("hearingDate", hearingDate.toString())
-                .add("durationInMinutes", durationInMinutes)
-                .add("courtScheduleId", anchorCourtScheduleId)
-                .build()
-                .toString();
-        return postCommand("/hearings/" + hearingId, ACCEPT, SYSTEM_USER_ID, payload);
+        return postCrown(crownPayload(anchorCourtScheduleId, courtCentreId, hearingDate, durationInMinutes), hearingId);
     }
 
     /** The update-hearing-for-listing shape: anchor plus the requested window's endDate and the main courtroom. */
@@ -591,16 +584,24 @@ class MultiDaySearchAndBookIT extends AbstractIT {
                                final String courtRoomId,
                                final int durationInMinutes,
                                final String hearingId) {
-        final String payload = Json.createObjectBuilder()
+        return postCrown(crownPayload(anchorCourtScheduleId, courtCentreId, hearingDate, durationInMinutes)
+                .add("endDate", endDate.toString())
+                .add("courtRoomId", courtRoomId), hearingId);
+    }
+
+    private static JsonObjectBuilder crownPayload(final String anchorCourtScheduleId,
+                                                  final String courtCentreId,
+                                                  final LocalDate hearingDate,
+                                                  final int durationInMinutes) {
+        return Json.createObjectBuilder()
                 .add("courtCentreId", courtCentreId)
                 .add("hearingDate", hearingDate.toString())
-                .add("endDate", endDate.toString())
-                .add("courtRoomId", courtRoomId)
                 .add("durationInMinutes", durationInMinutes)
-                .add("courtScheduleId", anchorCourtScheduleId)
-                .build()
-                .toString();
-        return postCommand("/hearings/" + hearingId, ACCEPT, SYSTEM_USER_ID, payload);
+                .add("courtScheduleId", anchorCourtScheduleId);
+    }
+
+    private Response postCrown(final JsonObjectBuilder payload, final String hearingId) {
+        return postCommand("/hearings/" + hearingId, ACCEPT, SYSTEM_USER_ID, payload.build().toString());
     }
 
     private List<String> bookedCourtScheduleIds(final String hearingId) {
