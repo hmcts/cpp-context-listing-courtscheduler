@@ -695,7 +695,7 @@ class SlotsUpdateServiceTest {
             when(courtScheduleRepository.createCrownFallbackSession(eq(request)))
                     .thenReturn(Optional.of(new CrownFallbackSearchResult(created, false)));
             final org.mockito.ArgumentCaptor<List<AllocatedSlot>> slotCaptor =
-                    org.mockito.ArgumentCaptor.forClass(List.class);
+                    org.mockito.ArgumentCaptor.captor();
             when(courtScheduleRepository.saveBookedSlots(slotCaptor.capture(), eq(false), eq(false)))
                     .thenReturn(new Result().msg("").success(true));
 
@@ -746,7 +746,7 @@ class SlotsUpdateServiceTest {
             when(courtScheduleRepository.searchCrownFallbackSlots(any(), any(), org.mockito.ArgumentMatchers.anyInt(), any(), any()))
                     .thenReturn(Optional.of(new CrownFallbackSearchResult(session, false)));
             final org.mockito.ArgumentCaptor<List<AllocatedSlot>> slotCaptor =
-                    org.mockito.ArgumentCaptor.forClass(List.class);
+                    org.mockito.ArgumentCaptor.captor();
             when(courtScheduleRepository.saveBookedSlots(slotCaptor.capture(), eq(false), eq(false)))
                     .thenReturn(new Result().msg("").success(true));
 
@@ -773,7 +773,7 @@ class SlotsUpdateServiceTest {
             when(courtScheduleRepository.searchCrownFallbackSlots(any(), any(), org.mockito.ArgumentMatchers.anyInt(), any(), any()))
                     .thenReturn(Optional.of(new CrownFallbackSearchResult(session, false)));
             final org.mockito.ArgumentCaptor<List<AllocatedSlot>> slotCaptor =
-                    org.mockito.ArgumentCaptor.forClass(List.class);
+                    org.mockito.ArgumentCaptor.captor();
             when(courtScheduleRepository.saveBookedSlots(slotCaptor.capture(), eq(false), eq(false)))
                     .thenReturn(new Result().msg("").success(true));
 
@@ -841,7 +841,7 @@ class SlotsUpdateServiceTest {
                     .thenReturn(Optional.of(new CrownFallbackSearchResult(session, false)));
 
             final org.mockito.ArgumentCaptor<List<AllocatedSlot>> slotCaptor =
-                    org.mockito.ArgumentCaptor.forClass(List.class);
+                    org.mockito.ArgumentCaptor.captor();
             when(courtScheduleRepository.saveBookedSlots(slotCaptor.capture(), eq(false), eq(false)))
                     .thenReturn(new Result().msg("").success(true));
 
@@ -1242,7 +1242,7 @@ class SlotsUpdateServiceTest {
             verify(courtScheduleRepository).releaseOldAllocatedListings(hearingId);
             @SuppressWarnings(UNCHECKED)
             final org.mockito.ArgumentCaptor<List<AllocatedSlot>> slotsCaptor =
-                    org.mockito.ArgumentCaptor.forClass(List.class);
+                    org.mockito.ArgumentCaptor.captor();
             verify(courtScheduleRepository).saveBookedSlots(slotsCaptor.capture(), eq(false), eq(false));
             assertTrue(slotsCaptor.getValue().stream().allMatch(s -> MOVE_2.equals(s.getSource())));
             verify(allocatedListingRepository, org.mockito.Mockito.never()).updateSourceByHearingId(any(), any());
@@ -1280,7 +1280,7 @@ class SlotsUpdateServiceTest {
             verify(courtScheduleRepository).releaseOldAllocatedListings(hearingId);
             @SuppressWarnings(UNCHECKED)
             final org.mockito.ArgumentCaptor<List<AllocatedSlot>> slotsCaptor =
-                    org.mockito.ArgumentCaptor.forClass(List.class);
+                    org.mockito.ArgumentCaptor.captor();
             verify(courtScheduleRepository).saveBookedSlots(slotsCaptor.capture(), eq(false), eq(false));
             assertTrue(slotsCaptor.getValue().stream().allMatch(s -> MOVE_2.equals(s.getSource())));
             verify(allocatedListingRepository, org.mockito.Mockito.never()).updateSourceByHearingId(any(), any());
@@ -1334,7 +1334,7 @@ class SlotsUpdateServiceTest {
             verify(courtScheduleRepository).releaseOldAllocatedListings(hearingId);
             @SuppressWarnings(UNCHECKED)
             final org.mockito.ArgumentCaptor<List<AllocatedSlot>> slotsCaptor =
-                    org.mockito.ArgumentCaptor.forClass(List.class);
+                    org.mockito.ArgumentCaptor.captor();
             verify(courtScheduleRepository).saveBookedSlots(slotsCaptor.capture(), eq(false), eq(false));
             assertTrue(slotsCaptor.getValue().stream().allMatch(s -> MOVE_2.equals(s.getSource())));
             verify(allocatedListingRepository, org.mockito.Mockito.never()).updateSourceByHearingId(any(), any());
@@ -1767,7 +1767,7 @@ class SlotsUpdateServiceTest {
             final MagsSearchAndBookResponse response = service.magsSearchAndBook(request);
 
             final org.mockito.ArgumentCaptor<List<AllocatedSlot>> captor =
-                    org.mockito.ArgumentCaptor.forClass(List.class);
+                    org.mockito.ArgumentCaptor.captor();
             verify(courtScheduleRepository).searchBookHearingSlots(captor.capture());
             final AllocatedSlot booked = captor.getValue().get(0);
             assertEquals(courtCentreId, booked.getCourtCentreId());
@@ -1944,7 +1944,7 @@ class SlotsUpdateServiceTest {
             assertEquals(2, response.sessions().size());
             @SuppressWarnings(UNCHECKED)
             final org.mockito.ArgumentCaptor<List<AllocatedSlot>> slotsCaptor =
-                    org.mockito.ArgumentCaptor.forClass(List.class);
+                    org.mockito.ArgumentCaptor.captor();
             verify(courtScheduleRepository).saveBookedSlots(slotsCaptor.capture(), eq(false), eq(false));
             assertTrue(slotsCaptor.getValue().stream().allMatch(s -> MOVE_TO_PAST_DATE_SOURCE.equals(s.getSource())));
         }
@@ -2116,7 +2116,7 @@ class SlotsUpdateServiceTest {
 
         @SuppressWarnings(UNCHECKED)
         private org.mockito.ArgumentCaptor<List<AllocatedSlot>> slotsCaptor() {
-            return org.mockito.ArgumentCaptor.forClass(List.class);
+            return org.mockito.ArgumentCaptor.captor();
         }
     }
 
@@ -2156,7 +2156,7 @@ class SlotsUpdateServiceTest {
 
             @SuppressWarnings(UNCHECKED)
             final org.mockito.ArgumentCaptor<List<AllocatedSlot>> slotsCaptor =
-                    org.mockito.ArgumentCaptor.forClass(List.class);
+                    org.mockito.ArgumentCaptor.captor();
             // Booking for changeCourtRoomForMultidayHearing must go through the NO-RELEASE variant
             // (releaseExistingHearingAllocations=false): the service already scoped its own release
             // to just the changed dates via releaseAllocatedListingsForDates, and the plain 3-arg
@@ -2273,7 +2273,7 @@ class SlotsUpdateServiceTest {
                     .thenReturn(List.of(fullSession));
             @SuppressWarnings(UNCHECKED)
             final org.mockito.ArgumentCaptor<List<AllocatedSlot>> slotsCaptor =
-                    org.mockito.ArgumentCaptor.forClass(List.class);
+                    org.mockito.ArgumentCaptor.captor();
             when(courtScheduleRepository.saveBookedSlots(slotsCaptor.capture(), eq(false), eq(false), eq(false)))
                     .thenReturn(new Result().msg("").success(true));
 
@@ -2579,7 +2579,7 @@ class SlotsUpdateServiceTest {
 
         @SuppressWarnings(UNCHECKED)
         private List<AllocatedSlot> capturedBookedSlots() {
-            final org.mockito.ArgumentCaptor<List<AllocatedSlot>> captor = org.mockito.ArgumentCaptor.forClass(List.class);
+            final org.mockito.ArgumentCaptor<List<AllocatedSlot>> captor = org.mockito.ArgumentCaptor.captor();
             verify(courtScheduleRepository).saveBookedSlots(captor.capture(), eq(false), eq(false));
             return captor.getValue();
         }
