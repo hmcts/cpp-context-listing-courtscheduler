@@ -353,11 +353,11 @@ class CourtSchedulerApiTest {
     }
 
     // -----------------------------------------------------------------------
-    // postBulkAssignJudiciaries
+    // postAssignJudiciaries
     // -----------------------------------------------------------------------
 
     @Test
-    void bulkAssignJudiciaries_shouldReturn202AndInvokeHelperWhenServiceSucceeds() throws Exception {
+    void assignJudiciaries_shouldReturn202AndInvokeHelperWhenServiceSucceeds() throws Exception {
         final Map<String, Object> body = new HashMap<>();
         final AssignJudiciaryToSessionsRequest dto = AssignJudiciaryToSessionsRequest.builder()
                 .withCourtScheduleIds(List.of(COURT_SCHEDULE_ID_1))
@@ -372,7 +372,7 @@ class CourtSchedulerApiTest {
         when(changeJudiciaryForHearingsHelper.createChangeJudiciaryForHearingsPayloads(changedIds))
                 .thenReturn(payloads);
 
-        final ResponseEntity<Void> response = courtSchedulerApi.postBulkAssignJudiciaries(body);
+        final ResponseEntity<Void> response = courtSchedulerApi.postAssignJudiciaries(body);
 
         assertEquals(HttpStatus.ACCEPTED, response.getStatusCode());
         verify(changeJudiciaryForHearingsHelper).createChangeJudiciaryForHearingsPayloads(changedIds);
@@ -380,7 +380,7 @@ class CourtSchedulerApiTest {
     }
 
     @Test
-    void bulkAssignJudiciaries_shouldThrowValidationExceptionWhenServiceThrowsIllegalArgumentException()
+    void assignJudiciaries_shouldThrowValidationExceptionWhenServiceThrowsIllegalArgumentException()
             throws Exception {
         final Map<String, Object> body = new HashMap<>();
         final AssignJudiciaryToSessionsRequest dto = AssignJudiciaryToSessionsRequest.builder().build();
@@ -390,7 +390,7 @@ class CourtSchedulerApiTest {
         when(judiciaryAssignmentService.assignJudiciaryToSessions(any(AssignJudiciaryToSessionsRequest.class), anyString()))
                 .thenThrow(new IllegalArgumentException("invalid session"));
 
-        assertThrows(ValidationException.class, () -> courtSchedulerApi.postBulkAssignJudiciaries(body));
+        assertThrows(ValidationException.class, () -> courtSchedulerApi.postAssignJudiciaries(body));
 
         verify(changeJudiciaryForHearingsHelper, never()).createChangeJudiciaryForHearingsPayloads(anyList());
     }

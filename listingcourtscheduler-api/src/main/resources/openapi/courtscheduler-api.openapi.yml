@@ -151,10 +151,10 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /sessions/bulk-assign-judiciaries:
+  /sessions/assign-judiciaries:
     post:
       tags: [session]
-      operationId: postBulkAssignJudiciaries
+      operationId: postAssignJudiciaries
       summary: Replace-all assignment of judiciary to multiple court sessions
       requestBody:
         required: true
