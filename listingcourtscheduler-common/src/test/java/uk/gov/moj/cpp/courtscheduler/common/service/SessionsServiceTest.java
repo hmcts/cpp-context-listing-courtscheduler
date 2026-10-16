@@ -4,7 +4,6 @@ import static io.github.benas.randombeans.api.EnhancedRandom.random;
 import static java.time.LocalDate.parse;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
-import static java.util.Collections.emptyMap;
 import static java.util.Collections.singletonList;
 import static java.util.UUID.randomUUID;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -42,7 +41,6 @@ import uk.gov.moj.cpp.courtscheduler.common.converter.StringToJsonObjectConverte
 import uk.gov.moj.cpp.courtscheduler.common.converter.CourtScheduleToDeleteResponseConverter;
 import uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages;
 import uk.gov.moj.cpp.courtscheduler.common.service.mapper.CourtScheduleJudiciaryMapper;
-import uk.gov.moj.cpp.courtscheduler.common.service.mapper.CourtScheduleMapper;
 import uk.gov.moj.cpp.courtscheduler.domain.AllocatedListingEachBooked;
 import uk.gov.moj.cpp.courtscheduler.domain.BusinessType;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
@@ -60,17 +58,14 @@ import uk.gov.moj.cpp.courtscheduler.domain.Result;
 import uk.gov.moj.cpp.courtscheduler.domain.Session;
 import uk.gov.moj.cpp.courtscheduler.domain.SessionsParam;
 import uk.gov.moj.cpp.courtscheduler.domain.UpdateCourtSchedule;
-import uk.gov.moj.cpp.courtscheduler.domain.rota.SlotAndScheduleInfo;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedulerMigrationStatus;
 import uk.gov.moj.cpp.courtscheduler.repository.AllocatedListingRepository;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtMigrationRepository;
-import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleJudiciaryRepository;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 import uk.gov.moj.cpp.platform.test.data.utils.FileUtil;
 
-import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
@@ -100,7 +95,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import org.apache.commons.lang3.tuple.Pair;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -117,9 +111,6 @@ class SessionsServiceTest {
     @Mock
     private CourtScheduleRepository courtScheduleRepository;
     @Mock
-    private CourtScheduleService courtScheduleService;
-    @Mock
-    private CourtScheduleJudiciaryRepository courtScheduleJudiciaryRepository;    @Mock
     private AllocatedListingRepository allocatedListingRepository;
     @Mock
     private CourtMigrationRepository courtMigrationRepository;
@@ -858,28 +849,6 @@ class SessionsServiceTest {
     }
 
     @Test
-    void shouldReturnAllInfoAboutMigratedOrNot() {
-        final String ouCode1 = "B01LY00" ;
-        final String ouCode2 = "B06IS00" ;
-        final CourtSchedulerMigrationStatus migrationStatus1 = new CourtSchedulerMigrationStatus();
-        migrationStatus1.setOuCode(ouCode1);
-        migrationStatus1.setCourtCentreId(randomUUID().toString());
-        migrationStatus1.setMigrated(false);
-
-        final CourtSchedulerMigrationStatus migrationStatus2 = new CourtSchedulerMigrationStatus();
-        migrationStatus2.setOuCode(ouCode2);
-        migrationStatus2.setCourtCentreId(randomUUID().toString());
-        migrationStatus2.setMigrated(true);
-
-        when(courtMigrationRepository.findAll()).thenReturn(List.of(migrationStatus1, migrationStatus2));
-        final Map<String, Boolean> migratedMap = sessionsService.migratedMapByOuCode();
-
-        assertEquals(2, migratedMap.size());
-        assertFalse(migratedMap.get(ouCode1));
-        assertTrue(migratedMap.get(ouCode2));
-    }
-
-    @Test
     void shouldReturnMigratedCourtByCourtCentreId() {
         final String oucode = "B01LY00" ;
         final String courtCentreId = randomUUID().toString();
@@ -931,33 +900,6 @@ class SessionsServiceTest {
     }
 
     @Test
-    void shouldGetExtractedCourtSchedulesForGhostData() throws JsonProcessingException {
-        final String ouCode = "B01LY00" ;
-        final LocalDate startDate = LocalDate.of(2024, 10, 1);
-        final LocalDate endDate = LocalDate.of(2025, 3, 31);
-
-        final List<CourtSchedule> courtScheduleEntities = getCourtScheduleEntities();
-        when(courtScheduleRepository.getExtractedCourtSchedulesForGhostRota(List.of(ouCode), startDate, endDate)).thenReturn(courtScheduleEntities);
-
-        final List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> courtSchedules = sessionsService.getExtractedCourtSchedulesForGhostRota(List.of(ouCode), startDate, endDate);
-
-        verify(courtScheduleRepository, atLeastOnce()).getExtractedCourtSchedulesForGhostRota(List.of(ouCode), startDate, endDate);
-
-        assertThat(courtSchedules.size(), is(courtScheduleEntities.size()));
-        courtScheduleEntities.forEach(courtScheduleEntity ->
-                courtSchedules.stream().filter(courtSchedule -> courtScheduleEntity.getCourtScheduleId().equals(courtSchedule.getCourtScheduleId()))
-                        .findAny()
-                        .ifPresent(courtSchedule -> {
-                            assertThat(courtSchedule.getCourtScheduleId(), is(courtScheduleEntity.getCourtScheduleId()));
-                            assertThat(courtSchedule.getOuCode(), is(courtScheduleEntity.getOuCode()));
-                            assertThat(courtSchedule.getListingProfileId(), is(courtScheduleEntity.getListingProfileId()));
-                            assertThat(courtSchedule.getCourtRoomNumber(), is(courtScheduleEntity.getCourtRoomNumber()));
-                            assertThat(courtSchedule.getCourtHouseId(), is(courtScheduleEntity.getCourtHouseId()));
-                        })
-        );
-    }
-
-    @Test
     void shouldFindByCourtRoomIdAndSessionDateAndBusinessTypeAndCourtSession() {
         final String courtRoomId = randomUUID().toString();
         final LocalDate sessionDate = LocalDate.of(2024, 10, 2);
@@ -976,78 +918,6 @@ class SessionsServiceTest {
         assertNotNull(courtScheduleMatcherFound);
         assertThat(courtScheduleMatcherFound.getCourtScheduleId(), is(expectedCourtScheduleId));
         assertThat(courtScheduleMatcherFound.getOuCode(), is(ouCode));
-    }
-
-    @Test
-    void shouldSaveCourtSchedules() throws JsonProcessingException {
-        final List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> provisionalCourtSchedules = getCourtSchedules();
-        final Map<String, BusinessType> businessTypeMap = getBusinessTypeMap();
-
-        when(courtScheduleRepository.save(any())).thenReturn(CourtScheduleMapper.toEntity(provisionalCourtSchedules.get(0)));
-
-        sessionsService.saveCourtSchedules(provisionalCourtSchedules, businessTypeMap);
-        verify(courtScheduleRepository, times(provisionalCourtSchedules.size())).save(any());
-    }
-
-    @Test
-    void shouldUpdateTheSlotsAndSchedulesIfNotOnlyCourtScheduleJudiciaryToBeProcessed() throws IOException {
-        final List<String> existingSlotIds = getCourtScheduleIds();
-        final Map<String, BusinessType> businessTypeMap = getBusinessTypeMap();
-        final List<String> slotIdsToDelete = asList(randomUUID().toString(), randomUUID().toString());
-
-        final List<String> snapshotSlotIds = asList(randomUUID().toString(), randomUUID().toString());
-        final String listingProfileId1 = generateListingProfileId();
-        final String listingProfileId2 = generateListingProfileId();
-        final List<String> listingProfileIds = asList(listingProfileId1, listingProfileId2);
-        final Map<String, uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> newRecords = generateIncomingSchedules(snapshotSlotIds, listingProfileIds);
-        final Collection<CourtScheduleJudiciary> newSchedules = prepareSchedules();
-        final Map<String, Pair<String, String>> slotsToUpdateMap = Map.of(listingProfileId1, Pair.of("6bd1853d-8a88-35e8-b4c4-342e2649daa2", "B01LY00"));
-        final Collection<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> slotsToUpdate = getCourtSchedules();
-
-        when(courtScheduleService.saveSlot(any(CourtSchedule.class))).thenReturn(courtScheduleEntityMock);
-        when(courtScheduleRepository.update(any(CourtSchedule.class), eq(true))).thenReturn(courtScheduleEntityMock);
-        when(courtScheduleRepository.deleteSlots(anyList())).thenReturn(slotIdsToDelete.size());
-        when(courtScheduleJudiciaryRepository.deleteSchedules(anyList())).thenReturn(slotIdsToDelete.size());
-
-        final Map<String, List<CourtScheduleJudiciary>> relatedJudiciarySchedules = Map.of(listingProfileId1, getCourtScheduleJudiciaries("6bd1853d-8a88-35e8-b4c4-342e2649daa2", listingProfileId1));
-
-        final List<String> ouCodes = List.of("B01LY00");
-        final SlotAndScheduleInfo slotAndScheduleInfo = new SlotAndScheduleInfo(existingSlotIds, slotIdsToDelete, slotsToUpdate, newSchedules, emptyList(), relatedJudiciarySchedules, newRecords, slotsToUpdateMap);
-        sessionsService.updateSlotsAndSchedules(slotAndScheduleInfo, emptyMap(), emptyList(), businessTypeMap, ouCodes, emptyList());
-
-        verify(courtScheduleService, atLeastOnce()).saveSlot(any(CourtSchedule.class));
-        verify(courtScheduleJudiciaryRepository, never()).save(any(uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary.class));
-        verify(courtScheduleRepository, atLeastOnce()).update(any(CourtSchedule.class), eq(true));
-        verify(courtScheduleJudiciaryRepository, never()).updateCourtScheduleJudiciaryPosition(anyString(), any(), anyString(), anyString());
-        verify(courtScheduleJudiciaryRepository, atLeastOnce()).deleteSchedules(anyList());
-        verify(courtScheduleRepository, atLeastOnce()).deleteSlots(anyList());
-    }
-
-    @Test
-    void shouldUpdateTheSchedulesIfOnlyCourtScheduleJudiciaryToBeProcessed() throws IOException {
-        final List<String> existingSlotIds = getCourtScheduleIds();
-        final Map<String, BusinessType> businessTypeMap = getBusinessTypeMap();
-
-        final List<String> snapshotSlotIds = asList(randomUUID().toString(), randomUUID().toString());
-        final List<String> listingProfileIds = asList(generateListingProfileId(), generateListingProfileId());
-        final Map<String, uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> newRecords = generateIncomingSchedules(snapshotSlotIds, listingProfileIds);
-        final Collection<CourtScheduleJudiciary> newSchedules = prepareSchedules();
-        final Map<String, Pair<String, String>> slotsToUpdateMap = new HashMap<>();
-        final Collection<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> slotsToUpdate = getCourtSchedules();
-
-        when(courtScheduleRepository.update(any(CourtSchedule.class), eq(true))).thenReturn(courtScheduleEntityMock);
-        when(courtScheduleService.saveSlot(any(CourtSchedule.class))).thenReturn(courtScheduleEntityMock);
-
-        final List<String> ouCodes = List.of("B01LY00");
-        final SlotAndScheduleInfo slotAndScheduleInfo = new SlotAndScheduleInfo(existingSlotIds, emptyList(), slotsToUpdate, newSchedules, emptyList(), emptyMap(), newRecords, slotsToUpdateMap);
-        sessionsService.updateSlotsAndSchedules(slotAndScheduleInfo, emptyMap(), emptyList(), businessTypeMap, ouCodes, emptyList());
-
-        verify(courtScheduleService, atLeastOnce()).saveSlot(any(CourtSchedule.class));
-        verify(courtScheduleJudiciaryRepository, never()).save(any(uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary.class));
-        verify(courtScheduleRepository, atLeastOnce()).update(any(CourtSchedule.class), eq(true));
-        verify(courtScheduleJudiciaryRepository, never()).updateCourtScheduleJudiciaryPosition(anyString(), any(), anyString(), anyString());
-        verify(courtScheduleJudiciaryRepository, never()).deleteSchedules(anyList());
-        verify(courtScheduleRepository, never()).deleteSlots(anyList());
     }
 
     @Test
@@ -1265,19 +1135,6 @@ class SessionsServiceTest {
     public JsonObject getPayload(String path) {
         StringToJsonObjectConverter stringToJsonObjectConverter = new StringToJsonObjectConverter();
         return stringToJsonObjectConverter.convert(fileToString(path));
-    }
-
-    private Map<String, BusinessType> getBusinessTypeMap() {
-        final Map<String, BusinessType> businessTypeMap = new HashMap<>();
-        JsonObject businessTypeJson = getPayload("/test-data/referencedata.get.businesstypes.json");
-        businessTypeJson.getJsonArray("rotaBusinessTypes").forEach(businessType -> {
-            BusinessType businessTypeObj = BusinessType.BusinessTypeBuilder.aBusinessType()
-                    .withTypeCode(((JsonObject) businessType).getString("typeCode"))
-                    .withTypeDescription(((JsonObject) businessType).getString("typeDescription"))
-                    .build();
-            businessTypeMap.put(businessTypeObj.getTypeCode(), businessTypeObj);
-        });
-        return businessTypeMap;
     }
 
     private List<CourtSchedule> getCourtScheduleEntities() throws JsonProcessingException {

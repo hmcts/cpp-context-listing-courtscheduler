@@ -242,15 +242,9 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
 
     private static final Logger LOGGER = LoggerFactory.getLogger(CourtScheduleRepositoryImpl.class.getName());
 
-    private static final String DELETE_UNALLOCATED_COURT_SCHEDULE_QUERY = "DELETE FROM court_schedule cs " +
-            "WHERE  not exists (select 1 from allocated_listings al where al.court_schedule_id = cs.id) and " +
-            "cs.session_start BETWEEN :startDate AND :endDate AND cs.oucode IN (:ouCodes) AND cs.active =true AND NOT EXISTS( " + EXISTS_PROVISIONAL_DATA_COURT_SCHEDULE.getQuery() + ")";
-
     public static final String DELETE_UNALLOCATED_FORECAST_SLOT_QUERY = "DELETE FROM court_schedule " +
             "WHERE court_listing_profile_id is null AND not exists (select 1 from allocated_listings al where al.court_schedule_id = id) AND oucode IN (:ouCodes) " +
             "AND active =true and not exists( " + EXISTS_PROVISIONAL_DATA_COURT_SCHEDULE.getQuery() + ")";
-
-    public static final String DELETE_SLOTS_BY_IDS_QUERY = "DELETE FROM court_schedule cs WHERE cs.id IN (:courtScheduleIds) AND cs.court_listing_profile_id is not null AND not exists (select 1 from allocated_listings al where al.court_schedule_id = cs.id) AND  not exists(" + EXISTS_PROVISIONAL_DATA_COURT_SCHEDULE.getQuery() + ")";
 
     private static final String DELETE_REDUNDANT_ROTA_DATA = "DELETE FROM court_schedule cs WHERE cs.session_start < (CURRENT_DATE - :numberOfDays)";
 
@@ -1073,30 +1067,10 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
 
     @Transactional
     @SuppressWarnings({"squid:S2077"})
-    public int deleteUnAllocatedCourtScheduleEntriesForRotaPeriod(final LocalDate startDate, final LocalDate endDate, final List<String> ouCodes) {
-        return entityManager
-                .createNativeQuery(DELETE_UNALLOCATED_COURT_SCHEDULE_QUERY)
-                .setParameter("startDate", startDate)
-                .setParameter("endDate", endDate)
-                .setParameter("ouCodes", ouCodes)
-                .executeUpdate();
-    }
-
-    @Transactional
-    @SuppressWarnings({"squid:S2077"})
     public int deleteUnAllocatedProvisionalEntries(final List<String> ouCodes) {
         return entityManager
                 .createNativeQuery(DELETE_UNALLOCATED_FORECAST_SLOT_QUERY)
                 .setParameter("ouCodes", ouCodes)
-                .executeUpdate();
-    }
-
-    @Transactional
-    @SuppressWarnings({"squid:S2077"})
-    public int deleteSlots(final List<String> courtScheduleIds) {
-        return entityManager
-                .createNativeQuery(DELETE_SLOTS_BY_IDS_QUERY)
-                .setParameter("courtScheduleIds", courtScheduleIds)
                 .executeUpdate();
     }
 

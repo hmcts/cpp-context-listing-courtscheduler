@@ -1,7 +1,6 @@
 package uk.gov.moj.cpp.courtscheduler.api;
 
 import java.util.Map;
-import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -36,14 +35,9 @@ public class RotaFileProcessorApi implements RotaslOpenApi {
     public ResponseEntity<Void> postProcessRotaFiles(final Map<String, Object> body) {
         LOG.info("courtscheduler.rotasl.process_rota_files: {}", body);
         final boolean forItTest = Boolean.TRUE.equals(body == null ? null : body.get("forItTest"));
-        // The body's {@code rotaProcess} value picks the processor inside
-        // {@link RotaFileCaptureAndProcessTriggerService#captureRotaFilesAndProcessEach}:
-        // {@code "old"} routes to {@code rotaFileProcessorService}, anything else (or
-        // a random UUID) to {@code newRotaFileProcessor}. Preserve the body value so
-        // the legacy IT classes can exercise both branches.
-        final Object rawProcess = body == null ? null : body.get("rotaProcess");
-        final String rotaProcess = rawProcess == null ? UUID.randomUUID().toString() : rawProcess.toString();
-        rotaFileCaptureAndProcessTriggerService.captureRotaFilesAndProcessEach(forItTest, rotaProcess);
+        // A legacy {@code rotaProcess} value in the body is ignored: every rota file goes
+        // through the one rota processor (the "old" option was removed in SPRDT-971).
+        rotaFileCaptureAndProcessTriggerService.captureRotaFilesAndProcessEach(forItTest);
         return ResponseEntity.status(HttpStatus.ACCEPTED).build();
     }
 

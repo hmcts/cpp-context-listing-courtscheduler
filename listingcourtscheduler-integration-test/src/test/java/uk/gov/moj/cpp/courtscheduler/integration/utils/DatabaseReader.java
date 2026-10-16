@@ -37,6 +37,7 @@ public class DatabaseReader {
     private static final String COURT_SCHEDULE_UPDATED_AFTER_SQL = "SELECT * FROM court_schedule WHERE active is true AND updated_on > ? ORDER BY session_start";
     private static final String COURT_SCHEDULE_JUDICIARY_CREATED_AFTER_SQL = "SELECT * FROM court_schedule_judiciary WHERE active is true AND created_on > ?";
     private static final String COURT_SCHEDULE_BY_ID_SQL = "SELECT * FROM court_schedule WHERE id = ?";
+    private static final String ROTA_FILE_PROCESS_HISTORY_COUNT_BY_PREFIX_SQL = "SELECT count(*) FROM rota_file_process_history WHERE file_name_prefix = ?";
 
     private final ConnectionProvider connectionProvider = new ConnectionProvider();
 
@@ -196,6 +197,19 @@ public class DatabaseReader {
                 rows.add(resultSetToCourtScheduleJudiciary(resultSet));
             }
             return unmodifiableList(rows);
+        } catch (final SQLException exp) {
+            throw new RuntimeException("Exception while querying the DB", exp);
+        }
+    }
+
+    public int rotaFileProcessHistoryCount(final String fileNamePrefix) {
+        try (final Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
+             final PreparedStatement preparedStatement = connection.prepareStatement(ROTA_FILE_PROCESS_HISTORY_COUNT_BY_PREFIX_SQL)) {
+            preparedStatement.setString(1, fileNamePrefix);
+            try (final ResultSet resultSet = preparedStatement.executeQuery()) {
+                resultSet.next();
+                return resultSet.getInt(1);
+            }
         } catch (final SQLException exp) {
             throw new RuntimeException("Exception while querying the DB", exp);
         }

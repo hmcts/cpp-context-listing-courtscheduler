@@ -5,9 +5,6 @@
     "forItTest": {
       "type": "boolean",
       "default": false
-    },
-    "rotaProcess": {
-      "type": "string"
     }
   }
 }

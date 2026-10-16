@@ -7,7 +7,6 @@ import uk.gov.moj.cpp.courtscheduler.common.AzureBlobClientService;
 import uk.gov.moj.cpp.courtscheduler.common.exception.AzureBlobClientException;
 import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataMapperService;
 import uk.gov.moj.cpp.courtscheduler.common.service.data.BlobContent;
-import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.RotaFileProcessorService;
 
 import java.util.Map;
 import java.util.Optional;
@@ -29,7 +28,6 @@ import org.slf4j.LoggerFactory;
 public class RotaFileCaptureAndProcessTriggerService {
 
     private static final Logger logger = LoggerFactory.getLogger(RotaFileCaptureAndProcessTriggerService.class);
-    private static final String ROTA_PROCESS_OLD = "old";
     private static final String IT_TEST_BLOB_PREFIX = "IT_Test_";
     private static final String ORIGINAL_BLOB_PREFIX = "lja_";
 
@@ -37,18 +35,15 @@ public class RotaFileCaptureAndProcessTriggerService {
     private ReferenceDataMapperService referenceDataMapperService;
 
     @Inject
-    private RotaFileProcessorService rotaFileProcessorService;
-
-    @Inject
-    private RotaFileProcessor newRotaFileProcessor;
+    private RotaFileProcessor rotaFileProcessor;
 
     @Inject
     private AzureBlobClientService azureBlobClientService;
 
     @Async
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
-    public Future<String> captureRotaFilesAndProcessEach(boolean isForItTest, final String rotaProcess) {
-        logger.info("RotaFileCaptureAndProcessTriggerService.captureRotaFilesAndProcessEach called with rotaProcess: {}", rotaProcess);
+    public Future<String> captureRotaFilesAndProcessEach(boolean isForItTest) {
+        logger.info("RotaFileCaptureAndProcessTriggerService.captureRotaFilesAndProcessEach called");
         final String blobPrefix = isForItTest ? IT_TEST_BLOB_PREFIX : ORIGINAL_BLOB_PREFIX;
 
         boolean referenceDataLoaded = false;
@@ -76,13 +71,7 @@ public class RotaFileCaptureAndProcessTriggerService {
                     final long downloadEnd = System.nanoTime();
                     logger.info("PRF: Downloaded blob {} in {} ms", blobName, (downloadEnd - downloadStart) / 1_000_000);
 
-                    if (ROTA_PROCESS_OLD.equals(rotaProcess)) {
-                        logger.info("Using old rota file processor service for blob: {}", blobName);
-                        rotaFileProcessorService.downloadAndProcessForEachFile(blobContent, blobName, leaseId);
-                    } else {
-                        logger.info("Using new rota file processor service for blob: {}", blobName);
-                        newRotaFileProcessor.downloadAndProcessForEachFile(blobContent, blobName, leaseId);
-                    }
+                    rotaFileProcessor.downloadAndProcessForEachFile(blobContent, blobName, leaseId);
                 } catch (AzureBlobClientException ignoredException) {
                     logger.info("File {} already leased and skipping to the next file", blobName);
                 }
@@ -100,8 +89,6 @@ public class RotaFileCaptureAndProcessTriggerService {
         referenceDataMapperService.loadJudiciaries();
         logger.info("Judiciaries loaded");
         referenceDataMapperService.loadCourtRoomSessionAllocations();
-        logger.info("Court room session allocations loaded");
-        referenceDataMapperService.loadBusinessTypeMap();
-        logger.info("Business type map loaded - reference data loading completed");
+        logger.info("Court room session allocations loaded - reference data loading completed");
     }
 }

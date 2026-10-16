@@ -42,7 +42,7 @@ The service is organized as a multi-module Maven project:
    - **listingcourtscheduler-viewstore-persistence**: JPA entities and repositories
    - **listingcourtscheduler-viewstore-liquibase**: Database migrations
    - **listingcourtscheduler-jdbc**: JDBC utilities
-5. **listingcourtscheduler-rota-file-processor**: Rota file processing engine
+5. **listingcourtscheduler-rota-file-processor**: Rota file parsing helpers (`RotaFileParser`, `RotaPeriodDateInfoProvider`, `JudiciaryBuilder`) used by `RotaFileProcessor`
 6. **listingcourtscheduler-cache**: Caching layer (Redis)
 7. **listingcourtscheduler-healthchecks**: Health check endpoints
 8. **listingcourtscheduler-integration-test**: Integration tests
@@ -224,13 +224,6 @@ Supports complex filtering:
   - Session date
   - Session type (AM/PM/AD)
   - Panel type (ADULT/YOUTH)
-
-### Provisional Data Population
-
-- Rota files can populate provisional data for future periods
-- Configurable via properties:
-  - `rota.months.of.provisional.data.to.populate` (default: 6 months)
-  - `rota.cycle.to.populate.length` (default: 28 days)
 
 ---
 
@@ -490,11 +483,13 @@ Supports complex filtering:
 
 **Key Fields:**
 - `forItTest` (optional): Boolean flag for integration test mode
+- `rotaProcess` (removed): previously selected the legacy processor with `"old"`. Removed from the request
+  schema in SPRDT-971; ignored if sent, since the schema allows extra properties
 
 **Response:** 202 Accepted
 
 **Business Logic:**
-- Asynchronously processes rota files from Azure Blob Storage
+- Asynchronously processes rota files from Azure Blob Storage, assigning judiciary to existing court schedules
 - Files are processed, archived, and deleted from input container
 - Supports both full rota files and snapshot files
 
@@ -530,14 +525,14 @@ Supports complex filtering:
 ## Rota File Processing
 
 ### Overview
-The rota file processing system ingests XML files from Azure Blob Storage containing court scheduling information from the Legal Aid Agency (LJA) system. These files are parsed, enriched with reference data, and converted into court schedules.
+The rota file processing system ingests XML files from Azure Blob Storage containing court scheduling information from the Local Justice Area (LJA) rota system. These files are parsed, matched against reference data, and used to assign judiciary to existing court schedules. Rota processing does not create court schedules.
 
 ### File Types
 
 1. **Full Rota Files:**
    - Prefix: `lja_`
    - Contains complete rota information for a period
-   - Replaces existing schedules for the period
+   - Replaces the unallocated judiciary assignments for the period
 
 2. **Snapshot Rota Files:**
    - Contains `_snapshot_` in filename
@@ -551,137 +546,65 @@ The rota file processing system ingests XML files from Azure Blob Storage contai
 
 ### Processing Flow
 
+All rota files go through `RotaFileProcessor`. Rota processing **assigns judiciary to court schedules
+that already exist**; it never creates, updates or deletes court schedules (those come from the session
+APIs). Until SPRDT-971 a second, legacy processor (`RotaFileProcessorService`, selected with
+`rotaProcess: "old"`) also built court schedules from the rota; it was removed and the `rotaProcess`
+request field is now ignored.
+
 #### 1. File Capture
-- `RotaFileCaptureAndProcessTriggerService` monitors Azure Blob Storage
-- Acquires lease on blob files to prevent concurrent processing
-- Downloads files for processing
+- `RotaFileCaptureAndProcessTriggerService` looks for blobs with the `lja_` prefix (`IT_Test_` when
+  `forItTest` is true) that have no active lease
+- Acquires a lease on each file to prevent concurrent processing, then downloads it
+- Loads court rooms, judiciaries and court room session allocations from reference data once per run
+- Hands each file to `RotaFileProcessor`
 
-#### 2. File Parsing
-- `RotaFileParser` parses XML content
-- Extracts:
-  - Location data
-  - Court room information
-  - Business type assignments
-  - Session allocations
-  - Judiciary assignments
-  - Date ranges
+#### 2. File Checks
+- Dummy support files (`dummysupport` in the name) are skipped
+- A snapshot file is skipped if a newer snapshot for the same prefix has already been processed
+- A `rota_file_process_history` record (with the execution ID used for logging) is created per file
 
-#### 3. Data Enrichment
+#### 3. File Parsing
+- `RotaFileParser` parses the XML into location, court listing and judiciary records
 
-**Location to OU Code Mapping:**
-- Maps rota location IDs to operational unit codes (OU codes)
-- Uses reference data service to resolve court room mappings
+#### 4. Rota Period and Location Resolution (`RotaLocationPeriodHelper`)
+- Maps rota location IDs to OU codes via the reference-data court room mappings
+- Determines the rota period start and end dates (`RotaPeriodDateInfoProvider`)
+- Deletes the **unallocated** court schedule judiciary entries for those OU codes within the rota
+  period (`deleteUnAllocatedCourtScheduleJudiciariesEntriesForRotaPeriod`); judiciary on court
+  schedules with allocated hearings is kept
 
-**Rota Period Detection:**
-- Determines start and end dates of rota period
-- Calculates number of months covered
+#### 5. Matching Rota Entries to Court Schedules
+- `RotaJudiciaryHelper` maps rota justice IDs to judiciary IDs (`JudiciaryBuilder`)
+- `RotaCourtScheduleHelper` finds the existing court schedules for each court listing by court room,
+  session date, session (AM/PM/AD) and panel
+- Missing venues, court sessions and judiciaries are written to `rota_process_log`
 
-**Business Type Resolution:**
-- Loads business type map from reference data
-- Determines slot-based vs duration-based configuration
+#### 6. Judiciary Assignment
+- The matched (judiciary, court schedule, position) entries are sent to
+  `JudiciaryAssignmentService.assignJudiciaries`, which writes `court_schedule_judiciary` rows
+- Requested / successful / failed assignment counts are logged per file
 
-**Migration Status Check:**
-- Checks if OU codes are migrated or non-migrated
-- Processes migrated and non-migrated OU codes separately
-
-#### 4. Slot Generation
-
-**For Non-Migrated OU Codes:**
-- Extracts existing court schedules for the rota period
-- Enriches rota data to create new slots
-- Compares with existing schedules to determine:
-  - New slots to create
-  - Existing slots to update
-  - Slots to delete (no longer in rota)
-
-**For Migrated OU Codes:**
-- Similar process but tracks separately
-- Maintains separate judiciary schedules
-
-#### 5. Judiciary Schedule Enrichment
-- `JudiciaryScheduleEnricher` associates judges with court schedules
-- Extracts judiciary assignments from rota file
-- Creates `CourtScheduleJudiciary` records with positions
-
-#### 6. Persistence
-
-**Snapshot File Processing:**
-- Processes in weekly chunks
-- Maintains processing history
-- Tracks execution ID for audit
-
-**Full Rota File Processing:**
-- Processes in weekly chunks
-- Updates or creates schedules
-- Deletes obsolete schedules
-
-**Business Rules Applied:**
-- Panel type conflicts (ADULT vs YOUTH)
-- Session type conflicts (AD vs AM/PM)
-- Only persists slots that pass conflict checks
-
-#### 7. Provisional Data Population
-- For future rota periods, creates provisional schedules
-- Configurable via `rota.months.of.provisional.data.to.populate`
-- Uses `rota.cycle.to.populate.length` for cycle length
-
-#### 8. File Archival
-- Uploads processed files to archive container
-- Releases blob lease
-- Deletes file from input container
-
-### Processing Logic
-
-#### Slot Persistence Decision
-A slot is persisted only if:
-1. No conflicting ADULT/YOUTH panel exists
-2. No conflicting AD/AM-PM session exists
-3. Valid business type mapping exists
-4. Valid court room mapping exists
-
-#### Availability Calculation
-- For slot-based: `availableSlots = maxSlots - count(allocated_listings)`
-- For duration-based: `availableDuration = maxDuration - sum(allocated_listings.duration)`
-- For all-day split: Separate morning/afternoon calculations
-
-#### Update Strategy
-- Compares new slots with existing slots
-- Identifies:
-  - New slots (to insert)
-  - Updated slots (to update)
-  - Deleted slots (to mark inactive or delete)
-- Updates judiciary schedules with new positions
+#### 7. File Archival
+- Uploads the processed file to the archive container
+- Releases the blob lease and deletes the file from the input container
+- Updates the file process history with the end date
 
 ### Error Handling
 
 - **File Processing Errors:**
-  - Releases blob lease on error
-  - Logs error details
-  - Continues with next file
+  - Any runtime error while processing a file is logged, the blob lease is released, and the
+    trigger moves on to the next file
+  - A file that is already leased is skipped
 
-- **Validation Errors:**
-  - Skips invalid records
-  - Logs warnings
-  - Continues processing
+- **Missing Reference Data:**
+  - Unmatched venues, court sessions and judiciaries are skipped and recorded in `rota_process_log`
 
-- **Database Errors:**
-  - Transaction rollback on critical errors
-  - Retry logic for transient errors
+### Performance Notes
 
-### Performance Optimizations
-
-- **Batch Processing:**
-  - Processes files in weekly chunks
-  - Reduces memory footprint
-  - Enables incremental processing
-
-- **Caching:**
-  - Caches reference data (business types, court rooms)
-  - Reduces external service calls
-
-- **Parallel Processing:**
-  - Separate processing for migrated/non-migrated OU codes
-  - Asynchronous file processing
+- **Asynchronous trigger:** `POST /rotasl/process-rota-files` returns 202 and processing runs on an
+  `@Async` worker
+- **Reference data loaded once per run** rather than per file
 
 ---
 
@@ -963,19 +886,14 @@ totalbookedforafternoon = SUM(
 ### Migration Support
 
 - **Migration Status Table**: Tracks OU code migration status
-- **Separate Processing**: Migrated and non-migrated OU codes processed separately
 - **Migration Endpoint**: API to update migration status
-- **Impact**: Affects how rota files are processed and which schedules are updated
+- **Rota processing**: does not depend on migration status (it only assigns judiciary)
 
 ---
 
 ## Configuration
 
 ### Application Properties
-
-#### Rota File Processing
-- `rota.months.of.provisional.data.to.populate`: Number of months to populate provisional data (default: 6)
-- `rota.cycle.to.populate.length`: Length of rota cycle in days (default: 28)
 
 #### Azure Blob Storage
 - Azure storage account connection string
@@ -1064,7 +982,7 @@ totalbookedforafternoon = SUM(
 
 ### Performance Considerations
 
-1. **Batch Processing**: Rota files processed in weekly chunks
+1. **Rota Reference Data**: Loaded once per rota run rather than per file
 2. **Caching**: Reference data cached to reduce external calls
 3. **Pagination**: All list endpoints support pagination
 4. **Indexing**: Database indexes on frequently queried columns

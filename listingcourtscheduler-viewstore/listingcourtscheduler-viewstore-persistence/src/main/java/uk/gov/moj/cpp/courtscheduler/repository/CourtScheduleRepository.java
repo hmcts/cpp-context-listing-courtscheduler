@@ -45,11 +45,6 @@ public interface CourtScheduleRepository
                                                    @Param("startDate") LocalDate startDate,
                                                    @Param("endDate") LocalDate endDate);
 
-    @Query("SELECT cs FROM CourtSchedule cs WHERE cs.ouCode IN :ouCodes AND cs.sessionDate BETWEEN :startDate AND :endDate")
-    List<CourtSchedule> getExtractedCourtSchedulesForGhostRota(@Param("ouCodes") List<String> ouCodes,
-                                                               @Param("startDate") LocalDate startDate,
-                                                               @Param("endDate") LocalDate endDate);
-
     @Query("SELECT cs FROM CourtSchedule cs WHERE cs.courtHouseId = :courtCentreId AND cs.courtRoomId = :courtRoomId AND cs.active = true AND cs.businessType = :businessType AND cs.sessionDate BETWEEN :startDate AND :endDate AND cs.jurisdiction = :jurisdiction")
     List<CourtSchedule> getSimilarSessions(@Param("courtCentreId") String courtCentreId,
                                            @Param("courtRoomId") String courtRoomId,

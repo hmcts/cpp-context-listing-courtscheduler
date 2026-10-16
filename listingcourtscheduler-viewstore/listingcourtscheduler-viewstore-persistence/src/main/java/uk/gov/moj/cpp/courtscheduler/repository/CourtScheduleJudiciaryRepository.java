@@ -46,9 +46,6 @@ public interface CourtScheduleJudiciaryRepository
     @Query("SELECT csj FROM CourtScheduleJudiciary csj WHERE csj.id.judiciaryId = ?1 AND csj.active = true")
     List<CourtScheduleJudiciary> findByJudiciaryId(String judiciaryId);
 
-    @Query("SELECT csj FROM CourtScheduleJudiciary csj WHERE csj.id.courtScheduleId IN (:courtScheduleIds)")
-    List<CourtScheduleJudiciary> findInCourtScheduleIds(@Param("courtScheduleIds") List<String> courtScheduleIds);
-
     @Query("SELECT csj FROM CourtScheduleJudiciary csj WHERE csj.id.judiciaryId IN (:judiciaryIds) AND csj.active = true")
     List<CourtScheduleJudiciary> findByJudiciaryIds(@Param("judiciaryIds") List<String> judiciaryIds);
 
@@ -62,29 +59,12 @@ public interface CourtScheduleJudiciaryRepository
 
     @Modifying
     @Transactional
-    @Query("UPDATE CourtScheduleJudiciary csj "
-            + "SET csj.position = :position, csj.active = true, csj.updatedOn = :updatedOn "
-            + "WHERE csj.id.courtScheduleId = :courtScheduleId AND csj.id.judiciaryId = :judiciaryId")
-    void updateCourtScheduleJudiciaryPosition(@Param("position") String position,
-                                              @Param("updatedOn") Date updatedOn,
-                                              @Param("courtScheduleId") String courtScheduleId,
-                                              @Param("judiciaryId") String judiciaryId);
-
-    @Modifying
-    @Transactional
     @Query(value = "DELETE FROM court_schedule_judiciary csj WHERE csj.court_schedule_id IN "
             + " (SELECT cs.id FROM court_schedule cs WHERE cs.session_start BETWEEN :startDate AND :endDate AND cs.oucode IN (:ouCodes) AND active = true)",
             nativeQuery = true)
     int deleteUnAllocatedCourtScheduleJudiciariesEntriesForRotaPeriod(@Param("startDate") LocalDate startDate,
                                                                      @Param("endDate") LocalDate endDate,
                                                                      @Param("ouCodes") List<String> ouCodes);
-
-    @Modifying
-    @Transactional
-    @Query(value = "DELETE FROM court_schedule_judiciary csj WHERE csj.court_schedule_id IN (:courtScheduleIds) "
-            + "AND not exists(select 1 from provisional_booking pb WHERE pb.active = true AND pb.court_schedule_id = csj.court_schedule_id)",
-            nativeQuery = true)
-    int deleteSchedules(@Param("courtScheduleIds") List<String> courtScheduleIds);
 
     @Modifying
     @Transactional

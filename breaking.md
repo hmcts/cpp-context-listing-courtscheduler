@@ -16,6 +16,17 @@ negotiation (`Accept`/`produces`), and the rota pipeline's sync/async semantics.
 
 ---
 
+## Intentional behaviour changes
+
+- **`rotaProcess` on `POST /rotasl/process-rota-files` is ignored (SPRDT-971).** The legacy rota
+  processor it selected with `"old"` (`RotaFileProcessorService` and its enrichers) was removed. Every
+  request now uses `RotaFileProcessor`, which assigns judiciary to existing court schedules and does not
+  create court schedules. The field was dropped from the request schema, but the schema does not forbid
+  extra properties, so callers that still send it get the same 202. The production scheduler job sends
+  no `rotaProcess`, so it already used the new processor.
+
+---
+
 ## Resolved (kept faithful to the legacy contract — no client change)
 
 ### Error-response body shape — `{"error":"<msg>"}` (faithful to WildFly)  ✅ confirmed
@@ -71,6 +82,6 @@ ignored; structure/required/type/enum/pattern/additionalProperties enforced).
 - **Rota processing is asynchronous** — and it was async in WildFly too. Legacy
   `RotaFileCaptureAndProcessTriggerService.captureRotaFilesAndProcessEach` was `@Asynchronous`
   (`Future<String>`) and `RotaFilePartialProcessor.process*` were `@Asynchronous`; the Spring port maps
-  these 1:1 to `@Async`. `POST /rotasl/process-rota-files` returns 202 immediately in both. (The
+  these 1:1 to `@Async` (`RotaFilePartialProcessor` was later removed with the legacy processor, SPRDT-971). `POST /rotasl/process-rota-files` returns 202 immediately in both. (The
   `b1edcb510` "process synchronously" commit touched an older, since-restructured file and was
   superseded — the final `origin/main` is `@Asynchronous`.) No behavioural change.

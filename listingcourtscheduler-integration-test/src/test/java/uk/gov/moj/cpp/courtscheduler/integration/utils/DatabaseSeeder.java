@@ -16,6 +16,12 @@ import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedulerMigrationStatus;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.ProvisionalBooking;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.Date;
 import java.sql.PreparedStatement;
@@ -25,6 +31,8 @@ import java.sql.Types;
 import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
+
+import org.postgresql.PGConnection;
 
 public class DatabaseSeeder {
 
@@ -208,6 +216,27 @@ public class DatabaseSeeder {
             preparedStatement.setString(27, normalizeJurisdiction(courtSchedule.getJurisdiction()));
 
             preparedStatement.executeUpdate();
+        }
+    }
+
+    /**
+     * Bulk-loads court_schedule rows from a CSV test resource (header row = column names), via
+     * PostgreSQL COPY. Used by the rota ITs to seed the court schedules the rota processor assigns
+     * judiciary to; created_on/updated_on take their column defaults.
+     */
+    public int seedCourtSchedulesFromCsv(final String resourcePath) throws SQLException {
+        try (final InputStream csv = DatabaseSeeder.class.getClassLoader().getResourceAsStream(resourcePath)) {
+            if (isNull(csv)) {
+                throw new IllegalArgumentException("court_schedule seed resource not found: " + resourcePath);
+            }
+            final BufferedReader reader = new BufferedReader(new InputStreamReader(csv, StandardCharsets.UTF_8));
+            final String columns = reader.readLine();
+            try (final Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE)) {
+                return (int) connection.unwrap(PGConnection.class).getCopyAPI()
+                        .copyIn("COPY court_schedule (" + columns + ") FROM STDIN WITH CSV", reader);
+            }
+        } catch (final IOException e) {
+            throw new UncheckedIOException(e);
         }
     }
 

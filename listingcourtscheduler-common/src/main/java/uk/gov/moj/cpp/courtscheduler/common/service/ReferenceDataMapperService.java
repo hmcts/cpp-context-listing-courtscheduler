@@ -10,7 +10,6 @@ import static org.apache.commons.lang3.StringUtils.equalsIgnoreCase;
 import static uk.gov.moj.cpp.courtscheduler.common.utils.VenueNameComparator.matches;
 
 // (removed) replaced by Spring CommonPlatformQueryClient
-import uk.gov.moj.cpp.courtscheduler.domain.BusinessType;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtRoomSessionAllocation;
 import uk.gov.moj.cpp.courtscheduler.domain.Judiciary;
@@ -21,7 +20,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -44,8 +42,6 @@ public class ReferenceDataMapperService {
     private List<CourtRoomSessionAllocation> courtRoomSessionAllocations = synchronizedList(new ArrayList<CourtRoomSessionAllocation>());
 
     private List<CourtRoom> courtRooms = synchronizedList(new ArrayList<>());
-
-    private Map<String, BusinessType> businessTypeMap = new ConcurrentHashMap<>();
 
     private static final String COURT_DETAIL_NOT_FOUND = "COURT_DETAIL_NOT_FOUND";
     private static final String COURT_ROOM_FETCHED_BY_VENUE_NAME = "CourtRoom fetched by VenueName: %s%n,can't find by VenueId:%s%n";
@@ -90,31 +86,10 @@ public class ReferenceDataMapperService {
                 .collect(Collectors.toMap(courtRoom -> UUID.fromString(courtRoom.getCourtroomId()), Function.identity()));
     }
 
-    public Map<String, BusinessType> getBusinessTypeMap() {
-        if (businessTypeMap.isEmpty()) {
-            loadBusinessTypeMap();
-        }
-        return businessTypeMap;
-    }
-
-    public void loadBusinessTypeMap() {
-        businessTypeMap = referenceDataCache.getRotaBusinessTypes()
-                .stream()
-                .collect(Collectors.toMap(
-                        BusinessType::getTypeCode,
-                        Function.identity(),
-                        (existing, replacement) -> {
-                            logger.warn("Duplicate business type code found: {}. Keeping the first occurrence.", existing.getTypeCode());
-                            return existing;
-                        }
-                ));
-    }
-
     public void clearReferenceDataInMemory() {
         if (nonNull(courtRooms)) courtRooms = null;
         if (nonNull(courtRoomSessionAllocations)) courtRoomSessionAllocations = null;
         if (nonNull(judiciaries)) judiciaries = null;
-        if (nonNull(businessTypeMap)) businessTypeMap.clear();
     }
 
     public void loadJudiciaries() {

@@ -1,8 +1,8 @@
 package uk.gov.moj.cpp.courtscheduler.api;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 import uk.gov.moj.cpp.courtscheduler.api.service.rota.RotaFileCaptureAndProcessTriggerService;
 import uk.gov.moj.cpp.courtscheduler.api.service.rota.RotaRedundantDataCleanerService;
@@ -12,6 +12,9 @@ import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -37,38 +40,40 @@ class RotaFileProcessorApiTest {
     @InjectMocks
     private RotaFileProcessorApi rotaFileProcessorApi;
 
-    @Test
-    void shouldProcessRotaFiles() {
+    @ParameterizedTest(name = "rotaProcess = {0}")
+    @NullSource
+    @ValueSource(strings = {"old", "new", "anything"})
+    void shouldProcessRotaFilesTheSameWayWhateverTheLegacyRotaProcessValue(final String rotaProcess) {
         final Map<String, Object> body = new HashMap<>();
-        body.put("rotaProcess", "new");
+        if (rotaProcess != null) {
+            body.put("rotaProcess", rotaProcess);
+        }
         body.put("forItTest", false);
 
         final ResponseEntity<Void> response = rotaFileProcessorApi.postProcessRotaFiles(body);
 
         assertEquals(HttpStatus.ACCEPTED, response.getStatusCode());
-        verify(rotaFileCaptureAndProcessTriggerService).captureRotaFilesAndProcessEach(eq(false), eq("new"));
+        verify(rotaFileCaptureAndProcessTriggerService).captureRotaFilesAndProcessEach(false);
+        verifyNoMoreInteractions(rotaFileCaptureAndProcessTriggerService);
     }
 
     @Test
-    void shouldProcessRotaFilesWithMissingRotaProcessUsingRandomUuid() {
-        // When body has no rotaProcess key, the controller passes a random UUID through —
-        // the trigger service then routes to the "new" rota processor branch.
+    void shouldProcessRotaFilesWithEmptyBody() {
         final ResponseEntity<Void> response = rotaFileProcessorApi.postProcessRotaFiles(new HashMap<>());
 
         assertEquals(HttpStatus.ACCEPTED, response.getStatusCode());
-        verify(rotaFileCaptureAndProcessTriggerService).captureRotaFilesAndProcessEach(eq(false), org.mockito.ArgumentMatchers.anyString());
+        verify(rotaFileCaptureAndProcessTriggerService).captureRotaFilesAndProcessEach(false);
     }
 
     @Test
     void shouldProcessRotaFilesPassingForItTestFlagThrough() {
         final Map<String, Object> body = new HashMap<>();
-        body.put("rotaProcess", "old");
         body.put("forItTest", true);
 
         final ResponseEntity<Void> response = rotaFileProcessorApi.postProcessRotaFiles(body);
 
         assertEquals(HttpStatus.ACCEPTED, response.getStatusCode());
-        verify(rotaFileCaptureAndProcessTriggerService).captureRotaFilesAndProcessEach(eq(true), eq("old"));
+        verify(rotaFileCaptureAndProcessTriggerService).captureRotaFilesAndProcessEach(true);
     }
 
     @Test
