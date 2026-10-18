@@ -53,6 +53,9 @@ class ChangeCourtRoomForMultidayHearingIT extends AbstractIT {
 
     private static final String ACCEPT = "application/vnd.courtscheduler.change-court-room-for-multiday-hearing+json";
     private static final int DURATION_MINUTES = 360;
+    private static final String MAGISTRATES = "MAGISTRATES";
+    private static final int SLOT_DURATION = 1;
+    private static final int MAGS_SESSION_MINUTES = 180;
 
     @Test
     void shouldChangeCourtRoomForSelectedDaysLeavingUntouchedDayAndRestoringAvailability() throws Exception {
@@ -204,7 +207,127 @@ class ChangeCourtRoomForMultidayHearingIT extends AbstractIT {
                 sourceOf(hearingId, d2b), is("MULTIDAY_COURTROOM_CHANGE"));
     }
 
+    @Test
+    void shouldMoveAMagsSlotBasedDayAndKeepTheSlotLedgerStraight() throws Exception {
+        final String centreId = UUID.randomUUID().toString();
+        final String room1 = UUID.randomUUID().toString();
+        final String room2 = UUID.randomUUID().toString();
+        final String hearingId = UUID.randomUUID().toString();
+        final LocalDate day1 = LocalDate.now().plusDays(90);
+        final LocalDate day2 = day1.plusDays(1);
+
+        final String d1 = seedSlotSession(day1, room1, centreId, OU_CRN10, 10, 9);
+        final String d2 = seedSlotSession(day2, room1, centreId, OU_CRN10, 10, 9);
+        final String d2b = seedSlotSession(day2, room2, centreId, OU_CRN10, 1, 1);
+
+        book(hearingId, d1, day1, SLOT_DURATION);
+        book(hearingId, d2, day2, SLOT_DURATION);
+
+        final Response response = callChangeCourtRoom(hearingId, dayEntry(day2, d2b, MAGS_SESSION_MINUTES));
+
+        assertThat(response.getStatus(), is(OK.getStatusCode()));
+        assertThat(extractAllocatedScheduleIds(body(response)), hasItem(d2b));
+        assertThat("day1 untouched, day2 moved to the room2 slot session",
+                bookedScheduleIds(hearingId), containsInAnyOrder(d1, d2b));
+        assertThat("a slot session with a slot left is a plain room change, not an overbooking",
+                sourceOf(hearingId, d2b), is("CHANGE_COURT_ROOM_MULTIDAY"));
+        assertThat("the new allocation is recorded as one slot, like every other slot booking",
+                durationOf(hearingId, d2b), is(SLOT_DURATION));
+        assertThat("room2 day2 lost its only slot",
+                databaseReader.courtScheduleById(d2b).getAvailableSlots(), is(0));
+        assertThat("room1 day2 got its slot back",
+                databaseReader.courtScheduleById(d2).getAvailableSlots(), is(10));
+    }
+
+    @Test
+    void shouldRecordAnOverbookingWhenAMagsSlotBasedTargetHasNoSlotLeft() throws Exception {
+        final String centreId = UUID.randomUUID().toString();
+        final String room1 = UUID.randomUUID().toString();
+        final String room2 = UUID.randomUUID().toString();
+        final String hearingId = UUID.randomUUID().toString();
+        final LocalDate day1 = LocalDate.now().plusDays(120);
+        final LocalDate day2 = day1.plusDays(1);
+
+        final String d1 = seedSlotSession(day1, room1, centreId, OU_CRN12, 10, 9);
+        final String d2 = seedSlotSession(day2, room1, centreId, OU_CRN12, 10, 9);
+        final String d2b = seedSlotSession(day2, room2, centreId, OU_CRN12, 1, 0);
+
+        book(hearingId, d1, day1, SLOT_DURATION);
+        book(hearingId, d2, day2, SLOT_DURATION);
+        book(UUID.randomUUID().toString(), d2b, day2, SLOT_DURATION);
+
+        final Response response = callChangeCourtRoom(hearingId, dayEntry(day2, d2b, MAGS_SESSION_MINUTES));
+
+        assertThat(response.getStatus(), is(OK.getStatusCode()));
+        assertThat(bookedScheduleIds(hearingId), containsInAnyOrder(d1, d2b));
+        assertThat("a full slot session is booked under the court-calendar exemption and says so",
+                sourceOf(hearingId, d2b), is("MULTIDAY_COURTROOM_CHANGE"));
+        assertThat(durationOf(hearingId, d2b), is(SLOT_DURATION));
+        assertThat("the exempt booking still goes through the slot ledger",
+                databaseReader.courtScheduleById(d2b).getAvailableSlots(), is(-1));
+    }
+
     // --- helpers ---
+    private Integer durationOf(final String hearingId, final String courtScheduleId) {
+        return databaseReader.allocatedListings().stream()
+                .filter(al -> hearingId.equals(al.getHearingId()) && courtScheduleId.equals(al.getCourtScheduleId()))
+                .map(AllocatedListing::getDuration)
+                .findFirst().orElse(null);
+    }
+
+    /**
+     * A MAGISTRATES slot-based session: capacity is a slot count, the duration ledger stays at zero.
+     * The service reads availability as {@code maxSlots - count(allocated_listings)}, so a session is
+     * only "full" when it carries as many bookings as it has slots; {@code availableSlots} seeds the
+     * stored counter the booking and release paths maintain.
+     */
+    private String seedSlotSession(final LocalDate sessionDate,
+                                   final String courtRoomId,
+                                   final String courtCentreId,
+                                   final String ouCode,
+                                   final int maxSlots,
+                                   final int availableSlots) throws java.sql.SQLException {
+        final String id = UUID.randomUUID().toString();
+        final Instant sessionStart = sessionDate.atTime(10, 0).toInstant(ZoneOffset.UTC);
+        final Instant sessionEnd = sessionDate.atTime(13, 0).toInstant(ZoneOffset.UTC);
+
+        final CourtSchedule cs = new CourtSchedule();
+        cs.setCourtScheduleId(id);
+        cs.setListingProfileId(UUID.randomUUID().toString());
+        cs.setOuCode(ouCode);
+        cs.setCourtRoomId(courtRoomId);
+        cs.setCourtRoomNumber(1);
+        cs.setCourtHouseId(courtCentreId);
+        cs.setCourtHouseName("Test Court");
+        cs.setCourtRoomName("Room 1");
+        cs.setOperationalUnit(ouCode);
+        cs.setBusinessType("DVLA");
+        cs.setPanel("Adult");
+        cs.setCourtSession("AM");
+        cs.setActive(true);
+        cs.setSlotBased(true);
+        cs.setSessionDate(sessionDate);
+        cs.setMaxSlots(maxSlots);
+        cs.setMaxDuration(0);
+        cs.setAvailableSlots(availableSlots);
+        cs.setAvailableDuration(0);
+        cs.setSupportAdSplit(false);
+        cs.setMaxAdMorningDuration(0);
+        cs.setMaxAdAfternoonDuration(0);
+        cs.setSessionStartTime(sessionStart);
+        cs.setSessionEndTime(sessionEnd);
+        cs.setNationalBreakTime(sessionStart);
+        cs.setIsOverbookingAllowed(false);
+        cs.setIsDraft(false);
+        cs.setJurisdiction(MAGISTRATES);
+        cs.setTotalBookedMorning(0);
+        cs.setTotalBookedAfternoon(0);
+        cs.setTotalBooked(0);
+
+        databaseSeeder.insertCourtSchedule(cs);
+        return id;
+    }
+
 
     private Response callChangeCourtRoom(final String hearingId, final JsonObjectBuilder... days) {
         final JsonArrayBuilder daysArray = Json.createArrayBuilder();
