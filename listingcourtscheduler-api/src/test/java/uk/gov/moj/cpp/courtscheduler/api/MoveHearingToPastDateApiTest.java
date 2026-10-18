@@ -17,15 +17,12 @@ import uk.gov.moj.cpp.courtscheduler.api.service.SlotsUpdateService;
 import uk.gov.moj.cpp.courtscheduler.api.validator.HearingSlotsApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.ValidationException;
 import uk.gov.moj.cpp.courtscheduler.domain.BookedPastSession;
-import uk.gov.moj.cpp.courtscheduler.domain.MoveHearingToPastDateResponse;
 import uk.gov.moj.cpp.courtscheduler.exception.MoveHearingToPastDateNoSessionException;
-import uk.gov.moj.cpp.courtscheduler.openapi.model.MoveHearingToPastDateRequest;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
-import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -66,6 +63,7 @@ class MoveHearingToPastDateApiTest {
     private static final String FUTURE_DATE_NOT_ALLOWED = "FUTURE_DATE_NOT_ALLOWED";
     private static final String HEARING_ID = "hearingId";
     private static final String NINE_AM = "09:00";
+    private static final String NINE_THIRTY = "09:30";
     private static final String MAY_FIRST_NINE_AM = "2026-05-01T09:00:00.000Z";
     private static final String MAY_FIRST_NINE_THIRTY = "2026-05-01T09:30:00.000Z";
     private static final int MULTI_DAY_DURATION_MINUTES = 360;
@@ -129,7 +127,7 @@ class MoveHearingToPastDateApiTest {
 
         // single-day 09:00 -> 09:30 = 30-minute submitted window
         when(slotsUpdateService.moveHearingToPastDate(eq(hearingId), eq(courtCentreId), any(),
-                eq(LocalDate.parse(MAY_FIRST)), eq(LocalDate.parse(MAY_FIRST)), eq(NINE_AM), eq("09:30"), eq(MAGISTRATES), eq(30)))
+                eq(LocalDate.parse(MAY_FIRST)), eq(LocalDate.parse(MAY_FIRST)), eq(NINE_AM), eq(NINE_THIRTY), eq(MAGISTRATES), eq(30)))
                 .thenReturn(List.of(stub));
 
         final ResponseEntity<Map<String, Object>> response = move(hearingId,
@@ -188,18 +186,48 @@ class MoveHearingToPastDateApiTest {
                 eq(LocalDate.parse(MAY_FIRST)), eq(LocalDate.parse(MAY_FIRST)), eq("10:30"), eq("10:50"), eq(MAGISTRATES), eq(20));
     }
 
+    /** SPRDT-1447 test finding: a CROWN move takes the shared path - submitted times and window. */
     @Test
-    void shouldRouteCrownToTheTeamPath_notTheMagistratesPath() {
+    void shouldMoveCrownThroughTheSharedPath_withTheSubmittedWindow() {
         final String hearingId = randomUUID().toString();
-        when(slotsUpdateService.moveHearingToPastDate(any(MoveHearingToPastDateRequest.class)))
-                .thenReturn(new MoveHearingToPastDateResponse(hearingId, MOVE_TO_PAST_DATE, Collections.emptyList()));
+        final String courtCentreId = randomUUID().toString();
+        when(slotsUpdateService.moveHearingToPastDate(eq(hearingId), eq(courtCentreId), any(),
+                eq(LocalDate.parse(MAY_FIRST)), eq(LocalDate.parse(MAY_FIRST)), eq(NINE_AM), eq(NINE_THIRTY), eq(CROWN), eq(30)))
+                .thenReturn(List.of(stubSession(hearingId, MAY_FIRST, 30)));
 
         final ResponseEntity<Map<String, Object>> response = move(hearingId,
-                movePayload(randomUUID().toString(), CROWN, MAY_FIRST_NINE_AM, MAY_FIRST_NINE_THIRTY));
+                movePayload(courtCentreId, CROWN, MAY_FIRST_NINE_AM, MAY_FIRST_NINE_THIRTY));
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        verify(slotsUpdateService).moveHearingToPastDate(any(MoveHearingToPastDateRequest.class));
+        assertEquals(MAY_FIRST_NINE_AM, sessions(response).get(0).get("sessionStartTime"));
+    }
+
+    /** Requirement update (SPRDT-1447): a multi-day CROWN move to past is not supported. */
+    @Test
+    void shouldReturn422_whenCrownMoveSpansMoreThanOneDay() {
+        final ResponseEntity<Map<String, Object>> response = move(randomUUID().toString(),
+                movePayload(randomUUID().toString(), CROWN, "2026-07-01T10:30:00.000Z", "2026-07-02T17:00:00.000Z"));
+
+        assertEquals(UNPROCESSABLE, response.getStatusCode().value());
+        assertEquals("MULTI_DAY_NOT_ALLOWED", response.getBody().get(ERROR_CODE));
         verify(slotsUpdateService, never()).moveHearingToPastDate(any(), any(), any(), any(), any(), any(), any(), any(), anyInt());
+    }
+
+    /** An offset start/end (10:00-11:00 BST) is looked up and stamped as UTC wall clock (09:00-10:00). */
+    @Test
+    void shouldConvertAnOffsetStartAndEndTimeToUtc() {
+        final String hearingId = randomUUID().toString();
+        final String courtCentreId = randomUUID().toString();
+        when(slotsUpdateService.moveHearingToPastDate(eq(hearingId), eq(courtCentreId), any(),
+                eq(LocalDate.parse(MAY_FIRST)), eq(LocalDate.parse(MAY_FIRST)), eq(NINE_AM), eq("10:00"), eq(CROWN), eq(60)))
+                .thenReturn(List.of(stubSession(hearingId, MAY_FIRST, 60)));
+
+        final ResponseEntity<Map<String, Object>> response = move(hearingId,
+                movePayload(courtCentreId, CROWN, "2026-05-01T10:00:00+01:00", "2026-05-01T11:00:00+01:00"));
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        verify(slotsUpdateService).moveHearingToPastDate(eq(hearingId), eq(courtCentreId), any(),
+                eq(LocalDate.parse(MAY_FIRST)), eq(LocalDate.parse(MAY_FIRST)), eq(NINE_AM), eq("10:00"), eq(CROWN), eq(60));
     }
 
     @Test
@@ -226,15 +254,15 @@ class MoveHearingToPastDateApiTest {
     @Test
     void shouldReturn422_whenMoveIsForToday() {
         final ResponseEntity<Map<String, Object>> magistrates = move(randomUUID().toString(),
-                movePayload(randomUUID().toString(), MAGISTRATES, daysAgo(0, NINE_AM), daysAgo(0, "09:30")));
+                movePayload(randomUUID().toString(), MAGISTRATES, daysAgo(0, NINE_AM), daysAgo(0, NINE_THIRTY)));
         final ResponseEntity<Map<String, Object>> crown = move(randomUUID().toString(),
-                movePayload(randomUUID().toString(), CROWN, daysAgo(0, NINE_AM), daysAgo(0, "09:30")));
+                movePayload(randomUUID().toString(), CROWN, daysAgo(0, NINE_AM), daysAgo(0, NINE_THIRTY)));
 
         assertEquals(UNPROCESSABLE, magistrates.getStatusCode().value());
         assertEquals(FUTURE_DATE_NOT_ALLOWED, magistrates.getBody().get(ERROR_CODE));
         assertEquals(UNPROCESSABLE, crown.getStatusCode().value());
         assertEquals(FUTURE_DATE_NOT_ALLOWED, crown.getBody().get(ERROR_CODE));
-        verify(slotsUpdateService, never()).moveHearingToPastDate(any(MoveHearingToPastDateRequest.class));
+        verify(slotsUpdateService, never()).moveHearingToPastDate(any(), any(), any(), any(), any(), any(), any(), any(), anyInt());
     }
 
     @Test

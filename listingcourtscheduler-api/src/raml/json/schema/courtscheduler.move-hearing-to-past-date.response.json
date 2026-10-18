@@ -49,7 +49,7 @@
           }
         }
       },
-      "description": "MAGISTRATES: one item per booked day with main's fields - sessionStartTime/sessionEndTime are the SUBMITTED start/end on that day and durationInMinutes the submitted window. CROWN: the booked court-schedule sessions."
+      "description": "One item per booked day, both jurisdictions - sessionStartTime/sessionEndTime are the SUBMITTED start/end on that day and durationInMinutes the submitted window."
     }
   },
   "required": [

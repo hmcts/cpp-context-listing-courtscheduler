@@ -27,6 +27,7 @@ import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.SESSI
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.SESSION_START_TIME_CANNOT_BE_EARLIER;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.SESSION_START_TIME_CANNOT_BE_LATER_THAN_END_TIME;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.MissingDataError.CREATE_SESSIONS_COURTROOM_NOT_FOUND;
+import static uk.gov.moj.cpp.courtscheduler.common.service.SessionsService.isStoredAsDraft;
 import static uk.gov.moj.cpp.courtscheduler.domain.RepeatFrequency.EVERY_MONTH;
 import static uk.gov.moj.cpp.courtscheduler.domain.RepeatFrequency.EVERY_WEEK;
 import static uk.gov.moj.cpp.courtscheduler.domain.RepeatFrequency.ONCE;
@@ -531,7 +532,7 @@ public class SessionsApiValidator {
         return a.getCourtCentreId().equals(b.getCourtCentreId())
                 && a.getCourtRoomId().equals(b.getCourtRoomId())
                 && a.getBusinessType().equals(b.getBusinessType())
-                && Objects.equals(a.getIsDraft(), b.getIsDraft());
+                && isStoredAsDraft(a) == isStoredAsDraft(b);
     }
 
     private static Set<DayOfWeek> repeatDaysOf(final Session session) {
