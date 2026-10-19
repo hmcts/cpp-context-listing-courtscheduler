@@ -3,8 +3,10 @@ package uk.gov.moj.cpp.courtscheduler.api.service;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
@@ -35,6 +37,7 @@ import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -206,6 +209,103 @@ class ReservationServiceTest {
 
         assertThat(slot, is(notNullValue()));
         assertThat(slot.getExpiresAt(), is(LocalDate.now(ZoneOffset.UTC)));
+    }
+
+    // -----------------------------------------------------------------------
+    // LPT-2592: courtscheduler, not the UI, decides whether a re-pick keeps its booking id.
+    // Only a booking that is still nothing but unconfirmed holds is kept; anything else - already
+    // confirmed, partly confirmed, released, expired, unknown - gets a fresh id.
+    // -----------------------------------------------------------------------
+
+    @Test
+    void shouldKeepTheRequestedBookingIdWhileItIsStillAnUnconfirmedHold() {
+        givenSessionExists();
+        when(allocatedListingRepository.findByBookingId(BOOKING_ID)).thenReturn(List.of(unconfirmedHold()));
+        when(courtScheduleRepository.saveBookedSlots(anyList(), anyBoolean(), anyBoolean(), anyBoolean())).thenReturn(new Result().msg("Success").success(true));
+
+        final String used = reservationService.reserveAllUnderBooking(BOOKING_ID, List.of(slotRequest(SESSION_ID, 60)));
+
+        assertThat(used, is(BOOKING_ID));
+        // Keeping the id is what frees the abandoned session: its hold is released in the same call.
+        verify(courtScheduleRepository).releaseReservationsForBooking(BOOKING_ID);
+        assertThat(persistedBookingIds(), is(List.of(BOOKING_ID)));
+    }
+
+    @Test
+    void shouldMintANewBookingIdRatherThanRefuseWhenTheRequestedOneIsConfirmed() {
+        givenSessionExists();
+        when(allocatedListingRepository.findByBookingId(BOOKING_ID)).thenReturn(List.of(confirmedListing()));
+        when(courtScheduleRepository.saveBookedSlots(anyList(), anyBoolean(), anyBoolean(), anyBoolean())).thenReturn(new Result().msg("Success").success(true));
+
+        final String used = reservationService.reserveAllUnderBooking(BOOKING_ID, List.of(slotRequest(SESSION_ID, 60)));
+
+        assertThat(used, is(not(BOOKING_ID)));
+        assertDoesNotThrow(() -> UUID.fromString(used));
+        // The confirmed listing is a real hearing: nothing may be released under its id.
+        verify(courtScheduleRepository, never()).releaseReservationsForBooking(BOOKING_ID);
+        assertThat(persistedBookingIds(), is(List.of(used)));
+    }
+
+    /**
+     * The case that matters most. A booking with no rows left was released - typically merged away
+     * by a share - or expired. Progression may still have the old id on record against its old
+     * session and never re-asks courtscheduler about an id it has seen, so reusing it would list
+     * the re-picked hearing at the old session and strand the new hold.
+     */
+    @Test
+    void shouldMintANewBookingIdWhenTheRequestedOneHasNoRowsLeft() {
+        givenSessionExists();
+        when(allocatedListingRepository.findByBookingId(BOOKING_ID)).thenReturn(List.of());
+        when(courtScheduleRepository.saveBookedSlots(anyList(), anyBoolean(), anyBoolean(), anyBoolean())).thenReturn(new Result().msg("Success").success(true));
+
+        final String used = reservationService.reserveAllUnderBooking(BOOKING_ID, List.of(slotRequest(SESSION_ID, 60)));
+
+        assertThat(used, is(not(BOOKING_ID)));
+        assertThat(persistedBookingIds(), is(List.of(used)));
+    }
+
+    @Test
+    void shouldMintANewBookingIdWhenTheRequestedOneIsPartlyConfirmed() {
+        givenSessionExists();
+        when(allocatedListingRepository.findByBookingId(BOOKING_ID)).thenReturn(List.of(unconfirmedHold(), confirmedListing()));
+        when(courtScheduleRepository.saveBookedSlots(anyList(), anyBoolean(), anyBoolean(), anyBoolean())).thenReturn(new Result().msg("Success").success(true));
+
+        final String used = reservationService.reserveAllUnderBooking(BOOKING_ID, List.of(slotRequest(SESSION_ID, 60)));
+
+        assertThat(used, is(not(BOOKING_ID)));
+        verify(courtScheduleRepository, never()).releaseReservationsForBooking(BOOKING_ID);
+    }
+
+    @Test
+    void shouldMintABookingIdWhenNoneIsRequested() {
+        givenSessionExists();
+        when(courtScheduleRepository.saveBookedSlots(anyList(), anyBoolean(), anyBoolean(), anyBoolean())).thenReturn(new Result().msg("Success").success(true));
+
+        final String fromNull = reservationService.reserveAllUnderBooking(null, List.of(slotRequest(SESSION_ID, 60)));
+        final String fromBlank = reservationService.reserveAllUnderBooking(" ", List.of(slotRequest(SESSION_ID, 60)));
+
+        assertDoesNotThrow(() -> UUID.fromString(fromNull));
+        assertDoesNotThrow(() -> UUID.fromString(fromBlank));
+        assertThat(fromNull, is(not(fromBlank)));
+    }
+
+    private static AllocatedListing unconfirmedHold() {
+        final AllocatedListing hold = new AllocatedListing();
+        hold.setExpiresAt(LocalDate.now(ZoneOffset.UTC));
+        return hold;
+    }
+
+    private static AllocatedListing confirmedListing() {
+        final AllocatedListing confirmed = new AllocatedListing();
+        confirmed.setExpiresAt(null);
+        return confirmed;
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<String> persistedBookingIds() {
+        final ArgumentCaptor<List<AllocatedSlot>> captor = ArgumentCaptor.forClass(List.class);
+        verify(courtScheduleRepository).saveBookedSlots(captor.capture(), anyBoolean(), anyBoolean(), anyBoolean());
+        return captor.getValue().stream().map(AllocatedSlot::getBookingId).distinct().toList();
     }
 
     @Test

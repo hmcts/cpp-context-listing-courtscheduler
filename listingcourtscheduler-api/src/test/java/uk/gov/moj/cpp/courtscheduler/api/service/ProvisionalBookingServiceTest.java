@@ -4,12 +4,12 @@ import static java.util.UUID.randomUUID;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
@@ -17,7 +17,6 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import uk.gov.moj.cpp.courtscheduler.openapi.model.AllocatedSlot;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.ProvisionalBookingSlots;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.ProvisionalSlot;
 import uk.gov.moj.cpp.courtscheduler.exception.NoCapacityException;
@@ -35,7 +34,6 @@ import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
 import jakarta.json.JsonArray;
 import jakarta.json.JsonObject;
@@ -76,15 +74,14 @@ class ProvisionalBookingServiceTest {
         // saveBookedSlots opens with a hearing-wide release on that key. Reserving slot by slot
         // therefore released the booking's own earlier slots — a 3-day pick held 1 day. The whole
         // booking must go to the reservation service in ONE list.
-        when(reservationService.reserveAll(anyString(), anyList())).thenReturn(List.of(new AllocatedSlot()));
+        when(reservationService.reserveAllUnderBooking(any(), anyList())).thenReturn("bk-used");
 
         final JsonObject response = provisionalBookingService.bookProvisionalSlots(slots("cs-1", "cs-2", "cs-3"));
 
-        assertThat(response.getString("bookingId"), is(notNullValue()));
-        final String bookingId = response.getString("bookingId");
+        assertThat(response.getString("bookingId"), is("bk-used"));
 
         final ArgumentCaptor<List<ProvisionalSlot>> captor = ArgumentCaptor.forClass(List.class);
-        verify(reservationService, times(1)).reserveAll(eq(bookingId), captor.capture());
+        verify(reservationService, times(1)).reserveAllUnderBooking(any(), captor.capture());
         assertThat(captor.getValue().size(), is(3));
         assertThat(captor.getValue().stream().map(ProvisionalSlot::getCourtScheduleId).toList(),
                 is(List.of("cs-1", "cs-2", "cs-3")));
@@ -93,32 +90,36 @@ class ProvisionalBookingServiceTest {
 
     @Test
     void shouldFailTheWholeBookingWhenAnySlotCannotBeHeld() {
-        when(reservationService.reserveAll(anyString(), anyList())).thenThrow(new NoCapacityException("full"));
+        when(reservationService.reserveAllUnderBooking(any(), anyList())).thenThrow(new NoCapacityException("full"));
 
         assertThrows(NoCapacityException.class,
                 () -> provisionalBookingService.bookProvisionalSlots(slots("cs-1", "cs-2")));
     }
 
+    /**
+     * LPT-2592: the UI always sends the booking id the line already holds, and the reservation
+     * decides whether it can be kept. The response must carry the id actually used - which may be
+     * a fresh one - because the UI writes exactly that back onto the result line.
+     */
     @Test
-    void shouldReuseTheSuppliedBookingIdRatherThanMintingANewOne() {
-        when(reservationService.reserveAll(anyString(), anyList())).thenReturn(List.of(new AllocatedSlot()));
+    void shouldPassTheSuppliedBookingIdOnAndReturnTheOneTheReservationUsed() {
+        when(reservationService.reserveAllUnderBooking(eq("existing-booking-1"), anyList())).thenReturn("fresh-booking-2");
         final ProvisionalBookingSlots request = slots("cs-1");
         request.setBookingId("existing-booking-1");
 
         final JsonObject response = provisionalBookingService.bookProvisionalSlots(request);
 
-        assertThat(response.getString("bookingId"), is("existing-booking-1"));
-        verify(reservationService).reserveAll(eq("existing-booking-1"), anyList());
+        assertThat(response.getString("bookingId"), is("fresh-booking-2"));
+        verify(reservationService).reserveAllUnderBooking(eq("existing-booking-1"), anyList());
     }
 
     @Test
-    void shouldMintABookingIdWhenNoneIsSupplied() {
-        when(reservationService.reserveAll(anyString(), anyList())).thenReturn(List.of(new AllocatedSlot()));
+    void shouldLeaveMintingToTheReservationWhenNoBookingIdIsSupplied() {
+        when(reservationService.reserveAllUnderBooking(isNull(), anyList())).thenReturn("minted-1");
 
         final JsonObject response = provisionalBookingService.bookProvisionalSlots(slots("cs-1"));
 
-        assertThat(response.getString("bookingId"), is(notNullValue()));
-        assertDoesNotThrow(() -> UUID.fromString(response.getString("bookingId")));
+        assertThat(response.getString("bookingId"), is("minted-1"));
     }
 
     @Test

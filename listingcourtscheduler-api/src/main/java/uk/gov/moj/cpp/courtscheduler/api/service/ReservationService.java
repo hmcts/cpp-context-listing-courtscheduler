@@ -20,11 +20,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 import jakarta.inject.Inject;
 import jakarta.json.Json;
 
+import org.apache.commons.lang3.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -74,6 +78,8 @@ public class ReservationService {
 
     public static final String SOURCE_RESERVED_UNCONFIRMED = "RESERVED_UNCONFIRMED";
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(ReservationService.class);
+
     private static final String ERROR_MESSAGE = "errorMessage";
     private static final String JURISDICTION_CROWN = "CROWN";
     private static final int MINUTES_IN_DAY = 360;
@@ -86,6 +92,50 @@ public class ReservationService {
 
     @Inject
     private SessionsService sessionsService;
+
+    /**
+     * Reserves {@code requestedSlots} and returns the booking id they are held under (LPT-2592).
+     *
+     * <p>The UI always sends the booking id its result line already carries, and this decides
+     * whether that id may be kept. It is kept only while every row under it is still an
+     * unconfirmed hold: {@link #reserveAll} then releases the abandoned session and takes the new
+     * one under the same id, in one transaction. Anything else gets a fresh id instead:
+     *
+     * <ul>
+     *   <li>confirmed, wholly or partly - it is a real listing, and {@link #reserveAll} would
+     *       refuse it;</li>
+     *   <li>no rows left - released or expired. A share that merged it away may have left
+     *       progression holding it against its old session, and progression never re-asks about
+     *       an id it has seen, so reusing it would list the re-picked hearing at the old session
+     *       and strand the new hold;</li>
+     *   <li>none sent - a first pick.</li>
+     * </ul>
+     *
+     * <p>Decided inside the same transaction as the reservation, so the booking cannot change
+     * state between the check and the write.
+     */
+    @Transactional
+    public String reserveAllUnderBooking(final String requestedBookingId, final List<ProvisionalSlot> requestedSlots) {
+        final String bookingId = isStillOnlyUnconfirmedHolds(requestedBookingId)
+                ? requestedBookingId
+                : UUID.randomUUID().toString();
+        if (bookingId.equals(requestedBookingId)) {
+            LOGGER.info("Re-pick keeps booking {}: it is still an unconfirmed hold", bookingId);
+        } else if (StringUtils.isNotBlank(requestedBookingId)) {
+            LOGGER.info("Booking {} is confirmed or no longer held, so this pick is booked as {}",
+                    requestedBookingId, bookingId);
+        }
+        reserveAll(bookingId, requestedSlots);
+        return bookingId;
+    }
+
+    private boolean isStillOnlyUnconfirmedHolds(final String bookingId) {
+        if (StringUtils.isBlank(bookingId)) {
+            return false;
+        }
+        final List<AllocatedListing> rows = allocatedListingRepository.findByBookingId(bookingId);
+        return !rows.isEmpty() && rows.stream().allMatch(row -> row.getExpiresAt() != null);
+    }
 
     /**
      * Single-slot entry point, kept for callers that hold exactly one session. Delegates to

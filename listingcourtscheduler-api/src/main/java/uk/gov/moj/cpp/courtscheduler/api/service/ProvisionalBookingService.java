@@ -1,8 +1,6 @@
 package uk.gov.moj.cpp.courtscheduler.api.service;
 
-import static java.util.UUID.randomUUID;
 import static org.apache.commons.collections.CollectionUtils.isNotEmpty;
-import static org.apache.commons.lang3.StringUtils.isNotBlank;
 import static uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant.PROVISIONAL_SLOTS;
 
 import uk.gov.moj.cpp.courtscheduler.common.converter.ListToJsonArrayConverter;
@@ -49,30 +47,24 @@ public class ProvisionalBookingService {
     private final ListToJsonArrayConverter<ProvisionalBookingInfo> listToJsonArrayConverter = new ListToJsonArrayConverter<>();
 
     /**
-     * Mints a bookingId, or reuses a supplied one, and reserves every requested session under it.
-     * The reservation replaces the provisional_booking row that used to be written here: it holds
+     * Reserves every requested session and answers with the booking id they are held under. The
+     * reservation replaces the provisional_booking row that used to be written here: it holds
      * real capacity and carries an expiry, which a provisional booking never did.
      *
-     * <p><b>Why a caller may name the bookingId.</b> When a clerk changes their mind and picks a
-     * different session, the re-pick arrives under the bookingId the draft already holds. Because
-     * a reservation's hearing_id is its bookingId, saveBookedSlots' hearing-wide release then
-     * wipes every row of the previous pick before taking the new ones — so the abandoned session's
-     * capacity comes back in the same transaction, with no second release mechanism and nothing
-     * left for the nightly purge to find. An absent bookingId means a first pick, and one is
-     * minted.
+     * <p>A caller may send the booking id its result line already holds. Whether that id is kept
+     * or a fresh one minted is decided by {@link ReservationService#reserveAllUnderBooking} - see
+     * there for the rule (LPT-2592) - so the response carries the id actually used, and the UI
+     * writes exactly that back onto the line.
      *
-     * <p>All or nothing, and structurally so: every slot of the booking shares the minted
-     * bookingId as its hearing_id, and saveBookedSlots opens with a hearing-wide release keyed on
-     * that id. Reserving slot by slot would therefore make each slot release the previous ones of
-     * the same booking, leaving a three-day pick holding one day. {@code reserveAll} makes exactly
-     * one saveBookedSlots call for the whole booking. The method is transactional on top of that,
-     * so a NoCapacityException still rolls back anything already written.
+     * <p>All or nothing, and structurally so: every slot of the booking shares one booking id,
+     * and saveBookedSlots opens with a release keyed on it. Reserving slot by slot would therefore
+     * make each slot release the previous ones of the same booking, leaving a three-day pick
+     * holding one day. {@code reserveAll} makes exactly one saveBookedSlots call for the whole
+     * booking, inside one transaction, so a NoCapacityException rolls back anything written.
      */
     public JsonObject bookProvisionalSlots(final ProvisionalBookingSlots provisionalBookingSlots) {
-        final String bookingId = isNotBlank(provisionalBookingSlots.getBookingId())
-                ? provisionalBookingSlots.getBookingId()
-                : randomUUID().toString();
-        reservationService.reserveAll(bookingId, provisionalBookingSlots.getProvisionalSlots());
+        final String bookingId = reservationService.reserveAllUnderBooking(
+                provisionalBookingSlots.getBookingId(), provisionalBookingSlots.getProvisionalSlots());
 
         return Json.createObjectBuilder()
                 .add(BOOKING_ID, bookingId)
