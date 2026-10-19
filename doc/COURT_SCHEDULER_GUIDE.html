@@ -1,0 +1,1779 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Court Scheduler Guide</title>
+<meta name="description" content="Application guide for the HMCTS Court Scheduler service: business rules, architecture, API, data model, QA and operations.">
+<style>
+:root {
+  --bg: #ffffff; --bg-soft: #f6f7f9; --bg-code: #f2f4f7; --fg: #1d2330; --fg-muted: #5b6475;
+  --border: #dde1e8; --accent: #1d5fbf; --accent-soft: #e8f0fc; --sidebar-w: 300px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #12151b; --bg-soft: #1a1e26; --bg-code: #1f2430; --fg: #e3e7ee; --fg-muted: #9aa3b2;
+    --border: #2c3240; --accent: #7fb0ff; --accent-soft: #1d2a40;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #12151b; --bg-soft: #1a1e26; --bg-code: #1f2430; --fg: #e3e7ee; --fg-muted: #9aa3b2;
+  --border: #2c3240; --accent: #7fb0ff; --accent-soft: #1d2a40;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0; background: var(--bg); color: var(--fg);
+  font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+header.top {
+  position: sticky; top: 0; z-index: 10; display: flex; align-items: center; gap: 12px;
+  padding: 10px 16px; background: var(--bg-soft); border-bottom: 1px solid var(--border);
+}
+header.top .title { font-weight: 600; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+header.top button {
+  background: var(--bg); color: var(--fg); border: 1px solid var(--border); border-radius: 6px;
+  padding: 6px 10px; cursor: pointer; font: inherit; font-size: 14px;
+}
+#menuBtn { display: none; }
+.layout { display: flex; }
+nav.toc {
+  position: sticky; top: 49px; align-self: flex-start; width: var(--sidebar-w); flex: 0 0 var(--sidebar-w);
+  height: calc(100vh - 49px); overflow-y: auto; padding: 16px; border-right: 1px solid var(--border);
+  background: var(--bg-soft); font-size: 14px;
+}
+nav.toc input {
+  width: 100%; padding: 6px 8px; margin-bottom: 10px; border: 1px solid var(--border); border-radius: 6px;
+  background: var(--bg); color: var(--fg); font: inherit;
+}
+nav.toc ol { list-style: none; margin: 0; padding: 0; }
+nav.toc li a {
+  display: block; padding: 4px 8px; border-radius: 5px; color: var(--fg); text-decoration: none;
+}
+nav.toc li.sub a { padding-left: 22px; color: var(--fg-muted); font-size: 13px; }
+nav.toc li a:hover { background: var(--accent-soft); }
+nav.toc li a.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+main { flex: 1; min-width: 0; padding: 24px 40px 80px; max-width: 1100px; }
+main h1 { font-size: 2rem; margin-top: 0; }
+main h2 { margin-top: 2.6rem; padding-top: .4rem; border-top: 1px solid var(--border); scroll-margin-top: 60px; }
+main h3, main h4 { scroll-margin-top: 60px; }
+a { color: var(--accent); }
+blockquote {
+  margin: 1rem 0; padding: .6rem 1rem; border-left: 4px solid var(--accent);
+  background: var(--accent-soft); border-radius: 0 6px 6px 0;
+}
+blockquote p { margin: .3rem 0; }
+code { background: var(--bg-code); padding: .1em .35em; border-radius: 4px; font-size: .9em;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; overflow-wrap: anywhere; }
+pre { background: var(--bg-code); padding: 12px 14px; border-radius: 8px; overflow-x: auto; }
+pre code { background: none; padding: 0; overflow-wrap: normal; }
+.table-wrap { overflow-x: auto; margin: 1rem 0; }
+table { border-collapse: collapse; width: 100%; font-size: 14.5px; }
+th, td { border: 1px solid var(--border); padding: 7px 10px; text-align: left; vertical-align: top; }
+th { background: var(--bg-soft); }
+tr:nth-child(even) td { background: color-mix(in srgb, var(--bg-soft) 50%, transparent); }
+.diagram {
+  margin: 1.2rem 0; padding: 14px; border: 1px solid var(--border); border-radius: 10px;
+  background: var(--bg); overflow-x: auto; text-align: center;
+}
+.diagram pre.mermaid { background: none; margin: 0; padding: 0; }
+.diagram svg { max-width: 100%; height: auto; }
+.footer { margin-top: 3rem; color: var(--fg-muted); font-size: 13px; }
+#toTop {
+  position: fixed; right: 18px; bottom: 18px; display: none; border-radius: 50%; width: 42px; height: 42px;
+  border: 1px solid var(--border); background: var(--bg-soft); color: var(--fg); cursor: pointer; font-size: 18px;
+}
+@media (max-width: 900px) {
+  #menuBtn { display: inline-block; }
+  nav.toc { position: fixed; left: 0; top: 49px; z-index: 9; transform: translateX(-100%); transition: transform .2s; width: 85vw; max-width: 320px; }
+  nav.toc.open { transform: none; box-shadow: 0 0 24px rgba(0,0,0,.25); }
+  main { padding: 16px 16px 60px; }
+}
+@media print {
+  header.top, nav.toc, #toTop { display: none !important; }
+  main { padding: 0; max-width: none; }
+  main h2 { page-break-before: always; }
+  .diagram { page-break-inside: avoid; }
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <button id="menuBtn" aria-label="Toggle contents">☰</button>
+  <span class="title">Court Scheduler Service: Application Guide</span>
+  <button id="themeBtn" aria-label="Toggle theme">◐ Theme</button>
+  <button onclick="window.print()" aria-label="Print">⎙ Print</button>
+</header>
+<div class="layout">
+  <nav class="toc" id="toc">
+    <input id="tocFilter" type="search" placeholder="Filter sections…" aria-label="Filter sections">
+    <ol id="tocList"></ol>
+  </nav>
+  <main id="content"><p>Loading…</p></main>
+</div>
+<button id="toTop" aria-label="Back to top">↑</button>
+
+<script type="text/markdown" id="md-source">
+# Court Scheduler Service: Application Guide
+
+| | |
+|---|---|
+| **Service** | `cpp-context-listing-courtscheduler` |
+| **Owner** | HMCTS Common Platform, Scheduling & Listing team (`cp-scheduling-and-listing`) |
+| **Stack** | Spring Boot 4 · Java 25 · Gradle · PostgreSQL · Azure Blob Storage · Redis |
+| **Base URL** | `http(s)://<host>:8083/listingcourtscheduler-api/rest/courtscheduler` |
+
+This guide is for everyone who works with the Court Scheduler: business stakeholders, product owners, developers, testers and support engineers. Each part starts with a plain-language summary and then goes into detail.
+
+---
+
+## Table of contents
+
+1. [How to use this guide](#1-how-to-use-this-guide)
+2. [Executive summary](#2-executive-summary)
+3. [Glossary](#3-glossary)
+4. [Business context](#4-business-context)
+5. [Core concepts](#5-core-concepts)
+6. [Business rules](#6-business-rules)
+7. [Key user journeys](#7-key-user-journeys)
+8. [Rota file processing](#8-rota-file-processing)
+9. [Availability calculation](#9-availability-calculation)
+10. [System architecture](#10-system-architecture)
+11. [API reference](#11-api-reference)
+12. [Security: authentication, authorisation and audit](#12-security-authentication-authorisation-and-audit)
+13. [Data model](#13-data-model)
+14. [Configuration](#14-configuration)
+15. [Observability and operations](#15-observability-and-operations)
+16. [Developer guide](#16-developer-guide)
+17. [QA and testing guide](#17-qa-and-testing-guide)
+18. [CI/CD and release](#18-cicd-and-release)
+19. [Known issues and open items](#19-known-issues-and-open-items)
+20. [Related documents](#20-related-documents)
+
+---
+
+## 1. How to use this guide
+
+| If you are a… | Start with | Then read |
+|---|---|---|
+| **Business stakeholder / product owner** | [2 Executive summary](#2-executive-summary), [4 Business context](#4-business-context) | [5 Core concepts](#5-core-concepts), [6 Business rules](#6-business-rules), [7 Key user journeys](#7-key-user-journeys) |
+| **Business analyst** | [5 Core concepts](#5-core-concepts), [6 Business rules](#6-business-rules) | [8 Rota file processing](#8-rota-file-processing), [9 Availability calculation](#9-availability-calculation) |
+| **Developer** | [10 System architecture](#10-system-architecture), [16 Developer guide](#16-developer-guide) | [11 API reference](#11-api-reference), [12 Security](#12-security-authentication-authorisation-and-audit), [13 Data model](#13-data-model) |
+| **QA / tester** | [17 QA and testing guide](#17-qa-and-testing-guide) | [6 Business rules](#6-business-rules), [11 API reference](#11-api-reference), [19 Known issues](#19-known-issues-and-open-items) |
+| **Support / operations** | [15 Observability and operations](#15-observability-and-operations), [14 Configuration](#14-configuration) | [8 Rota file processing](#8-rota-file-processing), [18 CI/CD](#18-cicd-and-release) |
+
+```mermaid
+flowchart LR
+    A[Reader] --> B{Role?}
+    B -->|Business| C[Sections 2, 4, 5, 6, 7]
+    B -->|Developer| D[Sections 10, 11, 12, 13, 16]
+    B -->|QA| E[Sections 6, 11, 17, 19]
+    B -->|Ops / Support| F[Sections 8, 14, 15, 18]
+```
+
+---
+
+## 2. Executive summary
+
+The **Court Scheduler** is the Common Platform service that manages **court sitting capacity**. It records when and where courts sit, what kind of work each sitting can take, which judges or magistrates sit there, and how much of that capacity is already booked by hearings.
+
+**What it does for the business**
+
+| Capability | What it means in practice |
+|---|---|
+| **Court schedule (session) management** | Listing officers create, edit, delete and query court sessions (morning, afternoon or all-day) for a courtroom. Sessions can be one-off or repeat weekly. |
+| **Hearing slot booking** | Hearings are booked into sessions, either by number of slots or by minutes of court time. The service tracks how much capacity is left. |
+| **Search for available capacity** | Listing systems search for sessions with free capacity by court, date range, panel (adult/youth), business type and session type. |
+| **Provisional bookings** | Capacity can be held provisionally before a hearing is confirmed. |
+| **Judiciary assignment** | Judges and magistrates are linked to sessions, either manually or from rota files. |
+| **Judicial itineraries (availability rules)** | Records when a judge is available at a court centre (date range, weekdays, AM/PM/all-day) and when they are unavailable (training, annual leave, official business, sick leave). |
+| **Rota file ingestion** | Magistrates' court rota files (XML) dropped into Azure Blob Storage are processed automatically to create and update sessions and judiciary assignments. |
+| **Move hearing to a past date** | Records a hearing that actually took place in the past against the right historic session(s). |
+| **Management information (MI)** | Exports of sessions, judiciary assignments and allocated listings for reporting. |
+
+**Key facts**
+
+- It is a back-end REST service. Users reach it through the Common Platform listing UI and other services, not directly.
+- It supports both **Magistrates'** and **Crown** jurisdictions. Crown sessions can be created as **draft** (no courtroom yet) and have a courtroom assigned later.
+- It was recently **re-platformed** from WildFly/Java EE to Spring Boot. The guiding principle was *no change for clients*: every URL, media type, status code and response shape was kept.
+
+---
+
+## 3. Glossary
+
+| Term | Meaning |
+|---|---|
+| **Court schedule / session** | One sitting of one courtroom on one date (AM, PM or all day). Stored in the `court_schedule` table. |
+| **Session type / court session** | `AM` (morning), `PM` (afternoon) or `AD` (all day). |
+| **Panel** | `ADULT` or `YOUTH`, the type of defendant the session hears. |
+| **Business type** | The kind of court work, e.g. remand or trial. Reference data decides whether it is **slot-based** or **duration-based**, and which jurisdiction it belongs to. |
+| **Slot-based** | Capacity is a number of hearings (`max_slot`). Each hearing uses one slot. |
+| **Duration-based** | Capacity is minutes of court time (`max_duration_mins`). Each hearing uses its duration. |
+| **All-day split (AD split)** | A duration-based all-day session whose capacity is split into separate morning and afternoon budgets around the **national break time** (lunch). |
+| **Allocated listing** | A hearing booked into a session (`allocated_listings` table). |
+| **Overbooking** | Booking beyond a session's capacity. Only allowed when the session's `is_overbooking_allowed` flag is set. |
+| **Provisional booking** | A tentative hold on one or more sessions, identified by a `bookingId`. |
+| **Draft session** | A Crown session that has no confirmed courtroom yet. A courtroom is assigned later via `assign.courtroom`. |
+| **Jurisdiction** | `MAGISTRATES` (the default) or `CROWN`. |
+| **OU code** | Organisation Unit code that identifies a court/location in reference data. |
+| **Court centre / court house** | A court building. A court centre contains courtrooms. |
+| **Rota / rota file** | An XML file from the magistrates' rota system describing who sits where and when. Full files are prefixed `lja_`. |
+| **Listing profile** | The rota's identifier for a session template (`court_listing_profile_id`). |
+| **Migrated OU code** | An OU code whose rota data is handled by the newer processing path (`courtscheduler_migration_status` table). |
+| **Judicial itinerary / availability rule** | When a judiciary member is available at a court house: date range, weekdays and session type. |
+| **Unavailability** | A period inside an itinerary when the judge is not available (training, annual leave, official business, sick leave). |
+| **MI** | Management Information: reporting exports. |
+| **Envelope / `_metadata`** | A wrapper the legacy framework added to responses. It is kept for client compatibility. |
+| **CJSCPPUID** | HTTP header carrying the calling user's ID. It is used for permission checks. |
+| **Vendor media type** | Content types like `application/vnd.courtscheduler.create+json`. They identify *which action* a request performs. |
+
+---
+
+## 4. Business context
+
+### 4.1 Where the service sits
+
+```mermaid
+flowchart TB
+    subgraph Users
+        LO[Listing officers]
+        JO[Judicial office / rota team]
+        MI[MI / reporting analysts]
+    end
+
+    subgraph CommonPlatform["HMCTS Common Platform"]
+        UI[Listing & scheduling UI]
+        LS[Listing context services]
+        CS[[Court Scheduler Service]]
+        RD[(Reference Data service)]
+        UG[(Users & Groups service)]
+    end
+
+    subgraph Azure
+        BLOB[(Azure Blob Storage<br/>rota input / archive)]
+        REDIS[(Redis cache)]
+        PG[(PostgreSQL<br/>view store)]
+    end
+
+    ROTA[Magistrates' rota system] -->|XML rota files| BLOB
+
+    LO --> UI --> CS
+    JO --> UI
+    LS -->|book / search slots| CS
+    MI -->|MI exports| CS
+
+    CS -->|court rooms, business types,<br/>judiciaries| RD
+    CS -->|user permissions| UG
+    CS -->|read / lease / archive files| BLOB
+    CS --> REDIS
+    CS --> PG
+```
+
+### 4.2 Actors and what they do
+
+| Actor | Interaction |
+|---|---|
+| **Listing officer (via UI)** | Creates and edits sessions, assigns judiciary, assigns courtrooms to Crown draft sessions, manages judicial itineraries. |
+| **Listing/hearing services** | Search for free capacity, book or release hearing slots, create provisional bookings, move hearings to past dates. |
+| **Rota system** | Drops XML rota files into Blob Storage. A scheduled caller triggers processing via `POST /rotasl/process-rota-files`. |
+| **Reporting / MI** | Pulls exports for a date range. |
+| **Support / ops** | Recalculates availability for an OU code, marks OU codes as migrated, cleans old rota data. |
+
+### 4.3 Business value map
+
+```mermaid
+mindmap
+  root((Court Scheduler))
+    Capacity
+      Sessions AM / PM / AD
+      Slots or minutes
+      Overbooking control
+    Booking
+      Search free capacity
+      Book / release hearings
+      Provisional holds
+      Past-date moves
+    Judiciary
+      Assign / unassign
+      Itineraries
+      Unavailability
+    Automation
+      Rota file ingestion
+      Provisional forecast data
+      Redundant data clean-up
+    Reporting
+      MI exports
+```
+
+---
+
+## 5. Core concepts
+
+### 5.1 Anatomy of a court session
+
+```mermaid
+classDiagram
+    class CourtSchedule {
+        id : UUID
+        oucode
+        courtHouseId / courtHouseName
+        courtRoomId / courtRoomNumber / courtRoomName
+        sessionDate
+        courtSession : AM, PM, AD
+        panel : ADULT, YOUTH
+        businessType
+        jurisdiction : MAGISTRATES, CROWN
+        isDraft
+        slotBased
+        maxSlots / availableSlots
+        maxDuration / availableDuration
+        supportAdSplit
+        maxAdMorningDuration / maxAdAfternoonDuration
+        sessionStartTime / sessionEndTime
+        nationalBreakTime
+        isOverbookingAllowed
+        active
+    }
+    class AllocatedListing {
+        hearingId
+        bookingId
+        duration
+        hearingStartTime
+        source
+    }
+    class CourtScheduleJudiciary {
+        judiciaryId
+        title / forenames / surname
+        judiciaryType
+        isBenchChairman / isDeputy
+        position
+    }
+    class ProvisionalBooking {
+        bookingId
+        hearingStartTime
+        active
+    }
+    CourtSchedule "1" --> "0..*" AllocatedListing : hearings booked
+    CourtSchedule "1" --> "0..*" CourtScheduleJudiciary : judiciary sitting
+    CourtSchedule "1" --> "0..*" ProvisionalBooking : provisional holds
+```
+
+### 5.2 Session types and time windows
+
+Each session type has a permitted time window. All-day sessions can optionally split capacity around the national break time.
+
+```mermaid
+gantt
+    title Permitted session time windows (one day)
+    dateFormat HH:mm
+    axisFormat %H:%M
+    section AM
+    AM window 01.00 to 13.00        :a1, 01:00, 12h
+    section PM
+    PM window 14.00 to 23.59        :a2, 14:00, 599m
+    section AD
+    All-day window 01.00 to 23.59   :a3, 01:00, 1379m
+```
+
+### 5.3 Slot-based vs duration-based capacity
+
+```mermaid
+flowchart LR
+    BT[Business type<br/>from reference data] --> Q{Slot-based?}
+    Q -->|Yes| S[Capacity = max_slot<br/>each hearing uses 1 slot]
+    Q -->|No| D[Capacity = max_duration_mins<br/>each hearing uses its duration]
+    D --> AD{AD session with<br/>all-day split?}
+    AD -->|Yes| SPLIT[Separate morning and afternoon budgets<br/>split at national break time]
+    AD -->|No| SINGLE[Single minutes budget]
+```
+
+### 5.4 Jurisdictions and draft sessions
+
+| | Magistrates | Crown |
+|---|---|---|
+| On create requests | `jurisdiction` is required (schema), and `panel` is required | `jurisdiction` is required, and `isDraft` is required |
+| Default for stored data with no value | Yes, treated as MAGISTRATES | n/a |
+| Courtroom source | Rota court-room reference data | Common Platform court-room reference data |
+| Created from rota files? | Yes | No |
+| Draft sessions | No | Yes, a session can be created as draft and get a courtroom later |
+| `assign.courtroom` endpoint | Not allowed | Allowed for draft sessions with no hearings booked |
+| Can jurisdiction change on edit? | No | No |
+
+### 5.5 Session lifecycle
+
+```mermaid
+stateDiagram-v2
+    [*] --> Draft : Create CROWN session as draft
+    [*] --> Active : Create session (UI) or rota file
+    Draft --> Active : assign.courtroom (no hearings booked)
+    Active --> Active : edit / book / release hearings
+    Active --> Inactive : rota no longer contains the session
+    Active --> Deleted : delete (no hearings booked)
+    Draft --> Deleted : delete (no hearings booked)
+    Inactive --> [*]
+    Deleted --> [*]
+```
+
+### 5.6 Hearing allocation lifecycle
+
+```mermaid
+stateDiagram-v2
+    [*] --> Searching : search free capacity
+    Searching --> Provisional : POST /provisionalBooking
+    Searching --> Allocated : PUT /hearingslots or /list/hearingslots
+    Provisional --> Allocated : hearing confirmed
+    Allocated --> Allocated : re-book (prior allocation released)
+    Allocated --> Released : DELETE /hearingslots/hearingId
+    [*] --> Allocated : POST /hearings/hearingId - past-date move
+    Released --> [*]
+```
+
+---
+
+## 6. Business rules
+
+> These rules are enforced by validators and services in `listingcourtscheduler-api` (`api/validator`, `api/service`) and `listingcourtscheduler-common` (`SessionsService`). A validation failure returns **400** with `{"error":"<message>"}` unless stated otherwise.
+
+### 6.1 Session time rules
+
+| Session | Rule |
+|---|---|
+| **AM** | Start no earlier than 01:00. End no later than 13:00. |
+| **PM** | Start no earlier than 14:00. End no later than 23:59. |
+| **AD** | Start no earlier than 01:00. End no later than 23:59. |
+| All | Start time must be before end time. |
+| AD | The all-day split flag must be sent for AD sessions. Example error: *"All day split flag should be sent for All Day(AD) session"*. |
+
+### 6.2 Conflict rules (create and rota)
+
+For the same **OU code + business type + session date + courtroom**:
+
+```mermaid
+flowchart TD
+    N[New session] --> P{Opposite panel exists?<br/>ADULT vs YOUTH}
+    P -->|Yes| R1[Rejected / not persisted]
+    P -->|No| T{Session-type clash?<br/>AD vs AM/PM}
+    T -->|Yes| R2[Rejected / not persisted]
+    T -->|No| D{Exact duplicate?<br/>centre, room, business type,<br/>date, session type, panel}
+    D -->|Yes| R3[Rejected as duplicate]
+    D -->|No| M{Valid business type and<br/>courtroom mapping?}
+    M -->|No| R4[Skipped / error]
+    M -->|Yes| OK[Persisted]
+```
+
+- **ADULT and YOUTH are mutually exclusive.** If an ADULT session exists, a YOUTH one is not persisted, and the other way round.
+- **AD and AM/PM are mutually exclusive.** An all-day session cannot coexist with AM or PM sessions in the same room on the same day.
+
+### 6.3 Repeat patterns (create)
+
+| Frequency | Behaviour |
+|---|---|
+| `ONCE` | One session on `startDate`. |
+| `EVERY_WEEK` | Sessions on the selected `repeatDays` between `startDate` and `endDate` (required), every `repeatFor` weeks. |
+| `EVERY_MONTH` | Monthly repeat between `startDate` and `endDate` (required). For CROWN sessions, `index` (1–5) is required: the occurrence of the weekday within the month. |
+
+Other create rules:
+
+- `startDate` cannot be in the past, and `endDate` cannot be before `startDate`.
+- `jurisdiction` is required on every session. **CROWN** sessions must send `isDraft`. **MAGISTRATES** sessions must send `panel`.
+
+### 6.4 Update (edit) restrictions
+
+```mermaid
+flowchart TD
+    U[Edit request] --> J{Jurisdiction changed?}
+    J -->|Yes| X1["Error: Jurisdiction cannot be changed"]
+    J -->|No| BT{Business type jurisdiction<br/>matches session jurisdiction?}
+    BT -->|No| X2[Error: business type jurisdiction mismatch]
+    BT -->|Yes| SD{Slot-based to duration-based<br/>or the reverse?}
+    SD -->|Yes| X3[Error: cannot switch capacity model]
+    SD -->|No| H{Hearings booked?}
+    H -->|Yes| HB{Changing room, session type<br/>or panel?}
+    HB -->|Yes| X4[Error: hearings already booked]
+    HB -->|No| TM{New start after earliest hearing<br/>or new end before latest hearing?}
+    TM -->|Yes| X5[Error: time change conflicts with hearings]
+    TM -->|No| OK[Update and recalculate availability]
+    H -->|No| AS{allDaySplit already set<br/>and being changed?}
+    AS -->|Yes| X6[Error]
+    AS -->|No| OK
+```
+
+### 6.5 Delete rules
+
+- Only sessions **without allocated hearings** can be deleted.
+- The response lists sessions that could **not** be deleted, with a reason for each.
+
+### 6.6 Assign courtroom (Crown draft sessions)
+
+```mermaid
+flowchart TD
+    A[assign.courtroom request<br/>courtScheduleIds + courtRoomId] --> F{Session found?}
+    F -->|No| E1[Session not found]
+    F -->|Yes| C{Jurisdiction = CROWN?}
+    C -->|No| E2[Only valid for CROWN sessions]
+    C -->|Yes| CC{Courtroom in the same<br/>court centre?}
+    CC -->|No| E3[Courtroom must belong to the same court centre]
+    CC -->|Yes| DUP{Duplicate session in<br/>target room?}
+    DUP -->|Yes| E4[Duplicate session already exists]
+    DUP -->|No| DR{Is draft?}
+    DR -->|No, already assigned| E5[Cannot assign courtroom to an assigned session]
+    DR -->|Yes| HB{Hearings booked?}
+    HB -->|Yes| E6[Cannot assign to a draft session with hearings]
+    HB -->|No| OK[Courtroom assigned, isDraft = false]
+```
+
+Each session is evaluated independently. The response reports successes and per-session errors.
+
+### 6.7 Booking and overbooking
+
+- A booking succeeds only if the session has free capacity (slots or minutes), **unless** `isOverbookingAllowed` is true for that session.
+- Searches can include overbooked sessions with `showOverbookedSlots=true`.
+- Re-booking a hearing releases its previous allocation first.
+
+### 6.8 Move hearing to a past date
+
+`POST /hearings/{hearingId}` records a hearing against historic session(s).
+
+| Rule | Detail |
+|---|---|
+| No future dates | `startTime` or `endTime` after today (UTC) → **422** `FUTURE_DATE_NOT_ALLOWED`. |
+| Jurisdiction | `MAGISTRATES` (default) or `CROWN`. |
+| Session search | For each sitting day, finds a matching active session at `courtCentreId` (optionally a specific `courtRoomId`) whose time window contains the hearing time. |
+| Sitting days | Weekdays in the range. Weekends in the middle of a mixed range are skipped. A range made only of weekend days (e.g. a single Saturday) is used as given, because weekend sessions exist (e.g. Saturday remand courts). |
+| Duration | Single day: the minutes between `startTime` and `endTime`. Multi-day: a full court day per sitting day. |
+| All-or-nothing | If **any** day has no matching session, nothing is booked → **422** `NO_SESSION_FOUND`. |
+| Source | Allocations are marked `source = MOVE_TO_PAST_DATE`. Earlier allocations for the hearing are released. |
+
+```mermaid
+flowchart TD
+    R[Request: start/end instants, court centre,<br/>optional room, jurisdiction] --> FD{Any date after today?}
+    FD -->|Yes| E1[422 FUTURE_DATE_NOT_ALLOWED]
+    FD -->|No| SD[Expand range into sitting days]
+    SD --> LOOP{For every day:<br/>matching session found?}
+    LOOP -->|No for any day| E2[422 NO_SESSION_FOUND<br/>nothing written]
+    LOOP -->|Yes for all| BOOK[Release prior allocation,<br/>book every day atomically]
+    BOOK --> OK[200 bookedSlots list]
+```
+
+### 6.9 Judicial itineraries (availability rules)
+
+Validation failures return **422** with `{"validationResult":{"status":"FAILURE","validationError":"<message>"}}`.
+
+| Area | Rules (messages as shown to users) |
+|---|---|
+| Required fields | *Select a judiciary*, *Select a courthouse*, *Enter a start date*, *Enter an end date*, *Select the days you want to repeat* |
+| Date range | *The start date must be the same as or before the end date*; *The date range must be 3 years or less*; start and end dates must be in the future |
+| Repeat days | Monday to Friday only |
+| Session type | `AM`, `PM` or `AD` |
+| Unavailability | Reasons: `TRAINING`, `ANNUAL_LEAVE`, `OFFICIAL_BUSINESS`, `SICK_LEAVE`. Dates must sit inside the itinerary. Periods cannot overlap. Adding one that affects already-assigned sessions is flagged for review. |
+| Clashes | *The judiciary is already assigned during these dates* |
+| Update | Changing the start or end date in a way that affects assigned sessions is flagged with a count of affected sessions. |
+| Delete | *You cannot delete this itinerary because it is being used in a session.* |
+
+```mermaid
+flowchart LR
+    UI[UI] -->|validate-add / validate-update / validate-delete| V{Valid?}
+    V -->|No| F[422 validationResult FAILURE<br/>shown to user]
+    V -->|Yes| S[200 SUCCESS]
+    S --> UI2[User confirms] -->|add / update / delete| P[(judiciary_availability_rule<br/>+ unavailability)]
+```
+
+---
+
+## 7. Key user journeys
+
+### 7.1 Create court sessions
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor LO as Listing officer
+    participant UI as Listing UI
+    participant CS as Court Scheduler
+    participant RD as Reference Data
+    participant DB as PostgreSQL
+
+    LO->>UI: Define sessions + repeat pattern
+    UI->>CS: POST /validate (vnd.courtscheduler.validate.create+json)
+    CS-->>UI: 200 OK or 400 {"error": "..."}
+    UI->>CS: POST /courtschedule (vnd.courtscheduler.create+json)
+    CS->>CS: Schema validation + business validation
+    CS->>RD: Business type, court room (cached)
+    RD-->>CS: Reference data
+    CS->>CS: Expand repeat pattern, check conflicts and duplicates
+    CS->>DB: Batch insert court_schedule rows
+    CS-->>UI: 202 Accepted
+```
+
+### 7.2 Search for capacity and book a hearing
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant L as Listing service
+    participant CS as Court Scheduler
+    participant DB as PostgreSQL
+
+    L->>CS: GET /hearingslots?panel=ADULT&sessionStartDate=..&sessionEndDate=..&pageSize=..&pageNumber=..
+    CS->>DB: Query sessions with availability (aggregated from allocated_listings)
+    DB-->>CS: Matching sessions
+    CS-->>L: 200 vnd.courtscheduler.get.hearing.slots+json
+    L->>CS: PUT /hearingslots (hearingId, courtScheduleId, start time, duration)
+    CS->>DB: Release previous allocation for hearing (if any)
+    CS->>DB: Insert allocated_listings, recalculate availability
+    CS-->>L: 200 updated session availability
+    Note over L,CS: To release: DELETE /hearingslots/{hearingId} → 202
+```
+
+### 7.3 Search and book in one call
+
+```mermaid
+sequenceDiagram
+    participant L as Listing service
+    participant CS as Court Scheduler
+    L->>CS: GET /searchlist/hearingslots?hearingId&courtCentreId&hearingDate&durationInMinutes
+    CS->>CS: Find a suitable session and book it
+    CS-->>L: 200 vnd.courtscheduler.search.book.hearing.slots+json
+    L->>CS: PUT /searchupdate/hearingslots (courtScheduleId unknown)
+    CS-->>L: 204 No Content
+```
+
+### 7.4 Provisional booking
+
+```mermaid
+sequenceDiagram
+    participant L as Listing service
+    participant CS as Court Scheduler
+    participant DB as PostgreSQL
+    L->>CS: POST /provisionalBooking {courtScheduleIds, ...}
+    CS->>DB: Insert provisional_booking rows
+    CS-->>L: 200 {bookingId, ...}
+    L->>CS: GET /provisionalBooking?bookingIds=a,b
+    CS-->>L: 200 provisional booking details
+```
+
+### 7.5 Assign or unassign judiciary
+
+```mermaid
+sequenceDiagram
+    participant UI as Listing UI
+    participant CS as Court Scheduler
+    participant RD as Reference Data
+    participant DB as PostgreSQL
+    UI->>CS: POST /session (vnd.courtscheduler.assign-judiciary+json)
+    CS->>RD: Judiciary details (cached)
+    CS->>DB: Upsert court_schedule_judiciary
+    CS-->>UI: 202 Accepted
+    UI->>CS: POST /session (vnd.courtscheduler.unassign.judiciary+json)
+    CS->>DB: Remove judiciary from session
+    CS-->>UI: 202 Accepted
+```
+
+### 7.6 Assign a courtroom to Crown draft sessions
+
+```mermaid
+sequenceDiagram
+    participant UI as Listing UI
+    participant CS as Court Scheduler
+    participant DB as PostgreSQL
+    UI->>CS: POST /courtschedule/assign.courtroom {courtScheduleIds, courtRoomId}
+    CS->>DB: Load sessions + check duplicates + hearings
+    CS->>DB: Update courtRoomId, isDraft=false for eligible sessions
+    CS-->>UI: 200 vnd.courtscheduler.assign.courtroom.response+json<br/>(successes + per-session errors)
+```
+
+### 7.7 Move a hearing to a past date
+
+```mermaid
+sequenceDiagram
+    participant H as Hearing / listing service
+    participant CS as Court Scheduler
+    participant DB as PostgreSQL
+    H->>CS: POST /hearings/{hearingId} (vnd.courtscheduler.move-hearing-to-past-date+json)
+    alt date in the future
+        CS-->>H: 422 {errorCode: FUTURE_DATE_NOT_ALLOWED}
+    else
+        loop each sitting day
+            CS->>DB: findSessionForMoveToPastDate(centre, room, day, time, jurisdiction)
+        end
+        alt any day missing
+            CS-->>H: 422 {errorCode: NO_SESSION_FOUND}
+        else
+            CS->>DB: release prior + book all days (source=MOVE_TO_PAST_DATE)
+            CS-->>H: 200 {bookedSlots: [...]}
+        end
+    end
+```
+
+### 7.8 Manage a judicial itinerary
+
+```mermaid
+sequenceDiagram
+    participant UI as Listing UI
+    participant CS as Court Scheduler
+    participant DB as PostgreSQL
+    UI->>CS: POST /judiciaries/availability-rules/validate-add
+    CS->>DB: Check overlaps, assigned sessions
+    CS-->>UI: 200 SUCCESS / 422 FAILURE
+    UI->>CS: POST /judiciaries/availability-rules/add
+    CS->>DB: Insert rule + repeat days + unavailability
+    UI->>CS: GET /judiciaries/availability?startDate&endDate&courtCentreId
+    CS-->>UI: 200 available judiciary per day/session
+```
+
+---
+
+## 8. Rota file processing
+
+**In plain language:** the magistrates' rota team publishes XML files describing which courtrooms sit, when, for what business, and with which magistrates or judges. The Court Scheduler reads these files from Azure Blob Storage and turns them into sessions and judiciary assignments. It then archives the files.
+
+### 8.1 File types
+
+| Type | How it is recognised | Behaviour |
+|---|---|---|
+| **Full rota file** | Name starts `lja_` | Replaces the sessions for the rota period: creates, updates and deactivates. |
+| **Snapshot file** | Name contains `_snapshot_` and a timestamp | Incremental update. Skipped if a newer snapshot has already been processed. |
+| **Dummy support file** | Name contains `dummysupport` | Skipped. |
+| **IT test file** | Name starts `IT_Test_` (only when `forItTest=true`) | Used by integration tests. |
+
+### 8.2 End-to-end flow
+
+```mermaid
+flowchart TD
+    T[POST /rotasl/process-rota-files<br/>returns 202 immediately] --> A[[Async worker]]
+    A --> F{Unleased file with prefix<br/>lja_ or IT_Test_?}
+    F -->|No| DONE[Finish]
+    F -->|Yes| L[Acquire blob lease]
+    L --> RD{Reference data loaded<br/>this run?}
+    RD -->|No| LOAD[Load court rooms, judiciaries,<br/>room session allocations, business types]
+    RD -->|Yes| DL
+    LOAD --> DL[Download blob]
+    DL --> P{rotaProcess = old?}
+    P -->|Yes| OLD[Legacy RotaFileProcessorService]
+    P -->|No, default| NEW[New RotaFileProcessor]
+    NEW --> PARSE[Parse XML, create execution ID,<br/>record rota_file_process_history]
+    PARSE --> SNAP{Snapshot older than<br/>last processed?}
+    SNAP -->|Yes| SKIP[Skip file]
+    SNAP -->|No| ENR[Map location to OU code,<br/>work out rota period,<br/>resolve business types]
+    ENR --> CLEAN[Delete unallocated judiciary<br/>for rota period]
+    CLEAN --> SCHED[Create / update / deactivate<br/>court_schedule rows]
+    SCHED --> JUD[Assign judiciary to sessions]
+    JUD --> PROV[Populate provisional forecast data<br/>default 6 months, 28-day cycle]
+    PROV --> ARCH[Archive file, release lease,<br/>delete from input container]
+    OLD --> ARCH
+    SKIP --> ARCH
+    ARCH --> F
+```
+
+### 8.3 Processing sequence
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Sch as Scheduler / ops
+    participant API as RotaFileProcessorApi
+    participant Trig as Trigger service (@Async)
+    participant Blob as Azure Blob Storage
+    participant RD as Reference Data
+    participant Proc as RotaFileProcessor
+    participant DB as PostgreSQL
+
+    Sch->>API: POST /rotasl/process-rota-files {forItTest?, rotaProcess?}
+    API->>Trig: captureRotaFilesAndProcessEach()
+    API-->>Sch: 202 Accepted
+    loop until no unleased file remains
+        Trig->>Blob: findAvailableFile(prefix) + lease
+        Trig->>RD: load reference data (first file only)
+        Trig->>Blob: download
+        Trig->>Proc: downloadAndProcessForEachFile(content, name, leaseId)
+        Proc->>DB: history, sessions, judiciary, provisional data
+        Proc->>DB: rota_process_log (errors)
+        Proc->>Blob: archive + delete input file
+    end
+```
+
+### 8.4 Rota blob state
+
+```mermaid
+stateDiagram-v2
+    [*] --> Waiting : file uploaded to input container
+    Waiting --> Leased : worker acquires lease
+    Leased --> Waiting : lease conflict (another worker), skip
+    Leased --> Processing
+    Processing --> Archived : success or skipped snapshot
+    Processing --> Waiting : error, lease released
+    Archived --> [*] : copied to archive, removed from input
+```
+
+### 8.5 Migrated vs non-migrated OU codes
+
+`POST /oucode/migrate` sets each OU code's flag in `courtscheduler_migration_status`. During rota processing, migrated and non-migrated OU codes are processed separately: the existing sessions for the rota period are compared with the file, and sessions are created, updated or deactivated as needed.
+
+### 8.6 Housekeeping
+
+- `POST /rotasl/clean-redundant-rota-data` with `{"numberOfPreviousMonthsAndOlder": N}` deletes rota-derived data older than *N* months. It returns 202.
+- Errors per execution are recorded in `rota_process_log`. Each processed file is recorded in `rota_file_process_history` (with a file hash and execution ID).
+
+---
+
+## 9. Availability calculation
+
+Availability is always **derived from the bookings**, so it can be recalculated at any time (`POST /oucode/recalculate-availability`).
+
+| Model | Formula |
+|---|---|
+| Slot-based | `available_slot = max_slot − count(allocated_listings)` |
+| Duration-based | `available_duration_mins = max_duration_mins − Σ allocated_listings.duration` |
+| AD split, morning | `Σ` minutes of each hearing that fall **before** `national_break_time` |
+| AD split, afternoon | `Σ` minutes of each hearing that fall **at or after** `national_break_time` |
+
+A hearing that spans the break is split: the minutes before the break count against the morning budget and the rest against the afternoon.
+
+```mermaid
+gantt
+    title Example AD split session, break at 13:00
+    dateFormat HH:mm
+    axisFormat %H:%M
+    section Budgets
+    Morning budget (180 min)      :m, 10:00, 180m
+    Lunch break                   :crit, b, 13:00, 60m
+    Afternoon budget (150 min)    :a, 14:00, 150m
+    section Hearings
+    H1 60 min (morning)           :h1, 10:00, 60m
+    H2 120 min spans break        :h2, 12:00, 120m
+    H3 30 min (afternoon)         :h3, 14:30, 30m
+```
+
+*Worked example:* H1 uses 60 morning minutes. H2 starts at 12:00, so its first 60 minutes count as morning and its remaining 60 as afternoon. H3 uses 30 afternoon minutes. Total booked: morning 120 of 180, afternoon 90 of 150.
+
+---
+
+## 10. System architecture
+
+### 10.1 Module structure
+
+```mermaid
+flowchart BT
+    domain[listingcourtscheduler-domain<br/>POJOs + test fixtures]
+    cache[listingcourtscheduler-cache<br/>Redis / Lettuce]
+    persist[viewstore-persistence<br/>JPA entities + repositories]
+    liquibase[viewstore-liquibase<br/>DB changelogs]
+    common[listingcourtscheduler-common<br/>core services, reference data, Azure Blob]
+    rota[rota-file-processor<br/>parse, enrich, provisional data]
+    api[listingcourtscheduler-api<br/>Spring Boot app: controllers, config,<br/>auth, envelope, validation]
+    it[integration-test<br/>Docker-based IT suite]
+
+    persist --> domain
+    common --> domain
+    common --> cache
+    common --> persist
+    rota --> common
+    rota --> persist
+    api --> common
+    api --> rota
+    api --> cache
+    api -.runtime.-> liquibase
+    it -.tests over HTTP.-> api
+```
+
+| Module | Responsibility |
+|---|---|
+| `listingcourtscheduler-domain` | Plain domain objects (sessions, slots, judiciary, business types). It also provides the `testFixtures` shared by other modules' tests. |
+| `listingcourtscheduler-cache` | Redis cache for reference data (TTL 24 h by default, plus a short 5-minute TTL key). |
+| `listingcourtscheduler-viewstore-persistence` | JPA entities and repositories. `CourtScheduleRepositoryImpl` holds the complex native SQL for availability and search. |
+| `listingcourtscheduler-viewstore-liquibase` | Database schema changesets `001`–`049`. They run automatically at start-up. |
+| `listingcourtscheduler-common` | `SessionsService` and the other core services, `ReferenceDataService` (REST client), Azure Blob client, judiciary assignment. |
+| `listingcourtscheduler-rota-file-processor` | Rota XML parsing, enrichment, judiciary scheduling, provisional data generation. |
+| `listingcourtscheduler-api` | The Spring Boot application: OpenAPI-generated interfaces, the API classes in the `api` package, validators, filters, configuration. |
+| `listingcourtscheduler-integration-test` | Full end-to-end tests against the app running in Docker. |
+
+### 10.2 Request processing pipeline
+
+```mermaid
+flowchart LR
+    C[Client] --> TC[Tomcat<br/>context path /listingcourtscheduler-api/rest/courtscheduler]
+    TC --> AU[cp-audit-filter<br/>audit log]
+    AU --> AZ[cp-auth-rules-filter<br/>Drools authz via Users & Groups]
+    AZ --> SV[RequestSchemaValidationFilter<br/>everit draft-04 JSON schema]
+    SV --> MT[ActionMetricsInterceptor<br/>Micrometer]
+    MT --> CTRL[API class implementing<br/>generated *OpenApi interface]
+    CTRL --> VAL[Business validators]
+    VAL --> SVC[Services]
+    SVC --> REPO[Repositories]
+    REPO --> DB[(PostgreSQL)]
+    SVC --> RDS[Reference Data via RestTemplate<br/>+ Redis cache]
+    CTRL --> ENV[EnvelopeResponseBodyAdvice<br/>adds _metadata]
+    ENV --> C
+    CTRL -. exceptions .-> GEH[GlobalExceptionHandler<br/>error: msg]
+    GEH --> C
+```
+
+### 10.3 Component view of the API module
+
+```mermaid
+flowchart TB
+    subgraph api["listingcourtscheduler-api"]
+        direction TB
+        subgraph web["api package (controllers)"]
+            CSA[CourtSchedulerApi<br/>courtschedule, session, validate,<br/>provisionalBooking, mi, oucode]
+            HSA[HearingSlotsApi<br/>hearingslots, list, searchupdate,<br/>searchlist, hearings/hearingId]
+            JAA[JudiciaryAvailabilityApi<br/>judiciaries/*]
+            RFA[RotaFileProcessorApi<br/>rotasl/*]
+        end
+        subgraph svc["api.service"]
+            SUS[SlotsUpdateService]
+            SSS[SlotsSearchService]
+            SRS[SlotsRemoveService]
+            PBS[ProvisionalBookingService]
+            MIS[MiService]
+            JAS[JudiciaryAvailabilityService]
+            ROT[rota: trigger, processor,<br/>redundant data cleaner]
+        end
+        VALD[validator: SessionsApiValidator, ...]
+        CFG[config: Jackson, CORS, audit,<br/>metrics, RestTemplate client]
+        ENVL[envelope + GlobalExceptionHandler]
+    end
+    subgraph commonm["listingcourtscheduler-common"]
+        SS[SessionsService]
+        JAsg[Judiciary assignment / unassignment]
+        RDS2[ReferenceDataService]
+        ABS[AzureBlobClientService]
+    end
+    CSA --> SS
+    CSA --> PBS
+    CSA --> MIS
+    HSA --> SUS & SSS & SRS
+    JAA --> JAS
+    RFA --> ROT
+    ROT --> ABS
+    SS --> RDS2
+```
+
+### 10.4 Deployment view
+
+```mermaid
+flowchart LR
+    subgraph AKS["Azure Kubernetes Service"]
+        POD1[courtscheduler pod]
+        POD2[courtscheduler pod]
+    end
+    ING[Ingress / API gateway] --> POD1 & POD2
+    POD1 & POD2 --> PG[(Azure PostgreSQL)]
+    POD1 & POD2 --> RED[(Azure Cache for Redis)]
+    POD1 & POD2 -->|Workload Identity /<br/>DefaultAzureCredential| BLOB[(Storage account<br/>schedulelistinginput /<br/>schedulelistingarchive)]
+    POD1 & POD2 --> GW[CPP gateway<br/>referencedata + usersgroups]
+    SEC["Secrets config tree<br/>/mnt/secrets/rpe"] -.-> POD1 & POD2
+```
+
+Configuration comes from environment variables and an optional Kubernetes secrets mount (`/mnt/secrets/rpe/`). The container image is built from the Spring Boot fat jar and deployed through the HMCTS Azure DevOps pipeline (see [18](#18-cicd-and-release)).
+
+### 10.5 Technology stack
+
+| Concern | Technology |
+|---|---|
+| Runtime | Java 25, Spring Boot 4.1 (Web MVC, Data JPA, Validation, Actuator, AOP) |
+| Build | Gradle (wrapper), OpenAPI Generator 7.x, Lombok, Hibernate JPA metamodel generator |
+| Persistence | PostgreSQL 16, Hibernate 7, Liquibase, HikariCP |
+| Cache | Redis via Lettuce |
+| Storage | Azure Blob Storage (azure-storage-blob, azure-identity) |
+| Security | `cp-auth-rules-filter` (Drools), `cp-audit-filter-springboot` |
+| JSON | Jackson, jakarta.json (Parsson), everit JSON Schema |
+| Observability | Micrometer + Prometheus, OpenTelemetry, Logstash JSON logging |
+| Tests | JUnit 6, Mockito, Spring Boot Test, Testcontainers, REST Assured, WireMock, Azurite, Awaitility |
+
+---
+
+## 11. API reference
+
+### 11.1 Conventions
+
+| Aspect | Convention |
+|---|---|
+| Context path | `/listingcourtscheduler-api/rest/courtscheduler` |
+| Contract | `listingcourtscheduler-api/src/main/resources/openapi/courtscheduler-api.openapi.yml` (generated from the legacy RAML) |
+| Required header | `CJSCPPUID: <user UUID>` |
+| Optional header | `CPP-ACTION: <action name>` (overrides action resolution) |
+| Media types | Vendor types `application/vnd.courtscheduler.<action>+json` identify the action. Several endpoints share a URL and are told apart by `Content-Type` (`/validate`, `/session`) or `Accept` (`GET /hearingslots`). |
+| Response envelope | Bodies include the legacy `_metadata` block. |
+| Error body | `{"error":"<message>"}`. Multiple messages are joined with `"; "`. |
+| 422 bodies | `{"errors":{...},"timestamp":...}` (validator), `{"validationResult":{...}}` (judiciary), `{"errorCode":..., "message":...}` (move-to-past-date) |
+| Unsupported `Accept` | 406 |
+| Schema-invalid body | 400 |
+| Pagination | `pageSize` and `pageNumber` query parameters |
+
+### 11.2 Endpoint catalogue
+
+**Court schedules**
+
+| Method & path | Media type (request / response) | Success | Purpose |
+|---|---|---|---|
+| `POST /courtschedule` | `vnd.courtscheduler.create+json` | 202 | Create sessions with a repeat pattern |
+| `GET /courtschedule` | → `vnd.courtscheduler.get+json` | 200 | Query sessions (centre, room, business type, dates, paging) |
+| `POST /courtschedule/edit` | `vnd.courtscheduler.update+json` | 202 | Update one session |
+| `POST /courtschedule/delete` | `vnd.courtscheduler.delete+json` → `.delete.response+json` | 200 | Delete sessions without bookings |
+| `POST /courtschedule/assign.courtroom` | `vnd.courtscheduler.assign.courtroom+json` → `.response+json` | 200 | Assign a courtroom to Crown draft sessions |
+| `GET /courtschedule/search.court-schedules-by-id` | → `vnd.courtscheduler.search.court-schedules-by-id+json` | 200 | Fetch sessions by IDs |
+
+**Judiciary on sessions**
+
+| Method & path | Media type | Success | Purpose |
+|---|---|---|---|
+| `POST /session` | `vnd.courtscheduler.assign-judiciary+json` | 202 | Assign judiciary |
+| `POST /session` | `vnd.courtscheduler.unassign.judiciary+json` | 202 | Unassign judiciary |
+
+**Hearing slots**
+
+| Method & path | Media type | Success | Purpose |
+|---|---|---|---|
+| `GET /hearingslots` | → `vnd.courtscheduler.get.hearing.slots+json` | 200 | Search free capacity |
+| `GET /hearingslots` | → `vnd.courtscheduler.get.hearing.ids+json` | 200 | Hearing IDs for allocated slots |
+| `PUT /hearingslots` | `vnd.courtscheduler.update.hearing.slots+json` → `.response+json` | 200 | Book a hearing |
+| `DELETE /hearingslots/{hearingId}` | n/a | 202 | Release a hearing's allocations |
+| `PUT /list/hearingslots` | `vnd.courtscheduler.list.hearings-in-court-sessions+json` → `.response+json` | 200 | Book multiple hearings |
+| `PUT /searchupdate/hearingslots` | `vnd.courtscheduler.search.update.hearing.slots+json` | 204 | Search and book when the session ID is unknown |
+| `GET /searchlist/hearingslots` | → `vnd.courtscheduler.search.book.hearing.slots+json` | 200 | Search and book |
+| `POST /hearings/{hearingId}` | `vnd.courtscheduler.move-hearing-to-past-date+json` → `.response+json` | 200 / 422 | Move a hearing to past session(s) |
+
+**Provisional bookings**
+
+| Method & path | Media type | Success | Purpose |
+|---|---|---|---|
+| `POST /provisionalBooking` | `vnd.courtscheduler.create.provisional.booking+json` → `.response+json` or `application/json` | 200 | Create a provisional booking |
+| `GET /provisionalBooking?bookingIds=` | → `vnd.courtscheduler.get.provisional.booking+json` | 200 | Fetch bookings |
+
+**Validation**
+
+| Method & path | Media type | Success | Purpose |
+|---|---|---|---|
+| `POST /validate` | `vnd.courtscheduler.validate.{create,update,delete}+json` | 200 / 400 | Dry-run validation |
+| `POST /validate-session-availability` | `vnd.courtscheduler.validate.session.availability+json` | 200 / 400 | Validate availability |
+
+**Judicial itineraries** (plain `application/json`)
+
+| Method & path | Success | Purpose |
+|---|---|---|
+| `GET /judiciaries/availability` | 200 | Available judiciary for a date range / court centre |
+| `GET /judiciaries/availability-rules` | 200 | List itineraries |
+| `GET /judiciaries/availability-rules/{ruleId}` | 200 | One itinerary |
+| `POST /judiciaries/availability-rules/add` · `/update` · `/delete` | 200 / 422 | Maintain itineraries |
+| `POST /judiciaries/availability-rules/validate-add` · `/validate-update` · `/validate-delete` | 200 / 422 | Dry-run validation |
+
+**MI exports**
+
+| Method & path | Response media type | Purpose |
+|---|---|---|
+| `GET /mi/court_schedules?fromDate&toDate` | `vnd.courtscheduler.export.court_schedule+json` | Sessions |
+| `GET /mi/court_schedule_judiciaries?fromDate&toDate` | `vnd.courtscheduler.export.court_schedule_judiciary+json` | Judiciary assignments |
+| `GET /mi/allocated_listings?fromDate&toDate` | `vnd.courtscheduler.export.allocated_listings+json` | Bookings |
+
+**Operations**
+
+| Method & path | Media type | Success | Purpose |
+|---|---|---|---|
+| `POST /oucode/migrate` | `vnd.courtscheduler.oucode.migrate+json` | 202 | Set migration flag on OU codes |
+| `POST /oucode/recalculate-availability` | `vnd.courtscheduler.oucode.recalculate.availability+json` | 202 | Recalculate availability |
+| `POST /rotasl/process-rota-files` | `vnd.courtscheduler.rotasl.process_rota_files+json` | 202 | Trigger async rota processing |
+| `POST /rotasl/clean-redundant-rota-data` | `vnd.courtscheduler.rotasl.clean_redundant_rota_data+json` | 202 | Purge old rota data |
+| `GET /actuator/health` · `/info` · `/prometheus` · `/metrics` | n/a | 200 | Health and metrics (no auth) |
+
+### 11.3 Example: create a session
+
+```http
+POST /listingcourtscheduler-api/rest/courtscheduler/courtschedule
+CJSCPPUID: 7e2f…-user-uuid
+Content-Type: application/vnd.courtscheduler.create+json
+
+{
+  "sessions": [{
+    "courtCentreId": "f8254db1-1683-483e-afb2-b0c5e3a5e2c7",
+    "courtRoomId": "9e4932f7-97b2-3010-b942-ddd2624e4dd8",
+    "sessionType": "AM",
+    "businessType": "REM",
+    "jurisdiction": "MAGISTRATES",
+    "panel": "ADULT",
+    "duration": 10,
+    "repeatDays": ["Monday", "Wednesday"]
+  }],
+  "repeatPattern": { "frequency": "EVERY_WEEK", "startDate": "2026-11-02", "endDate": "2026-12-18", "repeatFor": 1 }
+}
+```
+
+```http
+HTTP/1.1 202 Accepted
+```
+
+Validation failure:
+
+```http
+HTTP/1.1 400 Bad Request
+Content-Type: application/json
+
+{"error":"All day split flag should be sent for All Day(AD) session"}
+```
+
+`duration` is the session's capacity: a number of slots for slot-based business types, or minutes for duration-based ones. The authoritative request schemas are in `listingcourtscheduler-api/src/raml/json/schema/`.
+
+### 11.4 Status code map
+
+```mermaid
+flowchart LR
+    R[Request] --> A{Authorised?}
+    A -->|No| S403[403]
+    A -->|Yes| AC{Acceptable Accept?}
+    AC -->|No| S406[406]
+    AC -->|Yes| SC{Body matches schema?}
+    SC -->|No| S400a[400 error]
+    SC -->|Yes| BV{Business validation}
+    BV -->|Fails| S400b[400 error / 422 for<br/>judiciary and past-date]
+    BV -->|OK| T{Operation type}
+    T -->|create / edit / session / oucode /<br/>rota / delete hearing| S202[202]
+    T -->|query / book / delete / MI /<br/>provisional / assign courtroom| S200[200]
+    T -->|searchupdate| S204[204]
+    T -.unexpected exception.-> S500[500 error]
+```
+
+---
+
+## 12. Security: authentication, authorisation and audit
+
+### 12.1 Authorisation flow
+
+There is no Spring Security. Authorisation is handled by `cp-auth-rules-filter`, which evaluates Drools rules against the caller's permissions fetched from the Users & Groups service.
+
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant F as cp-auth-rules-filter
+    participant UG as Users & Groups
+    participant D as Drools rules<br/>courtscheduler-api.drl
+    participant APP as API
+
+    C->>F: request + CJSCPPUID (+ optional CPP-ACTION)
+    F->>F: Resolve action name
+    F->>UG: GET logged-in-user/permissions (CJSCPPUID)
+    UG-->>F: permissions
+    F->>D: evaluate(Action, user permissions)
+    alt rule grants
+        D-->>F: Outcome success
+        F->>APP: continue
+        APP-->>C: response
+    else no matching rule / denied
+        F-->>C: 403 Forbidden
+    end
+```
+
+### 12.2 How the action name is resolved
+
+```mermaid
+flowchart TD
+    Q[Incoming request] --> H{CPP-ACTION header?}
+    H -->|Yes| A1[Action = header value]
+    H -->|No| V{Vendor media type?<br/>application/vnd.TOKEN+json}
+    V -->|Yes| A2[Action = TOKEN<br/>e.g. courtscheduler.create]
+    V -->|No| A3["Action = METHOD PATH<br/>e.g. GET /judiciaries/availability"]
+    A1 & A2 & A3 --> R{Matching Drools rule<br/>and user has permission?}
+    R -->|Yes| OK[Allowed]
+    R -->|No| NO[Denied, fails closed]
+```
+
+Key settings (`application-authz.yml`): `action-required: false`, `deny-when-no-rules: true`. `/actuator`, `/error` and `/usersgroups-query-api/` are excluded. Authorisation is switched on by `CSCHED_AUTHZ_ENABLED`.
+
+> **Developers:** every new endpoint needs a rule in `src/main/resources/uk.gov.moj.cpp.courtscheduler.api.accesscontrol.drl/courtscheduler-api.drl`. Without one, it returns 403.
+
+### 12.3 Audit and outbound identity
+
+- `cp-audit-filter-springboot` (configured by `AuditFilterConfig`, driven by the OpenAPI spec) records an audit event per request. It is toggled by `CSCHED_HTTP_AUDIT_ENABLED` / `CSCHED_AUDIT_ENABLED`.
+- Outbound calls to Reference Data and Users & Groups are made as the **system user** (`COURTSCHEDULER_SYSTEM_USER_ID`) in the `CJSCPPUID` header.
+- Azure Blob Storage is accessed with **Workload Identity / DefaultAzureCredential** in Azure, or a connection string locally and in tests.
+
+---
+
+## 13. Data model
+
+### 13.1 Entity-relationship diagram
+
+```mermaid
+erDiagram
+    court_schedule ||--o{ allocated_listings : "has bookings"
+    court_schedule ||--o{ court_schedule_judiciary : "has judiciary"
+    court_schedule ||--o{ provisional_booking : "has provisional holds"
+    judiciary_availability_rule ||--o{ judiciary_availability_rule_repeat_day : "repeats on"
+    judiciary_availability_rule ||--o{ judiciary_unavailability : "has exceptions"
+    rota_file_process_history ||--o{ rota_process_log : "execution_id"
+
+    court_schedule {
+        varchar id PK
+        varchar court_listing_profile_id
+        varchar oucode
+        varchar court_house_id
+        varchar court_room_id
+        int court_room_number
+        varchar rota_business_type
+        varchar panel
+        varchar court_session
+        date session_start
+        boolean is_slot_based
+        int max_slot
+        int available_slot
+        int max_duration_mins
+        int available_duration_mins
+        boolean support_ad_split
+        int max_ad_morning_duration
+        int max_ad_afternoon_duration
+        time session_start_time
+        time session_end_time
+        time national_break_time
+        boolean is_overbooking_allowed
+        boolean is_draft
+        varchar jurisdiction
+        boolean active
+    }
+    allocated_listings {
+        varchar id PK
+        varchar court_schedule_id FK
+        varchar hearing_id
+        varchar booking_id
+        varchar oucode
+        int court_room_id
+        varchar rota_business_type
+        int duration
+        time hearing_start_time
+        varchar source
+    }
+    court_schedule_judiciary {
+        varchar court_schedule_id PK
+        varchar judiciary_id PK
+        varchar rota_judiciary_id
+        varchar judiciary_type
+        boolean is_bench_chairman
+        boolean is_deputy
+        varchar position
+        boolean active
+    }
+    provisional_booking {
+        varchar court_schedule_id PK
+        varchar booking_id PK
+        time hearing_start_time
+        boolean active
+    }
+    courtscheduler_migration_status {
+        varchar oucode PK
+        varchar court_centre_id
+        boolean migrated
+    }
+    judiciary_availability_rule {
+        varchar id PK
+        varchar judiciary_id
+        varchar court_house_id
+        date from_date
+        date to_date
+        varchar session_type
+    }
+    judiciary_availability_rule_repeat_day {
+        varchar day_of_week
+    }
+    judiciary_unavailability {
+        varchar id PK
+        varchar availability_rule_id FK
+        date from_date
+        date to_date
+        varchar reason
+    }
+    rota_file_process_history {
+        varchar execution_id PK
+        varchar file_name
+        varchar file_hash
+        varchar file_name_prefix
+        timestamp file_date
+        date process_start_date
+        date process_end_date
+    }
+    rota_process_log {
+        uuid id PK
+        varchar execution_id
+        timestamp timestamp
+        varchar error_code
+        varchar error_text
+    }
+```
+
+### 13.2 Table summary
+
+| Table | Purpose |
+|---|---|
+| `court_schedule` | One row per session, with capacity and availability. The core table. |
+| `allocated_listings` | Hearings booked into sessions. `source` records the channel, e.g. `MOVE_TO_PAST_DATE`. |
+| `court_schedule_judiciary` | Judiciary sitting in a session (composite key: session + judiciary). |
+| `provisional_booking` | Provisional holds (composite key: session + booking). |
+| `courtscheduler_migration_status` | Migration flag per OU code. |
+| `judiciary_availability_rule` (+ repeat days) | Judicial itineraries. |
+| `judiciary_unavailability` | Unavailability periods inside an itinerary. |
+| `rota_file_process_history` | One row per processed rota file (execution ID, hash, period). |
+| `rota_process_log` | Errors raised while processing a rota execution. |
+| `court_room_mapping`, `court_room_session_allocation`, `judiciary_mapping`, `business_type` | Legacy rota mapping and reference tables from the early changesets. |
+
+### 13.3 Schema management
+
+- Liquibase master changelog: `listingcourtscheduler-viewstore-liquibase/src/main/resources/liquibase/courtscheduler-view-store-db-changelog.xml`
+- Changesets `001` to `049` live in `courtscheduler-view-store-db-changesets/`. **Add new changes as a new numbered file. Never edit an applied changeset.**
+- Migrations run automatically at start-up (`spring.liquibase.enabled=true`). Hibernate `ddl-auto` is `none`.
+- JDBC time zone is UTC. Hibernate batching is on (`batch_size=50`, ordered inserts and updates).
+
+```mermaid
+timeline
+    title Schema evolution highlights
+    001-005 : court room mapping, session allocation, allocated listings, court schedule, judiciary
+    011-017 : provisional booking, hearing start times, indexes
+    018-028 : business type, slot-based flag, court house, rota file history, migration status
+    038-042 : AD split budgets, session start/end times, overbooking, national break time
+    043-046 : allocation source, rota process log
+    047-049 : draft sessions, jurisdiction, judiciary availability rules
+```
+
+---
+
+## 14. Configuration
+
+All settings can be overridden with environment variables. Defaults are shown.
+
+| Area | Env var | Default | Notes |
+|---|---|---|---|
+| Server | `SERVER_PORT` | `8083` | |
+| | `VIRTUAL_THREADS` | `false` | Java virtual threads |
+| Datasource | `CSCHED_DATASOURCE_URL` | `jdbc:postgresql://localhost:5432/scsl` | |
+| | `CSCHED_DATASOURCE_USERNAME` / `_PASSWORD` | `scsl` / `scsl` | |
+| | `CSCHED_DB_POOL_SIZE` / `CSCHED_DB_MIN_IDLE` | `20` / `5` | Hikari pool |
+| Outbound | `CSCHED_BASE_URL` | `http://localhost:8080` | Gateway for Reference Data and Users & Groups |
+| | `COURTSCHEDULER_SYSTEM_USER_ID` | (empty) | `CJSCPPUID` for outbound calls |
+| | `CSCHED_HTTP_CONNECT_TIMEOUT_SECONDS` / `_READ_` | `5` / `30` | |
+| Rota | `ROTA_MONTHS_OF_PROVISIONAL_DATA` | `6` | Forecast months |
+| | `ROTA_CYCLE_LENGTH_DAYS` | `28` | Rota cycle length |
+| Azure | `AZURE_STORAGE_ACCOUNT_NAME`, `AZURE_CLIENT_ID`, `AZURE_TENANT_ID` | (empty) | Managed identity |
+| | `CSCHED_ROTASLSTORAGECONNECTIONSTRING` | (empty) | Local/test only |
+| | `CSCHED_ROTASLINPUTCONTAINERNAME` / `...ARCHIVECONTAINERNAME` | `schedulelistinginput` / `schedulelistingarchive` | |
+| Redis | `REDIS_COMMON_CACHE_ENABLED` | `false` | |
+| | `REDIS_COMMON_CACHE_HOST` / `_PORT` / `_USE_SSL` | `localhost` / `6380` / `false` | |
+| | `REDIS_COMMON_CACHE_KEY_TTL` | `86400` | Seconds |
+| Security | `CSCHED_AUTHZ_ENABLED` | `false` (compose: `true`) | Drools authorisation |
+| | `CSCHED_HTTP_AUDIT_ENABLED`, `CSCHED_AUDIT_ENABLED` | `true` (compose) | Audit filter |
+| Logging | `LOG_LEVEL_ROOT` / `LOG_LEVEL_COURTSCHEDULER` | `WARN` / `INFO` | |
+| Envelope | `courtscheduler.envelope.enabled` | `true` | Turn off only once the UI no longer reads `_metadata` |
+
+Configuration files are in `listingcourtscheduler-api/src/main/resources/`: `application.yaml` plus the `application-{datasource,authz,audit,azure,server-management,integration}.yml` fragments. Secrets can also be mounted as a config tree at `/mnt/secrets/rpe/`.
+
+---
+
+## 15. Observability and operations
+
+### 15.1 Endpoints
+
+| Endpoint | Use |
+|---|---|
+| `/actuator/health` (plus liveness/readiness probes) | Kubernetes probes |
+| `/actuator/prometheus` | Prometheus scrape |
+| `/actuator/metrics`, `/actuator/info` | Diagnostics, build info and git info |
+
+All are under the context path, e.g. `/listingcourtscheduler-api/rest/courtscheduler/actuator/health`.
+
+### 15.2 Metrics
+
+- `cpp.action.total`: counter of requests per action.
+- `cpp.action.individual`: timer tagged with `action` and `status`.
+- Standard JVM, Hikari, HTTP server and Tomcat metrics via Micrometer. Tracing via OpenTelemetry.
+
+### 15.3 Logging
+
+Logs are written as JSON (Logstash encoder). Rota processing logs include `PRF:` timing lines (e.g. download time) and an **execution ID** per file, which you can use to correlate with `rota_process_log` and `rota_file_process_history`.
+
+### 15.4 Operational runbook
+
+```mermaid
+flowchart TD
+    I[Issue reported] --> K{What kind?}
+    K -->|Availability numbers wrong| RA[POST /oucode/recalculate-availability<br/>for the OU code]
+    K -->|Rota file not applied| RF[Check input container for file + lease,<br/>rota_file_process_history,<br/>rota_process_log by execution ID]
+    RF --> RT[Re-trigger POST /rotasl/process-rota-files]
+    K -->|403 for a user| AZ[Check user permissions in Users & Groups<br/>and DRL rule for the action]
+    K -->|500 on save| DB[Check logs for UnexpectedRollbackException /<br/>constraint violations]
+    K -->|Old data growth| CL[POST /rotasl/clean-redundant-rota-data]
+    K -->|Service down| HC[Check /actuator/health,<br/>DB and Redis connectivity]
+```
+
+---
+
+## 16. Developer guide
+
+### 16.1 Prerequisites
+
+- JDK 25 (the Gradle toolchain is pinned to it)
+- Docker (needed for repository tests with Testcontainers and for the integration-test stack)
+- Access to the HMCTS Azure Artifacts feed (`AZURE_DEVOPS_ARTIFACT_USERNAME` / `AZURE_DEVOPS_ARTIFACT_TOKEN`) for `cp-auth-rules-filter` and `cp-audit-filter-springboot`
+
+### 16.2 Common commands
+
+```bash
+# Full build: compile, unit tests, bootJar, Docker integration suite
+./gradlew clean build
+
+# Build + unit tests only (skip the Docker IT stack)
+./gradlew build -x :listingcourtscheduler-integration-test:test
+
+# Unit tests for one module / class / method
+./gradlew :listingcourtscheduler-api:test
+./gradlew :listingcourtscheduler-api:test --tests 'uk.gov.moj.cpp.courtscheduler.SomeTest'
+./gradlew :listingcourtscheduler-api:test --tests 'uk.gov.moj.cpp.courtscheduler.SomeTest.someMethod'
+
+# Repository tests (Testcontainers PostgreSQL)
+./gradlew :listingcourtscheduler-viewstore:listingcourtscheduler-viewstore-persistence:test
+
+# Integration tests (compose up → run → compose down)
+./gradlew :listingcourtscheduler-integration-test:test
+./gradlew :listingcourtscheduler-integration-test:test --tests '*HearingSlotIT'
+
+# Performance ITs (opt-in)
+./gradlew :listingcourtscheduler-integration-test:performanceTest
+
+# Fat jar → listingcourtscheduler-api/build/libs/cpp-context-listing-courtscheduler-<version>.jar
+./gradlew :listingcourtscheduler-api:bootJar
+
+# PMD (only runs when named)
+./gradlew :listingcourtscheduler-api:pmdMain
+```
+
+The version defaults to `0.0.999`. Override it with `-DARTEFACT_VERSION=x.y.z`. Tests run with `user.timezone=Europe/London`.
+
+### 16.3 Run locally
+
+```bash
+# PostgreSQL on :55434 (database, user and password: courtscheduler)
+docker compose -f listingcourtscheduler-api/docker-compose.yml up -d db
+# Optional: WireMock stubs for Reference Data and Users & Groups on :8189
+docker compose -f listingcourtscheduler-integration-test/docker/docker-compose.integration.yml up -d wiremock
+
+export CSCHED_DATASOURCE_URL=jdbc:postgresql://localhost:55434/courtscheduler
+export CSCHED_DATASOURCE_USERNAME=courtscheduler
+export CSCHED_DATASOURCE_PASSWORD=courtscheduler
+export CSCHED_BASE_URL=http://localhost:8189
+./gradlew :listingcourtscheduler-api:bootRun
+
+curl http://localhost:8083/listingcourtscheduler-api/rest/courtscheduler/actuator/health
+```
+
+### 16.4 Adding or changing an endpoint
+
+```mermaid
+flowchart TD
+    S[New / changed endpoint] --> O[1. Edit OpenAPI spec<br/>courtscheduler-api.openapi.yml]
+    O --> G[2. Build: generator creates *OpenApi interface]
+    G --> C[3. Implement in the API class<br/>api/*Api.java]
+    C --> SC[4. Add JSON schema in src/raml/json/schema<br/>if a vendor +json request body]
+    SC --> D[5. Add Drools rule in courtscheduler-api.drl]
+    D --> V[6. Validators + service logic]
+    V --> P{Writes to DB?}
+    P -->|Yes| T[7. Method-level @Transactional<br/>on new repository write methods]
+    P -->|No| U
+    T --> U[8. Unit tests + IT in integration-test module]
+    U --> K[9. Confirm envelope + error shape<br/>match legacy contract]
+```
+
+### 16.5 Things that will trip you up
+
+| Topic | What to know |
+|---|---|
+| **Client compatibility** | The service must stay a drop-in replacement for the legacy one. Do not change error shapes (`{"error":…}`), status codes or media types. |
+| **Transactions** | `CourtScheduleRepositoryImpl` is `@Transactional(readOnly = true)` at class level. Any new **writing** method needs its own `@Transactional`, otherwise you get `TransactionRequiredException` at runtime. |
+| **Upserts** | Batch inserts run in `CourtScheduleBatchInsertService.persistBatch` (`REQUIRES_NEW`). Flushing inside the caller's transaction poisons it (rollback-only), which surfaces as HTTP 500. |
+| **Repository style** | Use the declarative Spring Data `@Query` style with `default` alias methods (`findBy`, `merge`, `remove`). Only `CourtScheduleRepository` has a custom `Impl`. |
+| **Time zones** | Some logic uses `Europe/London`, while JDBC uses UTC. Tests pin `Europe/London`. |
+| **Generated code** | OpenAPI interfaces are in `build/generated/openapi`. Do not edit them. |
+| **Schemas** | Many OpenAPI schemas are permissive `PassthroughObject`s. Real request validation is done by the RAML JSON schemas via `RequestSchemaValidationFilter`. |
+| **Rota processing is async** | `POST /rotasl/process-rota-files` returns before any processing. Tests must poll (Awaitility / `RestPoller`). |
+
+### 16.6 Source layout
+
+```
+listingcourtscheduler-api/src/main/java/uk/gov/moj/cpp/courtscheduler/
+├── Application.java
+├── api/                 # *Api classes (controllers), validators, converters, services, rota
+├── config/              # Jackson, CORS, audit, metrics, RestTemplate client
+├── controllers/         # GlobalExceptionHandler, ValidationFailedException
+├── envelope/            # _metadata response envelope
+└── validation/          # RequestSchemaValidationFilter
+listingcourtscheduler-api/src/main/resources/
+├── openapi/courtscheduler-api.openapi.yml
+├── uk.gov.moj.cpp.courtscheduler.api.accesscontrol.drl/
+└── application*.yml
+listingcourtscheduler-api/src/raml/   # legacy RAML + JSON schemas (packaged as request-schemas/)
+```
+
+---
+
+## 17. QA and testing guide
+
+### 17.1 Test pyramid
+
+```mermaid
+flowchart TB
+    subgraph E2E["Integration tests (Docker stack): ~20 suites"]
+        IT1[CourtSchedulerIT, HearingSlotIT, ProvisionalBookingIT,<br/>MoveHearingToPastDateIT, JudiciaryAvailabilityIT,<br/>RotaFileProcessorIT, NewRotaFileProcessorIT, MiExportIT,<br/>Authorization / Envelope / Contract tests]
+    end
+    subgraph REPO["Repository tests: Testcontainers PostgreSQL"]
+        R1[viewstore-persistence: 13 test classes]
+    end
+    subgraph UNIT["Unit tests: JUnit 6 + Mockito"]
+        U1[api: 61 · rota: 17 · common: 15 · domain: 4 · cache: 1]
+    end
+    UNIT --> REPO --> E2E
+```
+
+### 17.2 Integration test environment
+
+```mermaid
+flowchart LR
+    subgraph Host["Test JVM (Gradle test task)"]
+        T[IT classes<br/>REST Assured / RestTemplate]
+    end
+    subgraph Compose["docker-compose.integration.yml"]
+        APP[app :8083<br/>bootJar]
+        PG[(postgres:16<br/>:55433)]
+        WM[WireMock :8189<br/>Reference Data + Users & Groups stubs]
+        AZ[Azurite :10011<br/>Blob Storage emulator]
+    end
+    T -->|app.baseUrl| APP
+    T -->|seed / assert| PG
+    T -->|stub setup| WM
+    T -->|upload IT_Test_ rota files| AZ
+    APP --> PG
+    APP --> WM
+    APP --> AZ
+```
+
+The Gradle `test` task in `listingcourtscheduler-integration-test` runs `composeUp` first and `composeDown` afterwards, so a single command does everything. The IT system properties are `app.baseUrl` and `wiremock.baseUrl`.
+
+### 17.3 Test suites and coverage areas
+
+| Suite | Covers |
+|---|---|
+| `CourtSchedulerIT` | Create, edit, delete, query sessions; `/validate` rules |
+| `HearingSlotIT`, `HearingIdIT` | Search, book, release, list-in-sessions, search-and-book |
+| `ProvisionalBookingIT` | Create and fetch provisional bookings |
+| `MoveHearingToPastDateIT` | Past-date moves: future-date rejection, weekends, multi-day, CROWN/MAGISTRATES, all-or-nothing |
+| `JudiciaryAvailabilityIT`, `JudiciaryAvailabilityBatchIT`, `JudiciaryAvailabilityIntegrationTest` | Itinerary CRUD and validation messages |
+| `RotaFileProcessorIT`, `NewRotaFileProcessorIT` | Old and new rota pipelines via Azurite |
+| `MiExportIT` | MI exports |
+| `AuthorizationIntegrationTest` | Drools allow/deny per action |
+| `EnvelopeAndErrorShapeIntegrationTest`, `CourtScheduleApiContractIntegrationTest`, `RequestSchemaValidationEndToEndIT` | Legacy contract: envelope, error bodies, media types, schema validation |
+| `AdditionalEndpointsIntegrationTest`, `SmokeIntegrationTest` | Remaining endpoints and smoke checks |
+| `performance/*` | Opt-in performance runs |
+
+Helpers: `DatabaseSeeder`/`DatabaseReader` (direct DB access), `StubUtil`/`WiremockTestHelper` (stubs), `AzuriteFixture` (blob uploads), `RestPoller` (polling async results), and `TestDurationListener`/`TestReportGenerator` (timing reports).
+
+### 17.4 Suggested test scenarios (manual / exploratory)
+
+| # | Area | Scenario | Expected |
+|---|---|---|---|
+| 1 | Create | AM session ending at 13:30 | 400 time-window error |
+| 2 | Create | AD session without all-day split flag | 400 *"All day split flag should be sent…"* |
+| 3 | Create | YOUTH session where an ADULT one exists (same room/date/business type) | Not persisted |
+| 4 | Create | `EVERY_WEEK` Mon+Wed for 3 weeks | 6 sessions |
+| 5 | Edit | Change session type on a session with hearings | Error |
+| 6 | Edit | Change jurisdiction | *"Jurisdiction cannot be changed"* |
+| 7 | Delete | Delete a session with bookings | Listed as not deleted, with reason |
+| 8 | Book | Book beyond capacity, overbooking off | Rejected |
+| 9 | Book | Book beyond capacity, overbooking on | Accepted; visible with `showOverbookedSlots=true` |
+| 10 | AD split | Hearing spanning the break | Minutes split between morning and afternoon |
+| 11 | Assign courtroom | Magistrates session | *"only valid for CROWN jurisdiction sessions"* |
+| 12 | Assign courtroom | Crown draft with hearings | Rejected |
+| 13 | Past date | Start date tomorrow | 422 `FUTURE_DATE_NOT_ALLOWED` |
+| 14 | Past date | Mon–Wed range with no session on Tue | 422 `NO_SESSION_FOUND`, nothing booked |
+| 15 | Past date | Single Saturday with a session | Booked |
+| 16 | Itinerary | Date range over 3 years | 422 *"The date range must be 3 years or less"* |
+| 17 | Itinerary | Overlapping unavailability | 422 *"Unavailability dates cannot overlap"* |
+| 18 | Itinerary | Delete an itinerary used by a session | 422 *"You cannot delete this itinerary…"* |
+| 19 | Rota | Upload an older snapshot after a newer one | Skipped |
+| 20 | Contract | Wrong `Accept` header | 406 |
+| 21 | Contract | Body violating JSON schema | 400 `{"error":…}` |
+| 22 | Security | No permission for action | 403 |
+
+### 17.5 Defect triage tips
+
+- Capture the **request media type**, the `CJSCPPUID` and the full response body. The media type decides which code path runs.
+- For rota issues, capture the **blob name** and the **execution ID** from the logs.
+- If an error body is not `{"error":…}`, treat it as a **contract regression**: the legacy behaviour is the baseline.
+
+---
+
+## 18. CI/CD and release
+
+```mermaid
+flowchart LR
+    PR[Pull request] --> CD[ci-draft.yml<br/>build + unit + IT]
+    PR --> CA[code-analysis.yml<br/>PMD, non-blocking]
+    PR --> CQ[codeql.yml]
+    PR --> SS[secret-scanning.yml]
+    PUSH[Push to main / dev/* / team/*] --> CD
+    CD --> BP[ci-build-publish.yml]
+    REL[GitHub release published] --> CR[ci-released.yml] --> BP
+    BP --> V[Compute ARTEFACT_VERSION]
+    V --> B[./gradlew build]
+    B --> PUB[./gradlew publish<br/>GitHub Packages + Azure Artifacts<br/>skips versions already present]
+    B --> IMG[Docker image → GHCR]
+    IMG --> ADO[Trigger Azure DevOps<br/>deploy pipeline]
+```
+
+| Workflow | Trigger | Purpose |
+|---|---|---|
+| `ci-draft.yml` | Every PR; pushes to `main`, `dev/*`, `team/*` | Build and test. Publishes, builds the image and deploys on push. |
+| `ci-released.yml` | GitHub release / manual | Release build and publish |
+| `ci-build-publish.yml` | Reusable | Version, build, publish jar, Docker image, ADO deploy |
+| `code-analysis.yml` | PR | PMD (warns only, tracked under LPT-2318) |
+| `codeql.yml` | PR + weekly | Security scanning |
+| `secret-scanning.yml` | PR + weekly | Secret detection |
+
+Artifact coordinates are `uk.gov.hmcts.cp:cpp-context-listing-courtscheduler:<version>`. Branches follow `dev/<JIRA-KEY>-<description>`. PRs use the template: JIRA link, change description, breaking-change yes/no.
+
+---
+
+## 19. Known issues and open items
+
+| # | Severity | Item | Status |
+|---|---|---|---|
+| 1 | 🟠 | Provisional booking and some hearing-slot endpoints return **400** + `{"error":"…"}` where legacy may have returned 200 + enveloped error | Open: confirm the legacy behaviour |
+| 2 | 🟠 | `search.court-schedules-by-id` and the 3 MI exports drop `null` fields (legacy emitted them) | Open |
+| 3 | 🟡 | `validate.*` responses are not wrapped in the `_metadata` envelope | Open |
+| 4 | 🟡 | OpenAPI schemas are still permissive `PassthroughObject`s (~40). Strict validation relies on the RAML JSON schemas. | TODO |
+| 5 | 🟡 | PMD violations backlog. The CI gate is non-blocking until LPT-2318. | Open |
+
+Details are in [MIGRATION.md](MIGRATION.md) (regression audit) and [breaking.md](breaking.md).
+
+---
+
+## 20. Related documents
+
+| Document | Contents |
+|---|---|
+| [MIGRATION.md](MIGRATION.md) | WildFly → Spring Boot migration narrative, endpoint wiring table, auth filter details, regression audit |
+| [REVIEW.md](REVIEW.md) | Per-file migration rationale and non-obvious fixes (transactions, upserts, metrics) |
+| [breaking.md](breaking.md) | Client-contract decisions and evidence |
+| [TECHNICAL_DOCUMENTATION.md](TECHNICAL_DOCUMENTATION.md) | Original detailed technical documentation. Business rules still apply; build and framework details describe the legacy stack. |
+| [../CLAUDE.md](../CLAUDE.md) | Quick orientation for AI-assisted development |
+| `listingcourtscheduler-api/src/main/resources/openapi/courtscheduler-api.openapi.yml` | API contract |
+| `listingcourtscheduler-api/src/raml/` | Legacy RAML and JSON schemas |
+
+</script>
+<script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"></script>
+<script>
+(function () {
+  const root = document.documentElement;
+  let stored = null;
+  try { stored = localStorage.getItem('csg-theme'); } catch (e) {}
+  if (stored) root.setAttribute('data-theme', stored);
+
+  const isDark = () => {
+    const t = root.getAttribute('data-theme');
+    if (t) return t === 'dark';
+    return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  };
+
+  const escapeHtml = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const slug = text => text.trim().toLowerCase()
+      .replace(/<[^>]+>/g, '')
+      .replace(/[^\p{L}\p{N}\s-]/gu, '')
+      .replace(/\s/g, '-');
+
+  const mdText = document.getElementById('md-source').textContent.replace(/<\\\/script/g, '</script');
+  const diagrams = [];
+
+  const renderer = new marked.Renderer();
+  const baseCode = renderer.code.bind(renderer);
+  renderer.code = function (code, lang, escaped) {
+    if ((lang || '').trim() === 'mermaid') {
+      diagrams.push(code);
+      return '<div class="diagram"><pre class="mermaid" data-idx="' + (diagrams.length - 1) + '">' +
+             escapeHtml(code) + '</pre></div>';
+    }
+    return baseCode(code, lang, escaped);
+  };
+  renderer.table = function (header, body) {
+    return '<div class="table-wrap"><table><thead>' + header + '</thead><tbody>' + body + '</tbody></table></div>';
+  };
+
+  const content = document.getElementById('content');
+  content.innerHTML = marked.parse(mdText, { renderer: renderer, gfm: true });
+  content.insertAdjacentHTML('beforeend',
+    '<p class="footer">Generated from <code>doc/COURT_SCHEDULER_GUIDE.md</code>. It is a rendered copy of that file.</p>');
+
+  // Heading ids (GitHub-style) and TOC.
+  const tocList = document.getElementById('tocList');
+  const used = {};
+  content.querySelectorAll('h1, h2, h3').forEach(h => {
+    let id = slug(h.textContent);
+    if (used[id] !== undefined) { used[id] += 1; id = id + '-' + used[id]; } else { used[id] = 0; }
+    h.id = id;
+    if (h.tagName === 'H1') return;
+    const li = document.createElement('li');
+    if (h.tagName === 'H3') li.className = 'sub';
+    const a = document.createElement('a');
+    a.href = '#' + id; a.textContent = h.textContent;
+    li.appendChild(a); tocList.appendChild(li);
+  });
+
+  // TOC filter.
+  document.getElementById('tocFilter').addEventListener('input', e => {
+    const q = e.target.value.toLowerCase();
+    tocList.querySelectorAll('li').forEach(li => {
+      li.style.display = li.textContent.toLowerCase().includes(q) ? '' : 'none';
+    });
+  });
+
+  // Active section highlighting.
+  const links = {};
+  tocList.querySelectorAll('a').forEach(a => { links[a.getAttribute('href').slice(1)] = a; });
+  const obs = new IntersectionObserver(entries => {
+    entries.forEach(en => {
+      if (en.isIntersecting && links[en.target.id]) {
+        Object.values(links).forEach(l => l.classList.remove('active'));
+        links[en.target.id].classList.add('active');
+      }
+    });
+  }, { rootMargin: '-60px 0px -70% 0px' });
+  content.querySelectorAll('h2, h3').forEach(h => obs.observe(h));
+
+  // Mobile menu.
+  const toc = document.getElementById('toc');
+  document.getElementById('menuBtn').addEventListener('click', () => toc.classList.toggle('open'));
+  tocList.addEventListener('click', e => { if (e.target.tagName === 'A') toc.classList.remove('open'); });
+
+  // Back to top.
+  const toTop = document.getElementById('toTop');
+  window.addEventListener('scroll', () => { toTop.style.display = window.scrollY > 600 ? 'block' : 'none'; });
+  toTop.addEventListener('click', () => window.scrollTo({ top: 0 }));
+
+  // Mermaid rendering (re-rendered on theme change).
+  async function renderDiagrams() {
+    content.querySelectorAll('pre.mermaid').forEach(el => {
+      el.removeAttribute('data-processed');
+      el.innerHTML = escapeHtml(diagrams[+el.dataset.idx]);
+    });
+    mermaid.initialize({ startOnLoad: false, theme: isDark() ? 'dark' : 'default', securityLevel: 'strict',
+                         flowchart: { htmlLabels: true, useMaxWidth: true } });
+    try { await mermaid.run({ querySelector: 'pre.mermaid' }); } catch (e) { console.error(e); }
+  }
+  renderDiagrams();
+
+  document.getElementById('themeBtn').addEventListener('click', () => {
+    const next = isDark() ? 'light' : 'dark';
+    root.setAttribute('data-theme', next);
+    try { localStorage.setItem('csg-theme', next); } catch (e) {}
+    renderDiagrams();
+  });
+
+  if (location.hash) {
+    const t = document.getElementById(decodeURIComponent(location.hash.slice(1)));
+    if (t) setTimeout(() => t.scrollIntoView(), 50);
+  }
+})();
+</script>
+</body>
+</html>
