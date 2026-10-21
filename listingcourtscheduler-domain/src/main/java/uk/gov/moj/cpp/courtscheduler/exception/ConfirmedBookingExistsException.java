@@ -3,7 +3,7 @@ package uk.gov.moj.cpp.courtscheduler.exception;
 /**
  * Thrown by {@code ReservationService.reserve} when the hearing already has a CONFIRMED
  * allocation (an {@code allocated_listings} row with {@code expires_at IS NULL}) — reserving
- * would otherwise silently release and replace a real booking. Maps to HTTP 409.
+ * would otherwise silently release and replace a real booking. Maps to HTTP 422.
  */
 public class ConfirmedBookingExistsException extends RuntimeException {
 

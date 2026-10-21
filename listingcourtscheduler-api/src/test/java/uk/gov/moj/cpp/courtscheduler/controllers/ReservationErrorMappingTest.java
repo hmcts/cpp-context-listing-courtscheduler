@@ -31,9 +31,9 @@ class ReservationErrorMappingTest {
             .build();
 
     @Test
-    void confirmedBookingExists_returns409_withItsOwnMessage() throws Exception {
+    void confirmedBookingExists_returns422_withItsOwnMessage() throws Exception {
         mvc.perform(get("/throw/confirmed"))
-                .andExpect(status().isConflict())
+                .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.error").value("already has a confirmed allocation"));
     }
 
@@ -45,9 +45,9 @@ class ReservationErrorMappingTest {
     }
 
     @Test
-    void noCapacity_returns409_withItsOwnMessage() throws Exception {
+    void noCapacity_returns422_withItsOwnMessage() throws Exception {
         mvc.perform(get("/throw/no-capacity"))
-                .andExpect(status().isConflict())
+                .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.error").value("no capacity"));
     }
 

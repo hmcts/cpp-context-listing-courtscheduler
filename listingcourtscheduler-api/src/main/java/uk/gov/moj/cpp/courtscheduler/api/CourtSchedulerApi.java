@@ -88,7 +88,6 @@ import uk.gov.moj.cpp.courtscheduler.exception.ExtendMultidayHearingException;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.RequestedDay;
 import uk.gov.moj.cpp.courtscheduler.exception.MoveHearingToPastDateNoSessionException;
 import uk.gov.moj.cpp.courtscheduler.exception.NoAllocationOnDateException;
-import uk.gov.moj.cpp.courtscheduler.exception.NoCapacityException;
 import uk.gov.moj.cpp.courtscheduler.exception.NoSessionAvailableException;
 import uk.gov.moj.cpp.courtscheduler.exception.SlotsBookException;
 import uk.gov.moj.cpp.courtscheduler.envelope.SkipEnvelope;
@@ -922,16 +921,12 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
         if (!validate.isEmpty()) {
             throw new ValidationException(validate);
         }
-        // The typed response comes from ccsph2's generated-model work; the 409 is reserve-a-slot's:
-        // a reservation that cannot be held must refuse loudly rather than report a booking that
-        // took no capacity.
-        try {
-            final JsonObject response = provisionalBookingService.bookProvisionalSlots(slots);
-            return ResponseEntity.ok(objectMapper.convertValue(JsonValueConverter.toMap(response),
-                    uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerCreateProvisionalBookingResponse.class));
-        } catch (NoCapacityException e) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, e.getMessage());
-        }
+        // The typed response comes from ccsph2's generated-model work. A reservation that cannot be
+        // held refuses loudly rather than report a booking that took no capacity: the
+        // NoCapacityException it throws is mapped to 422 by GlobalExceptionHandler#handleNoCapacity.
+        final JsonObject response = provisionalBookingService.bookProvisionalSlots(slots);
+        return ResponseEntity.ok(objectMapper.convertValue(JsonValueConverter.toMap(response),
+                uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerCreateProvisionalBookingResponse.class));
     }
 
     @Override
