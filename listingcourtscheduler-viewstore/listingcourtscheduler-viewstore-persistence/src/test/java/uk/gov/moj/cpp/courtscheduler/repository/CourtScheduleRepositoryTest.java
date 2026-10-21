@@ -834,7 +834,7 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
     private static AllocatedSlot reservedSlotFor(final String bookingId, final String courtScheduleId,
                                                  final LocalDate sessionDate) {
         final AllocatedSlot slot = allocatedSlotForBooking(bookingId, courtScheduleId, sessionDate);
-        slot.setSource("RESERVED_UNCONFIRMED");
+        slot.setSource("RESERVE_UNCONFIRMED_SLOT");
         slot.setExpiresAt(LocalDate.now(ZoneOffset.UTC));
         return slot;
     }
@@ -894,7 +894,7 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
     private AllocatedListing reservationListingFor(final String id, final String bookingId, final String courtScheduleId,
                                                     final String hearingId, final LocalDate sessionDate) {
         final AllocatedListing reservation = allocatedListingFor(id, bookingId, courtScheduleId, hearingId, sessionDate);
-        reservation.setSource("RESERVED_UNCONFIRMED");
+        reservation.setSource("RESERVE_UNCONFIRMED_SLOT");
         reservation.setExpiresAt(LocalDate.now(ZoneOffset.UTC));
         return reservation;
     }

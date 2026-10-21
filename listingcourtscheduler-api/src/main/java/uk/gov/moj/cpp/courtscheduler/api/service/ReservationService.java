@@ -76,7 +76,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class ReservationService {
 
-    public static final String SOURCE_RESERVED_UNCONFIRMED = "RESERVED_UNCONFIRMED";
+    public static final String SOURCE_RESERVE_UNCONFIRMED_SLOT = "RESERVE_UNCONFIRMED_SLOT";
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ReservationService.class);
 
@@ -162,7 +162,7 @@ public class ReservationService {
      * taken, in the same transaction. No separate release call is needed or made here.
      *
      * <p>Each slot still derives {@code slotBased} from its own session and is individually
-     * stamped with {@code expires_at = today (UTC)} and {@code source = RESERVED_UNCONFIRMED}.
+     * stamped with {@code expires_at = today (UTC)} and {@code source = RESERVE_UNCONFIRMED_SLOT}.
      *
      * <p>A requested slot that is a Crown multi-day pick (see {@link #expandCrownMultiDay}) is
      * expanded here, before any slot is persisted, into one {@link AllocatedSlot} per day of the
@@ -264,7 +264,7 @@ public class ReservationService {
     /**
      * Builds one already-selected Crown multi-day day into an {@link AllocatedSlot}, stamped the
      * same way {@link #toReservedSlot} stamps every reservation ({@code expires_at}, {@code source
-     * = RESERVED_UNCONFIRMED}) — but WITHOUT that method's per-session capacity gate: {@code
+     * = RESERVE_UNCONFIRMED_SLOT}) — but WITHOUT that method's per-session capacity gate: {@code
      * expandCrownMultiDay}'s {@link ConsecutiveSessionSelector} call has already resolved this
      * session under the F1 court-calendar rule (never reject for capacity), so re-running the
      * ordinary capacity check here would make reserving stricter than sharing.
@@ -283,7 +283,7 @@ public class ReservationService {
             slot.setHearingStartTime(DateUtils.toIsoString(session.getSessionStartTime()));
         }
         slot.setSlotBased(session.getSlotBased());
-        slot.setSource(SOURCE_RESERVED_UNCONFIRMED);
+        slot.setSource(SOURCE_RESERVE_UNCONFIRMED_SLOT);
         slot.setExpiresAt(LocalDate.now(ZoneOffset.UTC));
         return slot;
     }
@@ -365,7 +365,7 @@ public class ReservationService {
         slot.setDuration(duration == null ? 0 : duration);
         slot.setHearingStartTime(requested.getHearingStartTime());
         slot.setSlotBased(session.getSlotBased());
-        slot.setSource(SOURCE_RESERVED_UNCONFIRMED);
+        slot.setSource(SOURCE_RESERVE_UNCONFIRMED_SLOT);
         // Expires at the end of the day the reservation is made, as a calendar date rather than an
         // instant — the purge job only cares whether "today" has moved past this date, not the
         // time of day. ZoneOffset.UTC keeps this deterministic regardless of the JVM's default zone.

@@ -148,7 +148,7 @@ class ReservationServiceTest {
         assertThat(slot.getExpiresAt(), is(LocalDate.now(ZoneOffset.UTC)));
         assertThat(slot.getBookingId(), is(BOOKING_ID));
         assertThat("a reservation holds no hearing yet", slot.getHearingId(), is(nullValue()));
-        assertThat(slot.getSource(), is("RESERVED_UNCONFIRMED"));
+        assertThat(slot.getSource(), is("RESERVE_UNCONFIRMED_SLOT"));
     }
 
     // The re-pick wipe used to be inherited: a reservation's hearing_id WAS the bookingId, so
@@ -349,7 +349,7 @@ class ReservationServiceTest {
             assertThat(slot.getBookingId(), is(BOOKING_ID));
         assertThat("a reservation holds no hearing yet", slot.getHearingId(), is(nullValue()));
             assertThat(slot.getExpiresAt(), is(LocalDate.now(ZoneOffset.UTC)));
-            assertThat(slot.getSource(), is("RESERVED_UNCONFIRMED"));
+            assertThat(slot.getSource(), is("RESERVE_UNCONFIRMED_SLOT"));
         });
     }
 
@@ -451,7 +451,7 @@ class ReservationServiceTest {
             assertThat(slot.getBookingId(), is(BOOKING_ID));
         assertThat("a reservation holds no hearing yet", slot.getHearingId(), is(nullValue()));
             assertThat(slot.getExpiresAt(), is(LocalDate.now(ZoneOffset.UTC)));
-            assertThat(slot.getSource(), is("RESERVED_UNCONFIRMED"));
+            assertThat(slot.getSource(), is("RESERVE_UNCONFIRMED_SLOT"));
             assertThat(slot.getDuration(), is(360));
         });
         // never even consulted for a Crown multi-day run — capacity must never block it
