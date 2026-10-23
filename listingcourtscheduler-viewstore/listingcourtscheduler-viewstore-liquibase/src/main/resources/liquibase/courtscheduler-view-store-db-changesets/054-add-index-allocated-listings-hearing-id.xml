@@ -9,5 +9,8 @@
         <sql>
             CREATE INDEX IF NOT EXISTS idx_allocated_listings_hearing_id ON allocated_listings (hearing_id);
         </sql>
+        <rollback>
+            DROP INDEX IF EXISTS idx_allocated_listings_hearing_id;
+        </rollback>
     </changeSet>
 </databaseChangeLog>
