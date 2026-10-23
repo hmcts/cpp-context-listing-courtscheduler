@@ -18,6 +18,7 @@ import uk.gov.moj.cpp.courtscheduler.common.service.ListingCommandClient;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import jakarta.json.Json;
@@ -51,25 +52,23 @@ class ChangeJudiciaryForHearingsHelperTest {
     class PayloadBuildingTests {
 
         @Test
-        @DisplayName("Should build one payload per court schedule, de-duplicating hearings and judiciaries")
-        void shouldBuildOnePayloadPerCourtSchedule() {
+        @DisplayName("Should build one payload per hearing, de-duplicating judiciaries")
+        void shouldBuildOnePayloadPerHearing() {
             // given
             final String courtScheduleIdA = randomUUID().toString();
             final String courtScheduleIdB = randomUUID().toString();
             final String hearingId1 = randomUUID().toString();
             final String hearingId2 = randomUUID().toString();
-            final String hearingId3 = randomUUID().toString();
             final List<String> changedCourtScheduleIds = List.of(courtScheduleIdA, courtScheduleIdB);
 
-            // The join returns one row per (hearing, judiciary) combination - schedule A has
-            // 2 hearings x 2 judiciaries = 4 rows, schedule B has 1 x 1.
+            // Single-session hearings: hearing 1 on schedule A with 2 judiciaries, hearing 2 on
+            // schedule B with 1 judiciary
             final List<Object[]> rows = List.<Object[]>of(
-                    new Object[]{courtScheduleIdA, hearingId1, "jud-1", "Magistrate", true, false},
-                    new Object[]{courtScheduleIdA, hearingId1, "jud-2", "District Judge", false, true},
-                    new Object[]{courtScheduleIdA, hearingId2, "jud-1", "Magistrate", true, false},
-                    new Object[]{courtScheduleIdA, hearingId2, "jud-2", "District Judge", false, true},
-                    new Object[]{courtScheduleIdB, hearingId3, "jud-3", "Magistrate", null, null});
-            when(courtScheduleJudiciaryService.getJudiciaryHearingInfoForCourtSchedules(eq(changedCourtScheduleIds)))
+                    new Object[]{hearingId1, courtScheduleIdA, "jud-1", "Magistrate", true, false},
+                    new Object[]{hearingId1, courtScheduleIdA, "jud-2", "District Judge", false, true},
+                    new Object[]{hearingId1, courtScheduleIdA, "jud-1", "Magistrate", true, false},
+                    new Object[]{hearingId2, courtScheduleIdB, "jud-3", "Magistrate", null, null});
+            when(courtScheduleJudiciaryService.getHearingSessionJudiciariesForCourtSchedules(eq(changedCourtScheduleIds)))
                     .thenReturn(rows);
 
             // when
@@ -79,25 +78,24 @@ class ChangeJudiciaryForHearingsHelperTest {
             // then
             assertEquals(2, payloads.size());
 
-            final JsonObject payloadA = payloads.get(0);
-            final JsonArray hearingsA = payloadA.getJsonArray("hearings");
-            assertEquals(List.of(hearingId1, hearingId2), toStringList(hearingsA));
+            final JsonObject payload1 = payloads.get(0);
+            assertEquals(List.of(hearingId1), toStringList(payload1.getJsonArray("hearings")));
 
-            final JsonArray judiciaryA = payloadA.getJsonArray("judiciary");
-            assertEquals(2, judiciaryA.size());
-            final Map<String, JsonObject> judiciaryAById = toJudicialRoleMap(judiciaryA);
-            final JsonObject judicialRole1 = judiciaryAById.get("jud-1");
+            final JsonArray judiciary1 = payload1.getJsonArray("judiciary");
+            assertEquals(2, judiciary1.size());
+            final Map<String, JsonObject> judiciary1ById = toJudicialRoleMap(judiciary1);
+            final JsonObject judicialRole1 = judiciary1ById.get("jud-1");
             assertEquals("Magistrate", judicialRole1.getJsonObject("judicialRoleType").getString("judiciaryType"));
             assertTrue(judicialRole1.getBoolean("isBenchChairman"));
             assertFalse(judicialRole1.getBoolean("isDeputy"));
-            final JsonObject judicialRole2 = judiciaryAById.get("jud-2");
+            final JsonObject judicialRole2 = judiciary1ById.get("jud-2");
             assertEquals("District Judge", judicialRole2.getJsonObject("judicialRoleType").getString("judiciaryType"));
             assertFalse(judicialRole2.getBoolean("isBenchChairman"));
             assertTrue(judicialRole2.getBoolean("isDeputy"));
 
-            final JsonObject payloadB = payloads.get(1);
-            assertEquals(List.of(hearingId3), toStringList(payloadB.getJsonArray("hearings")));
-            final JsonObject judicialRole3 = payloadB.getJsonArray("judiciary").getJsonObject(0);
+            final JsonObject payload2 = payloads.get(1);
+            assertEquals(List.of(hearingId2), toStringList(payload2.getJsonArray("hearings")));
+            final JsonObject judicialRole3 = payload2.getJsonArray("judiciary").getJsonObject(0);
             assertEquals("jud-3", judicialRole3.getString("judicialId"));
             assertEquals("Magistrate", judicialRole3.getJsonObject("judicialRoleType").getString("judiciaryType"));
             // Optional booleans must be omitted when the columns are null
@@ -109,19 +107,134 @@ class ChangeJudiciaryForHearingsHelperTest {
         }
 
         @Test
-        @DisplayName("Should build payload with empty judiciary array when all judiciaries were removed from a schedule")
-        void shouldBuildPayloadWithEmptyJudiciaryWhenAllJudiciariesRemoved() {
-            // given - the LEFT JOIN returns the allocated hearings with null judiciary columns
-            // for a changed court schedule whose active judiciaries were all removed
-            final String courtScheduleId = randomUUID().toString();
-            final String hearingId1 = randomUUID().toString();
-            final String hearingId2 = randomUUID().toString();
-            final List<String> changedCourtScheduleIds = List.of(courtScheduleId);
+        @DisplayName("Should build one payload for a multi-session hearing when all its sessions have the same judiciaries")
+        void shouldBuildOnePayloadForMultiSessionHearingWithSameJudiciaries() {
+            // given - the hearing is allocated to 3 sessions, only one of which changed, and the
+            // judiciaries come back in a different order per session
+            final String changedCourtScheduleId = randomUUID().toString();
+            final String otherCourtScheduleId1 = randomUUID().toString();
+            final String otherCourtScheduleId2 = randomUUID().toString();
+            final String hearingId = randomUUID().toString();
+            final List<String> changedCourtScheduleIds = List.of(changedCourtScheduleId);
 
             final List<Object[]> rows = List.<Object[]>of(
-                    new Object[]{courtScheduleId, hearingId1, null, null, null, null},
-                    new Object[]{courtScheduleId, hearingId2, null, null, null, null});
-            when(courtScheduleJudiciaryService.getJudiciaryHearingInfoForCourtSchedules(eq(changedCourtScheduleIds)))
+                    new Object[]{hearingId, changedCourtScheduleId, "jud-1", "Magistrate", true, false},
+                    new Object[]{hearingId, changedCourtScheduleId, "jud-2", "Magistrate", false, false},
+                    new Object[]{hearingId, otherCourtScheduleId1, "jud-2", "Magistrate", false, false},
+                    new Object[]{hearingId, otherCourtScheduleId1, "jud-1", "Magistrate", true, false},
+                    new Object[]{hearingId, otherCourtScheduleId2, "jud-1", "Magistrate", true, false},
+                    new Object[]{hearingId, otherCourtScheduleId2, "jud-2", "Magistrate", false, false});
+            when(courtScheduleJudiciaryService.getHearingSessionJudiciariesForCourtSchedules(eq(changedCourtScheduleIds)))
+                    .thenReturn(rows);
+
+            // when
+            final List<JsonObject> payloads =
+                    changeJudiciaryForHearingsHelper.createChangeJudiciaryForHearingsPayloads(changedCourtScheduleIds);
+
+            // then
+            assertEquals(1, payloads.size());
+            final JsonObject payload = payloads.get(0);
+            assertEquals(List.of(hearingId), toStringList(payload.getJsonArray("hearings")));
+            assertEquals(Set.of("jud-1", "jud-2"), toJudicialRoleMap(payload.getJsonArray("judiciary")).keySet());
+        }
+
+        @Test
+        @DisplayName("Should skip a multi-session hearing whose sessions have different judiciaries")
+        void shouldSkipMultiSessionHearingWithDifferentJudiciaries() {
+            // given
+            final String courtScheduleIdA = randomUUID().toString();
+            final String courtScheduleIdB = randomUUID().toString();
+            final String hearingId = randomUUID().toString();
+            final List<String> changedCourtScheduleIds = List.of(courtScheduleIdA);
+
+            final List<Object[]> rows = List.<Object[]>of(
+                    new Object[]{hearingId, courtScheduleIdA, "jud-1", "Magistrate", true, false},
+                    new Object[]{hearingId, courtScheduleIdB, "jud-9", "Magistrate", true, false});
+            when(courtScheduleJudiciaryService.getHearingSessionJudiciariesForCourtSchedules(eq(changedCourtScheduleIds)))
+                    .thenReturn(rows);
+
+            // when / then
+            assertTrue(changeJudiciaryForHearingsHelper.createChangeJudiciaryForHearingsPayloads(changedCourtScheduleIds).isEmpty());
+        }
+
+        @Test
+        @DisplayName("Should skip a multi-session hearing whose sessions have the same judiciary with different roles")
+        void shouldSkipMultiSessionHearingWithDifferentJudicialRoles() {
+            // given - same judiciary on both sessions, but bench chairman on one only
+            final String courtScheduleIdA = randomUUID().toString();
+            final String courtScheduleIdB = randomUUID().toString();
+            final String hearingId = randomUUID().toString();
+            final List<String> changedCourtScheduleIds = List.of(courtScheduleIdA);
+
+            final List<Object[]> rows = List.<Object[]>of(
+                    new Object[]{hearingId, courtScheduleIdA, "jud-1", "Magistrate", true, false},
+                    new Object[]{hearingId, courtScheduleIdB, "jud-1", "Magistrate", false, false});
+            when(courtScheduleJudiciaryService.getHearingSessionJudiciariesForCourtSchedules(eq(changedCourtScheduleIds)))
+                    .thenReturn(rows);
+
+            // when / then
+            assertTrue(changeJudiciaryForHearingsHelper.createChangeJudiciaryForHearingsPayloads(changedCourtScheduleIds).isEmpty());
+        }
+
+        @Test
+        @DisplayName("Should skip a multi-session hearing when only some of its sessions have judiciaries")
+        void shouldSkipMultiSessionHearingWhenSomeSessionsHaveNoJudiciaries() {
+            // given - the LEFT JOIN returns null judiciary columns for session B
+            final String courtScheduleIdA = randomUUID().toString();
+            final String courtScheduleIdB = randomUUID().toString();
+            final String hearingId = randomUUID().toString();
+            final List<String> changedCourtScheduleIds = List.of(courtScheduleIdB);
+
+            final List<Object[]> rows = List.<Object[]>of(
+                    new Object[]{hearingId, courtScheduleIdA, "jud-1", "Magistrate", true, false},
+                    new Object[]{hearingId, courtScheduleIdB, null, null, null, null});
+            when(courtScheduleJudiciaryService.getHearingSessionJudiciariesForCourtSchedules(eq(changedCourtScheduleIds)))
+                    .thenReturn(rows);
+
+            // when / then
+            assertTrue(changeJudiciaryForHearingsHelper.createChangeJudiciaryForHearingsPayloads(changedCourtScheduleIds).isEmpty());
+        }
+
+        @Test
+        @DisplayName("Should send only the consistent hearings when consistent and inconsistent hearings are mixed")
+        void shouldSendOnlyConsistentHearings() {
+            // given
+            final String courtScheduleIdA = randomUUID().toString();
+            final String courtScheduleIdB = randomUUID().toString();
+            final String consistentHearingId = randomUUID().toString();
+            final String inconsistentHearingId = randomUUID().toString();
+            final List<String> changedCourtScheduleIds = List.of(courtScheduleIdA);
+
+            final List<Object[]> rows = List.<Object[]>of(
+                    new Object[]{consistentHearingId, courtScheduleIdA, "jud-1", "Magistrate", true, false},
+                    new Object[]{consistentHearingId, courtScheduleIdB, "jud-1", "Magistrate", true, false},
+                    new Object[]{inconsistentHearingId, courtScheduleIdA, "jud-1", "Magistrate", true, false},
+                    new Object[]{inconsistentHearingId, courtScheduleIdB, "jud-2", "Magistrate", true, false});
+            when(courtScheduleJudiciaryService.getHearingSessionJudiciariesForCourtSchedules(eq(changedCourtScheduleIds)))
+                    .thenReturn(rows);
+
+            // when
+            final List<JsonObject> payloads =
+                    changeJudiciaryForHearingsHelper.createChangeJudiciaryForHearingsPayloads(changedCourtScheduleIds);
+
+            // then
+            assertEquals(1, payloads.size());
+            assertEquals(List.of(consistentHearingId), toStringList(payloads.get(0).getJsonArray("hearings")));
+        }
+
+        @Test
+        @DisplayName("Should build payload with empty judiciary array when no session of the hearing has judiciaries")
+        void shouldBuildPayloadWithEmptyJudiciaryWhenAllJudiciariesRemoved() {
+            // given - the LEFT JOIN returns null judiciary columns for every session of the hearing
+            final String courtScheduleIdA = randomUUID().toString();
+            final String courtScheduleIdB = randomUUID().toString();
+            final String hearingId = randomUUID().toString();
+            final List<String> changedCourtScheduleIds = List.of(courtScheduleIdA);
+
+            final List<Object[]> rows = List.<Object[]>of(
+                    new Object[]{hearingId, courtScheduleIdA, null, null, null, null},
+                    new Object[]{hearingId, courtScheduleIdB, null, null, null, null});
+            when(courtScheduleJudiciaryService.getHearingSessionJudiciariesForCourtSchedules(eq(changedCourtScheduleIds)))
                     .thenReturn(rows);
 
             // when
@@ -129,10 +242,10 @@ class ChangeJudiciaryForHearingsHelperTest {
                     changeJudiciaryForHearingsHelper.createChangeJudiciaryForHearingsPayloads(changedCourtScheduleIds);
 
             // then - the command is still sent, with an empty judiciary array so listing
-            // clears the judiciary from the hearings
+            // clears the judiciary from the hearing
             assertEquals(1, payloads.size());
             final JsonObject payload = payloads.get(0);
-            assertEquals(List.of(hearingId1, hearingId2), toStringList(payload.getJsonArray("hearings")));
+            assertEquals(List.of(hearingId), toStringList(payload.getJsonArray("hearings")));
             assertTrue(payload.getJsonArray("judiciary").isEmpty());
             assertEquals("AUTO", payload.getString("judiciaryAssignmentSource"));
         }
@@ -150,7 +263,7 @@ class ChangeJudiciaryForHearingsHelperTest {
         void shouldReturnEmptyPayloadListWhenQueryReturnsNoRows() {
             // given
             final List<String> changedCourtScheduleIds = List.of(randomUUID().toString());
-            when(courtScheduleJudiciaryService.getJudiciaryHearingInfoForCourtSchedules(eq(changedCourtScheduleIds)))
+            when(courtScheduleJudiciaryService.getHearingSessionJudiciariesForCourtSchedules(eq(changedCourtScheduleIds)))
                     .thenReturn(List.of());
 
             // when / then

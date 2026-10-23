@@ -74,11 +74,11 @@ public class CourtScheduleJudiciaryService {
     }
 
     @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
-    public List<Object[]> getJudiciaryHearingInfoForCourtSchedules(final List<String> courtScheduleIds) {
+    public List<Object[]> getHearingSessionJudiciariesForCourtSchedules(final List<String> courtScheduleIds) {
         if (!isNotEmpty(courtScheduleIds)) {
             return new ArrayList<>();
         }
-        return courtScheduleJudiciaryRepository.findJudiciaryHearingInfoByCourtScheduleIds(courtScheduleIds);
+        return courtScheduleJudiciaryRepository.findHearingSessionJudiciariesByCourtScheduleIds(courtScheduleIds);
     }
 
     public int deleteRedundantRotaData(final int numberOfPreviousMonthsAndOlder) {

@@ -71,21 +71,23 @@ public interface CourtScheduleJudiciaryRepository
                                               @Param("judiciaryId") String judiciaryId);
 
     /**
-     * Joins court_schedule, court_schedule_judiciary and allocated_listings for the supplied
-     * court schedule IDs. Returns one row per (hearing, judiciary) combination:
-     * court_schedule_id, hearing_id, judiciary_id, judiciary_type, is_bench_chairman, is_deputy.
-     * The judiciary join is a LEFT JOIN so a changed court schedule whose active judiciaries
-     * were all removed still returns its allocated hearings (with null judiciary columns) —
-     * those hearings need a change-judiciary-for-hearings command with an empty judiciary array.
+     * Finds the hearings allocated to the supplied court schedule IDs and returns the judiciaries
+     * of every active session (court schedule) each of those hearings is allocated to, including
+     * sessions outside the supplied IDs, so a multi-session hearing can be checked as a whole.
+     * Returns one row per (hearing, session, judiciary) combination:
+     * hearing_id, court_schedule_id, judiciary_id, judiciary_type, is_bench_chairman, is_deputy.
+     * The judiciary join is a LEFT JOIN so a session without active judiciaries still returns
+     * its hearing (with null judiciary columns).
      */
-    @Query(value = "SELECT cs.id AS court_schedule_id, al.hearing_id, csj.judiciary_id, csj.judiciary_type, "
+    @Query(value = "SELECT al.hearing_id, cs.id AS court_schedule_id, csj.judiciary_id, csj.judiciary_type, "
             + "csj.is_bench_chairman, csj.is_deputy "
-            + "FROM court_schedule cs "
-            + "JOIN allocated_listings al ON al.court_schedule_id = cs.id "
+            + "FROM allocated_listings al "
+            + "JOIN court_schedule cs ON cs.id = al.court_schedule_id AND cs.active = true "
             + "LEFT JOIN court_schedule_judiciary csj ON csj.court_schedule_id = cs.id AND csj.active = true "
-            + "WHERE cs.id IN (:courtScheduleIds) AND cs.active = true",
+            + "WHERE al.hearing_id IN ("
+            + "SELECT changed.hearing_id FROM allocated_listings changed WHERE changed.court_schedule_id IN (:courtScheduleIds))",
             nativeQuery = true)
-    List<Object[]> findJudiciaryHearingInfoByCourtScheduleIds(@Param("courtScheduleIds") List<String> courtScheduleIds);
+    List<Object[]> findHearingSessionJudiciariesByCourtScheduleIds(@Param("courtScheduleIds") List<String> courtScheduleIds);
 
 
     @Query(value = "SELECT csj.* FROM court_schedule_judiciary csj WHERE csj.court_schedule_id IN "
