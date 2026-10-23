@@ -129,22 +129,22 @@ class CourtScheduleJudiciaryServiceTest {
     }
 
     @Test
-    void shouldGetJudiciaryHearingInfoForCourtSchedules() {
+    void shouldGetHearingSessionJudiciariesForCourtSchedules() {
         final List<String> courtScheduleIds = List.of(randomUUID().toString());
         final List<Object[]> rows = List.<Object[]>of(
-                new Object[]{courtScheduleIds.get(0), randomUUID().toString(), "jud-1", "Magistrate", true, false});
-        when(courtScheduleJudiciaryRepository.findJudiciaryHearingInfoByCourtScheduleIds(eq(courtScheduleIds)))
+                new Object[]{randomUUID().toString(), courtScheduleIds.get(0), "jud-1", "Magistrate", true, false});
+        when(courtScheduleJudiciaryRepository.findHearingSessionJudiciariesByCourtScheduleIds(eq(courtScheduleIds)))
                 .thenReturn(rows);
 
-        final List<Object[]> result = courtScheduleJudiciaryService.getJudiciaryHearingInfoForCourtSchedules(courtScheduleIds);
+        final List<Object[]> result = courtScheduleJudiciaryService.getHearingSessionJudiciariesForCourtSchedules(courtScheduleIds);
 
         assertEquals(rows, result);
-        verify(courtScheduleJudiciaryRepository, atLeastOnce()).findJudiciaryHearingInfoByCourtScheduleIds(eq(courtScheduleIds));
+        verify(courtScheduleJudiciaryRepository, atLeastOnce()).findHearingSessionJudiciariesByCourtScheduleIds(eq(courtScheduleIds));
     }
 
     @Test
-    void shouldNotQueryJudiciaryHearingInfoWhenNoCourtScheduleIdsProvided() {
-        final List<Object[]> result = courtScheduleJudiciaryService.getJudiciaryHearingInfoForCourtSchedules(List.of());
+    void shouldNotQueryHearingSessionJudiciariesWhenNoCourtScheduleIdsProvided() {
+        final List<Object[]> result = courtScheduleJudiciaryService.getHearingSessionJudiciariesForCourtSchedules(List.of());
 
         assertTrue(result.isEmpty());
         org.mockito.Mockito.verifyNoInteractions(courtScheduleJudiciaryRepository);
