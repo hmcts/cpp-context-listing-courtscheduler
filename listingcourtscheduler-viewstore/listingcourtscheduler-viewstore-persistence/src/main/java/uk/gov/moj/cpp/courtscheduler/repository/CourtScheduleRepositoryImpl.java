@@ -65,8 +65,10 @@ import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
@@ -240,6 +242,34 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
     public static final String DELETE_UNALLOCATED_FORECAST_SLOT_QUERY = "DELETE FROM court_schedule " +
             "WHERE court_listing_profile_id is null AND not exists (select 1 from allocated_listings al where al.court_schedule_id = id) AND oucode IN (:ouCodes) " +
             "AND active =true and not exists( " + EXISTS_PROVISIONAL_DATA_COURT_SCHEDULE.getQuery() + ")";
+
+    // Releasing unconfirmed holds by booking id, in two statements (releaseUnconfirmedReservations).
+    // The WHERE is the safety property: a listing a share confirmed keeps its booking_id but has
+    // no expires_at, so it can never be deleted here.
+    private static final String DELETE_UNCONFIRMED_RESERVATIONS_QUERY = """
+            DELETE FROM allocated_listings
+             WHERE booking_id IN (:bookingIds)
+               AND expires_at IS NOT NULL
+            RETURNING court_schedule_id, duration
+            """;
+    // Gives each session back what the deleted holds took from it: one slot per hold on a slot
+    // based session, their minutes on a duration based one. Relative updates, so two releases
+    // running at once cannot lose each other's increment.
+    // Only bookkeeping: availability is computed from allocated_listings. Kept while the counters
+    // are still written on reserve/confirm/purge and read by RotaFilePartialProcessor; when the
+    // columns are dropped, delete this statement with them and the release is the DELETE alone.
+    private static final String RESTORE_SESSION_CAPACITY_QUERY = """
+            UPDATE court_schedule cs
+               SET available_slot = CASE WHEN cs.is_slot_based
+                                         THEN cs.available_slot + released.holds
+                                         ELSE cs.available_slot END,
+                   available_duration_mins = CASE WHEN cs.is_slot_based
+                                                  THEN cs.available_duration_mins
+                                                  ELSE cs.available_duration_mins + released.minutes END
+              FROM unnest(CAST(:courtScheduleIds AS varchar[]), CAST(:holds AS integer[]), CAST(:minutes AS integer[]))
+                   AS released(court_schedule_id, holds, minutes)
+             WHERE cs.id = released.court_schedule_id
+            """;
 
     public static final String DELETE_SLOTS_BY_IDS_QUERY = "DELETE FROM court_schedule cs WHERE cs.id IN (:courtScheduleIds) AND cs.court_listing_profile_id is not null AND not exists (select 1 from allocated_listings al where al.court_schedule_id = cs.id) AND  not exists(" + EXISTS_PROVISIONAL_DATA_COURT_SCHEDULE.getQuery() + ")";
 
@@ -2482,15 +2512,53 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
     @Transactional
     public void releaseReservationsForBooking(final String bookingId) {
 
-        final List<AllocatedListing> reservations = allocatedListingRepository.findByBookingId(bookingId).stream()
-                .filter(row -> row.getExpiresAt() != null)
-                .toList();
+        // Through the entities rather than releaseUnconfirmedReservations: the re-pick and confirm
+        // callers hold court_schedule entities in this transaction, and a bulk UPDATE would leave
+        // those stale for them to save back over.
+        final List<AllocatedListing> reservations = allocatedListingRepository.findUnconfirmedByBookingIds(List.of(bookingId));
 
         if (isNotEmpty(reservations)) {
             reservations.forEach(allocatedListingRepository::remove);
             releaseCourtScheduleAllocatedSlotsForBookingId(reservations);
             releaseAllocatedSlotsOrDurationFromCourtSchedule(reservations);
         }
+    }
+
+    /**
+     * Releases the unconfirmed holds of all these bookings in two statements: one DELETE, whose
+     * WHERE takes only rows still carrying an expires_at, returning what it removed; then one
+     * UPDATE giving each session that capacity back.
+     *
+     * <p>Plain SQL, so it bypasses the persistence context: call it from a transaction of its own
+     * (POST /unconfirmedBooking/release), not one already holding court_schedule entities. A hold
+     * has no provisional_booking row since reserve-a-slot, so there is nothing to reactivate.
+     */
+    @Override
+    @Transactional
+    public int releaseUnconfirmedReservations(final Collection<String> bookingIds) {
+        if (bookingIds.isEmpty()) {
+            return 0;
+        }
+        @SuppressWarnings("unchecked")
+        final List<Object[]> released = entityManager.createNativeQuery(DELETE_UNCONFIRMED_RESERVATIONS_QUERY)
+                .setParameter("bookingIds", bookingIds)
+                .getResultList();
+
+        final Map<String, int[]> perSession = new LinkedHashMap<>();
+        released.forEach(row -> {
+            final int[] holdsAndMinutes = perSession.computeIfAbsent((String) row[0], id -> new int[2]);
+            holdsAndMinutes[0]++;
+            holdsAndMinutes[1] += ((Number) row[1]).intValue();
+        });
+
+        if (!perSession.isEmpty()) {
+            entityManager.createNativeQuery(RESTORE_SESSION_CAPACITY_QUERY)
+                    .setParameter("courtScheduleIds", perSession.keySet().toArray(new String[0]))
+                    .setParameter("holds", perSession.values().stream().map(totals -> totals[0]).toArray(Integer[]::new))
+                    .setParameter("minutes", perSession.values().stream().map(totals -> totals[1]).toArray(Integer[]::new))
+                    .executeUpdate();
+        }
+        return released.size();
     }
 
     @Override

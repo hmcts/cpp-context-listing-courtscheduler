@@ -37,6 +37,7 @@ import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
@@ -582,6 +583,37 @@ class ReservationServiceTest {
                 .courtScheduleId(courtScheduleId)
                 .hearingStartTime("2026-10-14T10:00:00.000Z")
                 .duration(duration);
+    }
+
+    // -----------------------------------------------------------------------
+    // POST /unconfirmedBooking/release: release holds by booking id, and nothing else
+    // -----------------------------------------------------------------------
+
+    @Test
+    void shouldReleaseEveryRequestedBookingInOneBatchCall() {
+        reservationService.releaseUnconfirmedBookings(List.of("bk-1", "bk-2"));
+
+        verify(courtScheduleRepository, times(1)).releaseUnconfirmedReservations(Set.of("bk-1", "bk-2"));
+        verify(courtScheduleRepository, never()).releaseReservationsForBooking(anyString());
+    }
+
+    // Releasing the same booking twice is harmless (the second finds nothing), but a caller that
+    // repeats an id is asking for one release, so the batch names it once.
+    @Test
+    void shouldNameARepeatedBookingIdOnlyOnce() {
+        reservationService.releaseUnconfirmedBookings(List.of("bk-1", "bk-2", "bk-1"));
+
+        verify(courtScheduleRepository).releaseUnconfirmedReservations(Set.of("bk-1", "bk-2"));
+    }
+
+    // The safety property of the endpoint. releaseOldAllocatedListings is keyed on hearing_id and
+    // deletes confirmed listings too; a booking release must never reach it, whatever id it is
+    // handed - a caller that sends a hearing id by mistake must not unlist that hearing.
+    @Test
+    void shouldNeverUseTheHearingKeyedReleaseWhenReleasingBookings() {
+        reservationService.releaseUnconfirmedBookings(List.of("bk-1", "bk-2"));
+
+        verify(courtScheduleRepository, never()).releaseOldAllocatedListings(anyString());
     }
 
     private void givenSessionsExist(final String... sessionIds) {

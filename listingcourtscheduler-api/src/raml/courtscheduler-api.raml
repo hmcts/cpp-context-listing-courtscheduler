@@ -546,6 +546,28 @@ protocols: [ HTTP, HTTPS ]
             example: !include json/courtscheduler.get.booking-status.json
             schema:  !include json/schema/courtscheduler.get.booking-status.json
 
+/unconfirmedBooking/release:
+  post:
+    description:  |
+      Releases the UNCONFIRMED holds (reservations) taken under each booking id, giving their
+      sessions' capacity back, in one transaction. A confirmed listing that carries the same
+      booking id is never touched, and nothing keyed by hearing id is - only a share may change a
+      confirmed booking. Unknown ids are no-ops, duplicates count once, and repeating the call is
+      harmless. Called by hearing when a draft result drops a picked next hearing, and later by
+      progression to release surplus holds.
+      ...
+        (mapping):
+            requestType: application/vnd.courtscheduler.release.unconfirmed.bookings+json
+            name: courtscheduler.release.unconfirmed.bookings
+      ...
+    body:
+      application/vnd.courtscheduler.release.unconfirmed.bookings+json:
+        schema:  !include json/schema/courtscheduler.release.unconfirmed.bookings.json
+        example:  !include json/courtscheduler.release.unconfirmed.bookings.json
+    responses:
+      202:
+        description: Request Accepted
+
 /mi/court_schedules:
   get:
     description: |

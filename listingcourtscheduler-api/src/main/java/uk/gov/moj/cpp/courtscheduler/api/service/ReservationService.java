@@ -17,6 +17,7 @@ import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -203,6 +204,29 @@ public class ReservationService {
                     "Could not reserve sessions for booking " + bookingId + ": " + result.getMsg());
         }
         return slots;
+    }
+
+    /**
+     * Releases every UNCONFIRMED hold taken under each of {@code bookingIds}, restoring the
+     * sessions' capacity, all in one transaction ({@code POST /unconfirmedBooking/release}).
+     *
+     * <p>Exists so a caller can give back a hold it no longer wants without waiting for the
+     * nightly purge: hearing calls it when a draft result is saved without the next hearing it had
+     * picked, and progression is to call it to release surplus holds. Neither knows, or should be
+     * able to affect, anything but the holds it took.
+     *
+     * <p>Unconfirmed-only by construction: one query selects the rows of all these bookings
+     * WHERE {@code expires_at IS NOT NULL}. A confirmed listing grown from the same booking keeps
+     * its booking_id but has no expiry, so it is never selected. This must never use
+     * {@code releaseOldAllocatedListings}: that is keyed on hearing_id and removes confirmed
+     * listings, so a booking release routed through it could unlist a real hearing.
+     *
+     * <p>Unknown ids are no-ops and a repeated id is released once, so the call is idempotent.
+     */
+    @Transactional
+    public void releaseUnconfirmedBookings(final List<String> bookingIds) {
+        final int released = courtScheduleRepository.releaseUnconfirmedReservations(new LinkedHashSet<>(bookingIds));
+        LOGGER.info("released {} unconfirmed hold(s) for {} booking id(s)", released, bookingIds.size());
     }
 
     /**

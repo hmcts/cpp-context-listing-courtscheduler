@@ -444,6 +444,33 @@ paths:
               schema:
                 $ref: '#/components/schemas/CourtschedulerGetBookingStatus'
 
+  # Gives back the UNCONFIRMED holds taken under each booking id, in one transaction. Only rows
+  # under that booking_id that still carry expires_at are removed, so a confirmed listing grown
+  # from the same booking survives, and nothing keyed by hearing_id is ever touched - unlike
+  # DELETE /sessions/{hearingId}. Unknown ids are no-ops, duplicates count once, idempotent.
+  # Callers: hearing (release on draft save) and progression (surplus release after a share).
+  # The body is also validated against
+  # src/raml/json/schema/courtscheduler.release.unconfirmed.bookings.json by
+  # RequestSchemaValidationFilter, which answers 400 {"error": ...} before the controller runs.
+  /unconfirmedBooking/release:
+    post:
+      tags: [unconfirmed-booking]
+      operationId: postReleaseUnconfirmedBookings
+      requestBody:
+        required: true
+        content:
+          application/vnd.courtscheduler.release.unconfirmed.bookings+json:
+            schema:
+              $ref: '#/components/schemas/CourtschedulerReleaseUnconfirmedBookings'
+      responses:
+        '202':
+          description: Accepted
+        # No content declared on purpose: a declared response media type becomes the mapping's
+        # "produces", and a caller sending a vendor Accept would then get 406 instead of 202.
+        # The 400 body is the usual {"error": "..."} (GlobalExceptionHandler / the schema filter).
+        '400':
+          description: bookingIds missing or empty, or an entry is blank.
+
   /mi/court_schedules:
     get:
       tags: [mi]
@@ -1417,6 +1444,17 @@ components:
     # CourtSchedulerApi#getBookingStatus and ProvisionalBookingService#getBookingStatus, which
     # builds the JsonObject by hand. That is worth doing, but not inside a merge.
     CourtschedulerGetBookingStatus:                { $ref: '#/components/schemas/PassthroughObject' }
+
+    # Typed (not a PassthroughObject): the controller reads bookingIds directly. The rules here
+    # mirror the RAML JSON schema of the same name, which is what actually enforces them.
+    CourtschedulerReleaseUnconfirmedBookings:
+      type: object
+      required: [bookingIds]
+      properties:
+        bookingIds:
+          type: array
+          minItems: 1
+          items: { type: string, minLength: 1 }
 
     ProvisionalBookingSlots:
       type: object

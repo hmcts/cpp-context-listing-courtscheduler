@@ -269,6 +269,17 @@ rule "API - Action - courtscheduler.get.booking-status"
     $outcome.setSuccess(true);
 end
 
+// Same callers as courtscheduler.create.unconfirmed.booking (hearing, and later progression,
+// calling as the system user): whoever may take a hold may give it back.
+rule "API - Action - courtscheduler.release.unconfirmed.bookings"
+  when
+    $outcome: Outcome();
+    $action: Action(name == "courtscheduler.release.unconfirmed.bookings");
+        eval(userAndGroupProvider.isMemberOfAnyOfTheSuppliedGroups($action, SecurityGroupConstants.systemUserRoles()));
+  then
+    $outcome.setSuccess(true);
+end
+
 rule "API - Action - courtscheduler.export.court_schedule"
   when
     $outcome: Outcome();

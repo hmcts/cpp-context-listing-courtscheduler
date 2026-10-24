@@ -25,6 +25,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.owasp.encoder.Encode;
@@ -68,6 +69,7 @@ import uk.gov.moj.cpp.courtscheduler.openapi.model.Session;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.SessionsParam;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtScheduleDeleteResponse;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerGetCourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerReleaseUnconfirmedBookings;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerSearchCourtSchedulesByIdResponse;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.CrownSearchAndBookRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.BookedPastSession;
@@ -947,5 +949,30 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
         LOG.info("courtscheduler.get.booking-status bookingIds={}", bookingIds);
         final JsonObject response = provisionalBookingService.getBookingStatus(bookingIds);
         return ResponseEntity.ok(JsonValueConverter.toMap(response));
+    }
+
+    /**
+     * POST /unconfirmedBooking/release — gives back the unconfirmed holds of each booking id.
+     * Called by hearing when a draft result is saved without the next hearing it had picked, and
+     * later by progression to release surplus holds. It releases unconfirmed holds only, by
+     * construction (see {@code ReservationService#releaseUnconfirmedBookings}), so it can never
+     * unlist a confirmed hearing.
+     *
+     * <p>The body is normally refused earlier by {@code RequestSchemaValidationFilter}; this check
+     * covers a body that reaches here without it (the filter passes through when it cannot load
+     * the schema), so a blank id is never handed to the release.
+     */
+    @Override
+    public ResponseEntity<Void> postReleaseUnconfirmedBookings(
+            final CourtschedulerReleaseUnconfirmedBookings body) {
+        final List<String> bookingIds = body.getBookingIds();
+        if (bookingIds == null || bookingIds.isEmpty() || bookingIds.stream().anyMatch(StringUtils::isBlank)) {
+            throw new ValidationException(Json.createObjectBuilder()
+                    .add("errorMessage", "bookingIds must be a non-empty list of non-blank booking ids")
+                    .build());
+        }
+        LOG.info("courtscheduler.release.unconfirmed.bookings bookingIds={}", Encode.forJava(String.valueOf(bookingIds)));
+        provisionalBookingService.releaseUnconfirmedBookings(bookingIds);
+        return ResponseEntity.status(HttpStatus.ACCEPTED).build();
     }
 }

@@ -3,6 +3,8 @@ package uk.gov.moj.cpp.courtscheduler.integration;
 import static io.github.benas.randombeans.api.EnhancedRandom.random;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
+import static jakarta.ws.rs.core.Response.Status.ACCEPTED;
+import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
 import static jakarta.ws.rs.core.Response.Status.NOT_ACCEPTABLE;
 import static jakarta.ws.rs.core.Response.Status.OK;
 import static org.hamcrest.CoreMatchers.notNullValue;
@@ -321,6 +323,81 @@ class ProvisionalBookingIT extends AbstractIT {
                 bookingStatusOf(bookingId), is("SHARED"));
 
         assertThat(bookingStatusOf(UUID.randomUUID().toString()), is("NOT_FOUND"));
+    }
+
+    /**
+     * {@code POST /unconfirmedBooking/release} gives back a booking's unconfirmed hold and nothing
+     * else. The confirmed row seeded under the SAME booking id is the point of the test: it stands
+     * for a listing that grew from this booking, and a release keyed on booking_id alone - or one
+     * routed through the hearing_id-keyed release - would delete it and hand its session a slot it
+     * never gave up. Repeated ids and a repeated call must change nothing further.
+     */
+    @Test
+    void shouldReleaseTheUnconfirmedHoldOfABookingButNeverItsConfirmedListing() throws Exception {
+        final String heldSessionId = UUID.randomUUID().toString();
+        final String confirmedSessionId = UUID.randomUUID().toString();
+        databaseSeeder.insertCourtSchedule(bookableCourtSchedule(heldSessionId));
+        databaseSeeder.insertCourtSchedule(bookableCourtSchedule(confirmedSessionId));
+
+        final String bookingId = reserveOneSession(heldSessionId);
+        assertThat("the pick must hold a slot", availableSlots(heldSessionId), is(4));
+
+        final String confirmedRowId = UUID.randomUUID().toString();
+        databaseSeeder.insertAllocatedListing(confirmedListing(confirmedRowId, bookingId, confirmedSessionId));
+
+        final Response response = releaseBookings("{\"bookingIds\":[\"" + bookingId + "\",\"" + bookingId + "\"]}");
+        assertThat("release must be accepted: " + response.readEntity(String.class),
+                response.getStatus(), is(ACCEPTED.getStatusCode()));
+
+        assertThat("the hold must be gone", reservationsForBookingId(bookingId), hasSize(0));
+        assertThat("the released session must get its slot back", availableSlots(heldSessionId), is(5));
+        assertThat("the confirmed listing under the same booking id must survive",
+                databaseReader.allocatedListings().stream().filter(row -> confirmedRowId.equals(row.getId())).toList(),
+                hasSize(1));
+        assertThat("the confirmed listing's session must not be credited a slot it never gave up",
+                availableSlots(confirmedSessionId), is(5));
+
+        final Response again = releaseBookings("{\"bookingIds\":[\"" + bookingId + "\",\"" + UUID.randomUUID() + "\"]}");
+        assertThat("a repeat, with an unknown id, is a no-op", again.getStatus(), is(ACCEPTED.getStatusCode()));
+        assertThat(availableSlots(heldSessionId), is(5));
+        assertThat(databaseReader.allocatedListings().stream().filter(row -> confirmedRowId.equals(row.getId())).toList(),
+                hasSize(1));
+    }
+
+    /** The schema is wired in the running app: a blank id is refused before anything is released. */
+    @Test
+    void shouldRefuseAReleaseWithABlankBookingId() throws Exception {
+        final String courtScheduleId = UUID.randomUUID().toString();
+        databaseSeeder.insertCourtSchedule(bookableCourtSchedule(courtScheduleId));
+        final String bookingId = reserveOneSession(courtScheduleId);
+
+        final Response response = releaseBookings("{\"bookingIds\":[\"" + bookingId + "\",\" \"]}");
+
+        assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
+        assertThat("nothing is released when the request is refused", availableSlots(courtScheduleId), is(4));
+    }
+
+    private Response releaseBookings(final String payload) {
+        return postCommand(RELATIVE_PATH + "/release",
+                "application/vnd.courtscheduler.release.unconfirmed.bookings+json", SYSTEM_USER_ID, payload);
+    }
+
+    /**
+     * A confirmed row: no expires_at (the seeder never writes one) and a real hearing id, under
+     * the given booking id - the shape a share leaves behind.
+     */
+    private static AllocatedListing confirmedListing(final String id, final String bookingId,
+                                                     final String courtScheduleId) {
+        final AllocatedListing row = new AllocatedListing();
+        row.setId(id);
+        row.setBookingId(bookingId);
+        row.setHearingId(UUID.randomUUID().toString());
+        row.setCourtScheduleId(courtScheduleId);
+        row.setOucode("B01LY");
+        row.setCourtRoomId(1);
+        row.setRotaBusinessType("CR");
+        row.setDuration(60);
+        return row;
     }
 
     /** Confirmed rows, which are the only ones carrying a real {@code hearing_id}. */

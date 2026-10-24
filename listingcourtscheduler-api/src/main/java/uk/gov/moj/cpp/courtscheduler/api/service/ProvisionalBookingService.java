@@ -72,6 +72,15 @@ public class ProvisionalBookingService {
     }
 
     /**
+     * Releases the unconfirmed holds of each booking id - see
+     * {@link ReservationService#releaseUnconfirmedBookings} for why it can never touch a confirmed
+     * listing. Delegated like {@link #bookProvisionalSlots}: reservations live there.
+     */
+    public void releaseUnconfirmedBookings(final List<String> bookingIds) {
+        reservationService.releaseUnconfirmedBookings(bookingIds);
+    }
+
+    /**
      * Resolves booking ids to their sessions. Reservations are the current representation;
      * provisional_booking rows are the legacy one, written before reserve-a-slot shipped.
      * Drafts have no TTL, so the fallback is permanent — a pre-go-live magistrates draft can be

@@ -25,6 +25,8 @@ import java.util.Set;
 
 import org.springframework.beans.factory.annotation.Autowired;
 
+import jakarta.persistence.EntityManager;
+
 import org.apache.commons.lang3.tuple.Pair;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -40,6 +42,8 @@ class AllocatedListingRepositoryTest extends AbstractRepositoryTest {
     private AllocatedListingRepository allocatedListingRepository;
     @Autowired
     private CourtScheduleRepository courtScheduleRepository;
+    @Autowired
+    private EntityManager entityManager;
 
     @AfterEach
     public void tearDown() {
@@ -550,6 +554,109 @@ class AllocatedListingRepositoryTest extends AbstractRepositoryTest {
         assertThat(allocatedListingRepository.findByHearingId("HEARING-BACKLOG-2DAY").isEmpty(), is(true));
         assertThat(courtScheduleRepository.findBy(sessionYesterday.getCourtScheduleId()).getAvailableSlots(), is(4));
         assertThat(courtScheduleRepository.findBy(sessionTwoDaysAgo.getCourtScheduleId()).getAvailableSlots(), is(4));
+    }
+
+    // -----------------------------------------------------------------------
+    // Tests for releaseUnconfirmedReservations: the batch release behind
+    // POST /unconfirmedBooking/release (hearing on draft save, progression on surplus). One query
+    // for every booking id, with "unconfirmed" decided by the query itself (expires_at IS NOT NULL).
+    // -----------------------------------------------------------------------
+
+    @Test
+    public void shouldReleaseTheUnconfirmedHoldsOfEveryBookingInOneCallAndRestoreCapacity() {
+        final LocalDate expiry = LocalDate.now(java.time.ZoneOffset.UTC).plusDays(1);
+        // booking A holds two sessions (a multi-day pick), booking B one; one hold per session each
+        final CourtSchedule sessionA1 = persistSlotBasedSession(4, 3);
+        final CourtSchedule sessionA2 = persistSlotBasedSession(4, 3);
+        final CourtSchedule sessionB = persistSlotBasedSession(4, 3);
+        final String bookingA = randomUUID().toString();
+        final String bookingB = randomUUID().toString();
+
+        persistHold("AL-A1", bookingA, sessionA1.getCourtScheduleId(), expiry);
+        persistHold("AL-A2", bookingA, sessionA2.getCourtScheduleId(), expiry);
+        persistHold("AL-B1", bookingB, sessionB.getCourtScheduleId(), expiry);
+
+        final int released = releaseUnconfirmed(List.of(bookingA, bookingB));
+
+        assertEquals(3, released);
+        assertThat(allocatedListingRepository.findByBookingId(bookingA).isEmpty(), is(true));
+        assertThat(allocatedListingRepository.findByBookingId(bookingB).isEmpty(), is(true));
+        assertThat(courtScheduleRepository.findBy(sessionA1.getCourtScheduleId()).getAvailableSlots(), is(4));
+        assertThat(courtScheduleRepository.findBy(sessionA2.getCourtScheduleId()).getAvailableSlots(), is(4));
+        assertThat(courtScheduleRepository.findBy(sessionB.getCourtScheduleId()).getAvailableSlots(), is(4));
+    }
+
+    @Test
+    public void shouldKeepTheConfirmedListingOfABookingWhileReleasingItsHold() {
+        final LocalDate expiry = LocalDate.now(java.time.ZoneOffset.UTC).plusDays(1);
+        final CourtSchedule session = persistSlotBasedSession(4, 2);
+        final String booking = randomUUID().toString();
+
+        persistHold("AL-HOLD", booking, session.getCourtScheduleId(), expiry);
+        persistHold("AL-LISTED", booking, session.getCourtScheduleId(), null); // a share confirmed it
+
+        final int released = releaseUnconfirmed(List.of(booking));
+
+        assertEquals(1, released);
+        final List<AllocatedListing> left = allocatedListingRepository.findByBookingId(booking);
+        assertThat(left.size(), is(1));
+        assertThat(left.get(0).getId(), is("AL-LISTED"));
+        assertThat(courtScheduleRepository.findBy(session.getCourtScheduleId()).getAvailableSlots(), is(3));
+    }
+
+    @Test
+    public void shouldReleaseNothingForUnknownOrNoBookingIds() {
+        final CourtSchedule session = persistSlotBasedSession(4, 3);
+        persistHold("AL-OTHER", randomUUID().toString(), session.getCourtScheduleId(),
+                LocalDate.now(java.time.ZoneOffset.UTC).plusDays(1));
+
+        assertEquals(0, releaseUnconfirmed(List.of(randomUUID().toString())));
+        assertEquals(0, releaseUnconfirmed(List.of()));
+        assertThat(courtScheduleRepository.findBy(session.getCourtScheduleId()).getAvailableSlots(), is(3));
+    }
+
+    @Test
+    public void shouldGiveADurationBasedSessionBackTheMinutesItsHoldsTook() {
+        final CourtSchedule session = random(CourtSchedule.class);
+        session.setSlotBased(false);
+        session.setMaxDuration(360);
+        session.setAvailableDuration(120); // 240 minutes held by the two bookings below
+        courtScheduleRepository.saveAndFlush(session);
+        final String bookingA = randomUUID().toString();
+        final String bookingB = randomUUID().toString();
+        final LocalDate expiry = LocalDate.now(java.time.ZoneOffset.UTC).plusDays(1);
+        persistHold("AL-DUR-A", bookingA, session.getCourtScheduleId(), expiry); // 120 minutes each
+        persistHold("AL-DUR-B", bookingB, session.getCourtScheduleId(), expiry);
+
+        assertEquals(2, releaseUnconfirmed(List.of(bookingA, bookingB)));
+
+        final CourtSchedule after = courtScheduleRepository.findBy(session.getCourtScheduleId());
+        assertThat(after.getAvailableDuration(), is(360));
+        assertThat(after.getAvailableSlots(), is(session.getAvailableSlots()));
+    }
+
+    /**
+     * The release is two plain SQL statements, so it does not refresh entities this test already
+     * holds; clear them so the assertions read what the database now says.
+     */
+    private int releaseUnconfirmed(final List<String> bookingIds) {
+        final int released = courtScheduleRepository.releaseUnconfirmedReservations(bookingIds);
+        entityManager.clear();
+        return released;
+    }
+
+    private CourtSchedule persistSlotBasedSession(final int maxSlots, final int availableSlots) {
+        final CourtSchedule session = random(CourtSchedule.class);
+        session.setSlotBased(true);
+        session.setMaxSlots(maxSlots);
+        session.setAvailableSlots(availableSlots);
+        return courtScheduleRepository.saveAndFlush(session);
+    }
+
+    private void persistHold(final String id, final String bookingId, final String courtScheduleId, final LocalDate expiresAt) {
+        final AllocatedListing listing = createAllocateListing(id, bookingId, courtScheduleId, null);
+        listing.setExpiresAt(expiresAt);
+        allocatedListingRepository.saveAndFlush(listing);
     }
 
     private void seedScheduleAndAllocation(final String courtScheduleId, final LocalDate sessionDate,

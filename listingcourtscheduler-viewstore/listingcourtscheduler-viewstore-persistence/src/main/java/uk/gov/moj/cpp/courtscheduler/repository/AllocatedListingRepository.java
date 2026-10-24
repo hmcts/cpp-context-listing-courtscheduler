@@ -6,6 +6,7 @@ import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -33,13 +34,23 @@ public interface AllocatedListingRepository
     List<AllocatedListing> findByHearingId(String hearingId);
 
     /**
-     * Confirmed rows only, by construction. A reservation carries its bookingId in
-     * {@code hearing_id} and leaves {@code booking_id} null (see
-     * {@code ReservationService.toReservedSlot}); only the row written when a booking is
-     * confirmed is stamped with {@code booking_id}. So a non-empty result here means the
-     * booking was shared, with no {@code expires_at} filter needed to say so.
+     * Every row under the booking: its unconfirmed holds (expires_at set, hearing_id null) and any
+     * listing a share confirmed from it (no expires_at). Filter on expires_at to tell them apart.
      */
     List<AllocatedListing> findByBookingId(String bookingId);
+
+    /**
+     * The unconfirmed holds of these bookings, in one query - and only those: a listing a share
+     * confirmed keeps its booking_id but has no expires_at, so it is never returned. An empty
+     * collection must not reach here: {@code IN ()} is not valid SQL.
+     */
+    @Query(value = """
+            SELECT al.*
+            FROM allocated_listings al
+            WHERE al.booking_id IN (:bookingIds)
+              AND al.expires_at IS NOT NULL
+            """, nativeQuery = true)
+    List<AllocatedListing> findUnconfirmedByBookingIds(@Param("bookingIds") Collection<String> bookingIds);
 
     /**
      * Every reservation whose hold has lapsed — {@code expires_at} set and before the given

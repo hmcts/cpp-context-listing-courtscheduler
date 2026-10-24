@@ -88,6 +88,14 @@ class ProvisionalBookingServiceTest {
         verify(provisionalBookingRepository, never()).saveProvisionalBooking(any(), anyString(), any());
     }
 
+    /** POST /unconfirmedBooking/release: the release itself belongs to the reservation service. */
+    @Test
+    void shouldHandTheBookingIdsToReleaseToTheReservationService() {
+        provisionalBookingService.releaseUnconfirmedBookings(List.of("bk-1", "bk-2"));
+
+        verify(reservationService).releaseUnconfirmedBookings(List.of("bk-1", "bk-2"));
+    }
+
     @Test
     void shouldFailTheWholeBookingWhenAnySlotCannotBeHeld() {
         when(reservationService.reserveAllUnderBooking(any(), anyList())).thenThrow(new NoCapacityException("full"));

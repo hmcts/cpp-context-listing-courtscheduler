@@ -17,6 +17,7 @@ import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -175,6 +176,14 @@ public interface CourtScheduleRepositoryCustom {
      * Never touches a confirmed listing, even though one carries the same booking_id.
      */
     void releaseReservationsForBooking(String bookingId);
+
+    /**
+     * Releases the unconfirmed holds of all these bookings in one query and one transaction,
+     * restoring each session's capacity. Confirmed listings are never selected, so never touched.
+     *
+     * @return the number of holds released
+     */
+    int releaseUnconfirmedReservations(Collection<String> bookingIds);
 
     /** Date-scoped sibling of {@link #releaseOldAllocatedListings(String)}. */
     void releaseAllocatedListingsForDates(String hearingId, List<LocalDate> dates);

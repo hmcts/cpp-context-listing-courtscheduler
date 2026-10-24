@@ -25,7 +25,9 @@ public class AllocatedListing {
     @Column(name = "booking_id")
     private String bookingId;
 
-    @Column(name = "hearing_id", nullable = false)
+    // Null on an unconfirmed hold until a share confirms it (changeset 053); the column has
+    // never been NOT NULL.
+    @Column(name = "hearing_id")
     private String hearingId;
 
     @Column(name = "oucode", nullable = false)

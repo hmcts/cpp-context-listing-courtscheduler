@@ -1,0 +1,18 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "bookingIds": {
+      "description": "Booking ids whose UNCONFIRMED holds are to be released. Only rows still carrying an expiry are removed, so a confirmed listing under the same booking id survives. Unknown ids are no-ops; a repeated id is released once.",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "pattern": "\\S"
+      }
+    }
+  },
+  "required": [
+    "bookingIds"
+  ]
+}
