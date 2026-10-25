@@ -700,13 +700,59 @@ class SessionsServiceTest {
         assertTrue(result.isEmpty());
     }
 
+    // available_duration_mins is going away and can drift: capacity is what allocated_listings
+    // says, exactly as the search API computes it (max_duration_mins - sum(duration)).
+    @Test
+    void durationBasedSessionCountsAllocatedListingsNotTheColumn() {
+        final String courtScheduleId = randomUUID().toString();
+        final CourtSchedule entity = durationBasedSession(courtScheduleId, 120);
+        entity.setAvailableDuration(120);
+        when(courtScheduleRepository.findByCourtScheduleIds(List.of(courtScheduleId))).thenReturn(List.of(entity));
+        when(allocatedListingService.getAllocatedListingEachBookedByCourtScheduleId(courtScheduleId))
+                .thenReturn(List.of(booked(courtScheduleId, 60), booked(courtScheduleId, 40)));
+
+        final Optional<String> result = sessionsService.validateSessionAvailabilityListMode(List.of(courtScheduleId), 30);
+
+        assertEquals(Optional.of(String.format("Schedule %s has 20 minutes available but 30 minutes are required.", courtScheduleId)), result);
+    }
+
+    @Test
+    void durationBasedSessionIgnoresAStaleLowColumn() {
+        final String courtScheduleId = randomUUID().toString();
+        final CourtSchedule entity = durationBasedSession(courtScheduleId, 120);
+        entity.setAvailableDuration(0);
+        when(courtScheduleRepository.findByCourtScheduleIds(List.of(courtScheduleId))).thenReturn(List.of(entity));
+        when(allocatedListingService.getAllocatedListingEachBookedByCourtScheduleId(courtScheduleId)).thenReturn(List.of());
+
+        final Optional<String> result = sessionsService.validateSessionAvailabilityListMode(List.of(courtScheduleId), 30);
+
+        assertTrue(result.isEmpty());
+    }
+
+    private static CourtSchedule durationBasedSession(final String courtScheduleId, final int maxDuration) {
+        final CourtSchedule entity = new CourtSchedule();
+        entity.setCourtScheduleId(courtScheduleId);
+        entity.setSlotBased(false);
+        entity.setMaxDuration(maxDuration);
+        entity.setIsOverbookingAllowed(false);
+        entity.setJurisdiction(MAGISTRATES_2);
+        entity.setCourtHouseId(CENTRE_1);
+        return entity;
+    }
+
+    private static uk.gov.moj.cpp.courtscheduler.openapi.model.AllocatedListingEachBooked booked(final String courtScheduleId, final int duration) {
+        return new uk.gov.moj.cpp.courtscheduler.openapi.model.AllocatedListingEachBooked()
+                .courtScheduleId(courtScheduleId)
+                .duration(duration);
+    }
+
     @Test
     void shouldReturnErrorWhenDurationBasedInsufficientAndNoOverbooking() {
         final String courtScheduleId = randomUUID().toString();
         final CourtSchedule entity = new CourtSchedule();
         entity.setCourtScheduleId(courtScheduleId);
         entity.setSlotBased(false);
-        entity.setAvailableDuration(30);
+        entity.setMaxDuration(30);
         entity.setIsOverbookingAllowed(false);
         entity.setJurisdiction(MAGISTRATES_2);
         entity.setCourtHouseId(CENTRE_1);
@@ -763,13 +809,13 @@ class SessionsServiceTest {
         final CourtSchedule day1 = new CourtSchedule();
         day1.setCourtScheduleId(randomUUID().toString());
         day1.setSessionDate(startDate);
-        day1.setAvailableDuration(360);
+        day1.setMaxDuration(360);
         day1.setIsOverbookingAllowed(false);
 
         final CourtSchedule day2 = new CourtSchedule();
         day2.setCourtScheduleId(randomUUID().toString());
         day2.setSessionDate(startDate.plusDays(1));
-        day2.setAvailableDuration(400);
+        day2.setMaxDuration(400);
         day2.setIsOverbookingAllowed(false);
 
         when(courtScheduleRepository.findActiveByCourtRoomIdBetweenDates(
@@ -800,13 +846,13 @@ class SessionsServiceTest {
         final CourtSchedule day1 = new CourtSchedule();
         day1.setCourtScheduleId(randomUUID().toString());
         day1.setSessionDate(startDate);
-        day1.setAvailableDuration(360);
+        day1.setMaxDuration(360);
         day1.setIsOverbookingAllowed(false);
 
         final CourtSchedule day2 = new CourtSchedule();
         day2.setCourtScheduleId(randomUUID().toString());
         day2.setSessionDate(startDate.plusDays(1));
-        day2.setAvailableDuration(10);
+        day2.setMaxDuration(10);
         day2.setIsOverbookingAllowed(true);
 
         when(courtScheduleRepository.findActiveByCourtRoomIdBetweenDates(
@@ -840,13 +886,13 @@ class SessionsServiceTest {
         final CourtSchedule day1 = new CourtSchedule();
         day1.setCourtScheduleId(randomUUID().toString());
         day1.setSessionDate(friday);
-        day1.setAvailableDuration(360);
+        day1.setMaxDuration(360);
         day1.setIsOverbookingAllowed(false);
 
         final CourtSchedule day2 = new CourtSchedule();
         day2.setCourtScheduleId(randomUUID().toString());
         day2.setSessionDate(monday);
-        day2.setAvailableDuration(360);
+        day2.setMaxDuration(360);
         day2.setIsOverbookingAllowed(false);
 
         // endDate should be Monday (skipping weekend), not Sunday
@@ -882,7 +928,7 @@ class SessionsServiceTest {
         final CourtSchedule day1 = new CourtSchedule();
         day1.setCourtScheduleId(randomUUID().toString());
         day1.setSessionDate(friday);
-        day1.setAvailableDuration(360);
+        day1.setMaxDuration(360);
         day1.setIsOverbookingAllowed(false);
 
         when(courtScheduleRepository.findActiveByCourtRoomIdBetweenDates(
@@ -918,19 +964,19 @@ class SessionsServiceTest {
         final CourtSchedule day1 = new CourtSchedule();
         day1.setCourtScheduleId(randomUUID().toString());
         day1.setSessionDate(thursday);
-        day1.setAvailableDuration(360);
+        day1.setMaxDuration(360);
         day1.setIsOverbookingAllowed(false);
 
         final CourtSchedule day2 = new CourtSchedule();
         day2.setCourtScheduleId(randomUUID().toString());
         day2.setSessionDate(friday);
-        day2.setAvailableDuration(360);
+        day2.setMaxDuration(360);
         day2.setIsOverbookingAllowed(false);
 
         final CourtSchedule day3 = new CourtSchedule();
         day3.setCourtScheduleId(randomUUID().toString());
         day3.setSessionDate(monday);
-        day3.setAvailableDuration(360);
+        day3.setMaxDuration(360);
         day3.setIsOverbookingAllowed(false);
 
         // endDate = advanceByWeekdays(Thursday, 2) = Monday
@@ -1002,11 +1048,13 @@ class SessionsServiceTest {
         entity.setCourtHouseId(CENTRE_1);
         when(courtScheduleRepository.findByCourtScheduleIds(List.of(courtScheduleId))).thenReturn(List.of(entity));
 
+        final String day1Id = randomUUID().toString();
         final CourtSchedule day1 = new CourtSchedule();
-        day1.setCourtScheduleId(randomUUID().toString());
+        day1.setCourtScheduleId(day1Id);
         day1.setSessionDate(startDate);
-        day1.setAvailableDuration(360);
+        day1.setMaxDuration(360);
         day1.setIsOverbookingAllowed(false);
+        when(allocatedListingService.getAllocatedListingEachBookedByCourtScheduleId(day1Id)).thenReturn(List.of());
 
         final String day2Id = randomUUID().toString();
         final CourtSchedule day2 = adSplitSchedule(day2Id, CROWN_2, 120, 80);

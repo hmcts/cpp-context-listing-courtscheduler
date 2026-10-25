@@ -19,6 +19,8 @@ import uk.gov.moj.cpp.courtscheduler.openapi.model.Result;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtScheduleMatcherInfo;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.CrownFallbackRequest;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.BookingState;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.BookingLog;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.TimezoneUtils;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary;
@@ -73,6 +75,9 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
 
     @Autowired
     private AllocatedListingRepository allocatedListingRepository;
+
+    @Autowired
+    private BookingLogRepository bookingLogRepository;
 
     @jakarta.persistence.PersistenceContext
     private jakarta.persistence.EntityManager em;
@@ -449,9 +454,9 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
         assertEquals(1, remaining.size());
         assertEquals(CS_REL_DAY1, remaining.getFirst().getCourtScheduleId());
 
-        assertEquals(Integer.valueOf(9), courtScheduleRepository.findBy(CS_REL_DAY1).getAvailableSlots());
-        assertEquals(Integer.valueOf(10), courtScheduleRepository.findBy("CS-REL-DAY2").getAvailableSlots());
-        assertEquals(Integer.valueOf(10), courtScheduleRepository.findBy("CS-REL-DAY3").getAvailableSlots());
+        assertEquals(Integer.valueOf(9), slotsLeft(CS_REL_DAY1));
+        assertEquals(Integer.valueOf(10), slotsLeft("CS-REL-DAY2"));
+        assertEquals(Integer.valueOf(10), slotsLeft("CS-REL-DAY3"));
     }
 
     @Test
@@ -480,9 +485,9 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
         final List<AllocatedListing> remaining = allocatedListingRepository.findByHearingId(hearingId);
         assertEquals(3, remaining.size());
 
-        assertEquals(Integer.valueOf(9), courtScheduleRepository.findBy("CS-NOOP-DAY1").getAvailableSlots());
-        assertEquals(Integer.valueOf(9), courtScheduleRepository.findBy("CS-NOOP-DAY2").getAvailableSlots());
-        assertEquals(Integer.valueOf(9), courtScheduleRepository.findBy("CS-NOOP-DAY3").getAvailableSlots());
+        assertEquals(Integer.valueOf(9), slotsLeft("CS-NOOP-DAY1"));
+        assertEquals(Integer.valueOf(9), slotsLeft("CS-NOOP-DAY2"));
+        assertEquals(Integer.valueOf(9), slotsLeft("CS-NOOP-DAY3"));
     }
 
     @Test
@@ -596,7 +601,7 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
         em.clear();
 
         assertTrue(allocatedListingRepository.findByHearingId("BK-RES").isEmpty());
-        assertEquals(Integer.valueOf(10), courtScheduleRepository.findBy("CS-RES").getAvailableSlots());
+        assertEquals(Integer.valueOf(10), slotsLeft("CS-RES"));
     }
 
     @Test
@@ -685,11 +690,11 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
         assertEquals(3, held.size());
         held.forEach(row -> assertEquals(LocalDate.now(ZoneOffset.UTC), row.getExpiresAt()));
 
-        // slotBasedCourtSchedule seeds availableSlots = 9; each session must now be at 8 — one
-        // decrement, no releases. Before the fix CS-MULTI-1 and CS-MULTI-2 went back to 9.
-        assertEquals(Integer.valueOf(8), courtScheduleRepository.findBy("CS-MULTI-1").getAvailableSlots());
-        assertEquals(Integer.valueOf(8), courtScheduleRepository.findBy("CS-MULTI-2").getAvailableSlots());
-        assertEquals(Integer.valueOf(8), courtScheduleRepository.findBy("CS-MULTI-3").getAvailableSlots());
+        // Max 10, and exactly one hold on each session: 9 left on each. Before the fix the first
+        // two holds were released by the later ones, leaving 10.
+        assertEquals(Integer.valueOf(9), slotsLeft("CS-MULTI-1"));
+        assertEquals(Integer.valueOf(9), slotsLeft("CS-MULTI-2"));
+        assertEquals(Integer.valueOf(9), slotsLeft("CS-MULTI-3"));
     }
 
     // -----------------------------------------------------------------------
@@ -721,7 +726,7 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
         em.clear();
 
         // reserve -1, list -1, release +1 => net -1 from the original 4
-        assertEquals(Integer.valueOf(3), courtScheduleRepository.findBy("CS-BUG3-LIST").getAvailableSlots());
+        assertEquals(Integer.valueOf(3), slotsLeft("CS-BUG3-LIST"));
         assertTrue(allocatedListingRepository.findByHearingId("BK-BUG3-1").isEmpty());
         final List<AllocatedListing> confirmed = allocatedListingRepository.findByHearingId("HEARING-BUG3-1");
         assertEquals(1, confirmed.size());
@@ -745,7 +750,7 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
         em.flush();
         em.clear();
 
-        assertEquals(Integer.valueOf(3), courtScheduleRepository.findBy("CS-BUG3-NOBOOKING").getAvailableSlots());
+        assertEquals(Integer.valueOf(3), slotsLeft("CS-BUG3-NOBOOKING"));
         assertNull(allocatedListingRepository.findByHearingId("HEARING-BUG3-2").get(0).getBookingId());
     }
 
@@ -765,8 +770,55 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
         em.flush();
         em.clear();
 
-        assertEquals(Integer.valueOf(3), courtScheduleRepository.findBy("CS-BUG3-LEGACY").getAvailableSlots());
+        assertEquals(Integer.valueOf(3), slotsLeft("CS-BUG3-LEGACY"));
         assertEquals(1, allocatedListingRepository.findByHearingId("HEARING-BUG3-3").size());
+    }
+
+    // -----------------------------------------------------------------------
+    // LPT-2611: the share that confirms a hold, and the purge that drops a lapsed one, are
+    // recorded in the booking log.
+    // -----------------------------------------------------------------------
+
+    @Test
+    public void shouldLogTheConfirmedListingWhenAShareListsAHold() {
+        final LocalDate sessionDate = LocalDate.of(2026, 9, 11);
+        final CourtSchedule session = slotBasedCourtSchedule("CS-LOG-LIST", sessionDate);
+        session.setMaxSlots(4);
+        session.setAvailableSlots(3);
+        courtScheduleRepository.saveAndFlush(session);
+        allocatedListingRepository.saveAndFlush(
+                reservationListingFor("AL-LOG-RES", "BK-LOG-1", "CS-LOG-LIST", null, sessionDate));
+
+        courtScheduleRepository.updateListHearingSlots(requestedSlotsFor("HEARING-LOG-1", "BK-LOG-1", "CS-LOG-LIST"));
+        em.flush();
+
+        final List<BookingLog> latest = bookingLogRepository.findLatestEvent("BK-LOG-1");
+        assertEquals(1, latest.size());
+        assertEquals(BookingState.CONFIRMED, latest.get(0).getState());
+        assertEquals("HEARING-LOG-1", latest.get(0).getHearingId());
+        assertEquals("CS-LOG-LIST", latest.get(0).getCourtScheduleId());
+    }
+
+    @Test
+    public void shouldLogEachLapsedHoldWhenThePurgeRemovesIt() {
+        final LocalDate sessionDate = LocalDate.of(2026, 9, 11);
+        final CourtSchedule session = slotBasedCourtSchedule("CS-LOG-PURGE", sessionDate);
+        session.setMaxSlots(4);
+        session.setAvailableSlots(3);
+        courtScheduleRepository.saveAndFlush(session);
+        final AllocatedListing lapsed = reservationListingFor("AL-LOG-LAPSED", "BK-LOG-2", "CS-LOG-PURGE", null, sessionDate);
+        lapsed.setExpiresAt(LocalDate.now(ZoneOffset.UTC).minusDays(1));
+        allocatedListingRepository.saveAndFlush(lapsed);
+
+        courtScheduleRepository.releaseExpiredReservations(LocalDate.now(ZoneOffset.UTC));
+        em.flush();
+
+        final List<BookingLog> latest = bookingLogRepository.findLatestEvent("BK-LOG-2");
+        assertEquals(1, latest.size());
+        assertEquals(BookingState.EXPIRED, latest.get(0).getState());
+        assertEquals("CS-LOG-PURGE", latest.get(0).getCourtScheduleId());
+        assertEquals(lapsed.getHearingStartTime(), latest.get(0).getHearingStartTime());
+        assertEquals(lapsed.getDuration(), latest.get(0).getDuration());
     }
 
     // -----------------------------------------------------------------------
@@ -799,7 +851,7 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
         // clearing, else clear() silently discards them (ccsph2 rig committed per call).
         em.flush();
         em.clear();
-        assertEquals(Integer.valueOf(8), courtScheduleRepository.findBy("CS-REPICK-1").getAvailableSlots());
+        assertEquals(Integer.valueOf(9), slotsLeft("CS-REPICK-1"));
 
         courtScheduleRepository.saveBookedSlots(
                 new ArrayList<>(List.of(reservedSlotFor(bookingId, "CS-REPICK-2", sessionDate))), false, false);
@@ -807,9 +859,9 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
         em.flush();
         em.clear();
 
-        assertEquals(Integer.valueOf(9), courtScheduleRepository.findBy("CS-REPICK-1").getAvailableSlots(),
+        assertEquals(Integer.valueOf(10), slotsLeft("CS-REPICK-1"),
                 "the abandoned session must get its slot back");
-        assertEquals(Integer.valueOf(8), courtScheduleRepository.findBy("CS-REPICK-2").getAvailableSlots(),
+        assertEquals(Integer.valueOf(9), slotsLeft("CS-REPICK-2"),
                 "the newly picked session must be held");
         assertEquals(1, allocatedListingRepository.findByHearingId(bookingId).size(),
                 "only the new pick's row survives");
@@ -897,6 +949,20 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
         reservation.setSource("RESERVE_UNCONFIRMED_SLOT");
         reservation.setExpiresAt(LocalDate.now(ZoneOffset.UTC));
         return reservation;
+    }
+
+    /**
+     * What a session has left, counted from allocated_listings: the only source of availability.
+     * court_schedule.available_slot / available_duration_mins are no longer kept up to date.
+     */
+    private int slotsLeft(final String courtScheduleId) {
+        return courtScheduleRepository.findBy(courtScheduleId).getMaxSlots()
+                - allocatedListingRepository.findByCourtScheduleId(courtScheduleId).size();
+    }
+
+    private int minutesLeft(final String courtScheduleId) {
+        return courtScheduleRepository.findBy(courtScheduleId).getMaxDuration()
+                - allocatedListingRepository.findByCourtScheduleId(courtScheduleId).stream().mapToInt(AllocatedListing::getDuration).sum();
     }
 
     // -----------------------------------------------------------------------

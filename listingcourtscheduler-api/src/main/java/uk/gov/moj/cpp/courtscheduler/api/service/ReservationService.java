@@ -10,11 +10,17 @@ import uk.gov.moj.cpp.courtscheduler.exception.ConfirmedBookingExistsException;
 import uk.gov.moj.cpp.courtscheduler.exception.NoCapacityException;
 import uk.gov.moj.cpp.courtscheduler.exception.NoSessionAvailableException;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.BookingState;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.BookingLog;
 import uk.gov.moj.cpp.courtscheduler.repository.AllocatedListingRepository;
+import uk.gov.moj.cpp.courtscheduler.repository.BookingLogRepository;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
 
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -31,13 +37,14 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Creates capacity-holding, expiring reservations. A reservation is an ordinary
- * allocated_listings row written through the same pipeline as a real booking — so
- * court_schedule capacity is genuinely decremented — but stamped with expires_at so the
- * nightly purge sweeps it if the result is never shared.
+ * allocated_listings row written through the same pipeline as a real booking — so it counts
+ * against the session's capacity, which is counted from allocated_listings — but stamped with
+ * expires_at so the nightly purge sweeps it if the result is never shared.
  *
  * <p>The row's hearing_id is the bookingId. That is load-bearing in two directions.
  * saveBookedSlots begins with a hearing-wide releaseOldAllocatedListings(hearing_id), so when a
@@ -63,7 +70,7 @@ import org.springframework.transaction.annotation.Transactional;
  * nothing enforced it any more. {@link #reserveAll} now calls {@code validateSessionAvailabilityListMode}
  * itself — the same shared rule, not a copy, so {@code isOverbookingAllowed} keeps working exactly
  * as it did at share time — and does so before any {@link AllocatedSlot} is built or {@code
- * saveBookedSlots} is called, so a rejection never leaves capacity decremented.
+ * saveBookedSlots} is called, so a rejection never leaves a row behind.
  *
  * <p>A Crown multi-day pick (a duration-based session whose requested duration exceeds one court
  * day) is the one exception: {@link #expandCrownMultiDay} resolves the whole run up front via
@@ -93,6 +100,9 @@ public class ReservationService {
 
     @Inject
     private SessionsService sessionsService;
+
+    @Inject
+    private BookingLogRepository bookingLogRepository;
 
     /**
      * Reserves {@code requestedSlots} and returns the booking id they are held under (LPT-2592).
@@ -194,7 +204,7 @@ public class ReservationService {
         //
         // It releases only unconfirmed rows (see releaseReservationsForBooking), so a bookingId
         // whose earlier pick was already shared keeps its confirmed listing untouched.
-        courtScheduleRepository.releaseReservationsForBooking(bookingId);
+        bookingLogRepository.record(BookingState.REPICK_RELEASED, courtScheduleRepository.releaseReservationsForBooking(bookingId));
 
         // releaseExistingHearingAllocations = false: there is no hearing_id on these rows to
         // release by, and the booking-scoped release above has already run.
@@ -203,7 +213,64 @@ public class ReservationService {
             throw new NoCapacityException(
                     "Could not reserve sessions for booking " + bookingId + ": " + result.getMsg());
         }
+        bookingLogRepository.record(BookingState.RESERVED, allocatedListingRepository.findUnconfirmedByBookingIds(List.of(bookingId)));
         return slots;
+    }
+
+    /**
+     * Re-reserves a booking the nightly purge removed, under the SAME booking id, onto the session
+     * rows its expiry recorded (LPT-2611). Used by the pre-share check, so the result line's
+     * bookingReference stays valid and nothing downstream changes.
+     *
+     * <p>Only a booking whose latest booking-log event is {@code EXPIRED} qualifies: a release,
+     * a confirmation or an earlier re-book after it means the booking is not simply lapsed, and a
+     * booking the clerk dropped must never come back. Nor does one whose session has already
+     * started (UTC date before today).
+     *
+     * <p>The re-book goes through {@link #reserveAll}, so it gets exactly a pick's rules: the
+     * session must still be active, capacity is counted from allocated_listings with
+     * {@code isOverbookingAllowed} honoured, and a confirmed booking is never reserved over. Each
+     * remembered row is one session day (a Crown run's rows are per day, within one court day), so
+     * every day is checked on its own session. All or nothing: the rows go in one call.
+     *
+     * <p>Its own transaction, and refusals are thrown rather than caught here, so that whatever
+     * the attempt wrote is rolled back by this method's boundary; the caller decides what the
+     * booking's status is after a refusal.
+     *
+     * @return true when re-booked; false when the booking does not qualify
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public boolean rebookExpired(final String bookingId) {
+        final List<BookingLog> expired = bookingLogRepository.findLatestEvent(bookingId);
+        if (expired.isEmpty() || expired.stream().anyMatch(row -> row.getState() != BookingState.EXPIRED)) {
+            return false;
+        }
+        final LocalDate today = LocalDate.now(ZoneOffset.UTC);
+        if (expired.stream().anyMatch(row -> row.getHearingStartTime() == null
+                || LocalDate.ofInstant(row.getHearingStartTime(), ZoneOffset.UTC).isBefore(today))) {
+            LOGGER.info("Booking {} expired on a session that has already happened; not re-booked", bookingId);
+            return false;
+        }
+
+        reserveAll(bookingId, expired.stream()
+                .map(row -> new ProvisionalSlot()
+                        .courtScheduleId(row.getCourtScheduleId())
+                        .hearingStartTime(asRequestedStartTime(row.getHearingStartTime()))
+                        .duration(row.getDuration()))
+                .toList());
+        bookingLogRepository.record(BookingState.REBOOKED, allocatedListingRepository.findUnconfirmedByBookingIds(List.of(bookingId)));
+        LOGGER.info("Re-booked expired booking {} onto {} session row(s)", bookingId, expired.size());
+        return true;
+    }
+
+    /**
+     * The start-time string a pick would have sent for {@code instant}. saveAllocatedListing reads
+     * it with {@link DateUtils#toExactTimestamp}, which keeps the wall-clock time and drops the
+     * offset before reading it in the JVM zone; this is the inverse, so the row comes back at the
+     * same instant.
+     */
+    private static String asRequestedStartTime(final Instant instant) {
+        return LocalDateTime.ofInstant(instant, ZoneId.systemDefault()).atOffset(ZoneOffset.UTC).toString();
     }
 
     /**
@@ -224,9 +291,9 @@ public class ReservationService {
      * <p>Unknown ids are no-ops and a repeated id is released once, so the call is idempotent.
      */
     @Transactional
-    public void releaseUnconfirmedBookings(final List<String> bookingIds) {
-        final int released = courtScheduleRepository.releaseUnconfirmedReservations(new LinkedHashSet<>(bookingIds));
-        LOGGER.info("released {} unconfirmed hold(s) for {} booking id(s)", released, bookingIds.size());
+    public void releaseUnconfirmedBookings(final List<String> bookingIds, final BookingState state) {
+        final int released = courtScheduleRepository.releaseUnconfirmedReservations(new LinkedHashSet<>(bookingIds), state);
+        LOGGER.info("released {} unconfirmed hold(s) for {} booking id(s) as {}", released, bookingIds.size(), state);
     }
 
     /**
@@ -348,7 +415,7 @@ public class ReservationService {
                 .orElseThrow(() -> new NoSessionAvailableException("No session found for sessionId " + sessionId));
 
         final Integer duration = requested.getDuration();
-        // A duration-based session decrements available_duration by exactly this value. Coercing a
+        // A duration-based session counts this row's duration against its capacity. Coercing a
         // missing duration to 0 would write a row that holds no capacity at all, so the session
         // stays bookable by the next clerk while this booking believes it holds it. Reject instead
         // of guessing a default.

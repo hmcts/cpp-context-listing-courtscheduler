@@ -3,6 +3,7 @@ package uk.gov.moj.cpp.courtscheduler.api.service;
 import static org.apache.commons.collections.CollectionUtils.isNotEmpty;
 import static uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant.PROVISIONAL_SLOTS;
 
+import uk.gov.moj.cpp.courtscheduler.persist.entity.BookingState;
 import uk.gov.moj.cpp.courtscheduler.common.converter.ListToJsonArrayConverter;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.ProvisionalBookingInfo;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.ProvisionalBookingSlots;
@@ -30,12 +31,17 @@ import org.modelmapper.ModelMapper;
 @Service
 @org.springframework.transaction.annotation.Transactional
 public class ProvisionalBookingService {
+
+    private static final org.slf4j.Logger LOGGER = org.slf4j.LoggerFactory.getLogger(ProvisionalBookingService.class);
     private static final String BOOKING_ID = "bookingId";
     private static final String STATUS = "status";
     private static final String SAFE_TO_SHARE = "safeToShare";
     private static final String STATUS_RESERVED = "RESERVED";
     private static final String STATUS_SHARED = "SHARED";
     private static final String STATUS_NOT_FOUND = "NOT_FOUND";
+    private static final String STATUS_REBOOKED = "REBOOKED";
+    private static final String REASON_DROPPED_FROM_DRAFT = "DROPPED_FROM_DRAFT";
+    private static final String REASON_SURPLUS = "SURPLUS";
     @Inject
     private ProvisionalBookingRepository provisionalBookingRepository;
     @Inject
@@ -75,9 +81,22 @@ public class ProvisionalBookingService {
      * Releases the unconfirmed holds of each booking id - see
      * {@link ReservationService#releaseUnconfirmedBookings} for why it can never touch a confirmed
      * listing. Delegated like {@link #bookProvisionalSlots}: reservations live there.
+     *
+     * @param reason the caller's reason as sent on the wire, recorded in the booking log:
+     *               {@code DROPPED_FROM_DRAFT}, {@code SURPLUS}, or null for a plain release
      */
-    public void releaseUnconfirmedBookings(final List<String> bookingIds) {
-        reservationService.releaseUnconfirmedBookings(bookingIds);
+    public void releaseUnconfirmedBookings(final List<String> bookingIds, final String reason) {
+        reservationService.releaseUnconfirmedBookings(bookingIds, releaseStateFor(reason));
+    }
+
+    private static BookingState releaseStateFor(final String reason) {
+        if (REASON_DROPPED_FROM_DRAFT.equals(reason)) {
+            return BookingState.DRAFT_RELEASED;
+        }
+        if (REASON_SURPLUS.equals(reason)) {
+            return BookingState.SURPLUS_RELEASED;
+        }
+        return BookingState.RELEASED;
     }
 
     /**
@@ -128,26 +147,53 @@ public class ProvisionalBookingService {
      * <p><b>Contract.</b> {@code status} is one of {@code RESERVED} (a reservation still holds
      * capacity), {@code SHARED} (a confirmed row carries this booking id, so the result was
      * already shared and its hold correctly released), or {@code NOT_FOUND} (no row under this
-     * booking id in either shape — the hold expired and was purged).
-     * {@code safeToShare} is {@code status != NOT_FOUND}.
+     * booking id in either shape — the hold expired and was purged), or {@code REBOOKED} (see
+     * below). {@code safeToShare} is {@code status != NOT_FOUND}.
      *
      * <p>Unlike the {@code live} flag this replaces, the answer no longer conflates an expired
      * hold with an already-shared booking, so a caller may gate a re-share on it directly.
+     *
+     * <p>With {@code reserveIfExpired} (LPT-2611) a booking that would answer {@code NOT_FOUND} is
+     * first offered to {@link ReservationService#rebookExpired}: re-booked, it answers
+     * {@code REBOOKED} and is safe to share. Without the flag this only reads.
+     *
+     * <p>No transaction of its own, so that each booking's re-book commits or rolls back on its
+     * own: one full session must not undo another booking's successful re-book.
      */
-    public JsonObject getBookingStatus(final String bookingIds) {
-        final List<String> bookingIdList = Stream.of(bookingIds.split(","))
-                .map(String::trim)
-                .toList();
-
+    @org.springframework.transaction.annotation.Transactional(propagation = org.springframework.transaction.annotation.Propagation.NOT_SUPPORTED)
+    public JsonObject getBookingStatus(final List<String> bookingIdList, final boolean reserveIfExpired) {
         final JsonArrayBuilder bookings = Json.createArrayBuilder();
         for (final String bookingId : bookingIdList) {
-            final String status = statusOf(bookingId);
+            final String status = reserveIfExpired ? statusRebookingIfExpired(bookingId) : statusOf(bookingId);
             bookings.add(Json.createObjectBuilder()
                     .add(BOOKING_ID, bookingId)
                     .add(SAFE_TO_SHARE, !STATUS_NOT_FOUND.equals(status))
                     .add(STATUS, status));
         }
         return Json.createObjectBuilder().add("bookings", bookings).build();
+    }
+
+    // Deliberate: a re-book failure of ANY kind must stay with its own booking. Escaping here
+    // fails the whole call, and listing then reports every booking in it UNKNOWN - safe to share -
+    // including one that is really gone, so the share goes ahead with nothing held.
+    @SuppressWarnings("PMD.AvoidCatchingGenericException")
+    private String statusRebookingIfExpired(final String bookingId) {
+        final String status = statusOf(bookingId);
+        if (!STATUS_NOT_FOUND.equals(status)) {
+            return status;
+        }
+        try {
+            if (reservationService.rebookExpired(bookingId)) {
+                return STATUS_REBOOKED;
+            }
+        } catch (final RuntimeException refused) {
+            // No room, session gone, another request re-booked it first (the unique reservation
+            // index), or something unexpected. Its transaction rolled back.
+            LOGGER.warn("Booking {} could not be re-booked: {}", bookingId, refused.getMessage());
+        }
+        // Whatever the booking is now is the answer - including a hold another request (a double
+        // click) re-booked between the two reads, which no longer qualifies but is held.
+        return statusOf(bookingId);
     }
 
     /**

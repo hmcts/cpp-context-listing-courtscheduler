@@ -56,7 +56,21 @@ class ReleaseUnconfirmedBookingsApiTest {
                 .andExpect(status().isAccepted())
                 .andExpect(content().string(""));
 
-        verify(provisionalBookingService).releaseUnconfirmedBookings(List.of("bk-1", "bk-2"));
+        verify(provisionalBookingService).releaseUnconfirmedBookings(List.of("bk-1", "bk-2"), null);
+    }
+
+    // LPT-2611: callers say why, so the booking log can tell a dropped line from a surplus hold.
+    @Test
+    void reason_isPassedThrough() throws Exception {
+        release(mvc, "{\"bookingIds\":[\"bk-1\"],\"reason\":\"SURPLUS\"}")
+                .andExpect(status().isAccepted());
+
+        verify(provisionalBookingService).releaseUnconfirmedBookings(List.of("bk-1"), "SURPLUS");
+    }
+
+    @Test
+    void unknownReason_isRejectedWith400() throws Exception {
+        assertRejectedBySchema("{\"bookingIds\":[\"bk-1\"],\"reason\":\"BOGUS\"}");
     }
 
     @Test
@@ -95,7 +109,7 @@ class ReleaseUnconfirmedBookingsApiTest {
         release(mvc, "")
                 .andExpect(status().isBadRequest());
 
-        verify(provisionalBookingService, never()).releaseUnconfirmedBookings(any());
+        verify(provisionalBookingService, never()).releaseUnconfirmedBookings(any(), any());
     }
 
     /**
@@ -115,7 +129,7 @@ class ReleaseUnconfirmedBookingsApiTest {
             release(bareMvc, "{\"bookingIds\":[\"bk-1\"]}")
                     .andExpect(status().isAccepted());
 
-            verify(provisionalBookingService).releaseUnconfirmedBookings(List.of("bk-1"));
+            verify(provisionalBookingService).releaseUnconfirmedBookings(List.of("bk-1"), null);
         }
 
         @Test
@@ -150,7 +164,7 @@ class ReleaseUnconfirmedBookingsApiTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value(startsWith("#")));
 
-        verify(provisionalBookingService, never()).releaseUnconfirmedBookings(any());
+        verify(provisionalBookingService, never()).releaseUnconfirmedBookings(any(), any());
     }
 
     private void assertRejected(final MockMvc target, final String body) throws Exception {
@@ -158,7 +172,7 @@ class ReleaseUnconfirmedBookingsApiTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").exists());
 
-        verify(provisionalBookingService, never()).releaseUnconfirmedBookings(any());
+        verify(provisionalBookingService, never()).releaseUnconfirmedBookings(any(), any());
     }
 
     private static ResultActions release(final MockMvc target, final String body) throws Exception {

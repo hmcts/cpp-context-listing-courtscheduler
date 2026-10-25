@@ -514,31 +514,29 @@ protocols: [ HTTP, HTTPS ]
             schema:  !include json/schema/courtscheduler.get.unconfirmed.booking.json
 
 /unconfirmedBooking/status:
-  get:
+  post:
     description:  |
       Reports, for each booking id, whether the draft that carries it is still safe to share, and
-      why. Used by the pre-share gate in the results UI, which must block the share synchronously
-      because sharing itself is asynchronous.
+      why. Used by the pre-share gate in the results UI (through listing), which must block the
+      share synchronously because sharing itself is asynchronous.
 
-      status is RESERVED (a reservation still holds capacity), SHARED (already shared — the
-      confirmed row carries this booking id), or NOT_FOUND (no row under this booking id in either
-      shape, so there is no hold). safeToShare is status != NOT_FOUND, so a re-share of an
-      already-shared result is not blocked.
+      status is RESERVED (a reservation still holds capacity), SHARED (already shared - the
+      confirmed row carries this booking id), NOT_FOUND (no row under this booking id in either
+      shape, so there is no hold) or REBOOKED (see below). safeToShare is status != NOT_FOUND.
 
-      A fourth value was once returned when only a row in the deprecated provisional_booking table
-      existed. It is gone: that row proves a booking was once recorded, never that a session is
-      still held, so answering "safe" waved through the oldest and most likely stale drafts. Such
-      a draft now answers NOT_FOUND and is correctly blocked.
+      With reserveIfExpired (LPT-2611), a booking that would answer NOT_FOUND is first re-reserved
+      under the same booking id if the session its hold expired on still has room (capacity
+      counted from allocated_listings, isOverbookingAllowed honoured), and then answers REBOOKED.
+      A POST because it can book capacity; without the flag it only reads.
       ...
         (mapping):
-            responseType: application/vnd.courtscheduler.get.booking-status+json
-            name: courtscheduler.get.booking-status
+            requestType: application/vnd.courtscheduler.query.booking.status+json
+            name: courtscheduler.query.booking.status
       ...
-    queryParameters:
-      bookingIds:
-        description: booking ids as comma separated
-        type: string
-        required: true
+    body:
+      application/vnd.courtscheduler.query.booking.status+json:
+        schema:  !include json/schema/courtscheduler.query.booking.status.json
+        example:  !include json/courtscheduler.query.booking.status.json
     responses:
       200:
         body:
@@ -553,8 +551,9 @@ protocols: [ HTTP, HTTPS ]
       sessions' capacity back, in one transaction. A confirmed listing that carries the same
       booking id is never touched, and nothing keyed by hearing id is - only a share may change a
       confirmed booking. Unknown ids are no-ops, duplicates count once, and repeating the call is
-      harmless. Called by hearing when a draft result drops a picked next hearing, and later by
-      progression to release surplus holds.
+      harmless. Called by hearing when a draft result drops a picked next hearing, and by
+      progression to release surplus holds. The optional reason (DROPPED_FROM_DRAFT or SURPLUS) is
+      recorded in the booking log (LPT-2611).
       ...
         (mapping):
             requestType: application/vnd.courtscheduler.release.unconfirmed.bookings+json

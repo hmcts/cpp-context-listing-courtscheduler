@@ -12,6 +12,7 @@ import uk.gov.moj.cpp.courtscheduler.openapi.model.RequestedSlots;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.Result;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.UpdateCourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.BookingState;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary;
 
@@ -158,8 +159,6 @@ public interface CourtScheduleRepositoryCustom {
 
     int deleteSlots(List<String> courtScheduleIds);
 
-    void releaseAllocatedSlotsOrDurationFromCourtSchedule(List<AllocatedListing> allocatedListings);
-
     CourtSchedule searchListHearingSlotFilterCriteria(String courtCentreId,
                                                       LocalDate sessionDate,
                                                       LocalDate sessionEndDate,
@@ -172,25 +171,29 @@ public interface CourtScheduleRepositoryCustom {
     void releaseOldAllocatedListings(String hearingId);
 
     /**
-     * Releases every unconfirmed reservation held under {@code bookingId}, restoring capacity.
+     * Releases every unconfirmed reservation held under {@code bookingId}.
      * Never touches a confirmed listing, even though one carries the same booking_id.
+     *
+     * @return the reservations it released, as they were; empty when there were none
      */
-    void releaseReservationsForBooking(String bookingId);
+    List<AllocatedListing> releaseReservationsForBooking(String bookingId);
 
     /**
-     * Releases the unconfirmed holds of all these bookings in one query and one transaction,
-     * restoring each session's capacity. Confirmed listings are never selected, so never touched.
+     * Releases the unconfirmed holds of all these bookings in one query and one transaction.
+     * Confirmed listings are never selected, so never touched.
+     *
+     * Each released hold is recorded in the booking log as {@code state}.
      *
      * @return the number of holds released
      */
-    int releaseUnconfirmedReservations(Collection<String> bookingIds);
+    int releaseUnconfirmedReservations(Collection<String> bookingIds, BookingState state);
 
     /** Date-scoped sibling of {@link #releaseOldAllocatedListings(String)}. */
     void releaseAllocatedListingsForDates(String hearingId, List<LocalDate> dates);
 
     /**
-     * Releases every reservation whose expiresAt is before {@code cutoff}, restoring each
-     * session's capacity. Returns the number of rows released.
+     * Releases every reservation whose expiresAt is before {@code cutoff}. Returns the number of
+     * rows released.
      */
     int releaseExpiredReservations(LocalDate cutoff);
 }

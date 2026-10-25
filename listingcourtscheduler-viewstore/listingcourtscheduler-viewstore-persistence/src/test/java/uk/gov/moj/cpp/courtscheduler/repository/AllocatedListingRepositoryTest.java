@@ -15,6 +15,8 @@ import uk.gov.moj.cpp.courtscheduler.openapi.model.AllocatedListingTotalBooked;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.IdResponse;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.BookingState;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.BookingLog;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 
 import java.time.LocalDate;
@@ -40,6 +42,8 @@ class AllocatedListingRepositoryTest extends AbstractRepositoryTest {
     public static final LocalDate DEFAULT_SESSION_DATE = LocalDate.parse("2024-12-09");
     @Autowired
     private AllocatedListingRepository allocatedListingRepository;
+    @Autowired
+    private BookingLogRepository bookingLogRepository;
     @Autowired
     private CourtScheduleRepository courtScheduleRepository;
     @Autowired
@@ -486,7 +490,7 @@ class AllocatedListingRepositoryTest extends AbstractRepositoryTest {
 
         assertEquals(1, released);
         assertThat(allocatedListingRepository.findByHearingId("HEARING-EXPIRED").isEmpty(), is(true));
-        assertThat(courtScheduleRepository.findBy(session.getCourtScheduleId()).getAvailableSlots(), is(4));
+        assertThat(slotsLeft(session.getCourtScheduleId()), is(4));
     }
 
     @Test
@@ -552,8 +556,8 @@ class AllocatedListingRepositoryTest extends AbstractRepositoryTest {
         assertEquals(2, released);
         assertThat(allocatedListingRepository.findByHearingId("HEARING-BACKLOG-YDAY").isEmpty(), is(true));
         assertThat(allocatedListingRepository.findByHearingId("HEARING-BACKLOG-2DAY").isEmpty(), is(true));
-        assertThat(courtScheduleRepository.findBy(sessionYesterday.getCourtScheduleId()).getAvailableSlots(), is(4));
-        assertThat(courtScheduleRepository.findBy(sessionTwoDaysAgo.getCourtScheduleId()).getAvailableSlots(), is(4));
+        assertThat(slotsLeft(sessionYesterday.getCourtScheduleId()), is(4));
+        assertThat(slotsLeft(sessionTwoDaysAgo.getCourtScheduleId()), is(4));
     }
 
     // -----------------------------------------------------------------------
@@ -581,9 +585,9 @@ class AllocatedListingRepositoryTest extends AbstractRepositoryTest {
         assertEquals(3, released);
         assertThat(allocatedListingRepository.findByBookingId(bookingA).isEmpty(), is(true));
         assertThat(allocatedListingRepository.findByBookingId(bookingB).isEmpty(), is(true));
-        assertThat(courtScheduleRepository.findBy(sessionA1.getCourtScheduleId()).getAvailableSlots(), is(4));
-        assertThat(courtScheduleRepository.findBy(sessionA2.getCourtScheduleId()).getAvailableSlots(), is(4));
-        assertThat(courtScheduleRepository.findBy(sessionB.getCourtScheduleId()).getAvailableSlots(), is(4));
+        assertThat(slotsLeft(sessionA1.getCourtScheduleId()), is(4));
+        assertThat(slotsLeft(sessionA2.getCourtScheduleId()), is(4));
+        assertThat(slotsLeft(sessionB.getCourtScheduleId()), is(4));
     }
 
     @Test
@@ -601,7 +605,7 @@ class AllocatedListingRepositoryTest extends AbstractRepositoryTest {
         final List<AllocatedListing> left = allocatedListingRepository.findByBookingId(booking);
         assertThat(left.size(), is(1));
         assertThat(left.get(0).getId(), is("AL-LISTED"));
-        assertThat(courtScheduleRepository.findBy(session.getCourtScheduleId()).getAvailableSlots(), is(3));
+        assertThat(slotsLeft(session.getCourtScheduleId()), is(3));
     }
 
     @Test
@@ -612,7 +616,7 @@ class AllocatedListingRepositoryTest extends AbstractRepositoryTest {
 
         assertEquals(0, releaseUnconfirmed(List.of(randomUUID().toString())));
         assertEquals(0, releaseUnconfirmed(List.of()));
-        assertThat(courtScheduleRepository.findBy(session.getCourtScheduleId()).getAvailableSlots(), is(3));
+        assertThat(slotsLeft(session.getCourtScheduleId()), is(3));
     }
 
     @Test
@@ -631,8 +635,43 @@ class AllocatedListingRepositoryTest extends AbstractRepositoryTest {
         assertEquals(2, releaseUnconfirmed(List.of(bookingA, bookingB)));
 
         final CourtSchedule after = courtScheduleRepository.findBy(session.getCourtScheduleId());
-        assertThat(after.getAvailableDuration(), is(360));
+        assertThat(minutesLeft(session.getCourtScheduleId()), is(360));
         assertThat(after.getAvailableSlots(), is(session.getAvailableSlots()));
+    }
+
+    // LPT-2611: each released hold is recorded, with what is needed to trace it, under the
+    // caller's reason.
+    @Test
+    void shouldLogEachReleasedHoldUnderTheCallersReason() {
+        final CourtSchedule session = persistSlotBasedSession(4, 3);
+        final String booking = randomUUID().toString();
+        persistHold("AL-LOG-REL", booking, session.getCourtScheduleId(), LocalDate.now(java.time.ZoneOffset.UTC).plusDays(1));
+        final AllocatedListing held = allocatedListingRepository.findBy("AL-LOG-REL");
+
+        courtScheduleRepository.releaseUnconfirmedReservations(List.of(booking), BookingState.SURPLUS_RELEASED);
+
+        final List<BookingLog> latest = bookingLogRepository.findLatestEvent(booking);
+        assertEquals(1, latest.size());
+        assertEquals(BookingState.SURPLUS_RELEASED, latest.get(0).getState());
+        assertEquals(session.getCourtScheduleId(), latest.get(0).getCourtScheduleId());
+        assertEquals(held.getHearingStartTime(), latest.get(0).getHearingStartTime());
+        assertEquals(held.getDuration(), latest.get(0).getDuration());
+    }
+
+    // A booking whose hold the purge already removed releases nothing, but the release must still be
+    // recorded: otherwise its latest event stays EXPIRED and the pre-share check could re-book a
+    // booking the clerk dropped.
+    @Test
+    void shouldLogTheReleaseOfABookingThatNoLongerHoldsAnything() {
+        final String expiredAndDropped = randomUUID().toString();
+        bookingLogRepository.record(BookingState.EXPIRED, List.of(createAllocateListing("AL-GONE", expiredAndDropped, "CS-GONE", null)));
+
+        courtScheduleRepository.releaseUnconfirmedReservations(List.of(expiredAndDropped), BookingState.DRAFT_RELEASED);
+
+        final List<BookingLog> latest = bookingLogRepository.findLatestEvent(expiredAndDropped);
+        assertEquals(1, latest.size());
+        assertEquals(BookingState.DRAFT_RELEASED, latest.get(0).getState());
+        assertEquals(null, latest.get(0).getCourtScheduleId());
     }
 
     /**
@@ -640,9 +679,23 @@ class AllocatedListingRepositoryTest extends AbstractRepositoryTest {
      * holds; clear them so the assertions read what the database now says.
      */
     private int releaseUnconfirmed(final List<String> bookingIds) {
-        final int released = courtScheduleRepository.releaseUnconfirmedReservations(bookingIds);
+        final int released = courtScheduleRepository.releaseUnconfirmedReservations(bookingIds, BookingState.DRAFT_RELEASED);
         entityManager.clear();
         return released;
+    }
+
+    /**
+     * What a session has left, counted from allocated_listings: the only source of availability.
+     * court_schedule.available_slot / available_duration_mins are no longer kept up to date.
+     */
+    private int slotsLeft(final String courtScheduleId) {
+        return courtScheduleRepository.findBy(courtScheduleId).getMaxSlots()
+                - allocatedListingRepository.findByCourtScheduleId(courtScheduleId).size();
+    }
+
+    private int minutesLeft(final String courtScheduleId) {
+        return courtScheduleRepository.findBy(courtScheduleId).getMaxDuration()
+                - allocatedListingRepository.findByCourtScheduleId(courtScheduleId).stream().mapToInt(AllocatedListing::getDuration).sum();
     }
 
     private CourtSchedule persistSlotBasedSession(final int maxSlots, final int availableSlots) {

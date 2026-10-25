@@ -768,6 +768,10 @@ public class SlotsUpdateService {
             LOGGER.info("[MOVE-PAST] Releasing prior allocation - hearingId: {}", Encode.forJava(hearingId));
             courtScheduleRepository.releaseOldAllocatedListings(hearingId);
         }
+        // What each day already holds, before this hearing is booked onto it: counted from
+        // allocated_listings, not court_schedule's available_* counters, which bookings no longer
+        // keep up to date.
+        final Map<String, Integer> bookedBefore = bookedPerSession(sessions);
         final Result persistResult = courtScheduleRepository.saveBookedSlots(slots, false, false);
         if (!Boolean.TRUE.equals(persistResult.getSuccess())) {
             throw new MoveHearingToPastDateNoSessionException(
@@ -777,7 +781,8 @@ public class SlotsUpdateService {
         final List<BookedPastSession> responses = new ArrayList<>();
         for (int i = 0; i < sittingDays.size(); i++) {
             responses.add(toBookedPastSession(hearingId, durationInMinutes,
-                    sittingDays.get(i), hearingStartTime, hearingEndTime, sessions.get(i)));
+                    sittingDays.get(i), hearingStartTime, hearingEndTime, sessions.get(i),
+                    bookedBefore.getOrDefault(sessions.get(i).getCourtScheduleId(), 0)));
         }
         return responses;
     }
@@ -837,12 +842,27 @@ public class SlotsUpdateService {
         return slot;
     }
 
+    private Map<String, Integer> bookedPerSession(final List<uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule> sessions) {
+        final Map<String, Integer> booked = new HashMap<>();
+        allocatedListingRepository.getAllocatedListingsByCourtScheduleId(sessions.stream()
+                        .map(uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule::getCourtScheduleId)
+                        .distinct()
+                        .toList())
+                .forEach(total -> booked.put(total.getCourtScheduleId(), total.getTotalBooked() == null ? 0 : total.getTotalBooked()));
+        return booked;
+    }
+
+    /**
+     * @param booked what the session already held before this hearing: holds and listings counted
+     *               for a slot-based session, their minutes summed for a duration-based one
+     */
     private static BookedPastSession toBookedPastSession(final String hearingId, final int durationInMinutes,
                                                          final LocalDate day, final String hearingStartTime,
-                                                         final String hearingEndTime, final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule session) {
+                                                         final String hearingEndTime, final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule session,
+                                                         final int booked) {
         final boolean overbooked = session.isSlotBased()
-                ? (session.getAvailableSlots() != null && session.getAvailableSlots() <= 0)
-                : (session.getAvailableDuration() != null && session.getAvailableDuration() < durationInMinutes);
+                ? session.getMaxSlots() != null && booked >= session.getMaxSlots()
+                : session.getMaxDuration() != null && session.getMaxDuration() - booked < durationInMinutes;
 
         // sessionStartTime/sessionEndTime carry the SUBMITTED start/end time-of-day on this sitting
         // day (falling back to the court-schedule window only if a time-of-day was not supplied).

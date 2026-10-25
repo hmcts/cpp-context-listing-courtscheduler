@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.3.xsd">
+
+    <!--
+      LPT-2611: an append-only record of each state a booking reference entered - reserved,
+      released (and why), expired, confirmed, re-booked. allocated_listings only ever shows the
+      current holds, so once a hold is purged nothing said which session it was on.
+      One row per allocated_listings row touched; rows written together for one booking share an
+      event_id, and recorded_at - when the row was appended, strictly
+      increasing - orders events. Cleared by the nightly purge after a retention period.
+    -->
+    <changeSet id="054-create-booking-log" author="arcadius.ahouansou"
+               logicalFilePath="054-create-booking-log.xml">
+        <createTable tableName="booking_log">
+            <column name="id" type="VARCHAR(100)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="event_id" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="booking_id" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="state" type="VARCHAR(30)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="court_schedule_id" type="VARCHAR(100)"/>
+            <column name="hearing_id" type="VARCHAR(100)"/>
+            <column name="oucode" type="VARCHAR(10)"/>
+            <column name="court_room_id" type="INTEGER"/>
+            <column name="rota_business_type" type="VARCHAR(10)"/>
+            <column name="hearing_start_time" type="timestamp with timezone"/>
+            <column name="duration" type="INTEGER"/>
+            <column name="expires_at" type="date"/>
+            <column name="recorded_at" type="timestamp with timezone">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <createIndex tableName="booking_log" indexName="booking_log_booking_id_idx">
+            <column name="booking_id"/>
+            <column name="recorded_at"/>
+        </createIndex>
+
+        <createIndex tableName="booking_log" indexName="booking_log_recorded_at_idx">
+            <column name="recorded_at"/>
+        </createIndex>
+
+        <rollback>
+            <dropTable tableName="booking_log"/>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

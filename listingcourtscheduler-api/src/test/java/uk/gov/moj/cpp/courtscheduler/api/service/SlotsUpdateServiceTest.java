@@ -2382,6 +2382,43 @@ class SlotsUpdateServiceTest {
             assertEquals(30, bookedSlot.getDuration());
         }
 
+        // The day's bookings, not court_schedule.available_duration_mins (no longer kept up to date
+        // by bookings), say whether the moved hearing fits.
+        @Test
+        void shouldReportTheDayOverbooked_whenItsBookingsLeaveNoRoom_whateverTheCounterSays() {
+            final String courtCentreId = UUID.randomUUID().toString();
+            final LocalDate startDate = LocalDate.of(2026, 5, 1);
+            final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule session = buildPastSession(startDate);
+            session.setAvailableDuration(240);
+            when(courtScheduleRepository.findSessionForMoveToPastDate(eq(courtCentreId), any(), eq(startDate), any(), eq(MAGISTRATES)))
+                    .thenReturn(Optional.of(session));
+            when(allocatedListingRepository.getAllocatedListingsByCourtScheduleId(List.of(session.getCourtScheduleId())))
+                    .thenReturn(List.of(new uk.gov.moj.cpp.courtscheduler.openapi.model.AllocatedListingTotalBooked()
+                            .courtScheduleId(session.getCourtScheduleId()).totalBooked(220)));
+            when(courtScheduleRepository.saveBookedSlots(any(), eq(false), eq(false))).thenReturn(success());
+
+            final BookedPastSession response = service.moveHearingToPastDate(
+                    UUID.randomUUID().toString(), courtCentreId, null, startDate, startDate, NINE_AM, NOON, MAGISTRATES, 30).get(0);
+
+            Assertions.assertTrue(response.overbooked());
+        }
+
+        @Test
+        void shouldNotReportTheDayOverbooked_whenItsBookingsLeaveRoom_whateverTheCounterSays() {
+            final String courtCentreId = UUID.randomUUID().toString();
+            final LocalDate startDate = LocalDate.of(2026, 5, 1);
+            final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule session = buildPastSession(startDate);
+            session.setAvailableDuration(0);
+            when(courtScheduleRepository.findSessionForMoveToPastDate(eq(courtCentreId), any(), eq(startDate), any(), eq(MAGISTRATES)))
+                    .thenReturn(Optional.of(session));
+            when(courtScheduleRepository.saveBookedSlots(any(), eq(false), eq(false))).thenReturn(success());
+
+            final BookedPastSession response = service.moveHearingToPastDate(
+                    UUID.randomUUID().toString(), courtCentreId, null, startDate, startDate, NINE_AM, NOON, MAGISTRATES, 30).get(0);
+
+            Assertions.assertFalse(response.overbooked());
+        }
+
         @Test
         void shouldStampSubmittedStartAndEndTimeOnBookedSlot_notTheSessionWindow() {
             final String hearingId = UUID.randomUUID().toString();
@@ -2596,6 +2633,7 @@ class SlotsUpdateServiceTest {
             session.setIsDraft(false);
             session.setBusinessType("NGAP");
             session.setSlotBased(false);
+            session.setMaxDuration(240);
             session.setAvailableDuration(240);
             return session;
         }

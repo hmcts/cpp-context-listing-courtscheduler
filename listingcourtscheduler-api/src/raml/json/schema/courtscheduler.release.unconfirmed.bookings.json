@@ -10,6 +10,11 @@
         "type": "string",
         "pattern": "\\S"
       }
+    },
+    "reason": {
+      "description": "Why the caller releases these bookings, recorded in the booking log: DROPPED_FROM_DRAFT (the result line no longer carries the booking) or SURPLUS (a share merged the line onto another booking's session). Absent is recorded as a plain release.",
+      "type": "string",
+      "enum": ["DROPPED_FROM_DRAFT", "SURPLUS"]
     }
   },
   "required": [

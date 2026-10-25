@@ -431,11 +431,21 @@ paths:
                 $ref: '#/components/schemas/CourtschedulerGetProvisionalBooking'
 
   /unconfirmedBooking/status:
-    get:
+    # The pre-share check: is each booking still safe to share? status is RESERVED, SHARED,
+    # NOT_FOUND or REBOOKED. With reserveIfExpired (LPT-2611) a booking that would answer NOT_FOUND
+    # is first re-booked under the same id if the session it expired on still has room. A POST
+    # because it can book capacity; without the flag it only reads. The only booking-status
+    # endpoint - the GET it replaced was never released. The body is validated against
+    # src/raml/json/schema/courtscheduler.query.booking.status.json.
+    post:
       tags: [unconfirmed-booking]
-      operationId: getBookingStatus
-      parameters:
-        - { in: query, name: bookingIds, required: true, schema: { type: string } }
+      operationId: postBookingStatus
+      requestBody:
+        required: true
+        content:
+          application/vnd.courtscheduler.query.booking.status+json:
+            schema:
+              $ref: '#/components/schemas/CourtschedulerQueryBookingStatus'
       responses:
         '200':
           description: OK
@@ -1445,6 +1455,18 @@ components:
     # builds the JsonObject by hand. That is worth doing, but not inside a merge.
     CourtschedulerGetBookingStatus:                { $ref: '#/components/schemas/PassthroughObject' }
 
+    # LPT-2611. Typed: the controller reads both fields. The RAML JSON schema
+    # courtscheduler.query.booking.status.json enforces the rules.
+    CourtschedulerQueryBookingStatus:
+      type: object
+      required: [bookingIds]
+      properties:
+        bookingIds:
+          type: array
+          minItems: 1
+          items: { type: string, minLength: 1 }
+        reserveIfExpired: { type: boolean, nullable: true }
+
     # Typed (not a PassthroughObject): the controller reads bookingIds directly. The rules here
     # mirror the RAML JSON schema of the same name, which is what actually enforces them.
     CourtschedulerReleaseUnconfirmedBookings:
@@ -1455,6 +1477,11 @@ components:
           type: array
           minItems: 1
           items: { type: string, minLength: 1 }
+        # LPT-2611: why the caller releases, recorded in booking_log. DROPPED_FROM_DRAFT (hearing:
+        # the line no longer carries the booking) or SURPLUS (progression: a share merged it away).
+        # A plain string here so the generated model stays a String; the RAML JSON schema enforces
+        # the two values.
+        reason: { type: string, nullable: true }
 
     ProvisionalBookingSlots:
       type: object

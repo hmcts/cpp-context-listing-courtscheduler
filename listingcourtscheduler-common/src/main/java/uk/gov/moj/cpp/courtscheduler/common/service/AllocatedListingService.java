@@ -11,15 +11,19 @@ import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.IdResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant;
 import uk.gov.moj.cpp.courtscheduler.repository.AllocatedListingRepository;
+import uk.gov.moj.cpp.courtscheduler.repository.BookingLogRepository;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
+import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import jakarta.inject.Inject;
 import jakarta.json.Json;
@@ -42,6 +46,13 @@ public class AllocatedListingService {
     @Inject
     private ObjectToJsonObjectConverter objectToJsonObjectConverter;
 
+    @Inject
+    private BookingLogRepository bookingLogRepository;
+
+    // LPT-2611: how long booking_log keeps a row. Cleared by the nightly purge below.
+    @Value("${courtscheduler.booking-log.retention-days:90}")
+    private int bookingLogRetentionDays;
+
     @Transactional
     public Map<String, Integer> getAllocatedListingsByCourtScheduleId(final List<String> courtScheduleIdList) {
         final List<AllocatedListingTotalBooked> allocatedListingTotalBookeds = allocatedListingRepository.getAllocatedListingsByCourtScheduleId(courtScheduleIdList);
@@ -56,13 +67,15 @@ public class AllocatedListingService {
     }
 
     /**
-     * Releases allocated_listings rows whose expiresAt is before today, restoring each session's
-     * capacity. ZoneOffset.UTC keeps the cutoff deterministic regardless of the JVM's default
+     * Releases allocated_listings rows whose expiresAt is before today, which gives their
+     * sessions the capacity back (it is counted from allocated_listings). ZoneOffset.UTC keeps the cutoff deterministic regardless of the JVM's default
      * zone. Self-healing against a missed daily run, since it isn't scoped to exactly "yesterday".
      */
     @Transactional
     public int purgeExpiredReservedSessions() {
-        return courtScheduleRepository.releaseExpiredReservations(LocalDate.now(ZoneOffset.UTC));
+        final int released = courtScheduleRepository.releaseExpiredReservations(LocalDate.now(ZoneOffset.UTC));
+        bookingLogRepository.deleteRecordedBefore(Instant.now().minus(bookingLogRetentionDays, ChronoUnit.DAYS));
+        return released;
     }
 
 

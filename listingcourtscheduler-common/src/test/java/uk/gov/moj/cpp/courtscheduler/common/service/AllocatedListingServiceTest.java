@@ -50,6 +50,9 @@ class AllocatedListingServiceTest {
     @Mock
     private CourtScheduleRepository courtScheduleRepository;
 
+    @Mock
+    private uk.gov.moj.cpp.courtscheduler.repository.BookingLogRepository bookingLogRepository;
+
     @Spy
     private ObjectToJsonObjectConverter objectToJsonObjectConverter = new uk.gov.moj.cpp.courtscheduler.common.converter.ObjectToJsonObjectConverter(new com.fasterxml.jackson.databind.ObjectMapper().findAndRegisterModules());
 
@@ -94,6 +97,20 @@ class AllocatedListingServiceTest {
         verify(courtScheduleRepository, atLeastOnce()).releaseExpiredReservations(cutoffCaptor.capture());
         assertEquals(LocalDate.now(ZoneOffset.UTC), cutoffCaptor.getValue());
         assertThat(actual, is(numberOfReleased));
+    }
+
+    // LPT-2611: the booking log is cleared by the same nightly run, after the retention period.
+    @Test
+    void shouldClearBookingLogRowsOlderThanTheRetentionPeriod() {
+        org.springframework.test.util.ReflectionTestUtils.setField(allocatedListingService, "bookingLogRetentionDays", 90);
+
+        allocatedListingService.purgeExpiredReservedSessions();
+
+        final org.mockito.ArgumentCaptor<java.time.Instant> cutoff = org.mockito.ArgumentCaptor.forClass(java.time.Instant.class);
+        verify(bookingLogRepository).deleteRecordedBefore(cutoff.capture());
+        final java.time.Instant expected = java.time.Instant.now().minus(90, java.time.temporal.ChronoUnit.DAYS);
+        assertTrue(java.time.Duration.between(cutoff.getValue(), expected).abs().getSeconds() < 5,
+                "cutoff " + cutoff.getValue() + " should be ~" + expected);
     }
 
     private List<AllocatedListingTotalBooked> getAllocatedListingTotalBooked(final List<String> courtScheduleIds) {

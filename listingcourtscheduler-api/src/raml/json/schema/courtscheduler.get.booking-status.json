@@ -9,7 +9,7 @@
         "properties": {
           "bookingId": { "type": "string" },
           "safeToShare": { "type": "boolean" },
-          "status": { "type": "string", "enum": ["RESERVED", "SHARED", "NOT_FOUND"] }
+          "status": { "type": "string", "enum": ["RESERVED", "SHARED", "NOT_FOUND", "REBOOKED"] }
         },
         "required": ["bookingId", "safeToShare", "status"]
       }

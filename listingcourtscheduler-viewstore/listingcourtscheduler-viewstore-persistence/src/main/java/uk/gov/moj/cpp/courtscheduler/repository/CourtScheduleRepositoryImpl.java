@@ -47,7 +47,9 @@ import uk.gov.moj.cpp.courtscheduler.openapi.model.SlotStartTime;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.UpdateCourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.TimezoneUtils;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.AllocatedListingTotalBooked;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.BookingState;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.ProvisionalBooking;
@@ -68,7 +70,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
@@ -243,32 +244,15 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
             "WHERE court_listing_profile_id is null AND not exists (select 1 from allocated_listings al where al.court_schedule_id = id) AND oucode IN (:ouCodes) " +
             "AND active =true and not exists( " + EXISTS_PROVISIONAL_DATA_COURT_SCHEDULE.getQuery() + ")";
 
-    // Releasing unconfirmed holds by booking id, in two statements (releaseUnconfirmedReservations).
+    // Releasing unconfirmed holds by booking id (releaseUnconfirmedReservations).
     // The WHERE is the safety property: a listing a share confirmed keeps its booking_id but has
     // no expires_at, so it can never be deleted here.
     private static final String DELETE_UNCONFIRMED_RESERVATIONS_QUERY = """
             DELETE FROM allocated_listings
              WHERE booking_id IN (:bookingIds)
                AND expires_at IS NOT NULL
-            RETURNING court_schedule_id, duration
-            """;
-    // Gives each session back what the deleted holds took from it: one slot per hold on a slot
-    // based session, their minutes on a duration based one. Relative updates, so two releases
-    // running at once cannot lose each other's increment.
-    // Only bookkeeping: availability is computed from allocated_listings. Kept while the counters
-    // are still written on reserve/confirm/purge and read by RotaFilePartialProcessor; when the
-    // columns are dropped, delete this statement with them and the release is the DELETE alone.
-    private static final String RESTORE_SESSION_CAPACITY_QUERY = """
-            UPDATE court_schedule cs
-               SET available_slot = CASE WHEN cs.is_slot_based
-                                         THEN cs.available_slot + released.holds
-                                         ELSE cs.available_slot END,
-                   available_duration_mins = CASE WHEN cs.is_slot_based
-                                                  THEN cs.available_duration_mins
-                                                  ELSE cs.available_duration_mins + released.minutes END
-              FROM unnest(CAST(:courtScheduleIds AS varchar[]), CAST(:holds AS integer[]), CAST(:minutes AS integer[]))
-                   AS released(court_schedule_id, holds, minutes)
-             WHERE cs.id = released.court_schedule_id
+            RETURNING court_schedule_id, duration, id, booking_id, hearing_id, oucode, court_room_id,
+                      rota_business_type, hearing_start_time, expires_at
             """;
 
     public static final String DELETE_SLOTS_BY_IDS_QUERY = "DELETE FROM court_schedule cs WHERE cs.id IN (:courtScheduleIds) AND cs.court_listing_profile_id is not null AND not exists (select 1 from allocated_listings al where al.court_schedule_id = cs.id) AND  not exists(" + EXISTS_PROVISIONAL_DATA_COURT_SCHEDULE.getQuery() + ")";
@@ -482,6 +466,9 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
     /* package */ uk.gov.moj.cpp.courtscheduler.service.CourtScheduleBatchInsertService courtScheduleBatchInsertService;
     @Inject
     private AllocatedListingRepository allocatedListingRepository;
+
+    @Inject
+    private BookingLogRepository bookingLogRepository;
     @Inject
     private CourtScheduleJudiciaryRepository courtScheduleJudiciaryRepository;
     @Inject
@@ -889,10 +876,13 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
                 // ouCode, courtRoomId). convertForOverbooking() leaves sessionDate null, which
                 // trips a NullPointerException when SlotsUpdateService renders the response.
                 final CourtSchedule entity = candidate.get();
-                final boolean lacksCapacity = entity.getAvailableDuration() == null
-                        || entity.getAvailableDuration() < durationInMinutes;
+                final int booked = allocatedListingRepository.getAllocatedListingsByCourtScheduleId(List.of(entity.getCourtScheduleId())).stream()
+                        .map(AllocatedListingTotalBooked::getTotalBooked)
+                        .filter(Objects::nonNull)
+                        .mapToInt(Integer::intValue)
+                        .sum();
                 return of(new CrownFallbackSearchResult(
-                        toCrownFallbackDomain(entity), lacksCapacity));
+                        toCrownFallbackDomain(entity), lacksCapacity(entity, booked, durationInMinutes)));
             }
         }
         return Optional.empty();
@@ -1153,7 +1143,6 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
     }
 
     private void persistHearingSlots(final List<AllocatedSlot> slots, final boolean isProvisionalSlot, final List<AllocatedSlot> updateAllocatedSlots) {
-        updateCourtSchedule(updateAllocatedSlots);
         saveAllocatedListing(updateAllocatedSlots);
         if (isProvisionalSlot) {
             final String bookingId = slots.get(0).getBookingId();
@@ -1165,6 +1154,9 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
             // Only the unconfirmed rows go: the confirmed listing being written by this very call
             // carries the same booking_id, so releasing by booking_id alone would delete it.
             releaseReservationsForBooking(bookingId);
+            bookingLogRepository.record(BookingState.CONFIRMED, allocatedListingRepository.findByBookingId(bookingId).stream()
+                    .filter(row -> row.getExpiresAt() == null)
+                    .toList());
             deleteProvisionalBooking(bookingId);
         }
     }
@@ -1368,7 +1360,7 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
         // each session for the real booking. The hold is keyed on the bookingId, so the
         // hearing-wide release inside the loop (keyed on the real hearing id) does not cover it:
         // a hold lives in booking_id with hearing_id null, so only a booking-keyed release sees it.
-        // Without this the session is decremented twice — once by the hold, once by the booking —
+        // Without this the session is charged twice — once by the hold, once by the booking —
         // until the 01:00 purge. Released once per distinct booking, before the loop, so a
         // multi-session booking is released as a unit rather than re-attempted per session.
         // No-op when there is nothing to release: a pre-go-live draft has only a
@@ -1382,18 +1374,7 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
          hearings.forEach(hearing -> {
              final CourtSchedule cs = entityManager.find(CourtSchedule.class, hearing.getCourtScheduleId());
             if (cs != null) {
-                //check slot based /duration based for deducting the available slots
-                if (cs.isSlotBased()) {
-                    cs.setAvailableSlots(cs.getAvailableSlots() - 1);
-                } else {
-                    cs.setAvailableDuration(cs.getAvailableDuration() - hearing.getDuration());
-                }
-
-                // F3 (capacity drift): release via the RESTORING path. The old call
-                // (releaseOldListingsFromAllocatedListings) deleted the hearing's allocated_listings
-                // rows WITHOUT paying their minutes/slots back into court_schedule, while the deduction
-                // above charged the session again — so available_duration_mins leaked the hearing's full
-                // duration on every book→list cycle and sessions falsely reported no availability.
+                // A re-list replaces the hearing's previous allocation.
                 final boolean isCourtScheduleReleased = !allocatedListingRepository.findByHearingId(hearing.getHearingId()).isEmpty();
                 if (isCourtScheduleReleased) {
                     releaseOldAllocatedListings(hearing.getHearingId());
@@ -1433,8 +1414,8 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
         hearings.forEach(hearing ->
                 addJudiciaries(domainJudiciaries, hearing));
 
-        updateCourtScheduleWithRequestedList(courtSchedules);
         saveAllocatedListingWithRequestedList(allocatedListings);
+        bookingLogRepository.record(BookingState.CONFIRMED, allocatedListings);
 
         return hearings;
     }
@@ -1445,11 +1426,6 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
 
     private static int getAdjustedDurationToBeReturned(final Hearing hearing) {
         return nonNull(hearing.getDuration()) ? hearing.getDuration() : DEFAULT_DURATION_TO_BE_RETURNED;
-    }
-
-    private void updateCourtScheduleWithRequestedList(final List<CourtSchedule> slots) {
-        slots.forEach(this::saveInternal);
-
     }
 
     private void saveAllocatedListingWithRequestedList(final List<AllocatedListing> slots) {
@@ -1953,20 +1929,6 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
                 .executeUpdate();
     }
 
-    @Override
-    @Transactional
-    public void releaseAllocatedSlotsOrDurationFromCourtSchedule(final List<AllocatedListing> allocatedListings) {
-        allocatedListings.forEach(allocatedListing -> {
-            final CourtSchedule courtSchedule = entityManager.find(CourtSchedule.class, allocatedListing.getCourtScheduleId());
-            if (courtSchedule.isSlotBased()) {
-                courtSchedule.setAvailableSlots(courtSchedule.getAvailableSlots() + 1);
-            } else {
-                courtSchedule.setAvailableDuration(courtSchedule.getAvailableDuration() + allocatedListing.getDuration());
-            }
-            saveInternal(courtSchedule);
-        });
-    }
-
     protected void releaseCourtScheduleAllocatedSlotsForBookingId(final List<AllocatedListing> allocatedListings) {
 
         allocatedListings.forEach(allocatedListing -> {
@@ -2410,23 +2372,6 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
         return selectQuery.getResultList();
     }
 
-    protected void updateCourtSchedule(final List<AllocatedSlot> allocatedSlots) {
-        allocatedSlots.forEach(allocatedSlot -> {
-            final CourtSchedule courtSchedule = entityManager.find(CourtSchedule.class, allocatedSlot.getCourtScheduleId());
-            LOGGER.info("CourtSchedule to be updated after allocation : is {}", courtSchedule);
-            if (courtSchedule.isSlotBased()) {
-                final Integer availableSlots = courtSchedule.getAvailableSlots();
-                LOGGER.info("CourtSchedule to be updated after allocation : with available slots {}", availableSlots);
-                courtSchedule.setAvailableSlots(availableSlots - 1);
-            } else {
-                LOGGER.info("CourtSchedule to be updated after allocation : with available duration {}", courtSchedule.getAvailableDuration());
-                courtSchedule.setAvailableDuration(courtSchedule.getAvailableDuration() - allocatedSlot.getDuration());
-            }
-            LOGGER.info("Final CourtSchedule object before update : with available slots {}", courtSchedule);
-            saveInternal(courtSchedule);
-        });
-    }
-
     @Transactional
     protected void saveAllocatedListing(final List<AllocatedSlot> allocatedSlots) {
         allocatedSlots.forEach(allocatedSlot -> {
@@ -2510,7 +2455,7 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
      */
     @Override
     @Transactional
-    public void releaseReservationsForBooking(final String bookingId) {
+    public List<AllocatedListing> releaseReservationsForBooking(final String bookingId) {
 
         // Through the entities rather than releaseUnconfirmedReservations: the re-pick and confirm
         // callers hold court_schedule entities in this transaction, and a bulk UPDATE would leave
@@ -2520,14 +2465,14 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
         if (isNotEmpty(reservations)) {
             reservations.forEach(allocatedListingRepository::remove);
             releaseCourtScheduleAllocatedSlotsForBookingId(reservations);
-            releaseAllocatedSlotsOrDurationFromCourtSchedule(reservations);
         }
+        return reservations;
     }
 
     /**
-     * Releases the unconfirmed holds of all these bookings in two statements: one DELETE, whose
-     * WHERE takes only rows still carrying an expires_at, returning what it removed; then one
-     * UPDATE giving each session that capacity back.
+     * Releases the unconfirmed holds of all these bookings in one DELETE, whose WHERE takes only
+     * rows still carrying an expires_at, returning what it removed for the booking log. Nothing
+     * else to give back: capacity is counted from allocated_listings.
      *
      * <p>Plain SQL, so it bypasses the persistence context: call it from a transaction of its own
      * (POST /unconfirmedBooking/release), not one already holding court_schedule entities. A hold
@@ -2535,7 +2480,7 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
      */
     @Override
     @Transactional
-    public int releaseUnconfirmedReservations(final Collection<String> bookingIds) {
+    public int releaseUnconfirmedReservations(final Collection<String> bookingIds, final BookingState state) {
         if (bookingIds.isEmpty()) {
             return 0;
         }
@@ -2543,22 +2488,48 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
         final List<Object[]> released = entityManager.createNativeQuery(DELETE_UNCONFIRMED_RESERVATIONS_QUERY)
                 .setParameter("bookingIds", bookingIds)
                 .getResultList();
+        final List<AllocatedListing> releasedHolds = released.stream().map(CourtScheduleRepositoryImpl::releasedHold).toList();
+        bookingLogRepository.record(state, releasedHolds);
+        // A booking that held nothing any more (the purge got there first) is still recorded as
+        // released, so its latest event is no longer EXPIRED and it can never be re-booked.
+        final Set<String> releasedBookingIds = releasedHolds.stream().map(AllocatedListing::getBookingId).collect(Collectors.toSet());
+        bookingLogRepository.record(state, bookingIds.stream()
+                .filter(bookingId -> !releasedBookingIds.contains(bookingId))
+                .map(CourtScheduleRepositoryImpl::bookingWithNothingHeld)
+                .toList());
 
-        final Map<String, int[]> perSession = new LinkedHashMap<>();
-        released.forEach(row -> {
-            final int[] holdsAndMinutes = perSession.computeIfAbsent((String) row[0], id -> new int[2]);
-            holdsAndMinutes[0]++;
-            holdsAndMinutes[1] += ((Number) row[1]).intValue();
-        });
-
-        if (!perSession.isEmpty()) {
-            entityManager.createNativeQuery(RESTORE_SESSION_CAPACITY_QUERY)
-                    .setParameter("courtScheduleIds", perSession.keySet().toArray(new String[0]))
-                    .setParameter("holds", perSession.values().stream().map(totals -> totals[0]).toArray(Integer[]::new))
-                    .setParameter("minutes", perSession.values().stream().map(totals -> totals[1]).toArray(Integer[]::new))
-                    .executeUpdate();
-        }
         return released.size();
+    }
+
+    private static AllocatedListing bookingWithNothingHeld(final String bookingId) {
+        final AllocatedListing booking = new AllocatedListing();
+        booking.setBookingId(bookingId);
+        return booking;
+    }
+
+    /**
+     * Whether a Crown fallback session cannot take {@code durationInMinutes} more: what its
+     * bookings ({@code booked} minutes, from allocated_listings) leave of max_duration_mins. Not
+     * available_duration_mins, which bookings no longer keep up to date.
+     */
+    /* package */ static boolean lacksCapacity(final CourtSchedule session, final int booked, final int durationInMinutes) {
+        return session.getMaxDuration() == null || session.getMaxDuration() - booked < durationInMinutes;
+    }
+
+    /** A row of DELETE_UNCONFIRMED_RESERVATIONS_QUERY's RETURNING list, as the hold it was. */
+    private static AllocatedListing releasedHold(final Object... row) {
+        final AllocatedListing hold = new AllocatedListing();
+        hold.setCourtScheduleId((String) row[0]);
+        hold.setDuration(row[1] == null ? null : ((Number) row[1]).intValue());
+        hold.setId((String) row[2]);
+        hold.setBookingId((String) row[3]);
+        hold.setHearingId((String) row[4]);
+        hold.setOucode((String) row[5]);
+        hold.setCourtRoomId(row[6] == null ? null : ((Number) row[6]).intValue());
+        hold.setRotaBusinessType((String) row[7]);
+        hold.setHearingStartTime(row[8] == null ? null : toTimestamp(row[8]).toInstant());
+        hold.setExpiresAt(toLocalDate(row[9]));
+        return hold;
     }
 
     @Override
@@ -2570,7 +2541,6 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
         if (isNotEmpty(allocatedListings)) {
             releaseOldListingsFromAllocatedListings(hearingId);
             releaseCourtScheduleAllocatedSlotsForBookingId(allocatedListings);
-            releaseAllocatedSlotsOrDurationFromCourtSchedule(allocatedListings);
         }
     }
 
@@ -2630,7 +2600,6 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
         if (isNotEmpty(allocatedListings)) {
             allocatedListings.forEach(allocatedListingRepository::remove);
             releaseCourtScheduleAllocatedSlotsForBookingId(allocatedListings);
-            releaseAllocatedSlotsOrDurationFromCourtSchedule(allocatedListings);
         }
     }
 
@@ -2652,9 +2621,11 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
         if (expired.isEmpty()) {
             return 0;
         }
+        // Logged before they go: once removed, nothing else records which session each hold was
+        // on, and the pre-share check re-books an expired booking from exactly these rows.
+        bookingLogRepository.record(BookingState.EXPIRED, expired);
         expired.forEach(allocatedListingRepository::remove);
         releaseCourtScheduleAllocatedSlotsForBookingId(expired);
-        releaseAllocatedSlotsOrDurationFromCourtSchedule(expired);
         return expired.size();
     }
 

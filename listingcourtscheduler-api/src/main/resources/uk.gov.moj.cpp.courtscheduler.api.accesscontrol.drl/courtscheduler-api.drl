@@ -260,10 +260,12 @@ rule "API - Action - courtscheduler.get.unconfirmed.booking"
     $outcome.setSuccess(true);
 end
 
-rule "API - Action - courtscheduler.get.booking-status"
+// The pre-share booking-status check (POST: with reserveIfExpired it can re-book an expired
+// booking, LPT-2611). Listing calls it as the system user.
+rule "API - Action - courtscheduler.query.booking.status"
   when
     $outcome: Outcome();
-    $action: Action(name == "courtscheduler.get.booking-status");
+    $action: Action(name == "courtscheduler.query.booking.status");
         eval(userAndGroupProvider.isMemberOfAnyOfTheSuppliedGroups($action, SecurityGroupConstants.systemUserRoles()));
   then
     $outcome.setSuccess(true);

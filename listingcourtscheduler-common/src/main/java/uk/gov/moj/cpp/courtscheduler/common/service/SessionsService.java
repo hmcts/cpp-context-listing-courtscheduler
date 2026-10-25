@@ -1200,8 +1200,16 @@ public class SessionsService {
             final int afternoon = Math.max(0, afternoonMax - totalBookedForAfternoon.get());
             return new AvailabilityBreakdown(morning + afternoon, morning, afternoon, true);
         }
-        final int available = cs.getAvailableDuration() != null ? cs.getAvailableDuration() : 0;
-        return new AvailabilityBreakdown(available, 0, 0, false);
+        // Counted from allocated_listings, as the search API does (max_duration_mins -
+        // sum(duration)), never from available_duration_mins: that column is being removed and
+        // can drift from the rows it is meant to summarise.
+        final int maxDuration = cs.getMaxDuration() != null ? cs.getMaxDuration() : 0;
+        final int booked = allocatedListingService.getAllocatedListingEachBookedByCourtScheduleId(cs.getCourtScheduleId()).stream()
+                .map(AllocatedListingEachBooked::getDuration)
+                .filter(Objects::nonNull)
+                .mapToInt(Integer::intValue)
+                .sum();
+        return new AvailabilityBreakdown(Math.max(0, maxDuration - booked), 0, 0, false);
     }
 
     private static String formatInsufficientAvailability(

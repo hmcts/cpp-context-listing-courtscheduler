@@ -69,6 +69,7 @@ import uk.gov.moj.cpp.courtscheduler.openapi.model.Session;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.SessionsParam;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtScheduleDeleteResponse;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerGetCourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerQueryBookingStatus;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerReleaseUnconfirmedBookings;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerSearchCourtSchedulesByIdResponse;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.CrownSearchAndBookRequest;
@@ -119,6 +120,7 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
                                           ValidateOpenApi,
                                           UnconfirmedBookingOpenApi {
 
+    private static final String ERROR_MESSAGE = "errorMessage";
     private static final Logger LOG = LoggerFactory.getLogger(CourtSchedulerApi.class);
 
     private static final String ASSIGN_MT = "application/vnd.courtscheduler.assign-judiciary+json";
@@ -433,7 +435,7 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
         final Result result = sessionsService.update(body);
         if (!Boolean.TRUE.equals(result.getSuccess())) {
             throw new ValidationException(
-                    Json.createObjectBuilder().add("errorMessage", result.getMsg()).build());
+                    Json.createObjectBuilder().add(ERROR_MESSAGE, result.getMsg()).build());
         }
         return ResponseEntity.status(HttpStatus.ACCEPTED).build();
     }
@@ -507,7 +509,7 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
         } catch (final IllegalArgumentException e) {
             LOG.warn("courtscheduler.assign-judiciary-to-sessions: {}", e.getMessage());
             throw new ValidationException(
-                    Json.createObjectBuilder().add("errorMessage", e.getMessage()).build());
+                    Json.createObjectBuilder().add(ERROR_MESSAGE, e.getMessage()).build());
         }
         return ResponseEntity.status(HttpStatus.ACCEPTED).build();
     }
@@ -943,12 +945,24 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
                 uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerGetProvisionalBooking.class));
     }
 
-    /** GET /unconfirmedBooking/status — is each booking id still held? */
+    /**
+     * POST /unconfirmedBooking/status — the pre-share check: is each booking still safe to share?
+     * With {@code reserveIfExpired} (LPT-2611) a booking that would answer NOT_FOUND is first
+     * re-booked under the same id if its session still has room. Refuses a bad body on its own as well, in case the
+     * schema filter is not in front of it.
+     */
     @Override
-    public ResponseEntity<Map<String, Object>> getBookingStatus(final String bookingIds) {
-        LOG.info("courtscheduler.get.booking-status bookingIds={}", bookingIds);
-        final JsonObject response = provisionalBookingService.getBookingStatus(bookingIds);
-        return ResponseEntity.ok(JsonValueConverter.toMap(response));
+    public ResponseEntity<Map<String, Object>> postBookingStatus(final CourtschedulerQueryBookingStatus body) {
+        final List<String> bookingIds = body.getBookingIds();
+        if (bookingIds == null || bookingIds.isEmpty() || bookingIds.stream().anyMatch(StringUtils::isBlank)) {
+            throw new ValidationException(Json.createObjectBuilder()
+                    .add(ERROR_MESSAGE, "bookingIds must be a non-empty list of non-blank booking ids")
+                    .build());
+        }
+        final boolean reserveIfExpired = Boolean.TRUE.equals(body.getReserveIfExpired());
+        LOG.info("courtscheduler.post.booking-status bookingIds={} reserveIfExpired={}",
+                Encode.forJava(String.valueOf(bookingIds)), reserveIfExpired);
+        return ResponseEntity.ok(JsonValueConverter.toMap(provisionalBookingService.getBookingStatus(bookingIds, reserveIfExpired)));
     }
 
     /**
@@ -968,11 +982,12 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
         final List<String> bookingIds = body.getBookingIds();
         if (bookingIds == null || bookingIds.isEmpty() || bookingIds.stream().anyMatch(StringUtils::isBlank)) {
             throw new ValidationException(Json.createObjectBuilder()
-                    .add("errorMessage", "bookingIds must be a non-empty list of non-blank booking ids")
+                    .add(ERROR_MESSAGE, "bookingIds must be a non-empty list of non-blank booking ids")
                     .build());
         }
-        LOG.info("courtscheduler.release.unconfirmed.bookings bookingIds={}", Encode.forJava(String.valueOf(bookingIds)));
-        provisionalBookingService.releaseUnconfirmedBookings(bookingIds);
+        LOG.info("courtscheduler.release.unconfirmed.bookings bookingIds={} reason={}",
+                Encode.forJava(String.valueOf(bookingIds)), Encode.forJava(String.valueOf(body.getReason())));
+        provisionalBookingService.releaseUnconfirmedBookings(bookingIds, body.getReason());
         return ResponseEntity.status(HttpStatus.ACCEPTED).build();
     }
 }

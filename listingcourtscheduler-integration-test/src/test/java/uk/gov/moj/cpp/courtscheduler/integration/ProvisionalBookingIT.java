@@ -528,14 +528,13 @@ class ProvisionalBookingIT extends AbstractIT {
     }
 
     /**
-     * {@code GET /unconfirmedBooking/status?bookingIds=<id>} (NEW-7a pre-share gate). Returns the
-     * single {@code bookings[0].status} for the one id queried.
+     * {@code POST /unconfirmedBooking/status} (the pre-share gate), read-only: no
+     * {@code reserveIfExpired}. Returns the single {@code bookings[0].status} for the one id queried.
      */
     private String bookingStatusOf(final String bookingId) {
-        final RequestParams params = getRequestParams("/unconfirmedBooking/status",
-                "application/vnd.courtscheduler.get.booking-status+json", SYSTEM_USER_ID,
-                Map.of("bookingIds", bookingId));
-        final Response response = getCommand(params);
+        final Response response = postCommand("/unconfirmedBooking/status",
+                "application/vnd.courtscheduler.query.booking.status+json", SYSTEM_USER_ID,
+                "{\"bookingIds\":[\"" + bookingId + "\"]}");
         final String body = response.readEntity(String.class);
         assertThat("booking-status query must succeed: " + body, response.getStatus(), is(OK.getStatusCode()));
         return new JSONObject(body).getJSONArray("bookings").getJSONObject(0).getString("status");
