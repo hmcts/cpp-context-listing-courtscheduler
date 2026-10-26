@@ -323,7 +323,7 @@ class HearingSlotIT extends AbstractIT {
         final Response first = postCommand("/hearings",
                 "application/vnd.courtscheduler.list.hearings-in-sessions+json", SYSTEM_USER_ID, listPayload);
         assertThat(first.getStatus(), is(OK.getStatusCode()));
-        assertThat(minutesLeft(courtScheduleId, 360), is(300));
+        assertThat(databaseReader.courtScheduleById(courtScheduleId).getAvailableDuration(), is(300));
 
         // Re-list of the SAME hearing into the SAME session (what every enrichment pass does):
         // the prior 60 minutes must be paid back before the new 60 are charged — still 300,
@@ -332,7 +332,7 @@ class HearingSlotIT extends AbstractIT {
                 "application/vnd.courtscheduler.list.hearings-in-sessions+json", SYSTEM_USER_ID, listPayload);
         assertThat(second.getStatus(), is(OK.getStatusCode()));
         assertThat("capacity charged exactly once across re-lists — no drift",
-                minutesLeft(courtScheduleId, 360), is(300));
+                databaseReader.courtScheduleById(courtScheduleId).getAvailableDuration(), is(300));
 
         final long hearingRows = databaseReader.allocatedListings().stream()
                 .filter(al -> hearingId.equals(al.getHearingId()))
@@ -340,16 +340,6 @@ class HearingSlotIT extends AbstractIT {
         assertThat("exactly one allocated_listings row for the hearing after re-list", hearingRows, is(1L));
     }
 
-    /**
-     * Minutes a duration-based session has left, counted from allocated_listings - the only source of
-     * availability; court_schedule.available_duration_mins is no longer kept up to date by bookings.
-     */
-    private int minutesLeft(final String courtScheduleId, final int maxDuration) {
-        return maxDuration - databaseReader.allocatedListings().stream()
-                .filter(al -> courtScheduleId.equals(al.getCourtScheduleId()))
-                .mapToInt(al -> al.getDuration() == null ? 0 : al.getDuration())
-                .sum();
-    }
 
     @Test
     void shouldRetrieveHearingSlot() throws Exception {

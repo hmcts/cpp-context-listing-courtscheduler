@@ -454,9 +454,9 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
         assertEquals(1, remaining.size());
         assertEquals(CS_REL_DAY1, remaining.getFirst().getCourtScheduleId());
 
-        assertEquals(Integer.valueOf(9), slotsLeft(CS_REL_DAY1));
-        assertEquals(Integer.valueOf(10), slotsLeft("CS-REL-DAY2"));
-        assertEquals(Integer.valueOf(10), slotsLeft("CS-REL-DAY3"));
+        assertEquals(Integer.valueOf(9), courtScheduleRepository.findBy(CS_REL_DAY1).getAvailableSlots());
+        assertEquals(Integer.valueOf(10), courtScheduleRepository.findBy("CS-REL-DAY2").getAvailableSlots());
+        assertEquals(Integer.valueOf(10), courtScheduleRepository.findBy("CS-REL-DAY3").getAvailableSlots());
     }
 
     @Test
@@ -485,9 +485,9 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
         final List<AllocatedListing> remaining = allocatedListingRepository.findByHearingId(hearingId);
         assertEquals(3, remaining.size());
 
-        assertEquals(Integer.valueOf(9), slotsLeft("CS-NOOP-DAY1"));
-        assertEquals(Integer.valueOf(9), slotsLeft("CS-NOOP-DAY2"));
-        assertEquals(Integer.valueOf(9), slotsLeft("CS-NOOP-DAY3"));
+        assertEquals(Integer.valueOf(9), courtScheduleRepository.findBy("CS-NOOP-DAY1").getAvailableSlots());
+        assertEquals(Integer.valueOf(9), courtScheduleRepository.findBy("CS-NOOP-DAY2").getAvailableSlots());
+        assertEquals(Integer.valueOf(9), courtScheduleRepository.findBy("CS-NOOP-DAY3").getAvailableSlots());
     }
 
     @Test
@@ -835,6 +835,24 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
      * session's row before taking the second, restoring the first session's capacity and leaving
      * only one allocated_listings row for the bookingId.
      */
+    // The court_schedule counters are team/ccsph2 bookkeeping, kept for the MI export until
+    // SPRDT-1406. A reserve-a-slot hold must leave them alone - none of its releases gives
+    // anything back - while still taking capacity, which is counted from allocated_listings.
+    @Test
+    public void aHoldTakesCapacityButNeverTouchesTheCounters() {
+        final LocalDate sessionDate = LocalDate.of(2026, 9, 21);
+        courtScheduleRepository.saveAndFlush(slotBasedCourtSchedule("CS-HOLD-COUNTERS", sessionDate));
+
+        courtScheduleRepository.saveBookedSlots(
+                new ArrayList<>(List.of(reservedSlotFor(randomUUID().toString(), "CS-HOLD-COUNTERS", sessionDate))), false, false);
+        em.flush();
+        em.clear();
+
+        assertEquals(Integer.valueOf(9), courtScheduleRepository.findBy("CS-HOLD-COUNTERS").getAvailableSlots(),
+                "the counter is untouched by a hold");
+        assertEquals(9, slotsLeft("CS-HOLD-COUNTERS"), "the hold still takes one of the 10 slots");
+    }
+
     @Test
     public void shouldReleaseThePreviousPickWhenReservingAgainUnderTheSameBookingId() {
         final LocalDate sessionDate = LocalDate.of(2026, 9, 20);
@@ -950,6 +968,7 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
         reservation.setExpiresAt(LocalDate.now(ZoneOffset.UTC));
         return reservation;
     }
+
 
     /**
      * What a session has left, counted from allocated_listings: the only source of availability.

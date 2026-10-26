@@ -5407,7 +5407,7 @@ class CourtSchedulerIT extends AbstractIT {
         databaseSeeder.insertCourtSchedule(courtSchedule);
         final String courtScheduleId = courtSchedule.getCourtScheduleId();
 
-        final int initialAvailableSlots = databaseReader.courtScheduleById(courtScheduleId).getAvailableSlots();
+        final int initialAvailableSlots = databaseReader.slotsLeft(courtScheduleId);
 
         // Two INDEPENDENT reservations via the real endpoint — not one booking with two slots —
         // so one can be aged into expiry while the other is left alone, proving the purge is
@@ -5418,7 +5418,7 @@ class CourtSchedulerIT extends AbstractIT {
         // If capacity hasn't genuinely dropped by two here, the reservations never went through
         // the real pipeline and every assertion below would be meaningless.
         assertEquals(initialAvailableSlots - 2,
-                databaseReader.courtScheduleById(courtScheduleId).getAvailableSlots(),
+                databaseReader.slotsLeft(courtScheduleId),
                 "reservations were not taken through the real booking pipeline — availableSlots "
                         + "did not drop by 2, so this test cannot prove anything about the purge");
 
@@ -5448,7 +5448,7 @@ class CourtSchedulerIT extends AbstractIT {
         // The purged reservation's slot must come back — exactly one, not zero (BUG-1) and not
         // two (the surviving reservation's slot must NOT also be released).
         assertEquals(initialAvailableSlots - 1,
-                databaseReader.courtScheduleById(courtScheduleId).getAvailableSlots(),
+                databaseReader.slotsLeft(courtScheduleId),
                 "the purge deleted the row without restoring its slot — this is BUG-1");
     }
 

@@ -104,6 +104,36 @@ public class DatabaseReader {
         return rows;
     }
 
+    /**
+     * What a session has left, counted from allocated_listings - the only source of availability.
+     * Reserve-a-slot holds never touch court_schedule.available_slot / available_duration_mins
+     * (team/ccsph2 bookkeeping kept for the MI export until SPRDT-1406), so hold tests count rows.
+     */
+    public int slotsLeft(final String courtScheduleId) {
+        return capacityLeft("SELECT cs.max_slot - (SELECT count(*) FROM allocated_listings al WHERE al.court_schedule_id = cs.id) "
+                + "FROM court_schedule cs WHERE cs.id = ?", courtScheduleId);
+    }
+
+    public int minutesLeft(final String courtScheduleId) {
+        return capacityLeft("SELECT cs.max_duration_mins - COALESCE((SELECT sum(al.duration) FROM allocated_listings al WHERE al.court_schedule_id = cs.id), 0) "
+                + "FROM court_schedule cs WHERE cs.id = ?", courtScheduleId);
+    }
+
+    private int capacityLeft(final String sql, final String courtScheduleId) {
+        try (Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, courtScheduleId);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                if (resultSet.next()) {
+                    return resultSet.getInt(1);
+                }
+                throw new IllegalStateException("No court_schedule " + courtScheduleId);
+            }
+        } catch (final SQLException exp) {
+            throw new RuntimeException(EXCEPTION_WHILE_QUERYING_THE_DB, exp);
+        }
+    }
+
     public CourtSchedule courtScheduleById(final String courtScheduleId) {
         return executeCourtScheduleById(courtScheduleId);
     }

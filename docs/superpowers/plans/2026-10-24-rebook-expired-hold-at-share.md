@@ -13,9 +13,10 @@
 > **Later changes (2026-10-25), made after this plan was executed - the spec is current:**
 > `BookingAction` is renamed `BookingState` and the column `action` is `state`; `booking_log` gains
 > `expires_at`; the courtscheduler `GET /unconfirmedBooking/status` is removed (listing always
-> POSTs); and no booking path writes the `court_schedule` counters any more (rota delete, move-to-past
-> `overbooked` and Crown fallback `lacksCapacity` count `allocated_listings`). Task text below is
-> left as executed.
+> POSTs); and nothing decides from the `court_schedule` counters any more (rota delete, move-to-past
+> `overbooked` and Crown fallback `lacksCapacity` count `allocated_listings`); the team/ccsph2 paths
+> still write them for the MI export until SPRDT-1406, and holds never do. Task text below is left as
+> executed.
 
 ## Global Constraints
 

@@ -421,7 +421,8 @@ class ProvisionalBookingIT extends AbstractIT {
     }
 
     private int availableSlots(final String courtScheduleId) {
-        return databaseReader.courtScheduleById(courtScheduleId).getAvailableSlots();
+        // Counted from rows: a hold never touches the court_schedule counters (SPRDT-1406).
+        return databaseReader.slotsLeft(courtScheduleId);
     }
 
     /**

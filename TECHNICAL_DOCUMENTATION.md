@@ -121,11 +121,13 @@ totalbookedformorning = SUM of durations before national_break_time
 totalbookedforafternoon = SUM of durations after national_break_time
 ```
 
-`allocated_listings` is the only source of availability. The stored `court_schedule.available_slot`
-and `available_duration_mins` columns are no longer kept up to date by bookings (reserve, list,
-release, purge) and nothing decides from them; they are set only when a session is created, edited
-or re-synced by the rota, and are to be dropped. Unconfirmed holds (`expires_at` set) count against
-capacity exactly like listings.
+`allocated_listings` is the only source of availability: nothing decides from the stored
+`court_schedule.available_slot` / `available_duration_mins` columns. They are still maintained by the
+paths that predate reserve-a-slot (saving and listing a confirmed booking, the hearing-keyed releases,
+session create/edit) because the MI export (`GET /mi/court_schedules`) returns them, until SPRDT-1406
+drops them. Reserve-a-slot holds never touch them: not when taken, released, purged or re-booked.
+So the counters reflect confirmed listings only, while capacity checks also count unconfirmed holds
+(`expires_at` set).
 
 #### Overbooking
 - Configurable per court schedule via `isOverbookingAllowed` flag

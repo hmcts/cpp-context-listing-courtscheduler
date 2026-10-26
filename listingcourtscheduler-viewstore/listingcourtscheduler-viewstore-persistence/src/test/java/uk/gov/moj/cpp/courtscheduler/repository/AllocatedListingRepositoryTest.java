@@ -684,6 +684,7 @@ class AllocatedListingRepositoryTest extends AbstractRepositoryTest {
         return released;
     }
 
+
     /**
      * What a session has left, counted from allocated_listings: the only source of availability.
      * court_schedule.available_slot / available_duration_mins are no longer kept up to date.

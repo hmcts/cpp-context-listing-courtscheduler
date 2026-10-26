@@ -159,6 +159,9 @@ public interface CourtScheduleRepositoryCustom {
 
     int deleteSlots(List<String> courtScheduleIds);
 
+    /** team/ccsph2 bookkeeping for the MI export, until SPRDT-1406: gives the court_schedule counters back for released listings. */
+    void releaseAllocatedSlotsOrDurationFromCourtSchedule(List<AllocatedListing> allocatedListings);
+
     CourtSchedule searchListHearingSlotFilterCriteria(String courtCentreId,
                                                       LocalDate sessionDate,
                                                       LocalDate sessionEndDate,

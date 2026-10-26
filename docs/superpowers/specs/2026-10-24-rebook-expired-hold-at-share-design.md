@@ -170,8 +170,8 @@ page) can pick the last capacity of a session; the reserve-time check is what st
    flag is read from the session as it is at re-book time, not as it was at the pick. A full session
    that allows overbooking is therefore re-booked; a full session that does not is `NOT_FOUND`.
 
-   The counter columns are not written by the re-book, nor by any other booking path (decided
-   2026-10-25, see "Counters" below); nothing reads them.
+   The re-book, like every hold, leaves the counter columns alone (see "Counters" below);
+   nothing decides from them.
 4. Success -> write `REBOOKED` log rows, answer status **`REBOOKED`**,
    `safeToShare: true`. Capacity refusal -> roll back, answer `NOT_FOUND`.
 
@@ -190,13 +190,19 @@ sent it.
 
 ### Counters (decided 2026-10-25)
 
-No booking path writes `court_schedule.available_slot` / `available_duration_mins` any more:
-reserve, save, share-confirm, every release, the purge and the batch release's capacity `UPDATE`
-are all gone. Every decision that read them now counts `allocated_listings`: the rota reload's
-"delete only empty sessions", move-to-past's `overbooked`, and Crown fallback's `lacksCapacity`
-(the session-edit guards were already a join). The columns are still set on session create,
-admin edit and rota re-sync, and echoed by some responses that nothing reads; dropping them is a
-separate change.
+Every decision that read `court_schedule.available_slot` / `available_duration_mins` now counts
+`allocated_listings`: the rota reload's "delete only empty sessions", move-to-past's `overbooked`,
+Crown fallback's `lacksCapacity` and the shared capacity rule (the session-edit guards were already
+a join).
+
+The columns are still **written by the team/ccsph2 paths** - saving and listing a confirmed booking,
+the hearing-keyed releases, session create/edit - because the MI export (`GET /mi/court_schedules`)
+returns them and MI picks changed sessions by `updated_on`. Code added on team/ras never writes them:
+a hold is not taken from the counters on reserve (the shared save path skips rows with `expires_at`),
+so its re-pick release, the batch release, the purge and the re-book give nothing back. The counters
+therefore mean what they meant on team/ccsph2 - confirmed listings only - until SPRDT-1406 drops them
+and gives MI another source. (Decided 2026-10-25 after first removing all writes, which broke the MI
+export's figures and 10 counter-asserting ITs, then restoring them all.)
 
 ### 3. listing
 
