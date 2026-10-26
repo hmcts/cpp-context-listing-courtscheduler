@@ -354,8 +354,10 @@ class ProvisionalBookingIT extends AbstractIT {
         assertThat("the confirmed listing under the same booking id must survive",
                 databaseReader.allocatedListings().stream().filter(row -> confirmedRowId.equals(row.getId())).toList(),
                 hasSize(1));
-        assertThat("the confirmed listing's session must not be credited a slot it never gave up",
-                availableSlots(confirmedSessionId), is(5));
+        // Counted from rows: the confirmed listing still takes one of the session's 5 slots. Had the
+        // release deleted it, the session would show 5.
+        assertThat("the confirmed listing must still take its slot",
+                availableSlots(confirmedSessionId), is(4));
 
         final Response again = releaseBookings("{\"bookingIds\":[\"" + bookingId + "\",\"" + UUID.randomUUID() + "\"]}");
         assertThat("a repeat, with an unknown id, is a no-op", again.getStatus(), is(ACCEPTED.getStatusCode()));
