@@ -2585,6 +2585,10 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
         final List<AllocatedListing> allocatedListings = getExistingAllocatedListings(hearingId);
 
         if (isNotEmpty(allocatedListings)) {
+            // Logged before they go, like the purge: without it a freed listing leaves its booking
+            // with no rows and a latest state of CONFIRMED, and the status check cannot tell it
+            // from a booking that never existed.
+            bookingLogRepository.record(BookingState.UNLISTED, allocatedListings);
             releaseOldListingsFromAllocatedListings(hearingId);
             releaseCourtScheduleAllocatedSlotsForBookingId(allocatedListings);
             releaseAllocatedSlotsOrDurationFromCourtSchedule(allocatedListings);
@@ -2645,6 +2649,7 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
                 .toList();
 
         if (isNotEmpty(allocatedListings)) {
+            bookingLogRepository.record(BookingState.UNLISTED, allocatedListings);
             allocatedListings.forEach(allocatedListingRepository::remove);
             releaseCourtScheduleAllocatedSlotsForBookingId(allocatedListings);
             releaseAllocatedSlotsOrDurationFromCourtSchedule(allocatedListings);

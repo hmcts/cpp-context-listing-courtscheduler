@@ -20,6 +20,7 @@ import static org.mockito.Mockito.when;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.ProvisionalBookingSlots;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.ProvisionalSlot;
 import uk.gov.moj.cpp.courtscheduler.exception.NoCapacityException;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.BookingLog;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.BookingState;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
@@ -28,9 +29,11 @@ import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciaryKey;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.ProvisionalBooking;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.ProvisionalBookingKey;
 import uk.gov.moj.cpp.courtscheduler.repository.AllocatedListingRepository;
+import uk.gov.moj.cpp.courtscheduler.repository.BookingLogRepository;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 import uk.gov.moj.cpp.courtscheduler.repository.ProvisionalBookingRepository;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
@@ -67,6 +70,9 @@ class ProvisionalBookingServiceTest {
 
     @Mock
     private CourtScheduleRepository courtScheduleRepository;
+
+    @Mock
+    private BookingLogRepository bookingLogRepository;
 
     @Test
     @SuppressWarnings("unchecked")
@@ -274,6 +280,7 @@ class ProvisionalBookingServiceTest {
     @Test
     void withTheFlagARebookedBookingIsReportedRebookedAndSafeToShare() {
         when(allocatedListingRepository.findByBookingId("bk-gone")).thenReturn(List.of());
+        loggedAs("bk-gone", BookingState.EXPIRED);
         when(reservationService.rebookExpired("bk-gone")).thenReturn(true);
 
         final JsonObject booking = statusOf("bk-gone", true);
@@ -283,24 +290,26 @@ class ProvisionalBookingServiceTest {
     }
 
     @Test
-    void withTheFlagABookingThatCannotBeRebookedStaysNotFound() {
+    void withTheFlagABookingThatCannotBeRebookedStaysExpired() {
         when(allocatedListingRepository.findByBookingId("bk-gone")).thenReturn(List.of());
+        loggedAs("bk-gone", BookingState.EXPIRED);
         when(reservationService.rebookExpired("bk-gone")).thenReturn(false);
 
         final JsonObject booking = statusOf("bk-gone", true);
 
-        assertThat(booking.getString("status"), is("NOT_FOUND"));
+        assertThat(booking.getString("status"), is("EXPIRED"));
         assertThat(booking.getBoolean("safeToShare"), is(false));
     }
 
     @Test
-    void withTheFlagARefusedRebookStaysNotFound() {
+    void withTheFlagARefusedRebookStaysExpired() {
         when(allocatedListingRepository.findByBookingId("bk-full")).thenReturn(List.of());
+        loggedAs("bk-full", BookingState.EXPIRED);
         when(reservationService.rebookExpired("bk-full")).thenThrow(new NoCapacityException("full"));
 
         final JsonObject booking = statusOf("bk-full", true);
 
-        assertThat(booking.getString("status"), is("NOT_FOUND"));
+        assertThat(booking.getString("status"), is("EXPIRED"));
         assertThat(booking.getBoolean("safeToShare"), is(false));
     }
 
@@ -313,6 +322,7 @@ class ProvisionalBookingServiceTest {
         reservation.setBookingId("bk-race");
         reservation.setExpiresAt(LocalDate.now(ZoneOffset.UTC));
         when(allocatedListingRepository.findByBookingId("bk-race")).thenReturn(List.of(), List.of(reservation));
+        loggedAs("bk-race", BookingState.EXPIRED);
         when(reservationService.rebookExpired("bk-race"))
                 .thenThrow(new org.springframework.dao.DataIntegrityViolationException("allocated_listings_reservation_idx"));
 
@@ -328,14 +338,16 @@ class ProvisionalBookingServiceTest {
     void withTheFlagAnUnexpectedRebookFailureStillAnswersThatBookingsRealStatus() {
         when(allocatedListingRepository.findByBookingId("bk-npe")).thenReturn(List.of());
         when(allocatedListingRepository.findByBookingId("bk-gone")).thenReturn(List.of());
+        loggedAs("bk-npe", BookingState.EXPIRED);
+        loggedAs("bk-gone", BookingState.EXPIRED);
         when(reservationService.rebookExpired("bk-npe")).thenThrow(new IllegalStateException("max_slot is null"));
         when(reservationService.rebookExpired("bk-gone")).thenReturn(false);
 
         final JsonArray bookings = provisionalBookingService.getBookingStatus(List.of("bk-npe", "bk-gone"), true)
                 .getJsonArray("bookings");
 
-        assertThat(bookings.getJsonObject(0).getString("status"), is("NOT_FOUND"));
-        assertThat(bookings.getJsonObject(1).getString("status"), is("NOT_FOUND"));
+        assertThat(bookings.getJsonObject(0).getString("status"), is("EXPIRED"));
+        assertThat(bookings.getJsonObject(1).getString("status"), is("EXPIRED"));
         assertThat(bookings.getJsonObject(1).getBoolean("safeToShare"), is(false));
     }
 
@@ -348,11 +360,103 @@ class ProvisionalBookingServiceTest {
         reservation.setBookingId("bk-race");
         reservation.setExpiresAt(LocalDate.now(ZoneOffset.UTC));
         when(allocatedListingRepository.findByBookingId("bk-race")).thenReturn(List.of(), List.of(reservation));
+        loggedAs("bk-race", BookingState.EXPIRED);
         when(reservationService.rebookExpired("bk-race")).thenReturn(false);
 
         final JsonObject booking = statusOf("bk-race", true);
 
         assertThat(booking.getString("status"), is("RESERVED"));
+    }
+
+    // -----------------------------------------------------------------------
+    // Without rows, the booking log says why - and so whether the share may go ahead
+    // -----------------------------------------------------------------------
+
+    // STE15, 2026-10-27, hearing 5c7b38f0: two lines picked one session, the share merged them and
+    // progression released 4b778972 as surplus. The amended line still carried it, the gate asked,
+    // and the share was refused - though progression places it from its own record.
+    @Test
+    void aBookingReleasedAsSurplusIsSafeToShare() {
+        when(allocatedListingRepository.findByBookingId("4b778972")).thenReturn(List.of());
+        loggedAs("4b778972", BookingState.SURPLUS_RELEASED);
+
+        final JsonObject booking = statusOf("4b778972", true);
+
+        assertThat(booking.getString("status"), is("SURPLUS"));
+        assertThat(booking.getBoolean("safeToShare"), is(true));
+        verify(reservationService, never()).rebookExpired(anyString());
+    }
+
+    @Test
+    void aBookingWhoseListingWasFreedIsSafeToShare() {
+        when(allocatedListingRepository.findByBookingId("bk-unlisted")).thenReturn(List.of());
+        loggedAs("bk-unlisted", BookingState.UNLISTED);
+
+        final JsonObject booking = statusOf("bk-unlisted", true);
+
+        assertThat(booking.getString("status"), is("UNLISTED"));
+        assertThat(booking.getBoolean("safeToShare"), is(true));
+    }
+
+    // Freed before UNLISTED was recorded: the log's last word is still CONFIRMED.
+    @Test
+    void aConfirmedBookingWithNoRowsLeftIsReportedUnlisted() {
+        when(allocatedListingRepository.findByBookingId("bk-old")).thenReturn(List.of());
+        loggedAs("bk-old", BookingState.CONFIRMED);
+
+        final JsonObject booking = statusOf("bk-old", false);
+
+        assertThat(booking.getString("status"), is("UNLISTED"));
+        assertThat(booking.getBoolean("safeToShare"), is(true));
+    }
+
+    @Test
+    void withoutTheFlagAnExpiredBookingIsReportedExpiredAndNeverRebooked() {
+        when(allocatedListingRepository.findByBookingId("bk-lapsed")).thenReturn(List.of());
+        loggedAs("bk-lapsed", BookingState.EXPIRED);
+
+        final JsonObject booking = statusOf("bk-lapsed", false);
+
+        assertThat(booking.getString("status"), is("EXPIRED"));
+        assertThat(booking.getBoolean("safeToShare"), is(false));
+        verify(reservationService, never()).rebookExpired(anyString());
+    }
+
+    @Test
+    void aBookingReleasedForAnyOtherReasonIsReleasedAndNeverRebooked() {
+        for (final BookingState released : List.of(BookingState.DRAFT_RELEASED, BookingState.RELEASED, BookingState.REPICK_RELEASED)) {
+            final String bookingId = "bk-" + released;
+            when(allocatedListingRepository.findByBookingId(bookingId)).thenReturn(List.of());
+            loggedAs(bookingId, released);
+
+            final JsonObject booking = statusOf(bookingId, true);
+
+            assertThat(released.name(), booking.getString("status"), is("RELEASED"));
+            assertThat(released.name(), booking.getBoolean("safeToShare"), is(false));
+        }
+        verify(reservationService, never()).rebookExpired(anyString());
+    }
+
+    // The log says it is held, yet it has no rows: something removed them without logging, so
+    // nothing is known about where it went.
+    @Test
+    void aBookingTheLogStillCallsHeldButWithNoRowsIsNotFound() {
+        when(allocatedListingRepository.findByBookingId("bk-vanished")).thenReturn(List.of());
+        loggedAs("bk-vanished", BookingState.RESERVED);
+
+        final JsonObject booking = statusOf("bk-vanished", true);
+
+        assertThat(booking.getString("status"), is("NOT_FOUND"));
+        assertThat(booking.getBoolean("safeToShare"), is(false));
+        verify(reservationService, never()).rebookExpired(anyString());
+    }
+
+    private void loggedAs(final String bookingId, final BookingState state) {
+        final AllocatedListing row = new AllocatedListing();
+        row.setBookingId(bookingId);
+        row.setCourtScheduleId("cs-1");
+        when(bookingLogRepository.findLatestEvent(bookingId))
+                .thenReturn(List.of(BookingLog.fromHold(randomUUID().toString(), state, row, Instant.now())));
     }
 
     @Test

@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static uk.gov.moj.cpp.courtscheduler.persist.entity.BookingState.EXPIRED;
 import static uk.gov.moj.cpp.courtscheduler.persist.entity.BookingState.REBOOKED;
+import static uk.gov.moj.cpp.courtscheduler.persist.entity.BookingState.RESERVED;
 
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.BookingLog;
@@ -67,14 +68,34 @@ class BookingLogRepositoryTest extends AbstractRepositoryTest {
         final BookingLog old = bookingLogRepository.findAll().get(0);
         old.setRecordedAt(Instant.now().minus(100, ChronoUnit.DAYS));
         bookingLogRepository.save(old);
+        bookingLogRepository.record(REBOOKED, List.of(hold(BOOKING_A, "cs-1")));
         bookingLogRepository.record(EXPIRED, List.of(hold(BOOKING_B, "cs-2")));
 
         final int deleted = bookingLogRepository.deleteRecordedBefore(Instant.now().minus(90, ChronoUnit.DAYS));
 
         assertEquals(1, deleted);
         final List<BookingLog> left = bookingLogRepository.findAll();
-        assertEquals(1, left.size());
-        assertEquals(BOOKING_B, left.get(0).getBookingId());
+        assertEquals(2, left.size());
+        assertEquals(REBOOKED, bookingLogRepository.findLatestEvent(BOOKING_A).get(0).getState());
+    }
+
+    @Test
+    void deleteRecordedBeforeKeepsEachBookingsLatestEventHoweverOld() {
+        // the status check reads the latest event to say why a booking has no rows, and a draft
+        // can carry a booking for longer than the retention period
+        bookingLogRepository.record(RESERVED, List.of(hold(BOOKING_A, "cs-1")));
+        bookingLogRepository.record(EXPIRED, List.of(hold(BOOKING_A, "cs-1")));
+        bookingLogRepository.findAll().forEach(row -> {
+            row.setRecordedAt(row.getRecordedAt().minus(200, ChronoUnit.DAYS));
+            bookingLogRepository.save(row);
+        });
+
+        final int deleted = bookingLogRepository.deleteRecordedBefore(Instant.now().minus(90, ChronoUnit.DAYS));
+
+        assertEquals(1, deleted);
+        final List<BookingLog> latest = bookingLogRepository.findLatestEvent(BOOKING_A);
+        assertEquals(1, latest.size());
+        assertEquals(EXPIRED, latest.get(0).getState());
     }
 
     private static Set<String> eventIdsOf(final List<BookingLog> rows, final String bookingId) {

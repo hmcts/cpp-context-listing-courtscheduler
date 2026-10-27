@@ -19,6 +19,11 @@ public enum BookingState {
     EXPIRED,
     /** A share turned it into a listing. */
     CONFIRMED,
+    /**
+     * Its listing was freed - a re-share replacing the next hearing, a vacated or moved hearing.
+     * Followed by CONFIRMED when the same booking is listed again in the same change.
+     */
+    UNLISTED,
     /** The pre-share check re-reserved it after it expired. */
     REBOOKED
 }

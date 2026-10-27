@@ -447,15 +447,19 @@ the results UI.
 
 **Request:** `application/vnd.courtscheduler.query.booking.status+json`
 - `bookingIds`: booking ids to report on (non-empty)
-- `reserveIfExpired` (optional): when true, a booking that would answer `NOT_FOUND` is first
+- `reserveIfExpired` (optional): when true, a booking that would answer `EXPIRED` is first
   re-reserved under the same booking id on the session(s) its hold expired on, if they still have
   room (LPT-2611)
 
-**Response:** `application/vnd.courtscheduler.get.booking-status+json` -
-`{"bookings":[{"bookingId","safeToShare","status"}]}`, status `RESERVED` (a hold is live), `SHARED`
-(already confirmed), `NOT_FOUND` (the hold expired and was purged) or `REBOOKED` (re-reserved by
-this call). `safeToShare` is false only for `NOT_FOUND`. Without `reserveIfExpired` the call only
-reads. (This replaces an unreleased `GET` form, removed.)
+**Response:** `application/vnd.courtscheduler.query.booking.status.response+json` -
+`{"bookings":[{"bookingId","safeToShare","status"}]}`. `safeToShare` is the decision; `status` says
+where the booking is: `RESERVED` (a hold is live), `SHARED` (already confirmed), `REBOOKED`
+(re-reserved by this call), or, with nothing held, why - read from `booking_log`: `SURPLUS` (a share
+merged its line onto another booking's session), `UNLISTED` (its listing was freed, e.g. by a
+re-share), `EXPIRED` (the hold lapsed and could not be re-booked), `RELEASED` (dropped from the draft,
+or released without a reason) or `NOT_FOUND` (nothing recorded). Safe to share: `RESERVED`,
+`REBOOKED`, `SHARED`, `SURPLUS`, `UNLISTED`. Without `reserveIfExpired` the call only reads. (This
+replaces an unreleased `GET` form, removed.)
 
 #### POST `/unconfirmedBooking/release`
 **Purpose:** Release the unconfirmed holds of the given bookings; a confirmed listing under the same

@@ -52,7 +52,18 @@ public interface BookingLogRepository extends JpaRepository<BookingLog, String> 
             """, nativeQuery = true)
     List<BookingLog> findLatestEvent(@Param("bookingId") String bookingId);
 
+    /**
+     * Deletes history recorded before {@code cutoff}, but never a booking's latest event: the
+     * status check reads it to say why a booking has no rows, and a draft can carry a booking for
+     * longer than the retention period.
+     */
     @Modifying
-    @Query("DELETE FROM BookingLog b WHERE b.recordedAt < :cutoff")
+    @Query(value = """
+            DELETE FROM booking_log b
+             WHERE b.recorded_at < :cutoff
+               AND b.event_id <> (SELECT l.event_id FROM booking_log l
+                                   WHERE l.booking_id = b.booking_id
+                                   ORDER BY l.recorded_at DESC LIMIT 1)
+            """, nativeQuery = true)
     int deleteRecordedBefore(@Param("cutoff") Instant cutoff);
 }

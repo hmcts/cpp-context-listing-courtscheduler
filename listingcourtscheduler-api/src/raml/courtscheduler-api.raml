@@ -520,11 +520,16 @@ protocols: [ HTTP, HTTPS ]
       why. Used by the pre-share gate in the results UI (through listing), which must block the
       share synchronously because sharing itself is asynchronous.
 
-      status is RESERVED (a reservation still holds capacity), SHARED (already shared - the
-      confirmed row carries this booking id), NOT_FOUND (no row under this booking id in either
-      shape, so there is no hold) or REBOOKED (see below). safeToShare is status != NOT_FOUND.
+      status says where the booking is; safeToShare whether a share may go ahead with it, so
+      callers need no rule of their own. With rows: RESERVED (a reservation still holds
+      capacity) or SHARED (already shared - the confirmed row carries this booking id). With no
+      rows, the booking log says why: SURPLUS (a share merged its line onto another booking's
+      session), UNLISTED (its listing was freed, e.g. by a re-share), EXPIRED (the hold lapsed and
+      was purged), RELEASED (dropped from the draft, or released without a reason) or NOT_FOUND
+      (nothing recorded). REBOOKED: see below. safeToShare is true for RESERVED, REBOOKED, SHARED,
+      SURPLUS and UNLISTED - progression places SURPLUS and UNLISTED from its own record.
 
-      With reserveIfExpired (LPT-2611), a booking that would answer NOT_FOUND is first re-reserved
+      With reserveIfExpired (LPT-2611), a booking that would answer EXPIRED is first re-reserved
       under the same booking id if the session its hold expired on still has room (capacity
       counted from allocated_listings, isOverbookingAllowed honoured), and then answers REBOOKED.
       A POST because it can book capacity; without the flag it only reads.
@@ -540,9 +545,9 @@ protocols: [ HTTP, HTTPS ]
     responses:
       200:
         body:
-          application/vnd.courtscheduler.get.booking-status+json:
-            example: !include json/courtscheduler.get.booking-status.json
-            schema:  !include json/schema/courtscheduler.get.booking-status.json
+          application/vnd.courtscheduler.query.booking.status.response+json:
+            example: !include json/courtscheduler.query.booking.status.response.json
+            schema:  !include json/schema/courtscheduler.query.booking.status.response.json
 
 /unconfirmedBooking/release:
   post:

@@ -432,7 +432,8 @@ paths:
 
   /unconfirmedBooking/status:
     # The pre-share check: is each booking still safe to share? status is RESERVED, SHARED,
-    # NOT_FOUND or REBOOKED. With reserveIfExpired (LPT-2611) a booking that would answer NOT_FOUND
+    # REBOOKED, SURPLUS, UNLISTED, EXPIRED, RELEASED or NOT_FOUND; safeToShare is the decision.
+    # With reserveIfExpired (LPT-2611) a booking that would answer EXPIRED
     # is first re-booked under the same id if the session it expired on still has room. A POST
     # because it can book capacity; without the flag it only reads. The only booking-status
     # endpoint - the GET it replaced was never released. The body is validated against
@@ -450,9 +451,9 @@ paths:
         '200':
           description: OK
           content:
-            application/vnd.courtscheduler.get.booking-status+json:
+            application/vnd.courtscheduler.query.booking.status.response+json:
               schema:
-                $ref: '#/components/schemas/CourtschedulerGetBookingStatus'
+                $ref: '#/components/schemas/CourtschedulerQueryBookingStatusResponse'
 
   # Gives back the UNCONFIRMED holds taken under each booking id, in one transaction. Only rows
   # under that booking_id that still carry expires_at are removed, so a confirmed listing grown
@@ -1448,12 +1449,13 @@ components:
 
     # Deliberately still a PassthroughObject. The real shape is
     #   { bookings: [ { bookingId, safeToShare, status } ] }
-    # with status one of RESERVED | SHARED | NOT_FOUND, and it is enforced by the RAML JSON schema
-    # at src/raml/json/schema/courtscheduler.get.booking-status.json. Typing it here would change
+    # with status one of RESERVED | SHARED | REBOOKED | SURPLUS | UNLISTED | EXPIRED | RELEASED |
+    # NOT_FOUND, and it is enforced by the RAML JSON schema
+    # at src/raml/json/schema/courtscheduler.query.booking.status.response.json. Typing it here would change
     # the generated return type from Map to a model and so require rewriting both
     # CourtSchedulerApi#getBookingStatus and ProvisionalBookingService#getBookingStatus, which
     # builds the JsonObject by hand. That is worth doing, but not inside a merge.
-    CourtschedulerGetBookingStatus:                { $ref: '#/components/schemas/PassthroughObject' }
+    CourtschedulerQueryBookingStatusResponse:       { $ref: '#/components/schemas/PassthroughObject' }
 
     # LPT-2611. Typed: the controller reads both fields. The RAML JSON schema
     # courtscheduler.query.booking.status.json enforces the rules.

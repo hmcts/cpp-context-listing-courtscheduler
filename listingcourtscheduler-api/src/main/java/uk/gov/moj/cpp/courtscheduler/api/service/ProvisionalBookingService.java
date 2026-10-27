@@ -12,12 +12,14 @@ import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.ProvisionalBooking;
 import uk.gov.moj.cpp.courtscheduler.repository.AllocatedListingRepository;
+import uk.gov.moj.cpp.courtscheduler.repository.BookingLogRepository;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 import uk.gov.moj.cpp.courtscheduler.repository.ProvisionalBookingRepository;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Stream;
 
 import org.springframework.stereotype.Service;
@@ -40,6 +42,14 @@ public class ProvisionalBookingService {
     private static final String STATUS_SHARED = "SHARED";
     private static final String STATUS_NOT_FOUND = "NOT_FOUND";
     private static final String STATUS_REBOOKED = "REBOOKED";
+    private static final String STATUS_SURPLUS = "SURPLUS";
+    private static final String STATUS_UNLISTED = "UNLISTED";
+    private static final String STATUS_EXPIRED = "EXPIRED";
+    private static final String STATUS_RELEASED = "RELEASED";
+    // Placeable at share. SURPLUS and UNLISTED have no rows, but progression places them from its
+    // own record of the share that resolved them, whatever is held here now.
+    private static final Set<String> SAFE_TO_SHARE_STATUSES =
+            Set.of(STATUS_RESERVED, STATUS_REBOOKED, STATUS_SHARED, STATUS_SURPLUS, STATUS_UNLISTED);
     private static final String REASON_DROPPED_FROM_DRAFT = "DROPPED_FROM_DRAFT";
     private static final String REASON_SURPLUS = "SURPLUS";
     @Inject
@@ -50,6 +60,8 @@ public class ProvisionalBookingService {
     private ReservationService reservationService;
     @Inject
     private AllocatedListingRepository allocatedListingRepository;
+    @Inject
+    private BookingLogRepository bookingLogRepository;
     private final ListToJsonArrayConverter<ProvisionalBookingInfo> listToJsonArrayConverter = new ListToJsonArrayConverter<>();
 
     /**
@@ -144,16 +156,20 @@ public class ProvisionalBookingService {
      * {@link #fetchProvisionalSlots}, which batches unresolved ids into one query) — this method
      * only needs a per-id boolean, not the full session detail that justifies batching there.
      *
-     * <p><b>Contract.</b> {@code status} is one of {@code RESERVED} (a reservation still holds
-     * capacity), {@code SHARED} (a confirmed row carries this booking id, so the result was
-     * already shared and its hold correctly released), or {@code NOT_FOUND} (no row under this
-     * booking id in either shape — the hold expired and was purged), or {@code REBOOKED} (see
-     * below). {@code safeToShare} is {@code status != NOT_FOUND}.
+     * <p><b>Contract.</b> {@code status} says where the booking is, and {@code safeToShare} whether
+     * a share may go ahead with it - so callers act on {@code safeToShare} and need no rule of
+     * their own. With rows: {@code RESERVED} (a reservation still holds capacity) or {@code SHARED}
+     * (a confirmed row carries this booking id). Without rows, the booking log says why:
+     * {@code SURPLUS} (a share merged its line onto another booking's session),
+     * {@code UNLISTED} (its listing was freed, e.g. by a re-share), {@code EXPIRED} (the hold lapsed
+     * and was purged), {@code RELEASED} (dropped from the draft, or released without a reason), or
+     * {@code NOT_FOUND} (nothing recorded). {@code REBOOKED}: see below. Safe to share: RESERVED,
+     * REBOOKED, SHARED, SURPLUS, UNLISTED.
      *
      * <p>Unlike the {@code live} flag this replaces, the answer no longer conflates an expired
      * hold with an already-shared booking, so a caller may gate a re-share on it directly.
      *
-     * <p>With {@code reserveIfExpired} (LPT-2611) a booking that would answer {@code NOT_FOUND} is
+     * <p>With {@code reserveIfExpired} (LPT-2611) a booking that would answer {@code EXPIRED} is
      * first offered to {@link ReservationService#rebookExpired}: re-booked, it answers
      * {@code REBOOKED} and is safe to share. Without the flag this only reads.
      *
@@ -167,7 +183,7 @@ public class ProvisionalBookingService {
             final String status = reserveIfExpired ? statusRebookingIfExpired(bookingId) : statusOf(bookingId);
             bookings.add(Json.createObjectBuilder()
                     .add(BOOKING_ID, bookingId)
-                    .add(SAFE_TO_SHARE, !STATUS_NOT_FOUND.equals(status))
+                    .add(SAFE_TO_SHARE, SAFE_TO_SHARE_STATUSES.contains(status))
                     .add(STATUS, status));
         }
         return Json.createObjectBuilder().add("bookings", bookings).build();
@@ -179,7 +195,7 @@ public class ProvisionalBookingService {
     @SuppressWarnings("PMD.AvoidCatchingGenericException")
     private String statusRebookingIfExpired(final String bookingId) {
         final String status = statusOf(bookingId);
-        if (!STATUS_NOT_FOUND.equals(status)) {
+        if (!STATUS_EXPIRED.equals(status)) {
             return status;
         }
         try {
@@ -197,7 +213,8 @@ public class ProvisionalBookingService {
     }
 
     /**
-     * Resolves a booking id to one of three states, in precedence order.
+     * Resolves a booking id to its status: from its rows when it has any, otherwise from the latest
+     * event in the booking log.
      *
      * <p><b>Order matters.</b> A live reservation outranks a confirmed row: if a booking somehow
      * carried both, the clerk is still holding capacity, and reporting it as already shared would
@@ -230,8 +247,27 @@ public class ProvisionalBookingService {
         // deliberately: a provisional_booking row proves only that a booking was once recorded,
         // never that a session is still held, so it waved through exactly the drafts most likely
         // to be stale - the oldest ones - which is the opposite of what the gate is for. Absence
-        // of an unconfirmed booking now means what it says: the hold is gone, so re-pick.
-        return STATUS_NOT_FOUND;
+        // of an unconfirmed booking now means what it says: the hold is gone.
+        //
+        // Why it is gone decides whether a share may still go ahead, and only the booking log
+        // knows: a booking released as surplus is placeable, an expired one is not, and both
+        // used to answer NOT_FOUND - which made callers rebuild the difference themselves.
+        return bookingLogRepository.findLatestEvent(bookingId).stream()
+                .findFirst()
+                .map(event -> statusWithoutRows(event.getState()))
+                .orElse(STATUS_NOT_FOUND);
+    }
+
+    private static String statusWithoutRows(final BookingState latest) {
+        return switch (latest) {
+            case SURPLUS_RELEASED -> STATUS_SURPLUS;
+            // CONFIRMED with no rows: a listing freed before UNLISTED was recorded.
+            case UNLISTED, CONFIRMED -> STATUS_UNLISTED;
+            case EXPIRED -> STATUS_EXPIRED;
+            case DRAFT_RELEASED, RELEASED, REPICK_RELEASED -> STATUS_RELEASED;
+            // Held by the log's account, yet no rows: removed by something that does not log.
+            case RESERVED, REBOOKED -> STATUS_NOT_FOUND;
+        };
     }
 
     /**

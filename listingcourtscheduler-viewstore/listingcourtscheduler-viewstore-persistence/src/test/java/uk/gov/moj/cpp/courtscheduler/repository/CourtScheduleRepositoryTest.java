@@ -821,6 +821,29 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
         assertEquals(lapsed.getDuration(), latest.get(0).getDuration());
     }
 
+    // A re-share frees the previous next hearing's listing before the recreated one is listed.
+    // Without a record the booking is left with no rows and a latest state of CONFIRMED, and the
+    // status check cannot tell it from a booking that never existed.
+    @Test
+    public void shouldLogTheFreedListingWhenAHearingsSessionsAreReleased() {
+        final LocalDate sessionDate = LocalDate.of(2026, 9, 11);
+        final CourtSchedule session = slotBasedCourtSchedule("CS-LOG-FREE", sessionDate);
+        session.setMaxSlots(4);
+        session.setAvailableSlots(3);
+        courtScheduleRepository.saveAndFlush(session);
+        allocatedListingRepository.saveAndFlush(
+                allocatedListingFor("AL-LOG-FREE", "BK-LOG-3", "CS-LOG-FREE", "HEARING-LOG-3", sessionDate));
+
+        courtScheduleRepository.releaseOldAllocatedListings("HEARING-LOG-3");
+        em.flush();
+
+        assertTrue(allocatedListingRepository.findByBookingId("BK-LOG-3").isEmpty());
+        final List<BookingLog> latest = bookingLogRepository.findLatestEvent("BK-LOG-3");
+        assertEquals(1, latest.size());
+        assertEquals(BookingState.UNLISTED, latest.get(0).getState());
+        assertEquals("CS-LOG-FREE", latest.get(0).getCourtScheduleId());
+    }
+
     // -----------------------------------------------------------------------
     // reserve-a-slot-new15: a re-pick under the SAME bookingId must release the abandoned
     // session's capacity and leave only the new pick's row standing.
