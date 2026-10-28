@@ -17,7 +17,6 @@ import static org.mockito.Mockito.when;
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.START_DATE_IS_INVALID;
 import static uk.gov.moj.cpp.courtscheduler.common.Jurisdiction.MAGISTRATES;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.MissingDataError.CREATE_SESSIONS_COURTROOM_NOT_FOUND;
-import static uk.gov.moj.cpp.courtscheduler.domain.Session.SessionBuilder.session;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.ALL_DAY;
 
 import uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages;
@@ -25,17 +24,16 @@ import uk.gov.moj.cpp.courtscheduler.common.service.AllocatedListingService;
 import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataCache;
 import uk.gov.moj.cpp.courtscheduler.common.service.RotaProcessLogService;
 import uk.gov.moj.cpp.courtscheduler.common.service.SessionsService;
-import uk.gov.moj.cpp.courtscheduler.domain.AllocatedListingEachBooked;
-import uk.gov.moj.cpp.courtscheduler.domain.AssignCourtroomRequest;
-import uk.gov.moj.cpp.courtscheduler.domain.BusinessType;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
-import uk.gov.moj.cpp.courtscheduler.domain.CreateSessionRequestParam;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.AllocatedListingEachBooked;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.AssignCourtroomRequest;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.BusinessType;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtRoom;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CreateSessionRequestParam;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.RepeatPattern;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.Session;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.SessionValidationParams;
 import uk.gov.moj.cpp.courtscheduler.domain.RepeatFrequency;
-import uk.gov.moj.cpp.courtscheduler.domain.RepeatPattern;
-import uk.gov.moj.cpp.courtscheduler.domain.Session;
-import uk.gov.moj.cpp.courtscheduler.domain.SessionValidationParams;
-import uk.gov.moj.cpp.courtscheduler.domain.UpdateCourtSchedule;
-import uk.gov.moj.cpp.courtscheduler.domain.UpdateCourtSchedule.UpdateCourtScheduleBuilder;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.UpdateCourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.ValidateSessionAvailabilityRequestParam;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog;
@@ -44,6 +42,7 @@ import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 import java.time.DayOfWeek;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.List;
@@ -56,6 +55,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -63,7 +64,13 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class SessionsApiValidatorTest {
+    private static final String EVERY_MONTH_2 = "EVERY_MONTH";
+    private static final String EVERY_WEEK_2 = "EVERY_WEEK";
+    private static final String ONCE_2 = "ONCE";
+
     private static final String VALUE_10_00 = "10:00";
+    private static final String VALUE_17_00 = "17:00";
+    private static final String RETIRED_BT = "FWT";
     private static final String VALUE_13_00 = "13:00";
     private static final String ADULT_2 = "ADULT";
     private static final String BUSINESS_TYPE_2 = "BUSINESS_TYPE";
@@ -111,11 +118,11 @@ class SessionsApiValidatorTest {
     private final ObjectMapper objectMapper = new com.fasterxml.jackson.databind.ObjectMapper().findAndRegisterModules();
 
     private void stubMagCourtRoomAvailable(final String courtRoomId) {
-        final CourtRoom courtRoom = CourtRoom.CourtRoomBuilder.aCourtRoom()
-                .withCourtRoomId(courtRoomId)
-                .withOucodeUUID(courtCentreId)
-                .withOucode("B")
-                .build();
+        final CourtRoom courtRoom = new CourtRoom()
+                .courtroomId(courtRoomId)
+                .oucodeUUID(courtCentreId)
+                .oucode("B")
+                ;
         lenient().when(referenceDataCache.getCpCourtRoomByCourtRoomId(eq(courtRoomId)))
                 .thenReturn(Optional.of(courtRoom));
         lenient().when(referenceDataCache.getCpCourtRoomsByCourtRoomId(eq(courtRoomId)))
@@ -125,11 +132,11 @@ class SessionsApiValidatorTest {
     }
 
     private void stubCrownCourtRoomAvailable(final String courtRoomId) {
-        final CourtRoom courtRoom = CourtRoom.CourtRoomBuilder.aCourtRoom()
-                .withCourtRoomId(courtRoomId)
-                .withOucodeUUID(courtCentreId)
-                .withOucode("C")
-                .build();
+        final CourtRoom courtRoom = new CourtRoom()
+                .courtroomId(courtRoomId)
+                .oucodeUUID(courtCentreId)
+                .oucode("C")
+                ;
         lenient().when(referenceDataCache.getCpCourtRoomByCourtRoomId(eq(courtRoomId)))
                 .thenReturn(Optional.of(courtRoom));
         lenient().when(referenceDataCache.getCpCourtRoomsByCourtRoomId(eq(courtRoomId)))
@@ -140,7 +147,7 @@ class SessionsApiValidatorTest {
 
     private void stubBusinessType(final String code, final String jurisdiction, final boolean slot, final boolean duration) {
         lenient().when(referenceDataCache.getRotaBusinessTypeByCode(eq(code)))
-                .thenReturn(Optional.of(new BusinessType("id-" + code, 1, code, "desc-" + code, slot, duration, jurisdiction)));
+                .thenReturn(Optional.of(new BusinessType().id("id-" + code).seqNum(1).typeCode(code).typeDescription("desc-" + code).slot(slot).duration(duration).jurisdiction(jurisdiction)));
     }
 
     @Test
@@ -148,7 +155,7 @@ class SessionsApiValidatorTest {
         final LocalDate pastDate = LocalDate.now().minusDays(1);
 
         when(createSessionRequestParam.getRepeatPattern()).thenReturn(repeatPattern);
-        when(repeatPattern.getStartDate()).thenReturn(pastDate);
+        when(repeatPattern.getStartDate()).thenReturn(pastDate.toString());
 
         final JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam);
 
@@ -161,9 +168,9 @@ class SessionsApiValidatorTest {
         final LocalDate endDate = startDate.minusDays(1);
 
         when(createSessionRequestParam.getRepeatPattern()).thenReturn(repeatPattern);
-        when(repeatPattern.getStartDate()).thenReturn(startDate);
-        when(repeatPattern.getEndDate()).thenReturn(endDate);
-        when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.EVERY_WEEK);
+        when(repeatPattern.getStartDate()).thenReturn(startDate.toString());
+        when(repeatPattern.getEndDate()).thenReturn(endDate.toString());
+        when(repeatPattern.getFrequency()).thenReturn(EVERY_WEEK_2);
 
         final JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam);
 
@@ -175,9 +182,9 @@ class SessionsApiValidatorTest {
         final LocalDate futureDate = LocalDate.now().plusDays(1);
 
         when(createSessionRequestParam.getRepeatPattern()).thenReturn(repeatPattern);
-        when(repeatPattern.getStartDate()).thenReturn(futureDate);
+        when(repeatPattern.getStartDate()).thenReturn(futureDate.toString());
         when(repeatPattern.getEndDate()).thenReturn(null);
-        when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.EVERY_WEEK);
+        when(repeatPattern.getFrequency()).thenReturn(EVERY_WEEK_2);
 
         final JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam);
 
@@ -190,10 +197,10 @@ class SessionsApiValidatorTest {
         final Session sessionToBeAdded = createPMSessionWithTimes(VALUE_13_00, "15:00");
 
         when(createSessionRequestParam.getRepeatPattern()).thenReturn(repeatPattern);
-        when(repeatPattern.getStartDate()).thenReturn(futureDate);
-        when(repeatPattern.getEndDate()).thenReturn(futureDate);
-        when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.EVERY_WEEK);
-        when(createSessionRequestParam.getSessionList()).thenReturn(List.of(sessionToBeAdded));
+        when(repeatPattern.getStartDate()).thenReturn(futureDate.toString());
+        when(repeatPattern.getEndDate()).thenReturn(futureDate.toString());
+        when(repeatPattern.getFrequency()).thenReturn(EVERY_WEEK_2);
+        when(createSessionRequestParam.getSessions()).thenReturn(List.of(sessionToBeAdded));
 
         final JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam);
 
@@ -206,10 +213,10 @@ class SessionsApiValidatorTest {
         final Session sessionToBeAdded = createAMSessionWithTimes(VALUE_10_00, "14:00");
 
         when(createSessionRequestParam.getRepeatPattern()).thenReturn(repeatPattern);
-        when(repeatPattern.getStartDate()).thenReturn(futureDate);
-        when(repeatPattern.getEndDate()).thenReturn(futureDate);
-        when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.EVERY_WEEK);
-        when(createSessionRequestParam.getSessionList()).thenReturn(List.of(sessionToBeAdded));
+        when(repeatPattern.getStartDate()).thenReturn(futureDate.toString());
+        when(repeatPattern.getEndDate()).thenReturn(futureDate.toString());
+        when(repeatPattern.getFrequency()).thenReturn(EVERY_WEEK_2);
+        when(createSessionRequestParam.getSessions()).thenReturn(List.of(sessionToBeAdded));
 
         final JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam);
 
@@ -222,10 +229,10 @@ class SessionsApiValidatorTest {
         final Session sessionToBeAdded = createAMSessionWithTimes("sometime", "14:00");
 
         when(createSessionRequestParam.getRepeatPattern()).thenReturn(repeatPattern);
-        when(repeatPattern.getStartDate()).thenReturn(futureDate);
-        when(repeatPattern.getEndDate()).thenReturn(futureDate);
-        when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.EVERY_WEEK);
-        when(createSessionRequestParam.getSessionList()).thenReturn(List.of(sessionToBeAdded));
+        when(repeatPattern.getStartDate()).thenReturn(futureDate.toString());
+        when(repeatPattern.getEndDate()).thenReturn(futureDate.toString());
+        when(repeatPattern.getFrequency()).thenReturn(EVERY_WEEK_2);
+        when(createSessionRequestParam.getSessions()).thenReturn(List.of(sessionToBeAdded));
 
         final JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam);
 
@@ -237,39 +244,37 @@ class SessionsApiValidatorTest {
     void shouldReturnErrorWhenSessionTypeIsDuplicateWithRequest() {
         final LocalDate futureDate = LocalDate.now().plusDays(1);
         final List<Session> sessionList = Arrays.asList(
-                session().withSessionType("AM")
-                        .withRepeatDays(Set.of(DayOfWeek.MONDAY))
-                        .withCourtCentreId("123")
-                        .withCourtRoomId("321")
-                        .withBusinessType(TRL_2)
-                        .withPanelType(ADULT_2)
-                        .withSlotsOrDuration(20)
-                        .build(),
-                session().withSessionType("PM")
-                        .withRepeatDays(Set.of(DayOfWeek.MONDAY))
-                        .withCourtCentreId("123")
-                        .withCourtRoomId("321")
-                        .withBusinessType(TRL_2)
-                        .withPanelType(ADULT_2)
-                        .withSlotsOrDuration(20)
-                        .build()
+                new Session().sessionType("AM")
+                        .repeatDays(toRepeatDayStrings(Set.of(DayOfWeek.MONDAY)))
+                        .courtCentreId("123")
+                        .courtRoomId("321")
+                        .businessType(TRL_2)
+                        .panel(ADULT_2)
+                        .duration(20),
+                new Session().sessionType("PM")
+                        .repeatDays(toRepeatDayStrings(Set.of(DayOfWeek.MONDAY)))
+                        .courtCentreId("123")
+                        .courtRoomId("321")
+                        .businessType(TRL_2)
+                        .panel(ADULT_2)
+                        .duration(20)
         );
-        when(createSessionRequestParam.getSessionList()).thenReturn(sessionList);
+        when(createSessionRequestParam.getSessions()).thenReturn(sessionList);
 
-        final Session sessionToBeAdded = session()
-                .withSessionType("AM")
-                .withRepeatDays(Set.of(DayOfWeek.MONDAY))
-                .withCourtCentreId("123")
-                .withCourtRoomId("321")
-                .withBusinessType(TRL_2)
-                .withPanelType(ADULT_2)
-                .withSlotsOrDuration(20)
-                .build();
+        final Session sessionToBeAdded = new Session()
+                .sessionType("AM")
+                .repeatDays(toRepeatDayStrings(Set.of(DayOfWeek.MONDAY)))
+                .courtCentreId("123")
+                .courtRoomId("321")
+                .businessType(TRL_2)
+                .panel(ADULT_2)
+                .duration(20)
+                ;
         when(createSessionRequestParam.getSessionToBeAdded()).thenReturn(sessionToBeAdded);
         when(createSessionRequestParam.getRepeatPattern()).thenReturn(repeatPattern);
-        when(repeatPattern.getStartDate()).thenReturn(futureDate);
+        when(repeatPattern.getStartDate()).thenReturn(futureDate.toString());
         when(repeatPattern.getEndDate()).thenReturn(null);
-        when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
+        when(repeatPattern.getFrequency()).thenReturn(ONCE_2);
 
 
         final JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam);
@@ -285,16 +290,16 @@ class SessionsApiValidatorTest {
 
         when(createSessionRequestParam.getRepeatPattern()).thenReturn(repeatPattern);
         when(createSessionRequestParam.getSessionToBeAdded()).thenReturn(sessionToBeAdded);
-        when(createSessionRequestParam.getSessionList()).thenReturn(sessionList);
-        when(repeatPattern.getStartDate()).thenReturn(futureDate);
+        when(createSessionRequestParam.getSessions()).thenReturn(sessionList);
+        when(repeatPattern.getStartDate()).thenReturn(futureDate.toString());
         when(repeatPattern.getEndDate()).thenReturn(null);
-        when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
-        when(repeatPattern.getStartDate()).thenReturn(futureDate);
+        when(repeatPattern.getFrequency()).thenReturn(ONCE_2);
+        when(repeatPattern.getStartDate()).thenReturn(futureDate.toString());
         when(repeatPattern.getEndDate()).thenReturn(null);
-        when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
+        when(repeatPattern.getFrequency()).thenReturn(ONCE_2);
 
         // Business type stub needed for sessionToBeAdded validation
-        final BusinessType businessType = new BusinessType(DVLA_2, 1, DESCRIPTION, CATEGORY, true, false, MAGISTRATES.getJurisdiction());
+        final BusinessType businessType = new BusinessType().id(DVLA_2).seqNum(1).typeCode(DESCRIPTION).typeDescription(CATEGORY).slot(true).duration(false).jurisdiction(MAGISTRATES.getJurisdiction());
         when(referenceDataCache.getRotaBusinessTypeByCode(DVLA_2)).thenReturn(Optional.of(businessType));
         stubMagCourtRoomAvailable(courtRoomId);
 
@@ -313,10 +318,10 @@ class SessionsApiValidatorTest {
 
         when(createSessionRequestParam.getRepeatPattern()).thenReturn(repeatPattern);
         when(createSessionRequestParam.getSessionToBeAdded()).thenReturn(sessionToBeAdded);
-        when(createSessionRequestParam.getSessionList()).thenReturn(sessionList);
-        when(repeatPattern.getStartDate()).thenReturn(futureDate);
+        when(createSessionRequestParam.getSessions()).thenReturn(sessionList);
+        when(repeatPattern.getStartDate()).thenReturn(futureDate.toString());
         when(repeatPattern.getEndDate()).thenReturn(null);
-        when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
+        when(repeatPattern.getFrequency()).thenReturn(ONCE_2);
 
 
         final JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam);
@@ -327,26 +332,26 @@ class SessionsApiValidatorTest {
     void shouldReturnErrorWhenDraftIsDuplicateWithInPayload() {
 
         // Create draft sessions with CROWN jurisdiction to pass draft validation
-        final Session draftSession1 = session()
-                .withCourtCentreId(courtCentreId)
-                .withCourtRoomId(courtRoomId)
-                .withSessionType("AM")
-                .withBusinessType(DVLA_2)
-                .withPanelType(ADULT_2)
-                .withRepeatDays(Set.of(DayOfWeek.MONDAY))
-                .withIsDraft(true)
-                .withJurisdiction(CROWN_2)
-                .build();
-        final Session draftSession2 = session()
-                .withCourtCentreId(courtCentreId)
-                .withCourtRoomId(courtRoomId)
-                .withSessionType("AM")
-                .withBusinessType(DVLA_2)
-                .withPanelType(ADULT_2)
-                .withRepeatDays(Set.of(DayOfWeek.MONDAY))
-                .withIsDraft(true)
-                .withJurisdiction(CROWN_2)
-                .build();
+        final Session draftSession1 = new Session()
+                .courtCentreId(courtCentreId)
+                .courtRoomId(courtRoomId)
+                .sessionType("AM")
+                .businessType(DVLA_2)
+                .panel(ADULT_2)
+                .repeatDays(toRepeatDayStrings(Set.of(DayOfWeek.MONDAY)))
+                .isDraft(true)
+                .jurisdiction(CROWN_2)
+                ;
+        final Session draftSession2 = new Session()
+                .courtCentreId(courtCentreId)
+                .courtRoomId(courtRoomId)
+                .sessionType("AM")
+                .businessType(DVLA_2)
+                .panel(ADULT_2)
+                .repeatDays(toRepeatDayStrings(Set.of(DayOfWeek.MONDAY)))
+                .isDraft(true)
+                .jurisdiction(CROWN_2)
+                ;
 
         final List<Session> sessionList = Arrays.asList(createAMSession(), draftSession1);
         final Session sessionToBeAdded = draftSession2;
@@ -356,10 +361,10 @@ class SessionsApiValidatorTest {
 
         when(createSessionRequestParam.getRepeatPattern()).thenReturn(repeatPattern);
         when(createSessionRequestParam.getSessionToBeAdded()).thenReturn(sessionToBeAdded);
-        when(createSessionRequestParam.getSessionList()).thenReturn(sessionList);
-        when(repeatPattern.getStartDate()).thenReturn(futureDate);
+        when(createSessionRequestParam.getSessions()).thenReturn(sessionList);
+        when(repeatPattern.getStartDate()).thenReturn(futureDate.toString());
         when(repeatPattern.getEndDate()).thenReturn(null);
-        when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
+        when(repeatPattern.getFrequency()).thenReturn(ONCE_2);
 
 
         final JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam);
@@ -369,33 +374,33 @@ class SessionsApiValidatorTest {
     @Test
     void shouldReturnErrorWhenMonthlySameDaySameIndexDuplicateInPayload() {
         // Monthly: same (day, index) with same session type = duplicate
-        final Session sessionInList = session()
-                .withCourtCentreId(courtCentreId)
-                .withCourtRoomId(courtRoomId)
-                .withSessionType("AM")
-                .withBusinessType(DVLA_2)
-                .withPanelType(ADULT_2)
-                .withRepeatDays(Set.of(DayOfWeek.MONDAY))
-                .withIndex(4)
-                .build();
-        final Session sessionToBeAdded = session()
-                .withCourtCentreId(courtCentreId)
-                .withCourtRoomId(courtRoomId)
-                .withSessionType("AM")
-                .withBusinessType(DVLA_2)
-                .withPanelType(ADULT_2)
-                .withRepeatDays(Set.of(DayOfWeek.MONDAY))
-                .withIndex(4)
-                .withSlotsOrDuration(60)
-                .build();
+        final Session sessionInList = new Session()
+                .courtCentreId(courtCentreId)
+                .courtRoomId(courtRoomId)
+                .sessionType("AM")
+                .businessType(DVLA_2)
+                .panel(ADULT_2)
+                .repeatDays(toRepeatDayStrings(Set.of(DayOfWeek.MONDAY)))
+                .index(4)
+                ;
+        final Session sessionToBeAdded = new Session()
+                .courtCentreId(courtCentreId)
+                .courtRoomId(courtRoomId)
+                .sessionType("AM")
+                .businessType(DVLA_2)
+                .panel(ADULT_2)
+                .repeatDays(toRepeatDayStrings(Set.of(DayOfWeek.MONDAY)))
+                .index(4)
+                .duration(60)
+                ;
 
         final LocalDate futureDate = LocalDate.now().plusDays(1);
         when(createSessionRequestParam.getRepeatPattern()).thenReturn(repeatPattern);
         when(createSessionRequestParam.getSessionToBeAdded()).thenReturn(sessionToBeAdded);
-        when(createSessionRequestParam.getSessionList()).thenReturn(List.of(sessionInList));
-        when(repeatPattern.getStartDate()).thenReturn(futureDate);
-        when(repeatPattern.getEndDate()).thenReturn(futureDate.plusMonths(1));
-        when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.EVERY_MONTH);
+        when(createSessionRequestParam.getSessions()).thenReturn(List.of(sessionInList));
+        when(repeatPattern.getStartDate()).thenReturn(futureDate.toString());
+        when(repeatPattern.getEndDate()).thenReturn(futureDate.plusMonths(1).toString());
+        when(repeatPattern.getFrequency()).thenReturn(EVERY_MONTH_2);
         lenient().when(repeatPattern.getRepeatFor()).thenReturn(1); // unused - validation returns early with duplicate
         // Validation returns early with duplicate error, so no need to stub business type or court room
 
@@ -406,36 +411,36 @@ class SessionsApiValidatorTest {
     @Test
     void shouldNotReturnErrorWhenMonthlySameDayDifferentIndexInPayload() {
         // Monthly: same day but different index = allowed
-        final Session sessionInList = session()
-                .withCourtCentreId(courtCentreId)
-                .withCourtRoomId(courtRoomId)
-                .withSessionType("AM")
-                .withBusinessType(DVLA_2)
-                .withPanelType(ADULT_2)
-                .withRepeatDays(Set.of(DayOfWeek.MONDAY))
-                .withIndex(4)
-                .build();
-        final Session sessionToBeAdded = session()
-                .withCourtCentreId(courtCentreId)
-                .withCourtRoomId(courtRoomId)
-                .withSessionType("AM")
-                .withBusinessType(DVLA_2)
-                .withPanelType(ADULT_2)
-                .withRepeatDays(Set.of(DayOfWeek.MONDAY))
-                .withIndex(1)
-                .withSlotsOrDuration(60)
-                .build();
+        final Session sessionInList = new Session()
+                .courtCentreId(courtCentreId)
+                .courtRoomId(courtRoomId)
+                .sessionType("AM")
+                .businessType(DVLA_2)
+                .panel(ADULT_2)
+                .repeatDays(toRepeatDayStrings(Set.of(DayOfWeek.MONDAY)))
+                .index(4)
+                ;
+        final Session sessionToBeAdded = new Session()
+                .courtCentreId(courtCentreId)
+                .courtRoomId(courtRoomId)
+                .sessionType("AM")
+                .businessType(DVLA_2)
+                .panel(ADULT_2)
+                .repeatDays(toRepeatDayStrings(Set.of(DayOfWeek.MONDAY)))
+                .index(1)
+                .duration(60)
+                ;
 
         final LocalDate futureDate = LocalDate.now().plusDays(1);
         when(createSessionRequestParam.getRepeatPattern()).thenReturn(repeatPattern);
         when(createSessionRequestParam.getSessionToBeAdded()).thenReturn(sessionToBeAdded);
-        when(createSessionRequestParam.getSessionList()).thenReturn(List.of(sessionInList));
-        when(repeatPattern.getStartDate()).thenReturn(futureDate);
-        when(repeatPattern.getEndDate()).thenReturn(futureDate.plusMonths(1));
-        when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.EVERY_MONTH);
+        when(createSessionRequestParam.getSessions()).thenReturn(List.of(sessionInList));
+        when(repeatPattern.getStartDate()).thenReturn(futureDate.toString());
+        when(repeatPattern.getEndDate()).thenReturn(futureDate.plusMonths(1).toString());
+        when(repeatPattern.getFrequency()).thenReturn(EVERY_MONTH_2);
         when(repeatPattern.getRepeatFor()).thenReturn(1);
 
-        final BusinessType businessType = new BusinessType(DVLA_2, 1, DESCRIPTION, CATEGORY, true, false, MAGISTRATES.getJurisdiction());
+        final BusinessType businessType = new BusinessType().id(DVLA_2).seqNum(1).typeCode(DESCRIPTION).typeDescription(CATEGORY).slot(true).duration(false).jurisdiction(MAGISTRATES.getJurisdiction());
         when(referenceDataCache.getRotaBusinessTypeByCode(DVLA_2)).thenReturn(Optional.of(businessType));
         stubMagCourtRoomAvailable(courtRoomId);
         when(sessionsService.validateSessionIntegrity(any(Session.class), any(LocalDate.class), any(LocalDate.class), any(Integer.class), any(RepeatFrequency.class)))
@@ -448,36 +453,36 @@ class SessionsApiValidatorTest {
     @Test
     void shouldNotReturnErrorWhenMonthlyDifferentDaySameIndexInPayload() {
         // Monthly: different day, same index = allowed (e.g. 4th Friday and 4th Monday)
-        final Session sessionInList = session()
-                .withCourtCentreId(courtCentreId)
-                .withCourtRoomId(courtRoomId)
-                .withSessionType("AM")
-                .withBusinessType(DVLA_2)
-                .withPanelType(ADULT_2)
-                .withRepeatDays(Set.of(DayOfWeek.FRIDAY))
-                .withIndex(4)
-                .build();
-        final Session sessionToBeAdded = session()
-                .withCourtCentreId(courtCentreId)
-                .withCourtRoomId(courtRoomId)
-                .withSessionType("AM")
-                .withBusinessType(DVLA_2)
-                .withPanelType(ADULT_2)
-                .withRepeatDays(Set.of(DayOfWeek.MONDAY))
-                .withIndex(4)
-                .withSlotsOrDuration(60)
-                .build();
+        final Session sessionInList = new Session()
+                .courtCentreId(courtCentreId)
+                .courtRoomId(courtRoomId)
+                .sessionType("AM")
+                .businessType(DVLA_2)
+                .panel(ADULT_2)
+                .repeatDays(toRepeatDayStrings(Set.of(DayOfWeek.FRIDAY)))
+                .index(4)
+                ;
+        final Session sessionToBeAdded = new Session()
+                .courtCentreId(courtCentreId)
+                .courtRoomId(courtRoomId)
+                .sessionType("AM")
+                .businessType(DVLA_2)
+                .panel(ADULT_2)
+                .repeatDays(toRepeatDayStrings(Set.of(DayOfWeek.MONDAY)))
+                .index(4)
+                .duration(60)
+                ;
 
         final LocalDate futureDate = LocalDate.now().plusDays(1);
         when(createSessionRequestParam.getRepeatPattern()).thenReturn(repeatPattern);
         when(createSessionRequestParam.getSessionToBeAdded()).thenReturn(sessionToBeAdded);
-        when(createSessionRequestParam.getSessionList()).thenReturn(List.of(sessionInList));
-        when(repeatPattern.getStartDate()).thenReturn(futureDate);
-        when(repeatPattern.getEndDate()).thenReturn(futureDate.plusMonths(1));
-        when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.EVERY_MONTH);
+        when(createSessionRequestParam.getSessions()).thenReturn(List.of(sessionInList));
+        when(repeatPattern.getStartDate()).thenReturn(futureDate.toString());
+        when(repeatPattern.getEndDate()).thenReturn(futureDate.plusMonths(1).toString());
+        when(repeatPattern.getFrequency()).thenReturn(EVERY_MONTH_2);
         when(repeatPattern.getRepeatFor()).thenReturn(1);
 
-        final BusinessType businessType = new BusinessType(DVLA_2, 1, DESCRIPTION, CATEGORY, true, false, MAGISTRATES.getJurisdiction());
+        final BusinessType businessType = new BusinessType().id(DVLA_2).seqNum(1).typeCode(DESCRIPTION).typeDescription(CATEGORY).slot(true).duration(false).jurisdiction(MAGISTRATES.getJurisdiction());
         when(referenceDataCache.getRotaBusinessTypeByCode(DVLA_2)).thenReturn(Optional.of(businessType));
         stubMagCourtRoomAvailable(courtRoomId);
         when(sessionsService.validateSessionIntegrity(any(Session.class), any(LocalDate.class), any(LocalDate.class), any(Integer.class), any(RepeatFrequency.class)))
@@ -493,12 +498,12 @@ class SessionsApiValidatorTest {
         final Session session = createAMSession();
 
         when(createSessionRequestParam.getRepeatPattern()).thenReturn(repeatPattern);
-        when(createSessionRequestParam.getSessionList()).thenReturn(List.of(session));
-        when(repeatPattern.getStartDate()).thenReturn(futureDate);
+        when(createSessionRequestParam.getSessions()).thenReturn(List.of(session));
+        when(repeatPattern.getStartDate()).thenReturn(futureDate.toString());
         when(repeatPattern.getEndDate()).thenReturn(null);
-        when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
+        when(repeatPattern.getFrequency()).thenReturn(ONCE_2);
 
-        final BusinessType businessType = new BusinessType(DVLA_2, 1, DESCRIPTION, CATEGORY, true, false, MAGISTRATES.getJurisdiction());
+        final BusinessType businessType = new BusinessType().id(DVLA_2).seqNum(1).typeCode(DESCRIPTION).typeDescription(CATEGORY).slot(true).duration(false).jurisdiction(MAGISTRATES.getJurisdiction());
         when(referenceDataCache.getRotaBusinessTypeByCode(DVLA_2)).thenReturn(Optional.of(businessType));
         // Courtroom exists and belongs to the same court centre as the session
         stubMagCourtRoomAvailable(courtRoomId);
@@ -517,37 +522,37 @@ class SessionsApiValidatorTest {
         final LocalDate futureDate = LocalDate.now().plusDays(1);
         final String otherCourtCentreId = randomUUID().toString();
 
-        final Session session = session()
-                .withCourtCentreId(courtCentreId)
-                .withCourtRoomId(courtRoomId)
-                .withSessionType("AM")
-                .withBusinessType(DVLA_2)
-                .withPanelType(ADULT_2)
-                .withRepeatDays(Set.of(DayOfWeek.MONDAY))
-                .withJurisdiction(CROWN_2)
-                .withIsDraft(true)
-                .withSlotsOrDuration(60)
-                .build();
+        final Session session = new Session()
+                .courtCentreId(courtCentreId)
+                .courtRoomId(courtRoomId)
+                .sessionType("AM")
+                .businessType(DVLA_2)
+                .panel(ADULT_2)
+                .repeatDays(toRepeatDayStrings(Set.of(DayOfWeek.MONDAY)))
+                .jurisdiction(CROWN_2)
+                .isDraft(true)
+                .duration(60)
+                ;
 
         when(createSessionRequestParam.getRepeatPattern()).thenReturn(repeatPattern);
-        when(createSessionRequestParam.getSessionList()).thenReturn(List.of(session));
-        when(repeatPattern.getStartDate()).thenReturn(futureDate);
+        when(createSessionRequestParam.getSessions()).thenReturn(List.of(session));
+        when(repeatPattern.getStartDate()).thenReturn(futureDate.toString());
         when(repeatPattern.getEndDate()).thenReturn(null);
-        when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
+        when(repeatPattern.getFrequency()).thenReturn(ONCE_2);
 
-        final BusinessType businessType = new BusinessType(DVLA_2, 1, DESCRIPTION, CATEGORY, true, false, CROWN_2);
+        final BusinessType businessType = new BusinessType().id(DVLA_2).seqNum(1).typeCode(DESCRIPTION).typeDescription(CATEGORY).slot(true).duration(false).jurisdiction(CROWN_2);
         when(referenceDataCache.getRotaBusinessTypeByCode(DVLA_2)).thenReturn(Optional.of(businessType));
 
-        final CourtRoom membershipInOtherCentre = CourtRoom.CourtRoomBuilder.aCourtRoom()
-                .withCourtRoomId(courtRoomId)
-                .withOucodeUUID(otherCourtCentreId)
-                .withOucode("C")
-                .build();
-        final CourtRoom membershipInSessionCentre = CourtRoom.CourtRoomBuilder.aCourtRoom()
-                .withCourtRoomId(courtRoomId)
-                .withOucodeUUID(courtCentreId)
-                .withOucode("C")
-                .build();
+        final CourtRoom membershipInOtherCentre = new CourtRoom()
+                .courtroomId(courtRoomId)
+                .oucodeUUID(otherCourtCentreId)
+                .oucode("C")
+                ;
+        final CourtRoom membershipInSessionCentre = new CourtRoom()
+                .courtroomId(courtRoomId)
+                .oucodeUUID(courtCentreId)
+                .oucode("C")
+                ;
         when(referenceDataCache.getCpCourtRoomsByCourtRoomId(courtRoomId))
                 .thenReturn(List.of(membershipInOtherCentre, membershipInSessionCentre));
 
@@ -559,24 +564,24 @@ class SessionsApiValidatorTest {
     @Test
     void shouldReturnErrorWhenBusinessTypeJurisdictionMismatch() {
         final LocalDate futureDate = LocalDate.now().plusDays(1);
-        final Session session = session()
-                .withCourtCentreId(courtCentreId)
-                .withCourtRoomId(courtRoomId)
-                .withSessionType("AM")
-                .withBusinessType(DVLA_2)
-                .withPanelType(ADULT_2)
-                .withRepeatDays(Set.of(DayOfWeek.MONDAY))
-                .withJurisdiction(MAGISTRATES.getJurisdiction())
-                .withSlotsOrDuration(60)
-                .build();
+        final Session session = new Session()
+                .courtCentreId(courtCentreId)
+                .courtRoomId(courtRoomId)
+                .sessionType("AM")
+                .businessType(DVLA_2)
+                .panel(ADULT_2)
+                .repeatDays(toRepeatDayStrings(Set.of(DayOfWeek.MONDAY)))
+                .jurisdiction(MAGISTRATES.getJurisdiction())
+                .duration(60)
+                ;
 
         when(createSessionRequestParam.getRepeatPattern()).thenReturn(repeatPattern);
-        when(createSessionRequestParam.getSessionList()).thenReturn(List.of(session));
-        when(repeatPattern.getStartDate()).thenReturn(futureDate);
+        when(createSessionRequestParam.getSessions()).thenReturn(List.of(session));
+        when(repeatPattern.getStartDate()).thenReturn(futureDate.toString());
         when(repeatPattern.getEndDate()).thenReturn(null);
-        when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
+        when(repeatPattern.getFrequency()).thenReturn(ONCE_2);
 
-        final BusinessType businessType = new BusinessType(DVLA_2, 1, DESCRIPTION, CATEGORY, true, false, CROWN_2);
+        final BusinessType businessType = new BusinessType().id(DVLA_2).seqNum(1).typeCode(DESCRIPTION).typeDescription(CATEGORY).slot(true).duration(false).jurisdiction(CROWN_2);
         when(referenceDataCache.getRotaBusinessTypeByCode(DVLA_2)).thenReturn(Optional.of(businessType));
 
         final JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam);
@@ -587,24 +592,24 @@ class SessionsApiValidatorTest {
     @Test
     void shouldReturnErrorWhenDurationBasedBusinessTypeHasNoDuration() {
         final LocalDate futureDate = LocalDate.now().plusDays(1);
-        final Session session = session()
-                .withCourtCentreId(courtCentreId)
-                .withCourtRoomId(courtRoomId)
-                .withSessionType("AM")
-                .withBusinessType(TRL_2)
-                .withPanelType(ADULT_2)
-                .withRepeatDays(Set.of(DayOfWeek.MONDAY))
-                .withJurisdiction(MAGISTRATES.getJurisdiction())
-                .withSlotsOrDuration(null)
-                .build();
+        final Session session = new Session()
+                .courtCentreId(courtCentreId)
+                .courtRoomId(courtRoomId)
+                .sessionType("AM")
+                .businessType(TRL_2)
+                .panel(ADULT_2)
+                .repeatDays(toRepeatDayStrings(Set.of(DayOfWeek.MONDAY)))
+                .jurisdiction(MAGISTRATES.getJurisdiction())
+                .duration(null)
+                ;
 
         when(createSessionRequestParam.getRepeatPattern()).thenReturn(repeatPattern);
-        when(createSessionRequestParam.getSessionList()).thenReturn(List.of(session));
-        when(repeatPattern.getStartDate()).thenReturn(futureDate);
+        when(createSessionRequestParam.getSessions()).thenReturn(List.of(session));
+        when(repeatPattern.getStartDate()).thenReturn(futureDate.toString());
         when(repeatPattern.getEndDate()).thenReturn(null);
-        when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
+        when(repeatPattern.getFrequency()).thenReturn(ONCE_2);
 
-        final BusinessType businessType = new BusinessType(TRL_2, 1, DESCRIPTION, CATEGORY, false, true, MAGISTRATES_2);
+        final BusinessType businessType = new BusinessType().id(TRL_2).seqNum(1).typeCode(DESCRIPTION).typeDescription(CATEGORY).slot(false).duration(true).jurisdiction(MAGISTRATES_2);
         when(referenceDataCache.getRotaBusinessTypeByCode(TRL_2)).thenReturn(Optional.of(businessType));
         stubMagCourtRoomAvailable(courtRoomId);
         
@@ -616,24 +621,24 @@ class SessionsApiValidatorTest {
     @Test
     void shouldAcceptDurationZeroForDurationBasedBusinessTypeInAMSession() {
         final LocalDate futureDate = LocalDate.now().plusDays(1);
-        final Session session = session()
-                .withCourtCentreId(courtCentreId)
-                .withCourtRoomId(courtRoomId)
-                .withSessionType("AM")
-                .withBusinessType(TRL_2)
-                .withPanelType(ADULT_2)
-                .withRepeatDays(Set.of(DayOfWeek.MONDAY))
-                .withJurisdiction(MAGISTRATES.getJurisdiction())
-                .withSlotsOrDuration(0)
-                .build();
+        final Session session = new Session()
+                .courtCentreId(courtCentreId)
+                .courtRoomId(courtRoomId)
+                .sessionType("AM")
+                .businessType(TRL_2)
+                .panel(ADULT_2)
+                .repeatDays(toRepeatDayStrings(Set.of(DayOfWeek.MONDAY)))
+                .jurisdiction(MAGISTRATES.getJurisdiction())
+                .duration(0)
+                ;
 
         when(createSessionRequestParam.getRepeatPattern()).thenReturn(repeatPattern);
-        when(createSessionRequestParam.getSessionList()).thenReturn(List.of(session));
-        when(repeatPattern.getStartDate()).thenReturn(futureDate);
+        when(createSessionRequestParam.getSessions()).thenReturn(List.of(session));
+        when(repeatPattern.getStartDate()).thenReturn(futureDate.toString());
         when(repeatPattern.getEndDate()).thenReturn(null);
-        when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
+        when(repeatPattern.getFrequency()).thenReturn(ONCE_2);
 
-        final BusinessType businessType = new BusinessType(TRL_2, 1, DESCRIPTION, CATEGORY, false, true, MAGISTRATES_2);
+        final BusinessType businessType = new BusinessType().id(TRL_2).seqNum(1).typeCode(DESCRIPTION).typeDescription(CATEGORY).slot(false).duration(true).jurisdiction(MAGISTRATES_2);
         when(referenceDataCache.getRotaBusinessTypeByCode(TRL_2)).thenReturn(Optional.of(businessType));
         stubMagCourtRoomAvailable(courtRoomId);
 
@@ -645,24 +650,24 @@ class SessionsApiValidatorTest {
     @Test
     void shouldAcceptDurationZeroForDurationBasedBusinessTypeInPMSession() {
         final LocalDate futureDate = LocalDate.now().plusDays(1);
-        final Session session = session()
-                .withCourtCentreId(courtCentreId)
-                .withCourtRoomId(courtRoomId)
-                .withSessionType("PM")
-                .withBusinessType(TRL_2)
-                .withPanelType(ADULT_2)
-                .withRepeatDays(Set.of(DayOfWeek.MONDAY))
-                .withJurisdiction(MAGISTRATES.getJurisdiction())
-                .withSlotsOrDuration(0)
-                .build();
+        final Session session = new Session()
+                .courtCentreId(courtCentreId)
+                .courtRoomId(courtRoomId)
+                .sessionType("PM")
+                .businessType(TRL_2)
+                .panel(ADULT_2)
+                .repeatDays(toRepeatDayStrings(Set.of(DayOfWeek.MONDAY)))
+                .jurisdiction(MAGISTRATES.getJurisdiction())
+                .duration(0)
+                ;
 
         when(createSessionRequestParam.getRepeatPattern()).thenReturn(repeatPattern);
-        when(createSessionRequestParam.getSessionList()).thenReturn(List.of(session));
-        when(repeatPattern.getStartDate()).thenReturn(futureDate);
+        when(createSessionRequestParam.getSessions()).thenReturn(List.of(session));
+        when(repeatPattern.getStartDate()).thenReturn(futureDate.toString());
         when(repeatPattern.getEndDate()).thenReturn(null);
-        when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
+        when(repeatPattern.getFrequency()).thenReturn(ONCE_2);
 
-        final BusinessType businessType = new BusinessType(TRL_2, 1, DESCRIPTION, CATEGORY, false, true, MAGISTRATES_2);
+        final BusinessType businessType = new BusinessType().id(TRL_2).seqNum(1).typeCode(DESCRIPTION).typeDescription(CATEGORY).slot(false).duration(true).jurisdiction(MAGISTRATES_2);
         when(referenceDataCache.getRotaBusinessTypeByCode(TRL_2)).thenReturn(Optional.of(businessType));
         stubMagCourtRoomAvailable(courtRoomId);
 
@@ -674,25 +679,25 @@ class SessionsApiValidatorTest {
     @Test
     void shouldAcceptDurationZeroForDurationBasedBusinessTypeInAllDaySession() {
         final LocalDate futureDate = LocalDate.now().plusDays(1);
-        final Session session = session()
-                .withCourtCentreId(courtCentreId)
-                .withCourtRoomId(courtRoomId)
-                .withSessionType("AD")
-                .withBusinessType(TRL_2)
-                .withPanelType(ADULT_2)
-                .withRepeatDays(Set.of(DayOfWeek.MONDAY))
-                .withJurisdiction(MAGISTRATES.getJurisdiction())
-                .withSlotsOrDuration(0)
-                .withAllDaySplit(false)
-                .build();
+        final Session session = new Session()
+                .courtCentreId(courtCentreId)
+                .courtRoomId(courtRoomId)
+                .sessionType("AD")
+                .businessType(TRL_2)
+                .panel(ADULT_2)
+                .repeatDays(toRepeatDayStrings(Set.of(DayOfWeek.MONDAY)))
+                .jurisdiction(MAGISTRATES.getJurisdiction())
+                .duration(0)
+                .allDaySplit(false)
+                ;
 
         when(createSessionRequestParam.getRepeatPattern()).thenReturn(repeatPattern);
-        when(createSessionRequestParam.getSessionList()).thenReturn(List.of(session));
-        when(repeatPattern.getStartDate()).thenReturn(futureDate);
+        when(createSessionRequestParam.getSessions()).thenReturn(List.of(session));
+        when(repeatPattern.getStartDate()).thenReturn(futureDate.toString());
         when(repeatPattern.getEndDate()).thenReturn(null);
-        when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
+        when(repeatPattern.getFrequency()).thenReturn(ONCE_2);
 
-        final BusinessType businessType = new BusinessType(TRL_2, 1, DESCRIPTION, CATEGORY, false, true, MAGISTRATES_2);
+        final BusinessType businessType = new BusinessType().id(TRL_2).seqNum(1).typeCode(DESCRIPTION).typeDescription(CATEGORY).slot(false).duration(true).jurisdiction(MAGISTRATES_2);
         when(referenceDataCache.getRotaBusinessTypeByCode(TRL_2)).thenReturn(Optional.of(businessType));
         stubMagCourtRoomAvailable(courtRoomId);
 
@@ -707,12 +712,12 @@ class SessionsApiValidatorTest {
         final Session session = createAMSession();
 
         when(createSessionRequestParam.getRepeatPattern()).thenReturn(repeatPattern);
-        when(createSessionRequestParam.getSessionList()).thenReturn(List.of(session));
-        when(repeatPattern.getStartDate()).thenReturn(futureDate);
+        when(createSessionRequestParam.getSessions()).thenReturn(List.of(session));
+        when(repeatPattern.getStartDate()).thenReturn(futureDate.toString());
         when(repeatPattern.getEndDate()).thenReturn(null);
-        when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
+        when(repeatPattern.getFrequency()).thenReturn(ONCE_2);
 
-        final BusinessType businessType = new BusinessType(DVLA_2, 1, DESCRIPTION, CATEGORY, true, false, MAGISTRATES.getJurisdiction());
+        final BusinessType businessType = new BusinessType().id(DVLA_2).seqNum(1).typeCode(DESCRIPTION).typeDescription(CATEGORY).slot(true).duration(false).jurisdiction(MAGISTRATES.getJurisdiction());
         when(referenceDataCache.getRotaBusinessTypeByCode(DVLA_2)).thenReturn(Optional.of(businessType));
         when(referenceDataCache.getCpCourtRoomsByCourtRoomId(courtRoomId)).thenReturn(List.of());
 
@@ -726,32 +731,32 @@ class SessionsApiValidatorTest {
         final LocalDate futureDate = LocalDate.now().plusDays(1);
         final String mismatchedCourtCentreId = randomUUID().toString();
 
-        final Session session = session()
-                .withCourtCentreId(mismatchedCourtCentreId)
-                .withCourtRoomId(courtRoomId)
-                .withSessionType("AM")
-                .withBusinessType(DVLA_2)
-                .withPanelType(ADULT_2)
-                .withRepeatDays(Set.of(DayOfWeek.MONDAY))
-                .withJurisdiction(MAGISTRATES.getJurisdiction())
-                .withSlotsOrDuration(20)
-                .build();
+        final Session session = new Session()
+                .courtCentreId(mismatchedCourtCentreId)
+                .courtRoomId(courtRoomId)
+                .sessionType("AM")
+                .businessType(DVLA_2)
+                .panel(ADULT_2)
+                .repeatDays(toRepeatDayStrings(Set.of(DayOfWeek.MONDAY)))
+                .jurisdiction(MAGISTRATES.getJurisdiction())
+                .duration(20)
+                ;
 
         when(createSessionRequestParam.getRepeatPattern()).thenReturn(repeatPattern);
-        when(createSessionRequestParam.getSessionList()).thenReturn(List.of(session));
-        when(repeatPattern.getStartDate()).thenReturn(futureDate);
+        when(createSessionRequestParam.getSessions()).thenReturn(List.of(session));
+        when(repeatPattern.getStartDate()).thenReturn(futureDate.toString());
         when(repeatPattern.getEndDate()).thenReturn(null);
-        when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
+        when(repeatPattern.getFrequency()).thenReturn(ONCE_2);
 
-        final BusinessType businessType = new BusinessType(DVLA_2, 1, DESCRIPTION, CATEGORY, true, false, MAGISTRATES.getJurisdiction());
+        final BusinessType businessType = new BusinessType().id(DVLA_2).seqNum(1).typeCode(DESCRIPTION).typeDescription(CATEGORY).slot(true).duration(false).jurisdiction(MAGISTRATES.getJurisdiction());
         when(referenceDataCache.getRotaBusinessTypeByCode(DVLA_2)).thenReturn(Optional.of(businessType));
 
         // Courtroom exists in CP but belongs to a different court centre (oucode B for MAGISTRATES); fails at step 3 before Rota is called
-        final CourtRoom courtRoom = CourtRoom.CourtRoomBuilder.aCourtRoom()
-                .withCourtRoomId(courtRoomId)
-                .withOucodeUUID(courtCentreId) // different from mismatchedCourtCentreId
-                .withOucode("B")
-                .build();
+        final CourtRoom courtRoom = new CourtRoom()
+                .courtroomId(courtRoomId)
+                .oucodeUUID(courtCentreId) // different from mismatchedCourtCentreId
+                .oucode("B")
+                ;
         when(referenceDataCache.getCpCourtRoomsByCourtRoomId(courtRoomId)).thenReturn(List.of(courtRoom));
 
         final JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam);
@@ -763,25 +768,25 @@ class SessionsApiValidatorTest {
     @Test
     void shouldReturnErrorWhenCpCourtRoomNotFoundForCrown() {
         final LocalDate futureDate = LocalDate.now().plusDays(1);
-        final Session session = session()
-                .withCourtCentreId(courtCentreId)
-                .withCourtRoomId(courtRoomId)
-                .withSessionType("AM")
-                .withBusinessType(DVLA_2)
-                .withPanelType(ADULT_2)
-                .withRepeatDays(Set.of(DayOfWeek.MONDAY))
-                .withJurisdiction(CROWN_2)
-                .withIsDraft(true)
-                .withSlotsOrDuration(60)
-                .build();
+        final Session session = new Session()
+                .courtCentreId(courtCentreId)
+                .courtRoomId(courtRoomId)
+                .sessionType("AM")
+                .businessType(DVLA_2)
+                .panel(ADULT_2)
+                .repeatDays(toRepeatDayStrings(Set.of(DayOfWeek.MONDAY)))
+                .jurisdiction(CROWN_2)
+                .isDraft(true)
+                .duration(60)
+                ;
 
         when(createSessionRequestParam.getRepeatPattern()).thenReturn(repeatPattern);
-        when(createSessionRequestParam.getSessionList()).thenReturn(List.of(session));
-        when(repeatPattern.getStartDate()).thenReturn(futureDate);
+        when(createSessionRequestParam.getSessions()).thenReturn(List.of(session));
+        when(repeatPattern.getStartDate()).thenReturn(futureDate.toString());
         when(repeatPattern.getEndDate()).thenReturn(null);
-        when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
+        when(repeatPattern.getFrequency()).thenReturn(ONCE_2);
 
-        final BusinessType businessType = new BusinessType(DVLA_2, 1, DESCRIPTION, CATEGORY, true, false, CROWN_2);
+        final BusinessType businessType = new BusinessType().id(DVLA_2).seqNum(1).typeCode(DESCRIPTION).typeDescription(CATEGORY).slot(true).duration(false).jurisdiction(CROWN_2);
         when(referenceDataCache.getRotaBusinessTypeByCode(DVLA_2)).thenReturn(Optional.of(businessType));
         when(referenceDataCache.getCpCourtRoomsByCourtRoomId(courtRoomId)).thenReturn(List.of());
 
@@ -796,45 +801,45 @@ class SessionsApiValidatorTest {
         final String mismatchedCourtCentreId = randomUUID().toString();
 
         // Existing session (valid)
-        final Session existingSession = session()
-                .withCourtCentreId(courtCentreId)
-                .withCourtRoomId(courtRoomId)
-                .withSessionType("AM")
-                .withBusinessType(DVLA_2)
-                .withPanelType(ADULT_2)
-                .withRepeatDays(Set.of(DayOfWeek.MONDAY))
-                .withJurisdiction(MAGISTRATES.getJurisdiction())
-                .withSlotsOrDuration(20)
-                .build();
+        final Session existingSession = new Session()
+                .courtCentreId(courtCentreId)
+                .courtRoomId(courtRoomId)
+                .sessionType("AM")
+                .businessType(DVLA_2)
+                .panel(ADULT_2)
+                .repeatDays(toRepeatDayStrings(Set.of(DayOfWeek.MONDAY)))
+                .jurisdiction(MAGISTRATES.getJurisdiction())
+                .duration(20)
+                ;
 
         // Session to be added (invalid centre-room combination)
-        final Session sessionToBeAdded = session()
-                .withCourtCentreId(mismatchedCourtCentreId)
-                .withCourtRoomId(courtRoomId)
-                .withSessionType("PM")
-                .withBusinessType(DVLA_2)
-                .withPanelType(ADULT_2)
-                .withRepeatDays(Set.of(DayOfWeek.TUESDAY))
-                .withJurisdiction(MAGISTRATES.getJurisdiction())
-                .withSlotsOrDuration(20)
-                .build();
+        final Session sessionToBeAdded = new Session()
+                .courtCentreId(mismatchedCourtCentreId)
+                .courtRoomId(courtRoomId)
+                .sessionType("PM")
+                .businessType(DVLA_2)
+                .panel(ADULT_2)
+                .repeatDays(toRepeatDayStrings(Set.of(DayOfWeek.TUESDAY)))
+                .jurisdiction(MAGISTRATES.getJurisdiction())
+                .duration(20)
+                ;
 
         when(createSessionRequestParam.getRepeatPattern()).thenReturn(repeatPattern);
-        when(repeatPattern.getStartDate()).thenReturn(futureDate);
+        when(repeatPattern.getStartDate()).thenReturn(futureDate.toString());
         when(repeatPattern.getEndDate()).thenReturn(null);
-        when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
+        when(repeatPattern.getFrequency()).thenReturn(ONCE_2);
 
-        when(createSessionRequestParam.getSessionList()).thenReturn(List.of(existingSession));
+        when(createSessionRequestParam.getSessions()).thenReturn(List.of(existingSession));
         when(createSessionRequestParam.getSessionToBeAdded()).thenReturn(sessionToBeAdded);
 
-        final BusinessType businessType = new BusinessType(DVLA_2, 1, DESCRIPTION, CATEGORY, true, false, MAGISTRATES.getJurisdiction());
+        final BusinessType businessType = new BusinessType().id(DVLA_2).seqNum(1).typeCode(DESCRIPTION).typeDescription(CATEGORY).slot(true).duration(false).jurisdiction(MAGISTRATES.getJurisdiction());
         when(referenceDataCache.getRotaBusinessTypeByCode(DVLA_2)).thenReturn(Optional.of(businessType));
 
-        final CourtRoom courtRoom = CourtRoom.CourtRoomBuilder.aCourtRoom()
-                .withCourtRoomId(courtRoomId)
-                .withOucodeUUID(courtCentreId) // valid for existing, invalid for sessionToBeAdded
-                .withOucode("B")
-                .build();
+        final CourtRoom courtRoom = new CourtRoom()
+                .courtroomId(courtRoomId)
+                .oucodeUUID(courtCentreId) // valid for existing, invalid for sessionToBeAdded
+                .oucode("B")
+                ;
         when(referenceDataCache.getCpCourtRoomsByCourtRoomId(courtRoomId)).thenReturn(List.of(courtRoom));
 
         final JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam);
@@ -845,25 +850,25 @@ class SessionsApiValidatorTest {
     @Test
     void shouldReturnErrorWhenCrownSessionUsesMagistratesCourtRoom() {
         final LocalDate futureDate = LocalDate.now().plusDays(1);
-        final Session session = session()
-                .withCourtCentreId(courtCentreId)
-                .withCourtRoomId(courtRoomId)
-                .withSessionType("AM")
-                .withBusinessType(DVLA_2)
-                .withPanelType(ADULT_2)
-                .withRepeatDays(Set.of(DayOfWeek.MONDAY))
-                .withJurisdiction(CROWN_2)
-                .withIsDraft(true)
-                .withSlotsOrDuration(60)
-                .build();
+        final Session session = new Session()
+                .courtCentreId(courtCentreId)
+                .courtRoomId(courtRoomId)
+                .sessionType("AM")
+                .businessType(DVLA_2)
+                .panel(ADULT_2)
+                .repeatDays(toRepeatDayStrings(Set.of(DayOfWeek.MONDAY)))
+                .jurisdiction(CROWN_2)
+                .isDraft(true)
+                .duration(60)
+                ;
 
         when(createSessionRequestParam.getRepeatPattern()).thenReturn(repeatPattern);
-        when(createSessionRequestParam.getSessionList()).thenReturn(List.of(session));
-        when(repeatPattern.getStartDate()).thenReturn(futureDate);
+        when(createSessionRequestParam.getSessions()).thenReturn(List.of(session));
+        when(repeatPattern.getStartDate()).thenReturn(futureDate.toString());
         when(repeatPattern.getEndDate()).thenReturn(null);
-        when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
+        when(repeatPattern.getFrequency()).thenReturn(ONCE_2);
 
-        final BusinessType businessType = new BusinessType(DVLA_2, 1, DESCRIPTION, CATEGORY, true, false, CROWN_2);
+        final BusinessType businessType = new BusinessType().id(DVLA_2).seqNum(1).typeCode(DESCRIPTION).typeDescription(CATEGORY).slot(true).duration(false).jurisdiction(CROWN_2);
         when(referenceDataCache.getRotaBusinessTypeByCode(DVLA_2)).thenReturn(Optional.of(businessType));
         // For CROWN, courtroom must exist in CP; not found returns "Courtroom does not exist"
         when(referenceDataCache.getCpCourtRoomsByCourtRoomId(courtRoomId)).thenReturn(List.of());
@@ -876,33 +881,33 @@ class SessionsApiValidatorTest {
     @Test
     void shouldReturnErrorWhenMagistratesSessionUsesCrownCourtRoom() {
         final LocalDate futureDate = LocalDate.now().plusDays(1);
-        final Session session = session()
-                .withCourtCentreId(courtCentreId)
-                .withCourtRoomId(courtRoomId)
-                .withSessionType("AM")
-                .withBusinessType(DVLA_2)
-                .withPanelType(ADULT_2)
-                .withRepeatDays(Set.of(DayOfWeek.MONDAY))
-                .withJurisdiction(MAGISTRATES.getJurisdiction())
-                .withSlotsOrDuration(20)
-                .build();
+        final Session session = new Session()
+                .courtCentreId(courtCentreId)
+                .courtRoomId(courtRoomId)
+                .sessionType("AM")
+                .businessType(DVLA_2)
+                .panel(ADULT_2)
+                .repeatDays(toRepeatDayStrings(Set.of(DayOfWeek.MONDAY)))
+                .jurisdiction(MAGISTRATES.getJurisdiction())
+                .duration(20)
+                ;
 
         when(createSessionRequestParam.getRepeatPattern()).thenReturn(repeatPattern);
-        when(createSessionRequestParam.getSessionList()).thenReturn(List.of(session));
-        when(repeatPattern.getStartDate()).thenReturn(futureDate);
+        when(createSessionRequestParam.getSessions()).thenReturn(List.of(session));
+        when(repeatPattern.getStartDate()).thenReturn(futureDate.toString());
         when(repeatPattern.getEndDate()).thenReturn(null);
-        when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
+        when(repeatPattern.getFrequency()).thenReturn(ONCE_2);
 
-        final BusinessType businessType = new BusinessType(DVLA_2, 1, DESCRIPTION, CATEGORY, true, false, MAGISTRATES.getJurisdiction());
+        final BusinessType businessType = new BusinessType().id(DVLA_2).seqNum(1).typeCode(DESCRIPTION).typeDescription(CATEGORY).slot(true).duration(false).jurisdiction(MAGISTRATES.getJurisdiction());
         when(referenceDataCache.getRotaBusinessTypeByCode(DVLA_2)).thenReturn(Optional.of(businessType));
         
         // Courtroom not found in Rota (MAGISTRATES) but found in CP (CROWN) - jurisdiction mismatch
         when(referenceDataCache.getRotaCourtRoomByCourtRoomId(courtRoomId)).thenReturn(Optional.empty());
         
-        final CourtRoom cpCourtRoom = CourtRoom.CourtRoomBuilder.aCourtRoom()
-                .withCourtRoomId(courtRoomId)
-                .withOucodeUUID(courtCentreId)
-                .build();
+        final CourtRoom cpCourtRoom = new CourtRoom()
+                .courtroomId(courtRoomId)
+                .oucodeUUID(courtCentreId)
+                ;
         when(referenceDataCache.getCpCourtRoomsByCourtRoomId(courtRoomId)).thenReturn(List.of(cpCourtRoom));
 
         final JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam);
@@ -919,34 +924,34 @@ class SessionsApiValidatorTest {
     void shouldAllowSessionsWithSameBusinessTypeCourtRoomAndDateButDifferentSessionType() {
         final LocalDate futureDate = LocalDate.now().plusDays(1);
 
-        final Session sessionInList = session()
-                .withCourtCentreId(courtCentreId)
-                .withCourtRoomId(courtRoomId)
-                .withSessionType("AM")
-                .withBusinessType(DVLA_2)
-                .withRepeatDays(Set.of(DayOfWeek.MONDAY))
-                .withIsDraft(true)
-                .withJurisdiction(CROWN_2)
-                .build();
-        final Session sessionToBeAdded = session()
-                .withCourtCentreId(courtCentreId)
-                .withCourtRoomId(courtRoomId)
-                .withSessionType("PM")
-                .withBusinessType(DVLA_2)
-                .withRepeatDays(Set.of(DayOfWeek.MONDAY))
-                .withIsDraft(true)
-                .withJurisdiction(CROWN_2)
-                .withSlotsOrDuration(60)
-                .build();
+        final Session sessionInList = new Session()
+                .courtCentreId(courtCentreId)
+                .courtRoomId(courtRoomId)
+                .sessionType("AM")
+                .businessType(DVLA_2)
+                .repeatDays(toRepeatDayStrings(Set.of(DayOfWeek.MONDAY)))
+                .isDraft(true)
+                .jurisdiction(CROWN_2)
+                ;
+        final Session sessionToBeAdded = new Session()
+                .courtCentreId(courtCentreId)
+                .courtRoomId(courtRoomId)
+                .sessionType("PM")
+                .businessType(DVLA_2)
+                .repeatDays(toRepeatDayStrings(Set.of(DayOfWeek.MONDAY)))
+                .isDraft(true)
+                .jurisdiction(CROWN_2)
+                .duration(60)
+                ;
 
         when(createSessionRequestParam.getRepeatPattern()).thenReturn(repeatPattern);
         when(createSessionRequestParam.getSessionToBeAdded()).thenReturn(sessionToBeAdded);
-        when(createSessionRequestParam.getSessionList()).thenReturn(List.of(sessionInList));
-        when(repeatPattern.getStartDate()).thenReturn(futureDate);
+        when(createSessionRequestParam.getSessions()).thenReturn(List.of(sessionInList));
+        when(repeatPattern.getStartDate()).thenReturn(futureDate.toString());
         when(repeatPattern.getEndDate()).thenReturn(null);
-        when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
+        when(repeatPattern.getFrequency()).thenReturn(ONCE_2);
 
-        final BusinessType businessType = new BusinessType(DVLA_2, 1, DESCRIPTION, CATEGORY, true, false, CROWN_2);
+        final BusinessType businessType = new BusinessType().id(DVLA_2).seqNum(1).typeCode(DESCRIPTION).typeDescription(CATEGORY).slot(true).duration(false).jurisdiction(CROWN_2);
         when(referenceDataCache.getRotaBusinessTypeByCode(DVLA_2)).thenReturn(Optional.of(businessType));
         stubCrownCourtRoomAvailable(courtRoomId);
         lenient().when(sessionsService.validateSessionIntegrity(any(Session.class), any(LocalDate.class), nullable(LocalDate.class), nullable(Integer.class), any(RepeatFrequency.class)))
@@ -961,31 +966,31 @@ class SessionsApiValidatorTest {
     void shouldReturnErrorWhenTwoDraftSessionsHaveSameBusinessTypeCourtRoomAndDate() {
         final LocalDate futureDate = LocalDate.now().plusDays(1);
 
-        final Session draftSession = session()
-                .withCourtCentreId(courtCentreId)
-                .withCourtRoomId(courtRoomId)
-                .withSessionType("AM")
-                .withBusinessType(DVLA_2)
-                .withRepeatDays(Set.of(DayOfWeek.MONDAY))
-                .withIsDraft(true)
-                .withJurisdiction(CROWN_2)
-                .build();
-        final Session sessionToBeAdded = session()
-                .withCourtCentreId(courtCentreId)
-                .withCourtRoomId(courtRoomId)
-                .withSessionType("AM")
-                .withBusinessType(DVLA_2)
-                .withRepeatDays(Set.of(DayOfWeek.MONDAY))
-                .withIsDraft(true)
-                .withJurisdiction(CROWN_2)
-                .build();
+        final Session draftSession = new Session()
+                .courtCentreId(courtCentreId)
+                .courtRoomId(courtRoomId)
+                .sessionType("AM")
+                .businessType(DVLA_2)
+                .repeatDays(toRepeatDayStrings(Set.of(DayOfWeek.MONDAY)))
+                .isDraft(true)
+                .jurisdiction(CROWN_2)
+                ;
+        final Session sessionToBeAdded = new Session()
+                .courtCentreId(courtCentreId)
+                .courtRoomId(courtRoomId)
+                .sessionType("AM")
+                .businessType(DVLA_2)
+                .repeatDays(toRepeatDayStrings(Set.of(DayOfWeek.MONDAY)))
+                .isDraft(true)
+                .jurisdiction(CROWN_2)
+                ;
 
         when(createSessionRequestParam.getRepeatPattern()).thenReturn(repeatPattern);
         when(createSessionRequestParam.getSessionToBeAdded()).thenReturn(sessionToBeAdded);
-        when(createSessionRequestParam.getSessionList()).thenReturn(List.of(draftSession));
-        when(repeatPattern.getStartDate()).thenReturn(futureDate);
+        when(createSessionRequestParam.getSessions()).thenReturn(List.of(draftSession));
+        when(repeatPattern.getStartDate()).thenReturn(futureDate.toString());
         when(repeatPattern.getEndDate()).thenReturn(null);
-        when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
+        when(repeatPattern.getFrequency()).thenReturn(ONCE_2);
 
         final JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam);
 
@@ -996,35 +1001,106 @@ class SessionsApiValidatorTest {
     void shouldReturnErrorWhenTwoFinalSessionsHaveSameBusinessTypeCourtRoomAndDate() {
         final LocalDate futureDate = LocalDate.now().plusDays(1);
 
-        final Session finalSession = session()
-                .withCourtCentreId(courtCentreId)
-                .withCourtRoomId(courtRoomId)
-                .withSessionType("AM")
-                .withBusinessType(DVLA_2)
-                .withRepeatDays(Set.of(DayOfWeek.MONDAY))
-                .withIsDraft(false)
-                .withJurisdiction(CROWN_2)
-                .build();
-        final Session sessionToBeAdded = session()
-                .withCourtCentreId(courtCentreId)
-                .withCourtRoomId(courtRoomId)
-                .withSessionType("AM")
-                .withBusinessType(DVLA_2)
-                .withRepeatDays(Set.of(DayOfWeek.MONDAY))
-                .withIsDraft(false)
-                .withJurisdiction(CROWN_2)
-                .build();
+        final Session finalSession = new Session()
+                .courtCentreId(courtCentreId)
+                .courtRoomId(courtRoomId)
+                .sessionType("AM")
+                .businessType(DVLA_2)
+                .repeatDays(toRepeatDayStrings(Set.of(DayOfWeek.MONDAY)))
+                .isDraft(false)
+                .jurisdiction(CROWN_2)
+                ;
+        final Session sessionToBeAdded = new Session()
+                .courtCentreId(courtCentreId)
+                .courtRoomId(courtRoomId)
+                .sessionType("AM")
+                .businessType(DVLA_2)
+                .repeatDays(toRepeatDayStrings(Set.of(DayOfWeek.MONDAY)))
+                .isDraft(false)
+                .jurisdiction(CROWN_2)
+                ;
 
         when(createSessionRequestParam.getRepeatPattern()).thenReturn(repeatPattern);
         when(createSessionRequestParam.getSessionToBeAdded()).thenReturn(sessionToBeAdded);
-        when(createSessionRequestParam.getSessionList()).thenReturn(List.of(finalSession));
-        when(repeatPattern.getStartDate()).thenReturn(futureDate);
+        when(createSessionRequestParam.getSessions()).thenReturn(List.of(finalSession));
+        when(repeatPattern.getStartDate()).thenReturn(futureDate.toString());
         when(repeatPattern.getEndDate()).thenReturn(null);
-        when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
+        when(repeatPattern.getFrequency()).thenReturn(ONCE_2);
 
         final JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam);
 
         assertEquals(SESSION_TO_BE_ADDED_HAS_A_DUPLICATE, result.getString(ERROR_MESSAGE));
+    }
+
+    /**
+     * A session without isDraft is stored as final, so inside the payload it has to clash with an
+     * explicit isDraft=false session the same way it would with the stored row.
+     */
+    @ParameterizedTest
+    @CsvSource(value = {"omitted, false", "false, omitted"}, nullValues = "omitted")
+    void shouldReturnErrorWhenSessionWithoutIsDraftDuplicatesAFinalSessionInPayload(final Boolean sessionInListIsDraft,
+                                                                                    final Boolean sessionToBeAddedIsDraft) {
+        final LocalDate futureDate = LocalDate.now().plusDays(1);
+
+        final Session sessionInList = createAMSession()
+                .jurisdiction(MAGISTRATES_2)
+                .isDraft(sessionInListIsDraft);
+        final Session sessionToBeAdded = createAMSession()
+                .jurisdiction(MAGISTRATES_2)
+                .isDraft(sessionToBeAddedIsDraft);
+
+        when(createSessionRequestParam.getRepeatPattern()).thenReturn(repeatPattern);
+        when(createSessionRequestParam.getSessionToBeAdded()).thenReturn(sessionToBeAdded);
+        when(createSessionRequestParam.getSessions()).thenReturn(List.of(sessionInList));
+        when(repeatPattern.getStartDate()).thenReturn(futureDate.toString());
+        when(repeatPattern.getEndDate()).thenReturn(null);
+        when(repeatPattern.getFrequency()).thenReturn(ONCE_2);
+
+        final JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam);
+
+        assertEquals(SESSION_TO_BE_ADDED_HAS_A_DUPLICATE, result.getString(ERROR_MESSAGE));
+    }
+
+    @Test
+    void shouldAllowDraftAndFinalSessionsWithSameSessionTypeOnTheSameDayInPayload() {
+        final LocalDate futureDate = LocalDate.now().plusDays(1);
+
+        final Session draftSession = new Session()
+                .courtCentreId(courtCentreId)
+                .courtRoomId(courtRoomId)
+                .sessionType("AM")
+                .businessType(DVLA_2)
+                .repeatDays(toRepeatDayStrings(Set.of(DayOfWeek.MONDAY)))
+                .isDraft(true)
+                .jurisdiction(CROWN_2)
+                ;
+        final Session sessionToBeAdded = new Session()
+                .courtCentreId(courtCentreId)
+                .courtRoomId(courtRoomId)
+                .sessionType("AM")
+                .businessType(DVLA_2)
+                .repeatDays(toRepeatDayStrings(Set.of(DayOfWeek.MONDAY)))
+                .isDraft(false)
+                .jurisdiction(CROWN_2)
+                .duration(60)
+                ;
+
+        when(createSessionRequestParam.getRepeatPattern()).thenReturn(repeatPattern);
+        when(createSessionRequestParam.getSessionToBeAdded()).thenReturn(sessionToBeAdded);
+        when(createSessionRequestParam.getSessions()).thenReturn(List.of(draftSession));
+        when(repeatPattern.getStartDate()).thenReturn(futureDate.toString());
+        when(repeatPattern.getEndDate()).thenReturn(null);
+        when(repeatPattern.getFrequency()).thenReturn(ONCE_2);
+
+        final BusinessType businessType = new BusinessType().id(DVLA_2).seqNum(1).typeCode(DESCRIPTION).typeDescription(CATEGORY).slot(true).duration(false).jurisdiction(CROWN_2);
+        when(referenceDataCache.getRotaBusinessTypeByCode(DVLA_2)).thenReturn(Optional.of(businessType));
+        stubCrownCourtRoomAvailable(courtRoomId);
+        when(sessionsService.validateSessionIntegrity(any(Session.class), any(LocalDate.class), nullable(LocalDate.class), nullable(Integer.class), any(RepeatFrequency.class)))
+                .thenReturn(EMPTY_JSON_OBJECT);
+
+        final JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam);
+
+        assertEquals(EMPTY_JSON_OBJECT, result);
     }
 
     private Session createAMSession() {
@@ -1035,15 +1111,19 @@ class SessionsApiValidatorTest {
         return createSession("PM", DVLA_2, ADULT_2);
     }
 
+    private static List<String> toRepeatDayStrings(final Set<DayOfWeek> days) {
+        return days.stream().map(DayOfWeek::name).collect(java.util.stream.Collectors.toList());
+    }
+
     private Session createSession(final String sessionType, final String businessType, final String panelType) {
-        return session()
-                .withCourtCentreId(courtCentreId)
-                .withCourtRoomId(courtRoomId)
-                .withSessionType(sessionType)
-                .withBusinessType(businessType)
-                .withPanelType(panelType)
-                .withRepeatDays(Set.of(DayOfWeek.MONDAY))
-                .build();
+        return new Session()
+                .courtCentreId(courtCentreId)
+                .courtRoomId(courtRoomId)
+                .sessionType(sessionType)
+                .businessType(businessType)
+                .panel(panelType)
+                .repeatDays(toRepeatDayStrings(Set.of(DayOfWeek.MONDAY)))
+                ;
     }
 
     private Session createAMSessionWithTimes(final String sessionStartTime, final String sessionEndTime) {
@@ -1055,29 +1135,29 @@ class SessionsApiValidatorTest {
     }
 
     private Session createSessionWithTimes(final String sessionType, final String businessType, final String panelType, final String sessionStartTime, final String sessionEndTime) {
-        return session()
-                .withCourtCentreId(courtCentreId)
-                .withCourtRoomId(courtRoomId)
-                .withSessionType(sessionType)
-                .withBusinessType(businessType)
-                .withPanelType(panelType)
-                .withRepeatDays(Set.of(DayOfWeek.MONDAY))
-                .withSessionStartTime(sessionStartTime)
-                .withSessionEndTime(sessionEndTime)
-                .withSlotsOrDuration(60)
-                .build();
+        return new Session()
+                .courtCentreId(courtCentreId)
+                .courtRoomId(courtRoomId)
+                .sessionType(sessionType)
+                .businessType(businessType)
+                .panel(panelType)
+                .repeatDays(toRepeatDayStrings(Set.of(DayOfWeek.MONDAY)))
+                .sessionStartTime(sessionStartTime)
+                .sessionEndTime(sessionEndTime)
+                .duration(60)
+                ;
     }
 
     @Test
     void shouldReturnErrorWhenIsAllDaySplitIsTrueAndSessionTypeIsNotAllDay() {
-        final SessionValidationParams params = new SessionValidationParams(60, 60, true, "AM", BUSINESS_TYPE_2, null, null, null, null);
+        final SessionValidationParams params = new SessionValidationParams().maxDurationForMorning(60).maxDurationForAfternoon(60).allDaySplit(true).sessionType("AM").businessType(BUSINESS_TYPE_2).slotsOrDuration(null).courtScheduleId(null).sessionStartTime(null).sessionEndTime(null);
         final JsonObject result = sessionsApiValidator.validateSession(params, true);
-        assertEquals(ErrorMessages.SPLIT_ONLY_APPLIES_AD_SESSIONS, result.getString(ERROR_MESSAGE));
+        assertEquals(ErrorMessages.SPLIT_ONLY_APPLIES_AD_SESSIONS, result.getString("errorMessage"));
     }
 
     @Test
     void shouldReturnErrorWhenIsAllDaySplitIsTrueAndMaxDurationIsInvalid() {
-        final SessionValidationParams params = new SessionValidationParams(null, 60, true, ALL_DAY, BUSINESS_TYPE_2, null, null, VALUE_10_00, "17:00");
+        final SessionValidationParams params = new SessionValidationParams().maxDurationForMorning(null).maxDurationForAfternoon(60).allDaySplit(true).sessionType(ALL_DAY).businessType(BUSINESS_TYPE_2).slotsOrDuration(null).courtScheduleId(null).sessionStartTime(VALUE_10_00).sessionEndTime(VALUE_17_00);
 
         final JsonObject result = sessionsApiValidator.validateSession(params, true);
         assertEquals(ErrorMessages.MAX_DURATION_AM_PM_PROVIDED_FOR_ALL_DAY_SPLIT_SESSION, result.getString(ERROR_MESSAGE));
@@ -1086,10 +1166,10 @@ class SessionsApiValidatorTest {
     @Test
     void shouldReturnErrorWhenIsAllDaySplitIsTrueAndMaxSessionTimeBeforeSessionEndTime() {
         final String courtScheduleId = randomUUID().toString();
-        final SessionValidationParams params = new SessionValidationParams(0, 60, true, ALL_DAY, BUSINESS_TYPE_2, null, courtScheduleId, VALUE_10_00, "14:29");
+        final SessionValidationParams params = new SessionValidationParams().maxDurationForMorning(0).maxDurationForAfternoon(60).allDaySplit(true).sessionType(ALL_DAY).businessType(BUSINESS_TYPE_2).slotsOrDuration(null).courtScheduleId(courtScheduleId).sessionStartTime(VALUE_10_00).sessionEndTime("14:29");
 
         final LocalDate day = LocalDate.now().plusDays(3);
-        final Instant maxHearingStart = day.atTime(15, 0).atZone(EUROPE_LONDON).toInstant();
+        final OffsetDateTime maxHearingStart = day.atTime(15, 0).atZone(EUROPE_LONDON).toOffsetDateTime();
         final AllocatedListingEachBooked booked = mock(AllocatedListingEachBooked.class);
         when(booked.getHearingStartTime()).thenReturn(maxHearingStart);
 
@@ -1102,9 +1182,48 @@ class SessionsApiValidatorTest {
     }
 
     @Test
+    void shouldReturnBusinessTypeNotFoundWhenCreatingASessionOnAnUnknownBusinessType() {
+        final LocalDate futureDate = LocalDate.now().plusDays(1);
+        final Session session = new Session()
+                .courtCentreId(courtCentreId)
+                .courtRoomId(courtRoomId)
+                .sessionType("AM")
+                .businessType(RETIRED_BT)
+                .duration(20)
+                .panel(ADULT_2)
+                .repeatDays(toRepeatDayStrings(Set.of(DayOfWeek.MONDAY)))
+                .jurisdiction(CROWN_2)
+                .isDraft(false)
+                ;
+
+        when(createSessionRequestParam.getRepeatPattern()).thenReturn(repeatPattern);
+        when(repeatPattern.getStartDate()).thenReturn(futureDate.toString());
+        when(repeatPattern.getEndDate()).thenReturn(futureDate.toString());
+        when(repeatPattern.getFrequency()).thenReturn(ONCE_2);
+        when(createSessionRequestParam.getSessions()).thenReturn(List.of(session));
+        when(referenceDataCache.getRotaBusinessTypeByCode(eq(RETIRED_BT))).thenReturn(Optional.empty());
+
+        final JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam);
+
+        assertTrue(result.containsKey(ERROR_MESSAGE));
+        assertEquals(ErrorMessages.BUSINESS_TYPE_NOT_FOUND + RETIRED_BT, result.getString(ERROR_MESSAGE));
+    }
+
+    @Test
+    void shouldReturnBusinessTypeNotFoundWhenAnAllDaySplitNamesAnUnknownBusinessType() {
+        final SessionValidationParams params = new SessionValidationParams().maxDurationForMorning(60).maxDurationForAfternoon(60).allDaySplit(true).sessionType(ALL_DAY).businessType(RETIRED_BT).slotsOrDuration(null).courtScheduleId(null).sessionStartTime(VALUE_10_00).sessionEndTime(VALUE_17_00);
+        when(referenceDataCache.getRotaBusinessTypeByCode(RETIRED_BT)).thenReturn(Optional.empty());
+
+        final JsonObject result = sessionsApiValidator.validateSession(params, true);
+
+        assertTrue(result.containsKey(ERROR_MESSAGE));
+        assertEquals(ErrorMessages.BUSINESS_TYPE_NOT_FOUND + RETIRED_BT, result.getString(ERROR_MESSAGE));
+    }
+
+    @Test
     void shouldReturnErrorWhenIsAllDaySplitIsTrueAndBusinessTypeIsNotDurationBased() {
-        final SessionValidationParams params = new SessionValidationParams(60, 60, true, ALL_DAY, BUSINESS_TYPE_2, null, null, VALUE_10_00, "17:00");
-        final BusinessType businessType = new BusinessType(BUSINESS_TYPE_2, 1, DESCRIPTION, CATEGORY, false, false, null);
+        final SessionValidationParams params = new SessionValidationParams().maxDurationForMorning(60).maxDurationForAfternoon(60).allDaySplit(true).sessionType(ALL_DAY).businessType(BUSINESS_TYPE_2).slotsOrDuration(null).courtScheduleId(null).sessionStartTime(VALUE_10_00).sessionEndTime(VALUE_17_00);
+        final BusinessType businessType = new BusinessType().id(BUSINESS_TYPE_2).seqNum(1).typeCode(DESCRIPTION).typeDescription(CATEGORY).slot(false).duration(false).jurisdiction(null);
         when(referenceDataCache.getRotaBusinessTypeByCode(BUSINESS_TYPE_2)).thenReturn(Optional.of(businessType));
 
         final JsonObject result = sessionsApiValidator.validateSession(params, true);
@@ -1114,14 +1233,13 @@ class SessionsApiValidatorTest {
 
     @Test
     void shouldReturnErrorWhenJurisdictionIsMissing() {
-        final UpdateCourtSchedule updateCourtSchedule = UpdateCourtScheduleBuilder.courtSchedule()
-                .withCourtScheduleId(randomUUID().toString())
-                .withCourtRoomId(courtRoomId)
-                .withBusinessType(BUSINESS_TYPE_2)
-                .withSessionType("AM")
-                .withPanel(ADULT_2)
-                .withMaxSlots(10)
-                .build();
+        final UpdateCourtSchedule updateCourtSchedule = new UpdateCourtSchedule()
+                .courtScheduleId(randomUUID().toString())
+                .courtRoomId(courtRoomId)
+                .businessType(BUSINESS_TYPE_2)
+                .courtSession("AM")
+                .panel(ADULT_2)
+                .maxSlots(10);
 
         final JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule);
 
@@ -1131,15 +1249,14 @@ class SessionsApiValidatorTest {
 
     @Test
     void shouldReturnErrorWhenJurisdictionIsInvalid() {
-        final UpdateCourtSchedule updateCourtSchedule = UpdateCourtScheduleBuilder.courtSchedule()
-                .withCourtScheduleId(randomUUID().toString())
-                .withCourtRoomId(courtRoomId)
-                .withBusinessType(BUSINESS_TYPE_2)
-                .withSessionType("AM")
-                .withPanel(ADULT_2)
-                .withJurisdiction("INVALID")
-                .withMaxSlots(10)
-                .build();
+        final UpdateCourtSchedule updateCourtSchedule = new UpdateCourtSchedule()
+                .courtScheduleId(randomUUID().toString())
+                .courtRoomId(courtRoomId)
+                .businessType(BUSINESS_TYPE_2)
+                .courtSession("AM")
+                .panel(ADULT_2)
+                .jurisdiction("INVALID")
+                .maxSlots(10);
 
         final JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule);
 
@@ -1150,22 +1267,22 @@ class SessionsApiValidatorTest {
     @Test
     void shouldReturnErrorWhenIsDraftIsMissingForCrownJurisdictionInCreate() {
         final LocalDate futureDate = LocalDate.now().plusDays(1);
-        final Session session = session()
-                .withCourtCentreId(courtCentreId)
-                .withCourtRoomId(courtRoomId)
-                .withSessionType("AM")
-                .withBusinessType(DVLA_2)
-                .withSlotsOrDuration(20)
-                .withPanelType(ADULT_2)
-                .withRepeatDays(Set.of(DayOfWeek.MONDAY))
-                .withJurisdiction(CROWN_2)
-                .build();
+        final Session session = new Session()
+                .courtCentreId(courtCentreId)
+                .courtRoomId(courtRoomId)
+                .sessionType("AM")
+                .businessType(DVLA_2)
+                .duration(20)
+                .panel(ADULT_2)
+                .repeatDays(toRepeatDayStrings(Set.of(DayOfWeek.MONDAY)))
+                .jurisdiction(CROWN_2)
+                ;
 
         when(createSessionRequestParam.getRepeatPattern()).thenReturn(repeatPattern);
-        when(repeatPattern.getStartDate()).thenReturn(futureDate);
-        when(repeatPattern.getEndDate()).thenReturn(futureDate);
-        when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
-        when(createSessionRequestParam.getSessionList()).thenReturn(List.of(session));
+        when(repeatPattern.getStartDate()).thenReturn(futureDate.toString());
+        when(repeatPattern.getEndDate()).thenReturn(futureDate.toString());
+        when(repeatPattern.getFrequency()).thenReturn(ONCE_2);
+        when(createSessionRequestParam.getSessions()).thenReturn(List.of(session));
 
         stubCrownCourtRoomAvailable(courtRoomId);
         stubBusinessType(DVLA_2, CROWN_2, true, false);
@@ -1179,21 +1296,21 @@ class SessionsApiValidatorTest {
     @Test
     void shouldReturnErrorWhenPanelIsMissingForMagistratesJurisdictionInCreate() {
         final LocalDate futureDate = LocalDate.now().plusDays(1);
-        final Session session = session()
-                .withCourtCentreId(courtCentreId)
-                .withCourtRoomId(courtRoomId)
-                .withSessionType("AM")
-                .withBusinessType(DVLA_2)
-                .withSlotsOrDuration(20)
-                .withRepeatDays(Set.of(DayOfWeek.MONDAY))
-                .withJurisdiction(MAGISTRATES.getJurisdiction())
-                .build();
+        final Session session = new Session()
+                .courtCentreId(courtCentreId)
+                .courtRoomId(courtRoomId)
+                .sessionType("AM")
+                .businessType(DVLA_2)
+                .duration(20)
+                .repeatDays(toRepeatDayStrings(Set.of(DayOfWeek.MONDAY)))
+                .jurisdiction(MAGISTRATES.getJurisdiction())
+                ;
 
         when(createSessionRequestParam.getRepeatPattern()).thenReturn(repeatPattern);
-        when(repeatPattern.getStartDate()).thenReturn(futureDate);
-        when(repeatPattern.getEndDate()).thenReturn(futureDate);
-        when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
-        when(createSessionRequestParam.getSessionList()).thenReturn(List.of(session));
+        when(repeatPattern.getStartDate()).thenReturn(futureDate.toString());
+        when(repeatPattern.getEndDate()).thenReturn(futureDate.toString());
+        when(repeatPattern.getFrequency()).thenReturn(ONCE_2);
+        when(createSessionRequestParam.getSessions()).thenReturn(List.of(session));
 
         stubMagCourtRoomAvailable(courtRoomId);
         stubBusinessType(DVLA_2, MAGISTRATES.getJurisdiction(), true, false);
@@ -1206,16 +1323,15 @@ class SessionsApiValidatorTest {
 
     @Test
     void shouldReturnErrorWhenIsDraftIsSuppliedWithMagistratesJurisdiction() {
-        final UpdateCourtSchedule updateCourtSchedule = UpdateCourtScheduleBuilder.courtSchedule()
-                .withCourtScheduleId(randomUUID().toString())
-                .withCourtRoomId(courtRoomId)
-                .withBusinessType(BUSINESS_TYPE_2)
-                .withSessionType("AM")
-                .withPanel(ADULT_2)
-                .withJurisdiction(MAGISTRATES_2)
-                .withIsDraft(true)
-                .withMaxSlots(10)
-                .build();
+        final UpdateCourtSchedule updateCourtSchedule = new UpdateCourtSchedule()
+                .courtScheduleId(randomUUID().toString())
+                .courtRoomId(courtRoomId)
+                .businessType(BUSINESS_TYPE_2)
+                .courtSession("AM")
+                .panel(ADULT_2)
+                .jurisdiction(MAGISTRATES_2)
+                .isDraft(true)
+                .maxSlots(10);
 
         stubMagCourtRoomAvailable(courtRoomId);
 
@@ -1227,14 +1343,13 @@ class SessionsApiValidatorTest {
 
     @Test
     void shouldReturnErrorWhenIsDraftIsMissingForCrownJurisdictionInUpdate() {
-        final UpdateCourtSchedule updateCourtSchedule = UpdateCourtScheduleBuilder.courtSchedule()
-                .withCourtScheduleId(randomUUID().toString())
-                .withCourtRoomId(courtRoomId)
-                .withBusinessType(BUSINESS_TYPE_2)
-                .withSessionType("AM")
-                .withJurisdiction(CROWN_2)
-                .withMaxSlots(10)
-                .build();
+        final UpdateCourtSchedule updateCourtSchedule = new UpdateCourtSchedule()
+                .courtScheduleId(randomUUID().toString())
+                .courtRoomId(courtRoomId)
+                .businessType(BUSINESS_TYPE_2)
+                .courtSession("AM")
+                .jurisdiction(CROWN_2)
+                .maxSlots(10);
 
         stubCrownCourtRoomAvailable(courtRoomId);
 
@@ -1246,16 +1361,15 @@ class SessionsApiValidatorTest {
 
     @Test
     void shouldAcceptIsDraftFalseForMagistratesJurisdiction() {
-        final UpdateCourtSchedule updateCourtSchedule = UpdateCourtScheduleBuilder.courtSchedule()
-                .withCourtScheduleId(randomUUID().toString())
-                .withCourtRoomId(courtRoomId)
-                .withBusinessType(BUSINESS_TYPE_2)
-                .withSessionType("AM")
-                .withPanel(ADULT_2)
-                .withJurisdiction(MAGISTRATES_2)
-                .withIsDraft(false)
-                .withMaxSlots(10)
-                .build();
+        final UpdateCourtSchedule updateCourtSchedule = new UpdateCourtSchedule()
+                .courtScheduleId(randomUUID().toString())
+                .courtRoomId(courtRoomId)
+                .businessType(BUSINESS_TYPE_2)
+                .courtSession("AM")
+                .panel(ADULT_2)
+                .jurisdiction(MAGISTRATES_2)
+                .isDraft(false)
+                .maxSlots(10);
 
         stubMagCourtRoomAvailable(courtRoomId);
         stubBusinessType(BUSINESS_TYPE_2, MAGISTRATES_2, true, false);
@@ -1273,14 +1387,13 @@ class SessionsApiValidatorTest {
 
     @Test
     void shouldReturnErrorWhenPanelIsMissingForMagistratesJurisdictionInUpdate() {
-        final UpdateCourtSchedule updateCourtSchedule = UpdateCourtScheduleBuilder.courtSchedule()
-                .withCourtScheduleId(randomUUID().toString())
-                .withCourtRoomId(courtRoomId)
-                .withBusinessType(BUSINESS_TYPE_2)
-                .withSessionType("AM")
-                .withJurisdiction(MAGISTRATES_2)
-                .withMaxSlots(10)
-                .build();
+        final UpdateCourtSchedule updateCourtSchedule = new UpdateCourtSchedule()
+                .courtScheduleId(randomUUID().toString())
+                .courtRoomId(courtRoomId)
+                .businessType(BUSINESS_TYPE_2)
+                .courtSession("AM")
+                .jurisdiction(MAGISTRATES_2)
+                .maxSlots(10);
 
         stubMagCourtRoomAvailable(courtRoomId);
 
@@ -1293,22 +1406,22 @@ class SessionsApiValidatorTest {
     @Test
     void shouldReturnErrorWhenYouthPanelIsSuppliedForCrownJurisdictionInCreate() {
         final LocalDate futureDate = LocalDate.now().plusDays(1);
-        final Session session = session()
-                .withCourtCentreId(courtCentreId)
-                .withCourtRoomId(courtRoomId)
-                .withSessionType("AM")
-                .withBusinessType(DVLA_2)
-                .withPanelType("YOUTH")
-                .withRepeatDays(Set.of(DayOfWeek.MONDAY))
-                .withJurisdiction(CROWN_2)
-                .withIsDraft(true)
-                .build();
+        final Session session = new Session()
+                .courtCentreId(courtCentreId)
+                .courtRoomId(courtRoomId)
+                .sessionType("AM")
+                .businessType(DVLA_2)
+                .panel("YOUTH")
+                .repeatDays(toRepeatDayStrings(Set.of(DayOfWeek.MONDAY)))
+                .jurisdiction(CROWN_2)
+                .isDraft(true)
+                ;
 
         when(createSessionRequestParam.getRepeatPattern()).thenReturn(repeatPattern);
-        when(repeatPattern.getStartDate()).thenReturn(futureDate);
-        when(repeatPattern.getEndDate()).thenReturn(futureDate);
-        when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
-        when(createSessionRequestParam.getSessionList()).thenReturn(List.of(session));
+        when(repeatPattern.getStartDate()).thenReturn(futureDate.toString());
+        when(repeatPattern.getEndDate()).thenReturn(futureDate.toString());
+        when(repeatPattern.getFrequency()).thenReturn(ONCE_2);
+        when(createSessionRequestParam.getSessions()).thenReturn(List.of(session));
 
         stubCrownCourtRoomAvailable(courtRoomId);
         stubBusinessType(DVLA_2, CROWN_2, true, false);
@@ -1322,22 +1435,22 @@ class SessionsApiValidatorTest {
     @Test
     void shouldAcceptAdultPanelForCrownJurisdictionInCreate() {
         final LocalDate futureDate = LocalDate.now().plusDays(1);
-        final Session session = session()
-                .withCourtCentreId(courtCentreId)
-                .withCourtRoomId(courtRoomId)
-                .withSessionType("AM")
-                .withBusinessType(DVLA_2)
-                .withPanelType(ADULT_2)
-                .withRepeatDays(Set.of(DayOfWeek.MONDAY))
-                .withJurisdiction(CROWN_2)
-                .withIsDraft(true)
-                .build();
+        final Session session = new Session()
+                .courtCentreId(courtCentreId)
+                .courtRoomId(courtRoomId)
+                .sessionType("AM")
+                .businessType(DVLA_2)
+                .panel(ADULT_2)
+                .repeatDays(toRepeatDayStrings(Set.of(DayOfWeek.MONDAY)))
+                .jurisdiction(CROWN_2)
+                .isDraft(true)
+                ;
 
         when(createSessionRequestParam.getRepeatPattern()).thenReturn(repeatPattern);
-        when(repeatPattern.getStartDate()).thenReturn(futureDate);
-        when(repeatPattern.getEndDate()).thenReturn(futureDate);
-        when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
-        when(createSessionRequestParam.getSessionList()).thenReturn(List.of(session));
+        when(repeatPattern.getStartDate()).thenReturn(futureDate.toString());
+        when(repeatPattern.getEndDate()).thenReturn(futureDate.toString());
+        when(repeatPattern.getFrequency()).thenReturn(ONCE_2);
+        when(createSessionRequestParam.getSessions()).thenReturn(List.of(session));
 
         stubCrownCourtRoomAvailable(courtRoomId);
         stubBusinessType(DVLA_2, CROWN_2, true, false);
@@ -1351,21 +1464,21 @@ class SessionsApiValidatorTest {
     @Test
     void shouldAcceptYouthPanelForMagistratesJurisdictionInCreate() {
         final LocalDate futureDate = LocalDate.now().plusDays(1);
-        final Session session = session()
-                .withCourtCentreId(courtCentreId)
-                .withCourtRoomId(courtRoomId)
-                .withSessionType("AM")
-                .withBusinessType(DVLA_2)
-                .withPanelType("YOUTH")
-                .withRepeatDays(Set.of(DayOfWeek.MONDAY))
-                .withJurisdiction(MAGISTRATES_2)
-                .build();
+        final Session session = new Session()
+                .courtCentreId(courtCentreId)
+                .courtRoomId(courtRoomId)
+                .sessionType("AM")
+                .businessType(DVLA_2)
+                .panel("YOUTH")
+                .repeatDays(toRepeatDayStrings(Set.of(DayOfWeek.MONDAY)))
+                .jurisdiction(MAGISTRATES_2)
+                ;
 
         when(createSessionRequestParam.getRepeatPattern()).thenReturn(repeatPattern);
-        when(repeatPattern.getStartDate()).thenReturn(futureDate);
-        when(repeatPattern.getEndDate()).thenReturn(futureDate);
-        when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
-        when(createSessionRequestParam.getSessionList()).thenReturn(List.of(session));
+        when(repeatPattern.getStartDate()).thenReturn(futureDate.toString());
+        when(repeatPattern.getEndDate()).thenReturn(futureDate.toString());
+        when(repeatPattern.getFrequency()).thenReturn(ONCE_2);
+        when(createSessionRequestParam.getSessions()).thenReturn(List.of(session));
 
         stubMagCourtRoomAvailable(courtRoomId);
         stubBusinessType(DVLA_2, MAGISTRATES_2, true, false);
@@ -1378,16 +1491,15 @@ class SessionsApiValidatorTest {
 
     @Test
     void shouldReturnErrorWhenYouthPanelIsSuppliedForCrownJurisdictionInUpdate() {
-        final UpdateCourtSchedule updateCourtSchedule = UpdateCourtScheduleBuilder.courtSchedule()
-                .withCourtScheduleId(randomUUID().toString())
-                .withCourtRoomId(courtRoomId)
-                .withBusinessType(BUSINESS_TYPE_2)
-                .withSessionType("AM")
-                .withPanel("YOUTH")
-                .withJurisdiction(CROWN_2)
-                .withIsDraft(true)
-                .withMaxSlots(10)
-                .build();
+        final UpdateCourtSchedule updateCourtSchedule = new UpdateCourtSchedule()
+                .courtScheduleId(randomUUID().toString())
+                .courtRoomId(courtRoomId)
+                .businessType(BUSINESS_TYPE_2)
+                .courtSession("AM")
+                .panel("YOUTH")
+                .jurisdiction(CROWN_2)
+                .isDraft(true)
+                .maxSlots(10);
 
         stubCrownCourtRoomAvailable(courtRoomId);
         stubBusinessType(BUSINESS_TYPE_2, CROWN_2, true, false);
@@ -1405,16 +1517,15 @@ class SessionsApiValidatorTest {
 
     @Test
     void shouldAcceptAdultPanelForCrownJurisdictionInUpdate() {
-        final UpdateCourtSchedule updateCourtSchedule = UpdateCourtScheduleBuilder.courtSchedule()
-                .withCourtScheduleId(randomUUID().toString())
-                .withCourtRoomId(courtRoomId)
-                .withBusinessType(BUSINESS_TYPE_2)
-                .withSessionType("AM")
-                .withPanel(ADULT_2)
-                .withJurisdiction(CROWN_2)
-                .withIsDraft(true)
-                .withMaxSlots(10)
-                .build();
+        final UpdateCourtSchedule updateCourtSchedule = new UpdateCourtSchedule()
+                .courtScheduleId(randomUUID().toString())
+                .courtRoomId(courtRoomId)
+                .businessType(BUSINESS_TYPE_2)
+                .courtSession("AM")
+                .panel(ADULT_2)
+                .jurisdiction(CROWN_2)
+                .isDraft(true)
+                .maxSlots(10);
 
         stubCrownCourtRoomAvailable(courtRoomId);
         stubBusinessType(BUSINESS_TYPE_2, CROWN_2, true, false);
@@ -1432,15 +1543,14 @@ class SessionsApiValidatorTest {
 
     @Test
     void shouldReturnErrorWhenCourtRoomNotFoundForMagistratesUpdate() {
-        final UpdateCourtSchedule updateCourtSchedule = UpdateCourtScheduleBuilder.courtSchedule()
-                .withCourtScheduleId(randomUUID().toString())
-                .withCourtRoomId(courtRoomId)
-                .withBusinessType(BUSINESS_TYPE_2)
-                .withSessionType("AM")
-                .withPanel(ADULT_2)
-                .withJurisdiction(MAGISTRATES_2)
-                .withMaxSlots(10)
-                .build();
+        final UpdateCourtSchedule updateCourtSchedule = new UpdateCourtSchedule()
+                .courtScheduleId(randomUUID().toString())
+                .courtRoomId(courtRoomId)
+                .businessType(BUSINESS_TYPE_2)
+                .courtSession("AM")
+                .panel(ADULT_2)
+                .jurisdiction(MAGISTRATES_2)
+                .maxSlots(10);
 
         when(referenceDataCache.getRotaCourtRoomByCourtRoomId(courtRoomId)).thenReturn(Optional.empty());
 
@@ -1452,15 +1562,14 @@ class SessionsApiValidatorTest {
 
     @Test
     void shouldReturnErrorWhenCourtRoomNotFoundForCrownUpdate() {
-        final UpdateCourtSchedule updateCourtSchedule = UpdateCourtScheduleBuilder.courtSchedule()
-                .withCourtScheduleId(randomUUID().toString())
-                .withCourtRoomId(courtRoomId)
-                .withBusinessType(BUSINESS_TYPE_2)
-                .withSessionType("AM")
-                .withPanel(ADULT_2)
-                .withJurisdiction(CROWN_2)
-                .withMaxSlots(10)
-                .build();
+        final UpdateCourtSchedule updateCourtSchedule = new UpdateCourtSchedule()
+                .courtScheduleId(randomUUID().toString())
+                .courtRoomId(courtRoomId)
+                .businessType(BUSINESS_TYPE_2)
+                .courtSession("AM")
+                .panel(ADULT_2)
+                .jurisdiction(CROWN_2)
+                .maxSlots(10);
 
         when(referenceDataCache.getCpCourtRoomByCourtRoomId(courtRoomId)).thenReturn(Optional.empty());
 
@@ -1473,19 +1582,18 @@ class SessionsApiValidatorTest {
     @Test
     void shouldReturnErrorWhenCrownIsDraftIsChangedFromFalseToTrue() {
         final String courtScheduleId = randomUUID().toString();
-        final UpdateCourtSchedule updateCourtSchedule = UpdateCourtScheduleBuilder.courtSchedule()
-                .withCourtScheduleId(courtScheduleId)
-                .withCourtRoomId(courtRoomId)
-                .withBusinessType(BUSINESS_TYPE_2)
-                .withSessionType("AM")
-                .withPanel(ADULT_2)
-                .withJurisdiction(CROWN_2)
-                .withIsDraft(true)
-                .withMaxSlots(10)
-                .build();
+        final UpdateCourtSchedule updateCourtSchedule = new UpdateCourtSchedule()
+                .courtScheduleId(courtScheduleId)
+                .courtRoomId(courtRoomId)
+                .businessType(BUSINESS_TYPE_2)
+                .courtSession("AM")
+                .panel(ADULT_2)
+                .jurisdiction(CROWN_2)
+                .isDraft(true)
+                .maxSlots(10);
 
         when(referenceDataCache.getCpCourtRoomByCourtRoomId(courtRoomId))
-                .thenReturn(Optional.of(CourtRoom.CourtRoomBuilder.aCourtRoom().withCourtRoomId(courtRoomId).build()));
+                .thenReturn(Optional.of(new CourtRoom().courtroomId(courtRoomId)));
 
         final CourtSchedule persistedCourtSchedule = new CourtSchedule();
         persistedCourtSchedule.setIsDraft(false);
@@ -1504,15 +1612,14 @@ class SessionsApiValidatorTest {
     @Test
     void shouldReturnEmptyJsonObjectWhenMagistratesValidationIsSuccessful() {
         final String courtScheduleId = randomUUID().toString();
-        final UpdateCourtSchedule updateCourtSchedule = UpdateCourtScheduleBuilder.courtSchedule()
-                .withCourtScheduleId(courtScheduleId)
-                .withCourtRoomId(courtRoomId)
-                .withBusinessType(BUSINESS_TYPE_2)
-                .withSessionType("AM")
-                .withPanel(ADULT_2)
-                .withJurisdiction(MAGISTRATES_2)
-                .withMaxSlots(10)
-                .build();
+        final UpdateCourtSchedule updateCourtSchedule = new UpdateCourtSchedule()
+                .courtScheduleId(courtScheduleId)
+                .courtRoomId(courtRoomId)
+                .businessType(BUSINESS_TYPE_2)
+                .courtSession("AM")
+                .panel(ADULT_2)
+                .jurisdiction(MAGISTRATES_2)
+                .maxSlots(10);
 
         stubMagCourtRoomAvailable(courtRoomId);
         stubBusinessType(BUSINESS_TYPE_2, MAGISTRATES_2, true, false);
@@ -1530,16 +1637,15 @@ class SessionsApiValidatorTest {
     @Test
     void shouldReturnEmptyJsonObjectWhenCrownWithIsDraftValidationIsSuccessful() {
         final String courtScheduleId = randomUUID().toString();
-        final UpdateCourtSchedule updateCourtSchedule = UpdateCourtScheduleBuilder.courtSchedule()
-                .withCourtScheduleId(courtScheduleId)
-                .withCourtRoomId(courtRoomId)
-                .withBusinessType(BUSINESS_TYPE_2)
-                .withSessionType("AM")
-                .withPanel(ADULT_2)
-                .withJurisdiction(CROWN_2)
-                .withIsDraft(false)
-                .withMaxSlots(10)
-                .build();
+        final UpdateCourtSchedule updateCourtSchedule = new UpdateCourtSchedule()
+                .courtScheduleId(courtScheduleId)
+                .courtRoomId(courtRoomId)
+                .businessType(BUSINESS_TYPE_2)
+                .courtSession("AM")
+                .panel(ADULT_2)
+                .jurisdiction(CROWN_2)
+                .isDraft(false)
+                .maxSlots(10);
 
         final CourtSchedule persistedCourtSchedule = new CourtSchedule();
         persistedCourtSchedule.setIsDraft(false);
@@ -1549,7 +1655,7 @@ class SessionsApiValidatorTest {
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId))
                 .thenReturn(persistedCourtSchedule);
         when(referenceDataCache.getCpCourtRoomByCourtRoomId(courtRoomId))
-                .thenReturn(Optional.of(CourtRoom.CourtRoomBuilder.aCourtRoom().withCourtRoomId(courtRoomId).build()));
+                .thenReturn(Optional.of(new CourtRoom().courtroomId(courtRoomId)));
 
         final JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule);
 
@@ -1559,16 +1665,15 @@ class SessionsApiValidatorTest {
     @Test
     void shouldReturnEmptyJsonObjectWhenCrownWithIsDraftTrueAndDatabaseIsDraftTrue() {
         final String courtScheduleId = randomUUID().toString();
-        final UpdateCourtSchedule updateCourtSchedule = UpdateCourtScheduleBuilder.courtSchedule()
-                .withCourtScheduleId(courtScheduleId)
-                .withCourtRoomId(courtRoomId)
-                .withBusinessType(BUSINESS_TYPE_2)
-                .withSessionType("AM")
-                .withPanel(ADULT_2)
-                .withJurisdiction(CROWN_2)
-                .withIsDraft(true)
-                .withMaxSlots(10)
-                .build();
+        final UpdateCourtSchedule updateCourtSchedule = new UpdateCourtSchedule()
+                .courtScheduleId(courtScheduleId)
+                .courtRoomId(courtRoomId)
+                .businessType(BUSINESS_TYPE_2)
+                .courtSession("AM")
+                .panel(ADULT_2)
+                .jurisdiction(CROWN_2)
+                .isDraft(true)
+                .maxSlots(10);
 
         final CourtSchedule persistedCourtSchedule = new CourtSchedule();
         persistedCourtSchedule.setIsDraft(true);
@@ -1578,7 +1683,7 @@ class SessionsApiValidatorTest {
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId))
                 .thenReturn(persistedCourtSchedule);
         when(referenceDataCache.getCpCourtRoomByCourtRoomId(courtRoomId))
-                .thenReturn(Optional.of(CourtRoom.CourtRoomBuilder.aCourtRoom().withCourtRoomId(courtRoomId).build()));
+                .thenReturn(Optional.of(new CourtRoom().courtroomId(courtRoomId)));
 
         final JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule);
 
@@ -1592,7 +1697,7 @@ class SessionsApiValidatorTest {
         updateCourtSchedule.setCourtScheduleId(randomUUID().toString());
         updateCourtSchedule.setCourtRoomId(randomUUID().toString());
         updateCourtSchedule.setBusinessType(DVLA_2);
-        updateCourtSchedule.setSessionType("AM");
+        updateCourtSchedule.setCourtSession("AM");
         updateCourtSchedule.setPanel(ADULT_2);
         updateCourtSchedule.setMaxSlots(20);
         updateCourtSchedule.setSessionStartTime(VALUE_10_00);
@@ -1617,7 +1722,7 @@ class SessionsApiValidatorTest {
         updateCourtSchedule.setCourtScheduleId(courtScheduleId);
         updateCourtSchedule.setCourtRoomId(randomUUID().toString());
         updateCourtSchedule.setBusinessType(DVLA_2);
-        updateCourtSchedule.setSessionType("AM");
+        updateCourtSchedule.setCourtSession("AM");
         updateCourtSchedule.setPanel(ADULT_2);
         updateCourtSchedule.setMaxSlots(20);
         updateCourtSchedule.setSessionStartTime("11:00"); // After hearing at 10:00
@@ -1632,7 +1737,7 @@ class SessionsApiValidatorTest {
         persistedSchedule.setSessionDate(LocalDate.now().plusDays(1));
 
         final AllocatedListingEachBooked booked = mock(AllocatedListingEachBooked.class);
-        final Instant hearingTime = LocalDate.now().plusDays(1).atTime(10, 0).atZone(EUROPE_LONDON).toInstant();
+        final OffsetDateTime hearingTime = LocalDate.now().plusDays(1).atTime(10, 0).atZone(EUROPE_LONDON).toOffsetDateTime();
         when(booked.getHearingStartTime()).thenReturn(hearingTime);
 
         when(allocatedListingService.getAllocatedListingEachBookedByCourtScheduleId(courtScheduleId)).thenReturn(List.of(booked));
@@ -1651,7 +1756,7 @@ class SessionsApiValidatorTest {
         updateCourtSchedule.setCourtScheduleId(courtScheduleId);
         updateCourtSchedule.setCourtRoomId(randomUUID().toString());
         updateCourtSchedule.setBusinessType(DVLA_2);
-        updateCourtSchedule.setSessionType("AM");
+        updateCourtSchedule.setCourtSession("AM");
         updateCourtSchedule.setPanel(ADULT_2);
         updateCourtSchedule.setMaxSlots(20);
         updateCourtSchedule.setSessionStartTime("09:00");
@@ -1667,8 +1772,7 @@ class SessionsApiValidatorTest {
 
         final AllocatedListingEachBooked booked = mock(AllocatedListingEachBooked.class);
         // Use the same timezone as hearing-time validation (Europe/London)
-        final Instant hearingTime = LocalDate.now().plusDays(1).atTime(10, 0)
-                .atZone(EUROPE_LONDON).toInstant();
+        final OffsetDateTime hearingTime = LocalDate.now().plusDays(1).atTime(10, 0).atZone(EUROPE_LONDON).toOffsetDateTime();
         when(booked.getHearingStartTime()).thenReturn(hearingTime);
 
         when(allocatedListingService.getAllocatedListingEachBookedByCourtScheduleId(courtScheduleId)).thenReturn(List.of(booked));
@@ -1687,7 +1791,7 @@ class SessionsApiValidatorTest {
         updateCourtSchedule.setCourtScheduleId(courtScheduleId);
         updateCourtSchedule.setCourtRoomId(randomUUID().toString());
         updateCourtSchedule.setBusinessType(DVLA_2);
-        updateCourtSchedule.setSessionType("AM");
+        updateCourtSchedule.setCourtSession("AM");
         updateCourtSchedule.setPanel(ADULT_2);
         updateCourtSchedule.setMaxSlots(20);
         updateCourtSchedule.setSessionStartTime("09:00"); // Before hearing
@@ -1702,7 +1806,7 @@ class SessionsApiValidatorTest {
         persistedSchedule.setSessionDate(LocalDate.now().plusDays(1));
 
         final AllocatedListingEachBooked booked = mock(AllocatedListingEachBooked.class);
-        final Instant hearingTime = LocalDate.now().plusDays(1).atTime(10, 0).atZone(EUROPE_LONDON).toInstant();
+        final OffsetDateTime hearingTime = LocalDate.now().plusDays(1).atTime(10, 0).atZone(EUROPE_LONDON).toOffsetDateTime();
         when(booked.getHearingStartTime()).thenReturn(hearingTime);
 
         when(allocatedListingService.getAllocatedListingEachBookedByCourtScheduleId(courtScheduleId)).thenReturn(List.of(booked));
@@ -1720,13 +1824,13 @@ class SessionsApiValidatorTest {
         updateCourtSchedule.setCourtScheduleId(courtScheduleId);
         updateCourtSchedule.setCourtRoomId(randomUUID().toString());
         updateCourtSchedule.setBusinessType(TRL_2);
-        updateCourtSchedule.setSessionType("AD");
+        updateCourtSchedule.setCourtSession("AD");
         updateCourtSchedule.setPanel(ADULT_2);
         updateCourtSchedule.setMaxDuration(1);
         updateCourtSchedule.setMaxDurationForMorning(120);
         updateCourtSchedule.setMaxDurationForAfternoon(180);
         updateCourtSchedule.setSessionStartTime(VALUE_10_00);
-        updateCourtSchedule.setSessionEndTime("17:00");
+        updateCourtSchedule.setSessionEndTime(VALUE_17_00);
         updateCourtSchedule.setAllDaySplit(true);
         updateCourtSchedule.setJurisdiction(MAGISTRATES.getJurisdiction());
 
@@ -1749,17 +1853,16 @@ class SessionsApiValidatorTest {
         // Test that when sessionStartTime and sessionEndTime are null in request,
         // they are retrieved from persisted court schedule
         final String courtScheduleId = randomUUID().toString();
-        final UpdateCourtSchedule updateCourtSchedule = UpdateCourtScheduleBuilder.courtSchedule()
-                .withCourtScheduleId(courtScheduleId)
-                .withCourtRoomId(courtRoomId)
-                .withBusinessType(DVLA_2)
-                .withSessionType("AM")
-                .withPanel(ADULT_2)
-                .withJurisdiction(MAGISTRATES_2)
-                .withMaxSlots(20)
-                .withSessionStartTime(null)  // Null in request
-                .withSessionEndTime(null)    // Null in request
-                .build();
+        final UpdateCourtSchedule updateCourtSchedule = new UpdateCourtSchedule()
+                .courtScheduleId(courtScheduleId)
+                .courtRoomId(courtRoomId)
+                .businessType(DVLA_2)
+                .courtSession("AM")
+                .panel(ADULT_2)
+                .jurisdiction(MAGISTRATES_2)
+                .maxSlots(20)
+                .sessionStartTime(null)  // Null in request
+                .sessionEndTime(null);    // Null in request
 
         stubMagCourtRoomAvailable(courtRoomId);
         stubBusinessType(DVLA_2, MAGISTRATES_2, true, false);
@@ -1778,7 +1881,7 @@ class SessionsApiValidatorTest {
                 .thenReturn(persistedSchedule);
 
         final AllocatedListingEachBooked booked = mock(AllocatedListingEachBooked.class);
-        final Instant hearingTime = sessionDate.atTime(11, 0).atZone(EUROPE_LONDON).toInstant();
+        final OffsetDateTime hearingTime = sessionDate.atTime(11, 0).atZone(EUROPE_LONDON).toOffsetDateTime();
         when(booked.getHearingStartTime()).thenReturn(hearingTime);
 
         when(allocatedListingService.getAllocatedListingEachBookedByCourtScheduleId(courtScheduleId))
@@ -1794,17 +1897,16 @@ class SessionsApiValidatorTest {
     void shouldRetrieveSessionStartTimeFromPersistedScheduleWhenNullInRequest() {
         // Test that when only sessionStartTime is null, it's retrieved from persisted schedule
         final String courtScheduleId = randomUUID().toString();
-        final UpdateCourtSchedule updateCourtSchedule = UpdateCourtScheduleBuilder.courtSchedule()
-                .withCourtScheduleId(courtScheduleId)
-                .withCourtRoomId(courtRoomId)
-                .withBusinessType(DVLA_2)
-                .withSessionType("AM")
-                .withPanel(ADULT_2)
-                .withJurisdiction(MAGISTRATES_2)
-                .withMaxSlots(20)
-                .withSessionStartTime(null)  // Null in request
-                .withSessionEndTime(VALUE_13_00) // Provided in request
-                .build();
+        final UpdateCourtSchedule updateCourtSchedule = new UpdateCourtSchedule()
+                .courtScheduleId(courtScheduleId)
+                .courtRoomId(courtRoomId)
+                .businessType(DVLA_2)
+                .courtSession("AM")
+                .panel(ADULT_2)
+                .jurisdiction(MAGISTRATES_2)
+                .maxSlots(20)
+                .sessionStartTime(null)  // Null in request
+                .sessionEndTime("13:00"); // Provided in request
 
         stubMagCourtRoomAvailable(courtRoomId);
         stubBusinessType(DVLA_2, MAGISTRATES_2, true, false);
@@ -1826,17 +1928,16 @@ class SessionsApiValidatorTest {
     void shouldRetrieveSessionEndTimeFromPersistedScheduleWhenNullInRequest() {
         // Test that when only sessionEndTime is null, it's retrieved from persisted schedule
         final String courtScheduleId = randomUUID().toString();
-        final UpdateCourtSchedule updateCourtSchedule = UpdateCourtScheduleBuilder.courtSchedule()
-                .withCourtScheduleId(courtScheduleId)
-                .withCourtRoomId(courtRoomId)
-                .withBusinessType(DVLA_2)
-                .withSessionType("AM")
-                .withPanel(ADULT_2)
-                .withJurisdiction(MAGISTRATES_2)
-                .withMaxSlots(20)
-                .withSessionStartTime(VALUE_10_00) // Provided in request
-                .withSessionEndTime(null)      // Null in request
-                .build();
+        final UpdateCourtSchedule updateCourtSchedule = new UpdateCourtSchedule()
+                .courtScheduleId(courtScheduleId)
+                .courtRoomId(courtRoomId)
+                .businessType(DVLA_2)
+                .courtSession("AM")
+                .panel(ADULT_2)
+                .jurisdiction(MAGISTRATES_2)
+                .maxSlots(20)
+                .sessionStartTime(VALUE_10_00) // Provided in request
+                .sessionEndTime(null);      // Null in request
 
         stubMagCourtRoomAvailable(courtRoomId);
         stubBusinessType(DVLA_2, MAGISTRATES_2, true, false);
@@ -1859,17 +1960,16 @@ class SessionsApiValidatorTest {
         // Test that when session times are null and persisted schedule doesn't exist,
         // validation is skipped gracefully
         final String courtScheduleId = randomUUID().toString();
-        final UpdateCourtSchedule updateCourtSchedule = UpdateCourtScheduleBuilder.courtSchedule()
-                .withCourtScheduleId(courtScheduleId)
-                .withCourtRoomId(courtRoomId)
-                .withBusinessType(DVLA_2)
-                .withSessionType("AM")
-                .withPanel(ADULT_2)
-                .withJurisdiction(MAGISTRATES_2)
-                .withMaxSlots(20)
-                .withSessionStartTime(null)
-                .withSessionEndTime(null)
-                .build();
+        final UpdateCourtSchedule updateCourtSchedule = new UpdateCourtSchedule()
+                .courtScheduleId(courtScheduleId)
+                .courtRoomId(courtRoomId)
+                .businessType(DVLA_2)
+                .courtSession("AM")
+                .panel(ADULT_2)
+                .jurisdiction(MAGISTRATES_2)
+                .maxSlots(20)
+                .sessionStartTime(null)
+                .sessionEndTime(null);
 
         stubMagCourtRoomAvailable(courtRoomId);
         stubBusinessType(DVLA_2, MAGISTRATES_2, true, false);
@@ -1888,17 +1988,16 @@ class SessionsApiValidatorTest {
         // Test that when session times are null and persisted schedule also has null times,
         // validation is skipped gracefully
         final String courtScheduleId = randomUUID().toString();
-        final UpdateCourtSchedule updateCourtSchedule = UpdateCourtScheduleBuilder.courtSchedule()
-                .withCourtScheduleId(courtScheduleId)
-                .withCourtRoomId(courtRoomId)
-                .withBusinessType(DVLA_2)
-                .withSessionType("AM")
-                .withPanel(ADULT_2)
-                .withJurisdiction(MAGISTRATES_2)
-                .withMaxSlots(20)
-                .withSessionStartTime(null)
-                .withSessionEndTime(null)
-                .build();
+        final UpdateCourtSchedule updateCourtSchedule = new UpdateCourtSchedule()
+                .courtScheduleId(courtScheduleId)
+                .courtRoomId(courtRoomId)
+                .businessType(DVLA_2)
+                .courtSession("AM")
+                .panel(ADULT_2)
+                .jurisdiction(MAGISTRATES_2)
+                .maxSlots(20)
+                .sessionStartTime(null)
+                .sessionEndTime(null);
 
         stubMagCourtRoomAvailable(courtRoomId);
         stubBusinessType(DVLA_2, MAGISTRATES_2, true, false);
@@ -1923,17 +2022,16 @@ class SessionsApiValidatorTest {
         // Scenario: Session start time (10:00) retrieved from persisted schedule is AFTER min hearing time (09:00)
         // This should trigger validation error: "Session Start Time can not be updated to a time that is later than the minimum hearing time"
         final String courtScheduleId = randomUUID().toString();
-        final UpdateCourtSchedule updateCourtSchedule = UpdateCourtScheduleBuilder.courtSchedule()
-                .withCourtScheduleId(courtScheduleId)
-                .withCourtRoomId(courtRoomId)
-                .withBusinessType(DVLA_2)
-                .withSessionType("AM")
-                .withPanel(ADULT_2)
-                .withJurisdiction(MAGISTRATES_2)
-                .withMaxSlots(20)
-                .withSessionStartTime(null)  // Null - will be retrieved from persisted schedule
-                .withSessionEndTime(null)    // Null - will be retrieved from persisted schedule
-                .build();
+        final UpdateCourtSchedule updateCourtSchedule = new UpdateCourtSchedule()
+                .courtScheduleId(courtScheduleId)
+                .courtRoomId(courtRoomId)
+                .businessType(DVLA_2)
+                .courtSession("AM")
+                .panel(ADULT_2)
+                .jurisdiction(MAGISTRATES_2)
+                .maxSlots(20)
+                .sessionStartTime(null)  // Null - will be retrieved from persisted schedule
+                .sessionEndTime(null);    // Null - will be retrieved from persisted schedule
 
         stubMagCourtRoomAvailable(courtRoomId);
         stubBusinessType(DVLA_2, MAGISTRATES_2, true, false);
@@ -1952,7 +2050,7 @@ class SessionsApiValidatorTest {
 
         // Mock allocated listing with hearing time at 09:00 London (before session start at 10:00 London)
         final AllocatedListingEachBooked booked = mock(AllocatedListingEachBooked.class);
-        final Instant hearingTime = sessionDate.atTime(9, 0).atZone(EUROPE_LONDON).toInstant();
+        final OffsetDateTime hearingTime = sessionDate.atTime(9, 0).atZone(EUROPE_LONDON).toOffsetDateTime();
         when(booked.getHearingStartTime()).thenReturn(hearingTime);
 
         when(allocatedListingService.getAllocatedListingEachBookedByCourtScheduleId(courtScheduleId))
@@ -1975,15 +2073,14 @@ class SessionsApiValidatorTest {
         final String originalCourtHouseId = randomUUID().toString();
         final String differentCourtHouseId = randomUUID().toString();
 
-        final UpdateCourtSchedule updateCourtSchedule = UpdateCourtScheduleBuilder.courtSchedule()
-                .withCourtScheduleId(courtScheduleId)
-                .withCourtRoomId(newCourtRoomId) // Different courtroom
-                .withBusinessType(DVLA_2)
-                .withSessionType("AM")
-                .withPanel(ADULT_2)
-                .withJurisdiction(MAGISTRATES_2)
-                .withMaxSlots(20)
-                .build();
+        final UpdateCourtSchedule updateCourtSchedule = new UpdateCourtSchedule()
+                .courtScheduleId(courtScheduleId)
+                .courtRoomId(newCourtRoomId) // Different courtroom
+                .businessType(DVLA_2)
+                .courtSession("AM")
+                .panel(ADULT_2)
+                .jurisdiction(MAGISTRATES_2)
+                .maxSlots(20);
 
         // Mock persisted court schedule with original court house ID
         final CourtSchedule persistedSchedule = new CourtSchedule();
@@ -1993,10 +2090,10 @@ class SessionsApiValidatorTest {
                 .thenReturn(persistedSchedule);
 
         // Mock new courtroom with different court house ID
-        final CourtRoom newCourtRoom = CourtRoom.CourtRoomBuilder.aCourtRoom()
-                .withCourtRoomId(newCourtRoomId)
-                .withOucodeUUID(differentCourtHouseId) // Different court house
-                .build();
+        final CourtRoom newCourtRoom = new CourtRoom()
+                .courtroomId(newCourtRoomId)
+                .oucodeUUID(differentCourtHouseId) // Different court house
+                ;
         when(referenceDataCache.getRotaCourtRoomByCourtRoomId(eq(newCourtRoomId)))
                 .thenReturn(Optional.of(newCourtRoom));
 
@@ -2015,15 +2112,14 @@ class SessionsApiValidatorTest {
         final String newCourtRoomId = randomUUID().toString();
         final String courtHouseId = randomUUID().toString();
 
-        final UpdateCourtSchedule updateCourtSchedule = UpdateCourtScheduleBuilder.courtSchedule()
-                .withCourtScheduleId(courtScheduleId)
-                .withCourtRoomId(newCourtRoomId) // Different courtroom but same court house
-                .withBusinessType(DVLA_2)
-                .withSessionType("AM")
-                .withPanel(ADULT_2)
-                .withJurisdiction(MAGISTRATES_2)
-                .withMaxSlots(20)
-                .build();
+        final UpdateCourtSchedule updateCourtSchedule = new UpdateCourtSchedule()
+                .courtScheduleId(courtScheduleId)
+                .courtRoomId(newCourtRoomId) // Different courtroom but same court house
+                .businessType(DVLA_2)
+                .courtSession("AM")
+                .panel(ADULT_2)
+                .jurisdiction(MAGISTRATES_2)
+                .maxSlots(20);
 
         // Mock persisted court schedule with court house ID
         final CourtSchedule persistedSchedule = new CourtSchedule();
@@ -2035,10 +2131,10 @@ class SessionsApiValidatorTest {
                 .thenReturn(persistedSchedule);
 
         // Mock new courtroom with same court house ID
-        final CourtRoom newCourtRoom = CourtRoom.CourtRoomBuilder.aCourtRoom()
-                .withCourtRoomId(newCourtRoomId)
-                .withOucodeUUID(courtHouseId) // Same court house
-                .build();
+        final CourtRoom newCourtRoom = new CourtRoom()
+                .courtroomId(newCourtRoomId)
+                .oucodeUUID(courtHouseId) // Same court house
+                ;
         when(referenceDataCache.getRotaCourtRoomByCourtRoomId(eq(newCourtRoomId)))
                 .thenReturn(Optional.of(newCourtRoom));
 
@@ -2060,15 +2156,14 @@ class SessionsApiValidatorTest {
         final String courtRoomId = randomUUID().toString();
         final String courtHouseId = randomUUID().toString();
 
-        final UpdateCourtSchedule updateCourtSchedule = UpdateCourtScheduleBuilder.courtSchedule()
-                .withCourtScheduleId(courtScheduleId)
-                .withCourtRoomId(courtRoomId) // Same courtroom
-                .withBusinessType(DVLA_2)
-                .withSessionType("AM")
-                .withPanel(ADULT_2)
-                .withJurisdiction(MAGISTRATES_2)
-                .withMaxSlots(20)
-                .build();
+        final UpdateCourtSchedule updateCourtSchedule = new UpdateCourtSchedule()
+                .courtScheduleId(courtScheduleId)
+                .courtRoomId(courtRoomId) // Same courtroom
+                .businessType(DVLA_2)
+                .courtSession("AM")
+                .panel(ADULT_2)
+                .jurisdiction(MAGISTRATES_2)
+                .maxSlots(20);
 
         // Mock persisted court schedule with same courtroom ID
         final CourtSchedule persistedSchedule = new CourtSchedule();
@@ -2094,15 +2189,14 @@ class SessionsApiValidatorTest {
         final String courtScheduleId = randomUUID().toString();
         final String newCourtRoomId = randomUUID().toString();
 
-        final UpdateCourtSchedule updateCourtSchedule = UpdateCourtScheduleBuilder.courtSchedule()
-                .withCourtScheduleId(courtScheduleId)
-                .withCourtRoomId(newCourtRoomId)
-                .withBusinessType(DVLA_2)
-                .withSessionType("AM")
-                .withPanel(ADULT_2)
-                .withJurisdiction(MAGISTRATES_2)
-                .withMaxSlots(20)
-                .build();
+        final UpdateCourtSchedule updateCourtSchedule = new UpdateCourtSchedule()
+                .courtScheduleId(courtScheduleId)
+                .courtRoomId(newCourtRoomId)
+                .businessType(DVLA_2)
+                .courtSession("AM")
+                .panel(ADULT_2)
+                .jurisdiction(MAGISTRATES_2)
+                .maxSlots(20);
 
         // Mock persisted court schedule as null (not found)
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId))
@@ -2129,15 +2223,14 @@ class SessionsApiValidatorTest {
         final String originalCourtHouseId = randomUUID().toString();
         final String differentCourtHouseId = randomUUID().toString();
 
-        final UpdateCourtSchedule updateCourtSchedule = UpdateCourtScheduleBuilder.courtSchedule()
-                .withCourtScheduleId(courtScheduleId)
-                .withCourtRoomId(newCourtRoomId) // Different courtroom
-                .withBusinessType("GEN")
-                .withSessionType("AM")
-                .withPanel(ADULT_2)
-                .withJurisdiction(CROWN_2)
-                .withMaxSlots(20)
-                .build();
+        final UpdateCourtSchedule updateCourtSchedule = new UpdateCourtSchedule()
+                .courtScheduleId(courtScheduleId)
+                .courtRoomId(newCourtRoomId) // Different courtroom
+                .businessType("GEN")
+                .courtSession("AM")
+                .panel(ADULT_2)
+                .jurisdiction(CROWN_2)
+                .maxSlots(20);
 
         // Mock persisted court schedule with original court house ID
         final CourtSchedule persistedSchedule = new CourtSchedule();
@@ -2152,12 +2245,12 @@ class SessionsApiValidatorTest {
         stubBusinessType("GEN", CROWN_2, true, false);
         
         // Override with courtroom that has different court house ID for CROWN
-        final CourtRoom newCourtRoom = CourtRoom.CourtRoomBuilder.aCourtRoom()
-                .withCourtRoomId(newCourtRoomId)
-                .withOucodeUUID(differentCourtHouseId) // Different court house
-                .build();
-        when(referenceDataCache.getCpCourtRoomsByCourtRoomId(eq(newCourtRoomId)))
-                .thenReturn(List.of(newCourtRoom));
+        final CourtRoom newCourtRoom = new CourtRoom()
+                .courtroomId(newCourtRoomId)
+                .oucodeUUID(differentCourtHouseId) // Different court house
+                ;
+        when(referenceDataCache.getCpCourtRoomByCourtRoomId(eq(newCourtRoomId)))
+                .thenReturn(Optional.of(newCourtRoom));
 
         final JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule);
 
@@ -2170,15 +2263,14 @@ class SessionsApiValidatorTest {
     void shouldRejectUpdateWhenSessionIsInPast() {
         // Test that updating a session with a date in the past should be rejected
         final String courtScheduleId = randomUUID().toString();
-        final UpdateCourtSchedule updateCourtSchedule = UpdateCourtScheduleBuilder.courtSchedule()
-                .withCourtScheduleId(courtScheduleId)
-                .withCourtRoomId(courtRoomId)
-                .withBusinessType(DVLA_2)
-                .withSessionType("AM")
-                .withPanel(ADULT_2)
-                .withJurisdiction(MAGISTRATES_2)
-                .withMaxSlots(20)
-                .build();
+        final UpdateCourtSchedule updateCourtSchedule = new UpdateCourtSchedule()
+                .courtScheduleId(courtScheduleId)
+                .courtRoomId(courtRoomId)
+                .businessType(DVLA_2)
+                .courtSession("AM")
+                .panel(ADULT_2)
+                .jurisdiction(MAGISTRATES_2)
+                .maxSlots(20);
 
         // Mock persisted court schedule with a date in the past
         final CourtSchedule persistedSchedule = new CourtSchedule();
@@ -2200,15 +2292,14 @@ class SessionsApiValidatorTest {
     void shouldAcceptUpdateWhenSessionIsToday() {
         // Test that updating a session with today's date should be accepted
         final String courtScheduleId = randomUUID().toString();
-        final UpdateCourtSchedule updateCourtSchedule = UpdateCourtScheduleBuilder.courtSchedule()
-                .withCourtScheduleId(courtScheduleId)
-                .withCourtRoomId(courtRoomId)
-                .withBusinessType(DVLA_2)
-                .withSessionType("AM")
-                .withPanel(ADULT_2)
-                .withJurisdiction(MAGISTRATES_2)
-                .withMaxSlots(20)
-                .build();
+        final UpdateCourtSchedule updateCourtSchedule = new UpdateCourtSchedule()
+                .courtScheduleId(courtScheduleId)
+                .courtRoomId(courtRoomId)
+                .businessType(DVLA_2)
+                .courtSession("AM")
+                .panel(ADULT_2)
+                .jurisdiction(MAGISTRATES_2)
+                .maxSlots(20);
 
         // Mock persisted court schedule with today's date
         final CourtSchedule persistedSchedule = new CourtSchedule();
@@ -2235,15 +2326,14 @@ class SessionsApiValidatorTest {
     void shouldAcceptUpdateWhenSessionIsInFuture() {
         // Test that updating a session with a future date should be accepted
         final String courtScheduleId = randomUUID().toString();
-        final UpdateCourtSchedule updateCourtSchedule = UpdateCourtScheduleBuilder.courtSchedule()
-                .withCourtScheduleId(courtScheduleId)
-                .withCourtRoomId(courtRoomId)
-                .withBusinessType(DVLA_2)
-                .withSessionType("AM")
-                .withPanel(ADULT_2)
-                .withJurisdiction(MAGISTRATES_2)
-                .withMaxSlots(20)
-                .build();
+        final UpdateCourtSchedule updateCourtSchedule = new UpdateCourtSchedule()
+                .courtScheduleId(courtScheduleId)
+                .courtRoomId(courtRoomId)
+                .businessType(DVLA_2)
+                .courtSession("AM")
+                .panel(ADULT_2)
+                .jurisdiction(MAGISTRATES_2)
+                .maxSlots(20);
 
         // Mock persisted court schedule with a future date
         final CourtSchedule persistedSchedule = new CourtSchedule();
@@ -2270,15 +2360,14 @@ class SessionsApiValidatorTest {
     void shouldSkipPastSessionValidationWhenPersistedScheduleNotFound() {
         // Test that when persisted schedule doesn't exist, past session validation is skipped
         final String courtScheduleId = randomUUID().toString();
-        final UpdateCourtSchedule updateCourtSchedule = UpdateCourtScheduleBuilder.courtSchedule()
-                .withCourtScheduleId(courtScheduleId)
-                .withCourtRoomId(courtRoomId)
-                .withBusinessType(DVLA_2)
-                .withSessionType("AM")
-                .withPanel(ADULT_2)
-                .withJurisdiction(MAGISTRATES_2)
-                .withMaxSlots(20)
-                .build();
+        final UpdateCourtSchedule updateCourtSchedule = new UpdateCourtSchedule()
+                .courtScheduleId(courtScheduleId)
+                .courtRoomId(courtRoomId)
+                .businessType(DVLA_2)
+                .courtSession("AM")
+                .panel(ADULT_2)
+                .jurisdiction(MAGISTRATES_2)
+                .maxSlots(20);
 
         // Mock persisted court schedule as null (not found)
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId))
@@ -2299,15 +2388,14 @@ class SessionsApiValidatorTest {
     void shouldRejectUpdateWhenSessionIsInPastForCrown() {
         // Test that updating a CROWN session with a date in the past should be rejected
         final String courtScheduleId = randomUUID().toString();
-        final UpdateCourtSchedule updateCourtSchedule = UpdateCourtScheduleBuilder.courtSchedule()
-                .withCourtScheduleId(courtScheduleId)
-                .withCourtRoomId(courtRoomId)
-                .withBusinessType("GEN")
-                .withSessionType("AM")
-                .withPanel(ADULT_2)
-                .withJurisdiction(CROWN_2)
-                .withMaxSlots(20)
-                .build();
+        final UpdateCourtSchedule updateCourtSchedule = new UpdateCourtSchedule()
+                .courtScheduleId(courtScheduleId)
+                .courtRoomId(courtRoomId)
+                .businessType("GEN")
+                .courtSession("AM")
+                .panel(ADULT_2)
+                .jurisdiction(CROWN_2)
+                .maxSlots(20);
 
         // Mock persisted court schedule with a date in the past
         final CourtSchedule persistedSchedule = new CourtSchedule();
@@ -2332,31 +2420,31 @@ class SessionsApiValidatorTest {
         // Given
         final LocalDate startDate = LocalDate.now().plusDays(1);
         final LocalDate endDate = LocalDate.now().plusMonths(6);
-        final Session sessionToBeAdded = session()
-                .withCourtCentreId(courtCentreId)
-                .withCourtRoomId(courtRoomId)
-                .withSessionType("AD")
-                .withBusinessType(LGT_2)
-                .withSlotsOrDuration(100)
-                .withPanelType(ADULT_2)
-                .withRepeatDays(Set.of(DayOfWeek.FRIDAY))
-                .withJurisdiction(CROWN_2)
-                .withIsDraft(true)
-                .withIndex(4)
-                .withAllDaySplit(true)
-                .withMaxDurationForMorning(50)
-                .withMaxDurationForAfternoon(50)
-                .build();
+        final Session sessionToBeAdded = new Session()
+                .courtCentreId(courtCentreId)
+                .courtRoomId(courtRoomId)
+                .sessionType("AD")
+                .businessType(LGT_2)
+                .duration(100)
+                .panel(ADULT_2)
+                .repeatDays(toRepeatDayStrings(Set.of(DayOfWeek.FRIDAY)))
+                .jurisdiction(CROWN_2)
+                .isDraft(true)
+                .index(4)
+                .allDaySplit(true)
+                .maxDurationForMorning(50)
+                .maxDurationForAfternoon(50)
+                ;
 
         when(createSessionRequestParam.getRepeatPattern()).thenReturn(repeatPattern);
         when(createSessionRequestParam.getSessionToBeAdded()).thenReturn(sessionToBeAdded);
-        when(createSessionRequestParam.getSessionList()).thenReturn(emptyList());
-        when(repeatPattern.getStartDate()).thenReturn(startDate);
-        when(repeatPattern.getEndDate()).thenReturn(endDate);
-        when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.EVERY_MONTH);
+        when(createSessionRequestParam.getSessions()).thenReturn(emptyList());
+        when(repeatPattern.getStartDate()).thenReturn(startDate.toString());
+        when(repeatPattern.getEndDate()).thenReturn(endDate.toString());
+        when(repeatPattern.getFrequency()).thenReturn(EVERY_MONTH_2);
         when(repeatPattern.getRepeatFor()).thenReturn(1);
 
-        final BusinessType businessType = new BusinessType(LGT_2, 1, DESCRIPTION, CATEGORY, false, true, CROWN_2);
+        final BusinessType businessType = new BusinessType().id(LGT_2).seqNum(1).typeCode(DESCRIPTION).typeDescription(CATEGORY).slot(false).duration(true).jurisdiction(CROWN_2);
         when(referenceDataCache.getRotaBusinessTypeByCode(LGT_2)).thenReturn(Optional.of(businessType));
         stubCrownCourtRoomAvailable(courtRoomId);
         when(sessionsService.validateSessionIntegrity(any(Session.class), any(LocalDate.class), any(LocalDate.class), any(Integer.class), any(RepeatFrequency.class)))
@@ -2382,26 +2470,26 @@ class SessionsApiValidatorTest {
         // Given
         final LocalDate startDate = LocalDate.now().plusDays(1);
         final LocalDate endDate = LocalDate.now().plusWeeks(4);
-        final Session sessionToBeAdded = session()
-                .withCourtCentreId(courtCentreId)
-                .withCourtRoomId(courtRoomId)
-                .withSessionType("AM")
-                .withBusinessType(DVLA_2)
-                .withSlotsOrDuration(100)
-                .withPanelType(ADULT_2)
-                .withRepeatDays(Set.of(DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY))
-                .withJurisdiction(MAGISTRATES_2)
-                .build();
+        final Session sessionToBeAdded = new Session()
+                .courtCentreId(courtCentreId)
+                .courtRoomId(courtRoomId)
+                .sessionType("AM")
+                .businessType(DVLA_2)
+                .duration(100)
+                .panel(ADULT_2)
+                .repeatDays(toRepeatDayStrings(Set.of(DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY)))
+                .jurisdiction(MAGISTRATES_2)
+                ;
 
         when(createSessionRequestParam.getRepeatPattern()).thenReturn(repeatPattern);
         when(createSessionRequestParam.getSessionToBeAdded()).thenReturn(sessionToBeAdded);
-        when(createSessionRequestParam.getSessionList()).thenReturn(emptyList());
-        when(repeatPattern.getStartDate()).thenReturn(startDate);
-        when(repeatPattern.getEndDate()).thenReturn(endDate);
-        when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.EVERY_WEEK);
+        when(createSessionRequestParam.getSessions()).thenReturn(emptyList());
+        when(repeatPattern.getStartDate()).thenReturn(startDate.toString());
+        when(repeatPattern.getEndDate()).thenReturn(endDate.toString());
+        when(repeatPattern.getFrequency()).thenReturn(EVERY_WEEK_2);
         when(repeatPattern.getRepeatFor()).thenReturn(1);
 
-        final BusinessType businessType = new BusinessType(DVLA_2, 1, DESCRIPTION, CATEGORY, false, true, MAGISTRATES.getJurisdiction());
+        final BusinessType businessType = new BusinessType().id(DVLA_2).seqNum(1).typeCode(DESCRIPTION).typeDescription(CATEGORY).slot(false).duration(true).jurisdiction(MAGISTRATES.getJurisdiction());
         when(referenceDataCache.getRotaBusinessTypeByCode(DVLA_2)).thenReturn(Optional.of(businessType));
         stubMagCourtRoomAvailable(courtRoomId);
         when(sessionsService.validateSessionIntegrity(any(Session.class), any(LocalDate.class), any(LocalDate.class), any(Integer.class), any(RepeatFrequency.class)))
@@ -2426,26 +2514,26 @@ class SessionsApiValidatorTest {
     void shouldCallValidateSessionIntegrityWithOnceFrequency() {
         // Given
         final LocalDate startDate = LocalDate.now().plusDays(1);
-        final Session sessionToBeAdded = session()
-                .withCourtCentreId(courtCentreId)
-                .withCourtRoomId(courtRoomId)
-                .withSessionType("PM")
-                .withBusinessType(DVLA_2)
-                .withSlotsOrDuration(100)
-                .withPanelType(ADULT_2)
-                .withRepeatDays(Set.of(DayOfWeek.TUESDAY))
-                .withJurisdiction(MAGISTRATES_2)
-                .build();
+        final Session sessionToBeAdded = new Session()
+                .courtCentreId(courtCentreId)
+                .courtRoomId(courtRoomId)
+                .sessionType("PM")
+                .businessType(DVLA_2)
+                .duration(100)
+                .panel(ADULT_2)
+                .repeatDays(toRepeatDayStrings(Set.of(DayOfWeek.TUESDAY)))
+                .jurisdiction(MAGISTRATES_2)
+                ;
 
         when(createSessionRequestParam.getRepeatPattern()).thenReturn(repeatPattern);
         when(createSessionRequestParam.getSessionToBeAdded()).thenReturn(sessionToBeAdded);
-        when(createSessionRequestParam.getSessionList()).thenReturn(emptyList());
-        when(repeatPattern.getStartDate()).thenReturn(startDate);
+        when(createSessionRequestParam.getSessions()).thenReturn(emptyList());
+        when(repeatPattern.getStartDate()).thenReturn(startDate.toString());
         when(repeatPattern.getEndDate()).thenReturn(null);
-        when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.ONCE);
+        when(repeatPattern.getFrequency()).thenReturn(ONCE_2);
         when(repeatPattern.getRepeatFor()).thenReturn(null);
 
-        final BusinessType businessType = new BusinessType(DVLA_2, 1, DESCRIPTION, CATEGORY, false, true, MAGISTRATES.getJurisdiction());
+        final BusinessType businessType = new BusinessType().id(DVLA_2).seqNum(1).typeCode(DESCRIPTION).typeDescription(CATEGORY).slot(false).duration(true).jurisdiction(MAGISTRATES.getJurisdiction());
         when(referenceDataCache.getRotaBusinessTypeByCode(DVLA_2)).thenReturn(Optional.of(businessType));
         stubMagCourtRoomAvailable(courtRoomId);
         when(sessionsService.validateSessionIntegrity(any(Session.class), any(LocalDate.class), nullable(LocalDate.class), nullable(Integer.class), any(RepeatFrequency.class)))
@@ -2471,31 +2559,31 @@ class SessionsApiValidatorTest {
         // Given - This matches the curl request from the user
         final LocalDate startDate = LocalDate.now().plusDays(1);
         final LocalDate endDate = LocalDate.now().plusMonths(6);
-        final Session sessionToBeAdded = session()
-                .withCourtCentreId(courtCentreId)
-                .withCourtRoomId(courtRoomId)
-                .withSessionType("AD")
-                .withBusinessType(LGT_2)
-                .withSlotsOrDuration(100)
-                .withPanelType(ADULT_2)
-                .withRepeatDays(Set.of(DayOfWeek.FRIDAY))
-                .withJurisdiction(CROWN_2)
-                .withIsDraft(true)
-                .withIndex(4)
-                .withAllDaySplit(true)
-                .withMaxDurationForMorning(50)
-                .withMaxDurationForAfternoon(50)
-                .build();
+        final Session sessionToBeAdded = new Session()
+                .courtCentreId(courtCentreId)
+                .courtRoomId(courtRoomId)
+                .sessionType("AD")
+                .businessType(LGT_2)
+                .duration(100)
+                .panel(ADULT_2)
+                .repeatDays(toRepeatDayStrings(Set.of(DayOfWeek.FRIDAY)))
+                .jurisdiction(CROWN_2)
+                .isDraft(true)
+                .index(4)
+                .allDaySplit(true)
+                .maxDurationForMorning(50)
+                .maxDurationForAfternoon(50)
+                ;
 
         when(createSessionRequestParam.getRepeatPattern()).thenReturn(repeatPattern);
         when(createSessionRequestParam.getSessionToBeAdded()).thenReturn(sessionToBeAdded);
-        when(createSessionRequestParam.getSessionList()).thenReturn(emptyList());
-        when(repeatPattern.getStartDate()).thenReturn(startDate);
-        when(repeatPattern.getEndDate()).thenReturn(endDate);
-        when(repeatPattern.getFrequency()).thenReturn(RepeatFrequency.EVERY_MONTH);
+        when(createSessionRequestParam.getSessions()).thenReturn(emptyList());
+        when(repeatPattern.getStartDate()).thenReturn(startDate.toString());
+        when(repeatPattern.getEndDate()).thenReturn(endDate.toString());
+        when(repeatPattern.getFrequency()).thenReturn(EVERY_MONTH_2);
         when(repeatPattern.getRepeatFor()).thenReturn(1);
 
-        final BusinessType businessType = new BusinessType(LGT_2, 1, DESCRIPTION, CATEGORY, false, true, CROWN_2);
+        final BusinessType businessType = new BusinessType().id(LGT_2).seqNum(1).typeCode(DESCRIPTION).typeDescription(CATEGORY).slot(false).duration(true).jurisdiction(CROWN_2);
         when(referenceDataCache.getRotaBusinessTypeByCode(LGT_2)).thenReturn(Optional.of(businessType));
         stubCrownCourtRoomAvailable(courtRoomId);
         when(sessionsService.validateSessionIntegrity(any(Session.class), any(LocalDate.class), any(LocalDate.class), any(Integer.class), any(RepeatFrequency.class)))
@@ -2534,16 +2622,15 @@ class SessionsApiValidatorTest {
         final String originalCourtRoomId = randomUUID().toString();
         final String newCourtRoomId = randomUUID().toString();
         
-        final UpdateCourtSchedule updateCourtSchedule = UpdateCourtScheduleBuilder.courtSchedule()
-                .withCourtScheduleId(courtScheduleId)
-                .withCourtRoomId(newCourtRoomId)
-                .withBusinessType(LGT_2)
-                .withSessionType("AM")
-                .withPanel(ADULT_2)
-                .withJurisdiction(CROWN_2)
-                .withIsDraft(true)
-                .withMaxSlots(20)
-                .build();
+        final UpdateCourtSchedule updateCourtSchedule = new UpdateCourtSchedule()
+                .courtScheduleId(courtScheduleId)
+                .courtRoomId(newCourtRoomId)
+                .businessType(LGT_2)
+                .courtSession("AM")
+                .panel(ADULT_2)
+                .jurisdiction(CROWN_2)
+                .isDraft(true)
+                .maxSlots(20);
 
         final CourtSchedule persistedSchedule = new CourtSchedule();
         persistedSchedule.setCourtScheduleId(courtScheduleId);
@@ -2574,16 +2661,15 @@ class SessionsApiValidatorTest {
         // Given - CROWN draft session with hearings booked trying to change state to assigned
         final String courtScheduleId = randomUUID().toString();
         
-        final UpdateCourtSchedule updateCourtSchedule = UpdateCourtScheduleBuilder.courtSchedule()
-                .withCourtScheduleId(courtScheduleId)
-                .withCourtRoomId(courtRoomId)
-                .withBusinessType(LGT_2)
-                .withSessionType("AM")
-                .withPanel(ADULT_2)
-                .withJurisdiction(CROWN_2)
-                .withIsDraft(false) // Trying to change from draft to assigned
-                .withMaxSlots(20)
-                .build();
+        final UpdateCourtSchedule updateCourtSchedule = new UpdateCourtSchedule()
+                .courtScheduleId(courtScheduleId)
+                .courtRoomId(courtRoomId)
+                .businessType(LGT_2)
+                .courtSession("AM")
+                .panel(ADULT_2)
+                .jurisdiction(CROWN_2)
+                .isDraft(false) // Trying to change from draft to assigned
+                .maxSlots(20);
 
         final CourtSchedule persistedSchedule = new CourtSchedule();
         persistedSchedule.setCourtScheduleId(courtScheduleId);
@@ -2616,16 +2702,15 @@ class SessionsApiValidatorTest {
         final String originalCourtRoomId = randomUUID().toString();
         final String newCourtRoomId = randomUUID().toString();
         
-        final UpdateCourtSchedule updateCourtSchedule = UpdateCourtScheduleBuilder.courtSchedule()
-                .withCourtScheduleId(courtScheduleId)
-                .withCourtRoomId(newCourtRoomId)
-                .withBusinessType(LGT_2)
-                .withSessionType("AM")
-                .withPanel(ADULT_2)
-                .withJurisdiction(CROWN_2)
-                .withIsDraft(true)
-                .withMaxSlots(20)
-                .build();
+        final UpdateCourtSchedule updateCourtSchedule = new UpdateCourtSchedule()
+                .courtScheduleId(courtScheduleId)
+                .courtRoomId(newCourtRoomId)
+                .businessType(LGT_2)
+                .courtSession("AM")
+                .panel(ADULT_2)
+                .jurisdiction(CROWN_2)
+                .isDraft(true)
+                .maxSlots(20);
 
         final CourtSchedule persistedSchedule = new CourtSchedule();
         persistedSchedule.setCourtScheduleId(courtScheduleId);
@@ -2722,11 +2807,9 @@ class SessionsApiValidatorTest {
     @Test
     void shouldReturnErrorWhenCourtScheduleIdsIsNullForAssignCourtroom() {
         // Given
-        final AssignCourtroomRequest request = AssignCourtroomRequest.AssignCourtroomRequestBuilder
-                .assignCourtroomRequestBuilder()
-                .withCourtScheduleIds(null)
-                .withCourtRoomId(courtRoomId)
-                .build();
+        final AssignCourtroomRequest request = new AssignCourtroomRequest()
+                .courtScheduleIds(null)
+                .courtRoomId(courtRoomId);
 
         // When
         final JsonObject result = sessionsApiValidator.getAssignCourtroomValidation(request);
@@ -2738,11 +2821,9 @@ class SessionsApiValidatorTest {
     @Test
     void shouldReturnErrorWhenCourtScheduleIdsIsEmptyForAssignCourtroom() {
         // Given
-        final AssignCourtroomRequest request = AssignCourtroomRequest.AssignCourtroomRequestBuilder
-                .assignCourtroomRequestBuilder()
-                .withCourtScheduleIds(emptyList())
-                .withCourtRoomId(courtRoomId)
-                .build();
+        final AssignCourtroomRequest request = new AssignCourtroomRequest()
+                .courtScheduleIds(emptyList())
+                .courtRoomId(courtRoomId);
 
         // When
         final JsonObject result = sessionsApiValidator.getAssignCourtroomValidation(request);
@@ -2754,11 +2835,9 @@ class SessionsApiValidatorTest {
     @Test
     void shouldReturnErrorWhenCourtRoomIdIsNull() {
         // Given
-        final AssignCourtroomRequest request = AssignCourtroomRequest.AssignCourtroomRequestBuilder
-                .assignCourtroomRequestBuilder()
-                .withCourtScheduleIds(List.of(randomUUID().toString()))
-                .withCourtRoomId(null)
-                .build();
+        final AssignCourtroomRequest request = new AssignCourtroomRequest()
+                .courtScheduleIds(List.of(randomUUID().toString()))
+                .courtRoomId(null);
 
         // When
         final JsonObject result = sessionsApiValidator.getAssignCourtroomValidation(request);
@@ -2770,11 +2849,9 @@ class SessionsApiValidatorTest {
     @Test
     void shouldReturnErrorWhenCourtRoomIdIsEmpty() {
         // Given
-        final AssignCourtroomRequest request = AssignCourtroomRequest.AssignCourtroomRequestBuilder
-                .assignCourtroomRequestBuilder()
-                .withCourtScheduleIds(List.of(randomUUID().toString()))
-                .withCourtRoomId("")
-                .build();
+        final AssignCourtroomRequest request = new AssignCourtroomRequest()
+                .courtScheduleIds(List.of(randomUUID().toString()))
+                .courtRoomId("");
 
         // When
         final JsonObject result = sessionsApiValidator.getAssignCourtroomValidation(request);
@@ -2786,11 +2863,9 @@ class SessionsApiValidatorTest {
     @Test
     void shouldReturnErrorWhenCourtRoomIdIsBlank() {
         // Given
-        final AssignCourtroomRequest request = AssignCourtroomRequest.AssignCourtroomRequestBuilder
-                .assignCourtroomRequestBuilder()
-                .withCourtScheduleIds(List.of(randomUUID().toString()))
-                .withCourtRoomId("   ")
-                .build();
+        final AssignCourtroomRequest request = new AssignCourtroomRequest()
+                .courtScheduleIds(List.of(randomUUID().toString()))
+                .courtRoomId("   ");
 
         // When
         final JsonObject result = sessionsApiValidator.getAssignCourtroomValidation(request);
@@ -2802,11 +2877,9 @@ class SessionsApiValidatorTest {
     @Test
     void shouldReturnEmptyJsonObjectWhenAllFieldsAreValid() {
         // Given
-        final AssignCourtroomRequest request = AssignCourtroomRequest.AssignCourtroomRequestBuilder
-                .assignCourtroomRequestBuilder()
-                .withCourtScheduleIds(List.of(randomUUID().toString()))
-                .withCourtRoomId(courtRoomId)
-                .build();
+        final AssignCourtroomRequest request = new AssignCourtroomRequest()
+                .courtScheduleIds(List.of(randomUUID().toString()))
+                .courtRoomId(courtRoomId);
 
         // When
         final JsonObject result = sessionsApiValidator.getAssignCourtroomValidation(request);

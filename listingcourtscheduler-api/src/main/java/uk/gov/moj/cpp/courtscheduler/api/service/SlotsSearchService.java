@@ -4,7 +4,7 @@ import static java.lang.Integer.parseInt;
 
 import uk.gov.moj.cpp.courtscheduler.common.converter.ListToJsonArrayConverter;
 import uk.gov.moj.cpp.courtscheduler.common.utils.SessionAvailability;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
@@ -95,7 +95,7 @@ public class SlotsSearchService {
 
     /* package */ Pair<Integer, List<CourtSchedule>> getMultidayCourtSchedules(final HearingSlotRequestParam requestParam) {
         final int duration = parseInt(requestParam.duration());
-        final int daysNeeded = duration / FULL_DAY_DURATION_MINS;
+        final int daysNeeded = (int) Math.ceil(duration / (double) FULL_DAY_DURATION_MINS);
 
         LOGGER.info("Multiday CROWN search: duration={}, daysNeeded={}, courtSession forced {}->{}, isSlotBased forced {}->{}",
                 duration, daysNeeded, requestParam.courtSession(), MULTIDAY_COURT_SESSION,
@@ -198,7 +198,7 @@ public class SlotsSearchService {
             }
             // When showOverbookedSlots is true, include sessions regardless of capacity.
             if (!showOverbookedSlots
-                    && !daySchedule.isOverbookingAllowed()
+                    && !daySchedule.getOverbookingAllowed()
                     && SessionAvailability.getEffectiveAvailableDuration(daySchedule) < FULL_DAY_DURATION_MINS) {
                 return false;
             }
@@ -211,7 +211,7 @@ public class SlotsSearchService {
     }
 
     private static CourtSchedule preferNonOverbooking(final CourtSchedule existing, final CourtSchedule incoming) {
-        return existing.isOverbookingAllowed() ? incoming : existing;
+        return existing.getOverbookingAllowed() ? incoming : existing;
     }
 
     private List<CourtSchedule> deduplicateSchedules(final List<CourtSchedule> schedules) {
@@ -234,7 +234,7 @@ public class SlotsSearchService {
         final List<CourtSchedule> overbookingFilteredSchedules = new ArrayList<>();
         final int durationInt = parseDuration(duration);
         for (final CourtSchedule courtSchedule : courtSchedules) {
-            if (courtSchedule.isOverbookingAllowed() || showoverbookedSlots || hasAvailableCapacity(courtSchedule, durationInt)) {
+            if (courtSchedule.getOverbookingAllowed() || showoverbookedSlots || hasAvailableCapacity(courtSchedule, durationInt)) {
                 overbookingFilteredSchedules.add(courtSchedule);
             }
         }
@@ -242,7 +242,7 @@ public class SlotsSearchService {
     }
 
     private boolean hasAvailableCapacity(final CourtSchedule courtSchedule, final int durationInt) {
-        if (courtSchedule.isSlotBased()) {
+        if (courtSchedule.getSlotBased()) {
             return courtSchedule.getTotalBooked() < courtSchedule.getMaxSlots();
         }
         return SessionAvailability.getEffectiveAvailableDuration(courtSchedule) >= durationInt;

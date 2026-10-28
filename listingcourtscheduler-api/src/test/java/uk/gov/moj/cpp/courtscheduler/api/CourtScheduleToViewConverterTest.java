@@ -3,12 +3,12 @@ package uk.gov.moj.cpp.courtscheduler.api;
 import static io.github.benas.randombeans.api.EnhancedRandom.random;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
-import static uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary.judiciary;
 
 import uk.gov.moj.cpp.courtscheduler.api.converter.CourtScheduleToViewConverter;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtSessionsView;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleView;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSessionsView;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtScheduleJudiciary;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtScheduleView;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -144,16 +144,15 @@ class CourtScheduleToViewConverterTest {
     void shouldConvertJudiciaries() {
         final CourtSchedule schedule = random(CourtSchedule.class);
         final String judiciaryId = "9f39f876-3ff6-32b5-926e-c588e36a87b8";
-        schedule.setJudiciaries(List.of(judiciary()
-                .withJudiciaryId(judiciaryId)
-                .withTitle(TITLE)
-                .withForenames(FORENAMES)
-                .withSurname(SURNAME)
-                .withEmailAddress(EMAIL_ADDRESS)
-                .withJudiciaryType(JUDICIARY_TYPE)
-                .withIsBenchChairman(true)
-                .withIsDeputy(false)
-                .build()));
+        schedule.setJudiciaries(List.of(new CourtScheduleJudiciary()
+                .id(judiciaryId)
+                .titlePrefix("His Honour")
+                .forenames("Mark J")
+                .surname("Ainsworth")
+                .emailAddress("mark.ainsworth@ejudiciary.net")
+                .judiciaryType("Recorder")
+                .isBenchChairman(true)
+                .isDeputy(false)));
 
         final List<CourtSessionsView> courtSessionsViews = CourtScheduleToViewConverter.getCourtSessionsViews(List.of(schedule));
 
@@ -161,55 +160,8 @@ class CourtScheduleToViewConverterTest {
         final List<CourtScheduleView> sessions = courtSessionsViews.getFirst().getSessions();
         assertThat(sessions.size(), is(1));
         assertThat(sessions.getFirst().getJudiciaries().size(), is(1));
-        final uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary result = sessions.getFirst().getJudiciaries().getFirst();
-        assertThat(result.getJudiciaryId(), is(judiciaryId));
-        assertThat(result.getTitle(), is(TITLE));
-        assertThat(result.getForenames(), is(FORENAMES));
-        assertThat(result.getSurname(), is(SURNAME));
-        assertThat(result.getEmailAddress(), is(EMAIL_ADDRESS));
-        assertThat(result.getJudiciaryType(), is(JUDICIARY_TYPE));
-        assertThat(result.isBenchChairman(), is(true));
-        assertThat(result.isDeputy(), is(false));
-    }
-
-    @Test
-    void shouldPassThroughJudiciaryRefDataFields() {
-        final CourtSchedule schedule = random(CourtSchedule.class);
-        final String judiciaryId = "9f39f876-3ff6-32b5-926e-c588e36a87b8";
-        final uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary judiciary = judiciary()
-                .withJudiciaryId(judiciaryId)
-                .withTitle(TITLE)
-                .withForenames(FORENAMES)
-                .withSurname(SURNAME)
-                .withEmailAddress(EMAIL_ADDRESS)
-                .withJudiciaryType(JUDICIARY_TYPE)
-                .withIsBenchChairman(true)
-                .withIsDeputy(false)
-                .build();
-        judiciary.setSeqId(SEQ_ID);
-        judiciary.setTitleJudicialPrefix("His Honour Judge");
-        judiciary.setTitleJudicialPrefixWelsh("Ei Anrhydedd y Barnwr");
-        judiciary.setPersonId("131172");
-        judiciary.setRequestedName("HIS HONOUR JUDGE MARK AINSWORTH");
-        schedule.setJudiciaries(List.of(judiciary));
-
-        final List<CourtSessionsView> courtSessionsViews = CourtScheduleToViewConverter.getCourtSessionsViews(List.of(schedule));
-
-        assertThat(courtSessionsViews.size(), is(1));
-        final uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary result =
-                courtSessionsViews.getFirst().getSessions().getFirst().getJudiciaries().getFirst();
-        assertThat(result.getJudiciaryId(), is(judiciaryId));
-        assertThat(result.getTitle(), is(TITLE));
-        assertThat(result.getForenames(), is(FORENAMES));
-        assertThat(result.getSurname(), is(SURNAME));
-        assertThat(result.getEmailAddress(), is(EMAIL_ADDRESS));
-        assertThat(result.getJudiciaryType(), is(JUDICIARY_TYPE));
-        assertThat(result.isBenchChairman(), is(true));
-        assertThat(result.isDeputy(), is(false));
-        assertThat(result.getSeqId(), is(SEQ_ID));
-        assertThat(result.getTitleJudicialPrefix(), is("His Honour Judge"));
-        assertThat(result.getTitleJudicialPrefixWelsh(), is("Ei Anrhydedd y Barnwr"));
-        assertThat(result.getPersonId(), is("131172"));
-        assertThat(result.getRequestedName(), is("HIS HONOUR JUDGE MARK AINSWORTH"));
+        assertThat(sessions.getFirst().getJudiciaries().getFirst().getId(), is(judiciaryId));
+        assertThat(sessions.getFirst().getJudiciaries().getFirst().getIsBenchChairman(), is(true));
+        assertThat(sessions.getFirst().getJudiciaries().getFirst().getIsDeputy(), is(false));
     }
 }

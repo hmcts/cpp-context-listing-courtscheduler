@@ -12,7 +12,7 @@ import static org.mockito.Mockito.when;
 
 import uk.gov.moj.cpp.courtscheduler.common.converter.ObjectToJsonObjectConverter;
 
-import uk.gov.moj.cpp.courtscheduler.domain.AllocatedListingTotalBooked;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.AllocatedListingTotalBooked;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.IdResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant;
@@ -79,7 +79,9 @@ class AllocatedListingServiceTest {
 
     private List<AllocatedListingTotalBooked> getAllocatedListingTotalBooked(final List<String> courtScheduleIds) {
         return courtScheduleIds.stream()
-                .map(courtScheduleId -> new AllocatedListingTotalBooked(courtScheduleId, totalBooked))
+                .map(courtScheduleId -> new AllocatedListingTotalBooked()
+                        .courtScheduleId(courtScheduleId)
+                        .totalBooked(totalBooked.intValue()))
                 .toList();
     }
 

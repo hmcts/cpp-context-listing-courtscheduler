@@ -11,9 +11,9 @@ import static uk.gov.moj.cpp.courtscheduler.common.exception.MissingDataError.RO
 import uk.gov.moj.cpp.courtscheduler.api.service.rota.helper.RotaUtils;
 import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataMapperService;
 import uk.gov.moj.cpp.courtscheduler.common.service.RotaProcessLogService;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
-import uk.gov.moj.cpp.courtscheduler.domain.Judiciary;
-import uk.gov.moj.cpp.courtscheduler.domain.Venue;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtRoom;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.Judiciary;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.Venue;
 
 import java.util.Map;
 import java.util.Optional;

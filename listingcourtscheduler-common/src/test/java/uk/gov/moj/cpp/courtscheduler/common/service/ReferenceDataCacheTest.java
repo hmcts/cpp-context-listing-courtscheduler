@@ -29,11 +29,11 @@ import uk.gov.moj.cpp.courtscheduler.common.converter.StringToJsonObjectConverte
 
 import uk.gov.moj.cpp.platform.test.data.utils.FileUtil;
 import uk.gov.moj.cpp.courtscheduler.cache.CacheService;
-import uk.gov.moj.cpp.courtscheduler.domain.BusinessType;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtRoomSessionAllocation;
-import uk.gov.moj.cpp.courtscheduler.domain.Judiciary;
-import uk.gov.moj.cpp.courtscheduler.domain.Venue;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.BusinessType;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtRoom;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtRoomSessionAllocation;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.Judiciary;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.Venue;
 
 import java.util.HashMap;
 import java.util.List;
@@ -95,7 +95,7 @@ class ReferenceDataCacheTest {
         setCommonCacheEnabled();
 
         when(cacheService.get(ROTA_BUSINESS_TYPE_CACHE_PREFIX + BUSINESS_TYPE_CODE)).thenReturn(null);
-        when(referenceDataService.getRotaBusinessTypesMap()).thenReturn(Map.of(BUSINESS_TYPE_CODE, BusinessType.BusinessTypeBuilder.aBusinessType().withTypeCode(BUSINESS_TYPE_CODE).build()));
+        when(referenceDataService.getRotaBusinessTypesMap()).thenReturn(Map.of(BUSINESS_TYPE_CODE, new BusinessType().typeCode(BUSINESS_TYPE_CODE)));
         referenceDataCache.getRotaBusinessTypeByCode(BUSINESS_TYPE_CODE);
 
         verify(referenceDataService, atLeastOnce()).getRotaBusinessTypesMap();
@@ -252,7 +252,7 @@ class ReferenceDataCacheTest {
         setCommonCacheEnabled();
 
         when(cacheService.get(ROTA_COURT_ROOM_SESSION_ALLOCATIONS_KEY)).thenReturn(null);
-        when(referenceDataService.getCourtRoomSessionAllocationsMap()).thenReturn(List.of(CourtRoomSessionAllocation.CourtRoomSessionAllocationBuilder.aCourtRoomSessionAllocation().build()));
+        when(referenceDataService.getCourtRoomSessionAllocationsMap()).thenReturn(List.of(new CourtRoomSessionAllocation()));
 
         referenceDataCache.getCourtRoomSessionAllocations();
 
@@ -264,7 +264,7 @@ class ReferenceDataCacheTest {
     void shouldReturnCourtRoomSessionAllocationsFromServiceWhenCacheDisabled() {
         setCommonCacheDisabled();
 
-        when(referenceDataService.getCourtRoomSessionAllocationsMap()).thenReturn(List.of(CourtRoomSessionAllocation.CourtRoomSessionAllocationBuilder.aCourtRoomSessionAllocation().build()));
+        when(referenceDataService.getCourtRoomSessionAllocationsMap()).thenReturn(List.of(new CourtRoomSessionAllocation()));
 
         referenceDataCache.getCourtRoomSessionAllocations();
 
@@ -284,7 +284,7 @@ class ReferenceDataCacheTest {
         setCommonCacheEnabled();
 
         when(cacheService.get(ROTA_COURTROOM_CACHE_PREFIX + COURT_ROOM_ID)).thenReturn(null);
-        when(referenceDataService.getCourtRoomsMap()).thenReturn(Map.of(fromString(COURT_ROOM_ID), CourtRoom.CourtRoomBuilder.aCourtRoom().withCourtRoomId(COURT_ROOM_ID).build()));
+        when(referenceDataService.getCourtRoomsMap()).thenReturn(Map.of(fromString(COURT_ROOM_ID), new CourtRoom().courtroomId(COURT_ROOM_ID)));
         referenceDataCache.getRotaCourtRoomByCourtRoomId(COURT_ROOM_ID);
         verify(cacheService).get(ROTA_COURTROOM_CACHE_PREFIX + COURT_ROOM_ID);
     }
@@ -302,7 +302,7 @@ class ReferenceDataCacheTest {
         setCommonCacheEnabled();
         setCourtRoomByVenueCache();
 
-        final Optional<CourtRoom> courtRoomOptional = referenceDataCache.getCourtRoomByVenue(new Venue(LOCATION_ID, VENUE_ID, VENUE_NAME), new HashMap<>());
+        final Optional<CourtRoom> courtRoomOptional = referenceDataCache.getCourtRoomByVenue(new Venue().locationId(LOCATION_ID).venueId(VENUE_ID).venueName(VENUE_NAME), new HashMap<>());
 
         assertTrue(courtRoomOptional.isPresent());
         assertEquals(LOCATION_ID, courtRoomOptional.get().getRotaLocationId());
@@ -316,7 +316,7 @@ class ReferenceDataCacheTest {
         setCommonCacheEnabled();
         setCourtRoomWithMultipleValuesHavingSameLocationIdAndVenueNameByVenueCache();
 
-        final Optional<CourtRoom> courtRoomOptional = referenceDataCache.getCourtRoomByVenue(new Venue(LOCATION_ID, VENUE_ID, VENUE_NAME), new HashMap<>());
+        final Optional<CourtRoom> courtRoomOptional = referenceDataCache.getCourtRoomByVenue(new Venue().locationId(LOCATION_ID).venueId(VENUE_ID).venueName(VENUE_NAME), new HashMap<>());
 
         assertTrue(courtRoomOptional.isPresent());
         assertEquals(LOCATION_ID, courtRoomOptional.get().getRotaLocationId());
@@ -329,13 +329,13 @@ class ReferenceDataCacheTest {
     void shouldReturnCourtRoomByVenueFromCacheWhenCacheEnabledHoweverNotInTheCache() {
         setCommonCacheEnabled();
         when(cacheService.get(format(ROTA_COURTROOM_BY_VENUE_CACHE_PREFIX, LOCATION_ID, VENUE_NAME))).thenReturn(null);
-        when(referenceDataService.getRotaCourtRoomMappings()).thenReturn(List.of(CourtRoom.CourtRoomBuilder.aCourtRoom()
-                .withRotaLocationId(LOCATION_ID)
-                .withRotaVenueName(VENUE_NAME)
-                .withRotaVenueId(VENUE_ID)
-                .withCourtRoomId(COURT_ROOM_ID).build()));
+        when(referenceDataService.getRotaCourtRoomMappings()).thenReturn(List.of(new CourtRoom()
+                .rotaLocationId(LOCATION_ID)
+                .rotaVenueName(VENUE_NAME)
+                .rotaVenueId(VENUE_ID)
+                .courtroomId(COURT_ROOM_ID)));
 
-        final Optional<CourtRoom> courtRoomOptional = referenceDataCache.getCourtRoomByVenue(new Venue(LOCATION_ID, VENUE_ID, VENUE_NAME), new HashMap<>());
+        final Optional<CourtRoom> courtRoomOptional = referenceDataCache.getCourtRoomByVenue(new Venue().locationId(LOCATION_ID).venueId(VENUE_ID).venueName(VENUE_NAME), new HashMap<>());
 
         assertTrue(courtRoomOptional.isPresent());
         assertEquals(LOCATION_ID, courtRoomOptional.get().getRotaLocationId());
@@ -351,7 +351,7 @@ class ReferenceDataCacheTest {
         when(cacheService.get(format(ROTA_COURTROOM_BY_VENUE_CACHE_PREFIX, LOCATION_ID, VENUE_NAME))).thenReturn(null);
         when(referenceDataService.getRotaCourtRoomMappings()).thenReturn(courtRoomsFromReferenceData());
 
-        final Optional<CourtRoom> courtRoomOptional = referenceDataCache.getCourtRoomByVenue(new Venue(LOCATION_ID, VENUE_ID, VENUE_NAME), new HashMap<>());
+        final Optional<CourtRoom> courtRoomOptional = referenceDataCache.getCourtRoomByVenue(new Venue().locationId(LOCATION_ID).venueId(VENUE_ID).venueName(VENUE_NAME), new HashMap<>());
 
         assertTrue(courtRoomOptional.isPresent());
         assertEquals(LOCATION_ID, courtRoomOptional.get().getRotaLocationId());
@@ -366,18 +366,18 @@ class ReferenceDataCacheTest {
         setCommonCacheEnabled();
         when(cacheService.get(format(ROTA_COURTROOM_BY_VENUE_CACHE_PREFIX, LOCATION_ID, VENUE_NAME))).thenReturn(null);
         when(referenceDataService.getRotaCourtRoomMappings()).thenReturn(List.of(
-                CourtRoom.CourtRoomBuilder.aCourtRoom()
-                        .withRotaLocationId(LOCATION_ID)
-                        .withRotaVenueName(VENUE_NAME)
-                        .withCppCourtRoomId(2345)
-                        .withCourtRoomId(COURT_ROOM_ID).build(),
-                CourtRoom.CourtRoomBuilder.aCourtRoom()
-                        .withRotaLocationId(LOCATION_ID)
-                        .withRotaVenueName(VENUE_NAME)
-                        .withCppCourtRoomId(2346)
-                        .withCourtRoomId(COURT_ROOM_ID).build()));
+                new CourtRoom()
+                        .rotaLocationId(LOCATION_ID)
+                        .rotaVenueName(VENUE_NAME)
+                        .cppCourtRoomId(2345)
+                        .courtroomId(COURT_ROOM_ID),
+                new CourtRoom()
+                        .rotaLocationId(LOCATION_ID)
+                        .rotaVenueName(VENUE_NAME)
+                        .cppCourtRoomId(2346)
+                        .courtroomId(COURT_ROOM_ID)));
 
-        final Optional<CourtRoom> courtRoomOptional = referenceDataCache.getCourtRoomByVenue(new Venue(LOCATION_ID, VENUE_ID, VENUE_NAME), new HashMap<>());
+        final Optional<CourtRoom> courtRoomOptional = referenceDataCache.getCourtRoomByVenue(new Venue().locationId(LOCATION_ID).venueId(VENUE_ID).venueName(VENUE_NAME), new HashMap<>());
 
         assertTrue(courtRoomOptional.isPresent());
         assertEquals(LOCATION_ID, courtRoomOptional.get().getRotaLocationId());
@@ -392,13 +392,13 @@ class ReferenceDataCacheTest {
         setCommonCacheEnabled();
         when(cacheService.get(format(ROTA_COURTROOM_BY_VENUE_CACHE_PREFIX, LOCATION_ID, VENUE_NAME))).thenReturn(null);
         when(referenceDataService.getRotaCourtRoomMappings()).thenReturn(List.of(
-                CourtRoom.CourtRoomBuilder.aCourtRoom()
-                        .withRotaLocationId(LOCATION_ID)
-                        .withRotaVenueName(VENUE_NAME)
-                        .withCppCourtRoomId(2345)
-                        .withCourtRoomId(COURT_ROOM_ID).build()));
+                new CourtRoom()
+                        .rotaLocationId(LOCATION_ID)
+                        .rotaVenueName(VENUE_NAME)
+                        .cppCourtRoomId(2345)
+                        .courtroomId(COURT_ROOM_ID)));
 
-        final Optional<CourtRoom> courtRoomOptional = referenceDataCache.getCourtRoomByVenue(new Venue(LOCATION_ID, VENUE_ID, VENUE_NAME), new HashMap<>());
+        final Optional<CourtRoom> courtRoomOptional = referenceDataCache.getCourtRoomByVenue(new Venue().locationId(LOCATION_ID).venueId(VENUE_ID).venueName(VENUE_NAME), new HashMap<>());
 
         assertTrue(courtRoomOptional.isPresent());
         assertEquals(LOCATION_ID, courtRoomOptional.get().getRotaLocationId());
@@ -411,15 +411,15 @@ class ReferenceDataCacheTest {
     @Test
     void shouldReturnCourtRoomByVenueFromServiceWhenCacheDisabled() {
         setCommonCacheDisabled();
-        final Venue venue = new Venue(LOCATION_ID, VENUE_ID, VENUE_NAME);
+        final Venue venue = new Venue().locationId(LOCATION_ID).venueId(VENUE_ID).venueName(VENUE_NAME);
         when(referenceDataService.getRotaCourtRoomByVenue(eq(venue), anyMap()))
-                .thenReturn(Optional.of(CourtRoom.CourtRoomBuilder.aCourtRoom()
-                        .withRotaLocationId(LOCATION_ID)
-                        .withRotaVenueName(VENUE_NAME)
-                        .withRotaVenueId(VENUE_ID)
-                        .withCourtRoomId(COURT_ROOM_ID).build()));
+                .thenReturn(Optional.of(new CourtRoom()
+                        .rotaLocationId(LOCATION_ID)
+                        .rotaVenueName(VENUE_NAME)
+                        .rotaVenueId(VENUE_ID)
+                        .courtroomId(COURT_ROOM_ID)));
 
-        final Optional<CourtRoom> courtRoomOptional = referenceDataCache.getCourtRoomByVenue(new Venue(LOCATION_ID, VENUE_ID, VENUE_NAME), new HashMap<>());
+        final Optional<CourtRoom> courtRoomOptional = referenceDataCache.getCourtRoomByVenue(new Venue().locationId(LOCATION_ID).venueId(VENUE_ID).venueName(VENUE_NAME), new HashMap<>());
 
         assertTrue(courtRoomOptional.isPresent());
         assertEquals(LOCATION_ID, courtRoomOptional.get().getRotaLocationId());
@@ -441,7 +441,7 @@ class ReferenceDataCacheTest {
     void shouldReturnCpCourtRoomFromCacheWhenCacheEnabledHoweverNotInTheCache() {
         setCommonCacheEnabled();
         when(cacheService.get(CP_COURTROOMS_BY_ID_CACHE_PREFIX + COURT_ROOM_ID)).thenReturn(null);
-        when(referenceDataService.getCpCourtRooms()).thenReturn(List.of(CourtRoom.CourtRoomBuilder.aCourtRoom().withId(COURT_ROOM_ID).build()));
+        when(referenceDataService.getCpCourtRooms()).thenReturn(List.of(new CourtRoom().id(COURT_ROOM_ID)));
 
         referenceDataCache.getCpCourtRoomByCourtRoomId(COURT_ROOM_ID);
         verify(cacheService).get(CP_COURTROOMS_BY_ID_CACHE_PREFIX + COURT_ROOM_ID);
@@ -451,7 +451,7 @@ class ReferenceDataCacheTest {
     @Test
     void shouldReturnCpCourtRoomFromServiceWhenCacheDisabled() {
         setCommonCacheDisabled();
-        when(referenceDataService.getCpCourtRooms()).thenReturn(List.of(CourtRoom.CourtRoomBuilder.aCourtRoom().withId(COURT_ROOM_ID).build()));
+        when(referenceDataService.getCpCourtRooms()).thenReturn(List.of(new CourtRoom().id(COURT_ROOM_ID)));
 
         referenceDataCache.getCpCourtRoomByCourtRoomId(COURT_ROOM_ID);
         verify(referenceDataService).getCpCourtRooms();
@@ -463,8 +463,8 @@ class ReferenceDataCacheTest {
         final String centreA = "161141dc-a01f-3b0a-85d1-7a90a8099b6a";
         final String centreB = "049b5d11-e3dd-356f-b742-bd5e71eb7af6";
         when(referenceDataService.getCpCourtRooms()).thenReturn(List.of(
-                CourtRoom.CourtRoomBuilder.aCourtRoom().withId(COURT_ROOM_ID).withOucodeUUID(centreA).build(),
-                CourtRoom.CourtRoomBuilder.aCourtRoom().withId(COURT_ROOM_ID).withOucodeUUID(centreB).build()));
+                new CourtRoom().id(COURT_ROOM_ID).oucodeUUID(centreA),
+                new CourtRoom().id(COURT_ROOM_ID).oucodeUUID(centreB)));
 
         final List<CourtRoom> memberships = referenceDataCache.getCpCourtRoomsByCourtRoomId(COURT_ROOM_ID);
         assertEquals(2, memberships.size());
@@ -481,8 +481,8 @@ class ReferenceDataCacheTest {
         setCommonCacheEnabled();
         when(cacheService.get(CP_COURTROOMS_BY_ID_CACHE_PREFIX + COURT_ROOM_ID)).thenReturn(null);
         when(referenceDataService.getCpCourtRooms()).thenReturn(List.of(
-                CourtRoom.CourtRoomBuilder.aCourtRoom().withCourtRoomName("no id").build(),
-                CourtRoom.CourtRoomBuilder.aCourtRoom().withId(COURT_ROOM_ID).build()));
+                new CourtRoom().courtroomName("no id"),
+                new CourtRoom().id(COURT_ROOM_ID)));
 
         final List<CourtRoom> memberships = referenceDataCache.getCpCourtRoomsByCourtRoomId(COURT_ROOM_ID);
 
@@ -494,8 +494,8 @@ class ReferenceDataCacheTest {
     void shouldIgnoreCpCourtRoomsWithoutIdWhenCacheDisabled() {
         setCommonCacheDisabled();
         when(referenceDataService.getCpCourtRooms()).thenReturn(List.of(
-                CourtRoom.CourtRoomBuilder.aCourtRoom().withCourtRoomName("no id").build(),
-                CourtRoom.CourtRoomBuilder.aCourtRoom().withId(COURT_ROOM_ID).build()));
+                new CourtRoom().courtroomName("no id"),
+                new CourtRoom().id(COURT_ROOM_ID)));
 
         final List<CourtRoom> memberships = referenceDataCache.getCpCourtRoomsByCourtRoomId(COURT_ROOM_ID);
 
@@ -510,8 +510,8 @@ class ReferenceDataCacheTest {
         final String centreB = "049b5d11-e3dd-356f-b742-bd5e71eb7af6";
         when(cacheService.get(CP_COURTROOMS_BY_ID_CACHE_PREFIX + COURT_ROOM_ID)).thenReturn(null);
         when(referenceDataService.getCpCourtRooms()).thenReturn(List.of(
-                CourtRoom.CourtRoomBuilder.aCourtRoom().withId(COURT_ROOM_ID).withOucodeUUID(centreA).build(),
-                CourtRoom.CourtRoomBuilder.aCourtRoom().withId(COURT_ROOM_ID).withOucodeUUID(centreB).build()));
+                new CourtRoom().id(COURT_ROOM_ID).oucodeUUID(centreA),
+                new CourtRoom().id(COURT_ROOM_ID).oucodeUUID(centreB)));
 
         final List<CourtRoom> memberships = referenceDataCache.getCpCourtRoomsByCourtRoomId(COURT_ROOM_ID);
 

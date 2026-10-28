@@ -3,7 +3,7 @@ package uk.gov.moj.cpp.courtscheduler.integration.performance;
 import org.junit.jupiter.api.Test;
 import uk.gov.moj.cpp.courtscheduler.integration.utils.RequestParams;
 import uk.gov.moj.cpp.courtscheduler.integration.utils.ResponseData;
-import uk.gov.moj.cpp.courtscheduler.domain.JudiciaryUnavailabilityRequest;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.JudiciaryUnavailability;
 import uk.gov.moj.cpp.courtscheduler.integration.AbstractIT;
 import uk.gov.moj.cpp.courtscheduler.integration.utils.DatabaseSeeder.RuleData;
 
@@ -96,7 +96,7 @@ class JudiciaryAvailabilityBatchIT extends AbstractIT {
             // Create at least 1 unavailable rule (but not affecting the query range)
             final LocalDate unavailableStart = LocalDate.of(2026, 1, 20);
             final LocalDate unavailableEnd = LocalDate.of(2026, 1, 25);
-            final List<JudiciaryUnavailabilityRequest> unavailabilities = unavailabilityBetween(unavailableStart, unavailableEnd);
+            final List<JudiciaryUnavailability> unavailabilities = unavailabilityBetween(unavailableStart, unavailableEnd);
             allRules.add(new RuleData(
                     randomUUID().toString(),
                     judiciaryId,
@@ -149,7 +149,7 @@ class JudiciaryAvailabilityBatchIT extends AbstractIT {
                     availableEnd3,
                     List.of(THURSDAY, FRIDAY)
             ));
-            final List<JudiciaryUnavailabilityRequest> unavailabilities = unavailabilityBetween(queryStartDate, queryEndDate);
+            final List<JudiciaryUnavailability> unavailabilities = unavailabilityBetween(queryStartDate, queryEndDate);
             // Create 1 unavailable rule that makes them unavailable during the query range
             allRules.add(new RuleData(
                     randomUUID().toString(),
@@ -204,11 +204,11 @@ class JudiciaryAvailabilityBatchIT extends AbstractIT {
         return false;
     }
 
-    private static List<JudiciaryUnavailabilityRequest> unavailabilityBetween(final LocalDate startDate, final LocalDate endDate) {
-        final JudiciaryUnavailabilityRequest unavail = new JudiciaryUnavailabilityRequest();
+    private static List<JudiciaryUnavailability> unavailabilityBetween(final LocalDate startDate, final LocalDate endDate) {
+        final JudiciaryUnavailability unavail = new JudiciaryUnavailability();
         unavail.setStartDate(startDate);
         unavail.setEndDate(endDate);
-        final List<JudiciaryUnavailabilityRequest> unavailabilities = new ArrayList<>();
+        final List<JudiciaryUnavailability> unavailabilities = new ArrayList<>();
         unavailabilities.add(unavail);
         return unavailabilities;
     }

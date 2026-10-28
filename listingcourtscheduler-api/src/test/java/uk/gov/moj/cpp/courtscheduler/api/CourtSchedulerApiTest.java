@@ -9,15 +9,9 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import uk.gov.moj.cpp.courtscheduler.api.converter.AssignCourtroomRequestConverter;
-import uk.gov.moj.cpp.courtscheduler.api.converter.AssignJudiciariesRequestConverter;
-import uk.gov.moj.cpp.courtscheduler.api.converter.AssignJudiciaryToSessionsConverter;
-import uk.gov.moj.cpp.courtscheduler.api.converter.CreateSessionsRequestParamConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.ListHearingSlotConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.MiFilterCriteriaRequestParamConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.ProvisionalSlotConverter;
-import uk.gov.moj.cpp.courtscheduler.api.converter.SessionsConverter;
-import uk.gov.moj.cpp.courtscheduler.api.converter.UpdateCourtScheduleConverter;
 import uk.gov.moj.cpp.courtscheduler.api.converter.ValidateSessionAvailabilityRequestParamConverter;
 import uk.gov.moj.cpp.courtscheduler.api.service.MiService;
 import uk.gov.moj.cpp.courtscheduler.api.service.ProvisionalBookingService;
@@ -34,8 +28,8 @@ import uk.gov.moj.cpp.courtscheduler.api.validator.ValidationException;
 import uk.gov.moj.cpp.courtscheduler.common.service.JudiciaryAssignmentService;
 import uk.gov.moj.cpp.courtscheduler.common.service.JudiciaryUnassignmentService;
 import uk.gov.moj.cpp.courtscheduler.common.service.SessionsService;
-import uk.gov.moj.cpp.courtscheduler.domain.AssignJudiciariesRequest;
-import uk.gov.moj.cpp.courtscheduler.domain.AssignJudiciaryToSessionsRequest;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.AssignJudiciariesRequest;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.AssignJudiciaryToSessionsRequest;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -51,6 +45,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -60,17 +55,13 @@ import org.springframework.web.server.ResponseStatusException;
 class CourtSchedulerApiTest {
 
     // shared
-    @Mock private ObjectMapper objectMapper;
+    @Spy private ObjectMapper objectMapper = new ObjectMapper().findAndRegisterModules();
     @Mock private HttpServletRequest request;
 
     // court schedule CRUD
     @Mock private SessionsService sessionsService;
     @Mock private SessionsApiValidator sessionsApiValidator;
     @Mock private CourtScheduleApiValidator courtScheduleApiValidator;
-    @Mock private CreateSessionsRequestParamConverter createSessionsRequestParamConverter;
-    @Mock private UpdateCourtScheduleConverter updateCourtScheduleConverter;
-    @Mock private SessionsConverter sessionsConverter;
-    @Mock private AssignCourtroomRequestConverter assignCourtroomRequestConverter;
     @Mock private ValidateSessionAvailabilityRequestParamConverter validateSessionAvailabilityRequestParamConverter;
 
     // judiciary assign / unassign
@@ -79,8 +70,6 @@ class CourtSchedulerApiTest {
     @Mock private ChangeJudiciaryForHearingsHelper changeJudiciaryForHearingsHelper;
     @Mock private AssignJudiciariesApiValidator assignJudiciariesApiValidator;
     @Mock private JudiciariesApiValidator judiciariesApiValidator;
-    @Mock private AssignJudiciariesRequestConverter assignJudiciariesRequestConverter;
-    @Mock private AssignJudiciaryToSessionsConverter assignJudiciaryToSessionsConverter;
 
     // hearings
     @Mock private SlotsUpdateService slotsUpdateService;
@@ -135,14 +124,11 @@ class CourtSchedulerApiTest {
     @Test
     void assignJudiciary_shouldReturn202AndInvokeHelperWhenValidationPasses() throws Exception {
         final Map<String, Object> body = new HashMap<>();
-        final AssignJudiciariesRequest dto = AssignJudiciariesRequest.builder().build();
         final List<String> changedIds = List.of("schedule-1");
         final List<JsonObject> payloads = List.of(Json.createObjectBuilder().build());
 
         when(request.getContentType()).thenReturn(ASSIGN_CONTENT_TYPE);
-        when(objectMapper.writeValueAsString(any())).thenReturn("{}");
-        when(assignJudiciariesRequestConverter.convert(any())).thenReturn(dto);
-        when(assignJudiciariesApiValidator.validate(dto)).thenReturn(Json.createObjectBuilder().build());
+        when(assignJudiciariesApiValidator.validate(any(AssignJudiciariesRequest.class))).thenReturn(Json.createObjectBuilder().build());
         when(judiciaryAssignmentService.assignJudiciaries(any(AssignJudiciariesRequest.class), anyString()))
                 .thenReturn(changedIds);
         when(changeJudiciaryForHearingsHelper.createChangeJudiciaryForHearingsPayloads(changedIds))
@@ -159,12 +145,9 @@ class CourtSchedulerApiTest {
     @Test
     void assignJudiciary_shouldPassEmptyChangedIdsListToHelperWhenServiceReturnsNone() throws Exception {
         final Map<String, Object> body = new HashMap<>();
-        final AssignJudiciariesRequest dto = AssignJudiciariesRequest.builder().build();
 
         when(request.getContentType()).thenReturn(ASSIGN_CONTENT_TYPE);
-        when(objectMapper.writeValueAsString(any())).thenReturn("{}");
-        when(assignJudiciariesRequestConverter.convert(any())).thenReturn(dto);
-        when(assignJudiciariesApiValidator.validate(dto)).thenReturn(Json.createObjectBuilder().build());
+        when(assignJudiciariesApiValidator.validate(any(AssignJudiciariesRequest.class))).thenReturn(Json.createObjectBuilder().build());
         when(judiciaryAssignmentService.assignJudiciaries(any(AssignJudiciariesRequest.class), anyString()))
                 .thenReturn(List.of());
         when(changeJudiciaryForHearingsHelper.createChangeJudiciaryForHearingsPayloads(List.of()))
@@ -185,13 +168,10 @@ class CourtSchedulerApiTest {
     @Test
     void assignJudiciary_shouldThrowValidationExceptionWhenValidationFails() throws Exception {
         final Map<String, Object> body = new HashMap<>();
-        final AssignJudiciariesRequest dto = AssignJudiciariesRequest.builder().build();
         final JsonObject errors = Json.createObjectBuilder().add("error", "missing field").build();
 
         when(request.getContentType()).thenReturn(ASSIGN_CONTENT_TYPE);
-        when(objectMapper.writeValueAsString(any())).thenReturn("{}");
-        when(assignJudiciariesRequestConverter.convert(any())).thenReturn(dto);
-        when(assignJudiciariesApiValidator.validate(dto)).thenReturn(errors);
+        when(assignJudiciariesApiValidator.validate(any(AssignJudiciariesRequest.class))).thenReturn(errors);
 
         assertThrows(ValidationException.class,
                 () -> courtSchedulerApi.postCourtschedulerSessionJudiciary(body));
@@ -358,21 +338,17 @@ class CourtSchedulerApiTest {
 
     @Test
     void assignJudiciaries_shouldReturn202AndInvokeHelperWhenServiceSucceeds() throws Exception {
-        final Map<String, Object> body = new HashMap<>();
-        final AssignJudiciaryToSessionsRequest dto = AssignJudiciaryToSessionsRequest.builder()
-                .withCourtScheduleIds(List.of(COURT_SCHEDULE_ID_1))
-                .build();
+        final AssignJudiciaryToSessionsRequest dto = new AssignJudiciaryToSessionsRequest()
+                .courtScheduleIds(List.of(COURT_SCHEDULE_ID_1));
         final List<String> changedIds = List.of(COURT_SCHEDULE_ID_1);
         final List<JsonObject> payloads = List.of(Json.createObjectBuilder().build());
 
-        when(objectMapper.writeValueAsString(any())).thenReturn("{}");
-        when(assignJudiciaryToSessionsConverter.convert(any())).thenReturn(dto);
         when(judiciaryAssignmentService.assignJudiciaryToSessions(any(AssignJudiciaryToSessionsRequest.class), anyString()))
                 .thenReturn(changedIds);
         when(changeJudiciaryForHearingsHelper.createChangeJudiciaryForHearingsPayloads(changedIds))
                 .thenReturn(payloads);
 
-        final ResponseEntity<Void> response = courtSchedulerApi.postAssignJudiciaries(body);
+        final ResponseEntity<Void> response = courtSchedulerApi.postAssignJudiciaries(dto);
 
         assertEquals(HttpStatus.ACCEPTED, response.getStatusCode());
         verify(changeJudiciaryForHearingsHelper).createChangeJudiciaryForHearingsPayloads(changedIds);
@@ -382,15 +358,12 @@ class CourtSchedulerApiTest {
     @Test
     void assignJudiciaries_shouldThrowValidationExceptionWhenServiceThrowsIllegalArgumentException()
             throws Exception {
-        final Map<String, Object> body = new HashMap<>();
-        final AssignJudiciaryToSessionsRequest dto = AssignJudiciaryToSessionsRequest.builder().build();
+        final AssignJudiciaryToSessionsRequest dto = new AssignJudiciaryToSessionsRequest();
 
-        when(objectMapper.writeValueAsString(any())).thenReturn("{}");
-        when(assignJudiciaryToSessionsConverter.convert(any())).thenReturn(dto);
         when(judiciaryAssignmentService.assignJudiciaryToSessions(any(AssignJudiciaryToSessionsRequest.class), anyString()))
                 .thenThrow(new IllegalArgumentException("invalid session"));
 
-        assertThrows(ValidationException.class, () -> courtSchedulerApi.postAssignJudiciaries(body));
+        assertThrows(ValidationException.class, () -> courtSchedulerApi.postAssignJudiciaries(dto));
 
         verify(changeJudiciaryForHearingsHelper, never()).createChangeJudiciaryForHearingsPayloads(anyList());
     }

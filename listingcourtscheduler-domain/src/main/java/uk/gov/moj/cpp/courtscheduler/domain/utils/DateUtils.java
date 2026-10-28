@@ -97,6 +97,20 @@ public class DateUtils {
         }
     }
 
+    public static OffsetDateTime toOffsetDateTime(final Instant instant) {
+        return instant == null ? null : instant.atOffset(ZoneOffset.UTC);
+    }
+
+    // Deliberate: bridges the remaining java.util.Date-returning helpers (combineDateAndTime,
+    // TimezoneUtils.calculateNationalBreakTime) onto the generated models' OffsetDateTime fields.
+    @SuppressWarnings("PMD.ReplaceJavaUtilDate")
+    public static OffsetDateTime toOffsetDateTime(final java.util.Date date) {
+        if (date == null) {
+            return null;
+        }
+        return date.toInstant().atOffset(ZoneOffset.UTC);
+    }
+
     public static String toIsoString(final LocalDateTime localDateTime) {
         if (localDateTime == null) {
             return null;
@@ -393,5 +407,16 @@ public class DateUtils {
                 || randomDate.getDayOfWeek() == DayOfWeek.SUNDAY);
 
         return randomDate;
+    }
+
+    public static String normaliseRepeatPatternEndDate(final String endDate) {
+        if (endDate == null || "END_DATE".equals(endDate) || endDate.isBlank()) {
+            return null;
+        }
+        return endDate;
+    }
+
+    public static LocalDate parseRepeatPatternDate(final String date) {
+        return LocalDate.parse(date, DateTimeFormatter.ISO_DATE);
     }
 }

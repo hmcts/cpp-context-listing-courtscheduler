@@ -11,7 +11,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.exception.ExtendMultidayHearingException;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
 import uk.gov.moj.cpp.courtscheduler.repository.AllocatedListingRepository;
@@ -159,9 +159,9 @@ class ExtendMultidayHearingServiceTest {
     @Test
     void extendBooksTailInRequestedRoom_when_courtRoomIdSupplied() {
         // SPRDT-1273: the caller-supplied main courtroom pins the tail search — room UUID passed
-        // through, business type unconstrained (the pinned room may run any business type) — and
-        // the inserted allocation rows are built from the BOOKED SESSION (its room number), not
-        // from an existing allocation template.
+        // through — and the inserted allocation rows are built from the BOOKED SESSION (its room
+        // number), not from an existing allocation template. SPRDT-1475: the pinned room does not
+        // lift the business-type constraint — the tail keeps the block's business type.
         final String mainRoomUuid = "731816c1-5ee4-373a-9bda-840e13a5bcb0";
         when(allocatedListingRepository.findByHearingIdOrderBySessionDateAsc(HEARING_ID))
                 .thenReturn(existingAllocations);
@@ -171,7 +171,7 @@ class ExtendMultidayHearingServiceTest {
         day5.setCourtRoomNumber(772);
 
         when(courtScheduleRepository.findAdSessionsInRange(
-                eq(OU_CODE), eq(mainRoomUuid), org.mockito.ArgumentMatchers.isNull(),
+                eq(OU_CODE), eq(mainRoomUuid), eq(BUSINESS_TYPE),
                 eq(LocalDate.of(2026, 3, 5)), eq(LocalDate.of(2026, 3, 5)), any()))
                 .thenReturn(List.of(day5));
 
@@ -194,6 +194,61 @@ class ExtendMultidayHearingServiceTest {
         assertEquals("EXTEND_MULTIDAY", rowCaptor.getValue().getSource());
         // Existing rows are never deleted or re-saved on extend.
         verify(allocatedListingRepository, never()).deleteByHearingIdAndSessionDateGreaterThan(anyString(), any());
+    }
+
+    @Test
+    void extendInRequestedRoom_keepsTheLastDaysBusinessType_when_blockSpansTwoBusinessTypes() {
+        // SPRDT-1475: a block can already hold two business types (change-court-room on the
+        // remaining days); the tail continues the LAST day's business type, not day 1's.
+        final String mainRoomUuid = "731816c1-5ee4-373a-9bda-840e13a5bcb0";
+        final String lastDayBusinessType = "PLEA";
+        final List<CourtSchedule> mixedBlock = buildHydratedSchedules(existingAllocations);
+        mixedBlock.get(mixedBlock.size() - 1).setBusinessType(lastDayBusinessType);
+
+        final CourtSchedule day5 = adSession(LocalDate.of(2026, 3, 5), 360);
+        day5.setCourtRoomId(mainRoomUuid);
+        day5.setBusinessType(lastDayBusinessType);
+        when(courtScheduleRepository.findAdSessionsInRange(
+                eq(OU_CODE), eq(mainRoomUuid), eq(lastDayBusinessType),
+                eq(LocalDate.of(2026, 3, 5)), eq(LocalDate.of(2026, 3, 5)), any()))
+                .thenReturn(List.of(day5));
+
+        final List<AllocatedListing> postExtend = new ArrayList<>(existingAllocations);
+        postExtend.add(allocation(LocalDate.of(2026, 3, 5)));
+        when(courtScheduleRepository.getCourtSchedulesByIdList(any()))
+                .thenReturn(mixedBlock)
+                .thenReturn(buildHydratedSchedules(postExtend));
+        when(allocatedListingRepository.findByHearingIdOrderBySessionDateAsc(HEARING_ID))
+                .thenReturn(existingAllocations)
+                .thenReturn(postExtend);
+
+        service.extend(HEARING_ID, LocalDate.of(2026, 3, 2), LocalDate.of(2026, 3, 5), 1440, mainRoomUuid, null, 360);
+
+        final org.mockito.ArgumentCaptor<AllocatedListing> rowCaptor =
+                org.mockito.ArgumentCaptor.forClass(AllocatedListing.class);
+        verify(allocatedListingRepository).save(rowCaptor.capture());
+        assertEquals("cs-cand-2026-03-05", rowCaptor.getValue().getCourtScheduleId());
+        assertEquals(lastDayBusinessType, rowCaptor.getValue().getRotaBusinessType());
+    }
+
+    @Test
+    void extendInRequestedRoom_rejectsTail_when_roomHasNoSessionOfTheBlocksBusinessType() {
+        // SPRDT-1475: a pinned room that only runs another business type on a tail day is
+        // NO_AVAILABILITY — never a block that spans two business types.
+        final String mainRoomUuid = "731816c1-5ee4-373a-9bda-840e13a5bcb0";
+        when(allocatedListingRepository.findByHearingIdOrderBySessionDateAsc(HEARING_ID)).thenReturn(existingAllocations);
+        when(courtScheduleRepository.getCourtSchedulesByIdList(any())).thenReturn(buildHydratedSchedules(existingAllocations));
+
+        final ExtendMultidayHearingException e = assertThrows(ExtendMultidayHearingException.class,
+                () -> service.extend(HEARING_ID, LocalDate.of(2026, 3, 2), LocalDate.of(2026, 3, 5),
+                        1440, mainRoomUuid, null, 360));
+
+        assertEquals(ExtendMultidayHearingException.ErrorCode.NO_AVAILABILITY, e.getErrorCode());
+        assertEquals(List.of(LocalDate.of(2026, 3, 5)), e.getUnavailableDates());
+        verify(courtScheduleRepository).findAdSessionsInRange(
+                eq(OU_CODE), eq(mainRoomUuid), eq(BUSINESS_TYPE),
+                eq(LocalDate.of(2026, 3, 5)), eq(LocalDate.of(2026, 3, 5)), any());
+        verify(allocatedListingRepository, never()).save(any());
     }
 
     @Test
@@ -235,30 +290,27 @@ class ExtendMultidayHearingServiceTest {
         final List<CourtSchedule> out = new ArrayList<>();
         for (final AllocatedListing al : allocations) {
             final LocalDate date = al.getHearingStartTime().atZone(java.time.ZoneId.systemDefault()).toLocalDate();
-            out.add(new CourtSchedule.CourtScheduleBuilder()
-                    .withCourtScheduleId(al.getCourtScheduleId())
-                    .withSessionDate(date)
-                    .withOuCode(OU_CODE)
-                    .withCourtRoomId(String.valueOf(COURT_ROOM_ID))
-                    .withBusinessType(BUSINESS_TYPE)
-                    .withCourtSession("AD")
-                    .build());
+            out.add(new CourtSchedule()
+                    .courtScheduleId(al.getCourtScheduleId())
+                    .sessionDate(date)
+                    .ouCode(OU_CODE)
+                    .courtRoomId(String.valueOf(COURT_ROOM_ID))
+                    .businessType(BUSINESS_TYPE)
+                    .courtSession("AD"));
         }
         return out;
     }
 
     private static CourtSchedule adSession(final LocalDate date, final int availableMins) {
-        return new CourtSchedule.CourtScheduleBuilder()
-                .withCourtScheduleId("cs-cand-" + date)
-                .withSessionDate(date)
-                .withOuCode(OU_CODE)
-                .withCourtRoomId(String.valueOf(COURT_ROOM_ID))
-                .withBusinessType(BUSINESS_TYPE)
-                .withCourtSession("AD")
-                .withMaxDuration(availableMins)
-                .withTotalBooked(0)
-                .withSessionStartTime(
-                        date.atTime(10, 0).atZone(java.time.ZoneId.systemDefault()).toInstant())
-                .build();
+        return new CourtSchedule()
+                .courtScheduleId("cs-cand-" + date)
+                .sessionDate(date)
+                .ouCode(OU_CODE)
+                .courtRoomId(String.valueOf(COURT_ROOM_ID))
+                .businessType(BUSINESS_TYPE)
+                .courtSession("AD")
+                .maxDuration(availableMins)
+                .totalBooked(0)
+                .sessionStartTime(date.atTime(10, 0).atZone(java.time.ZoneId.systemDefault()).toOffsetDateTime());
     }
 }

@@ -4,8 +4,8 @@ package uk.gov.moj.cpp.courtscheduler.api.service.rota.helper;
 
 import uk.gov.moj.cpp.courtscheduler.common.service.CourtScheduleJudiciaryService;
 import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataMapperService;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.provisionaldata.RotaPeriodDateInfoProvider;
 
 import java.time.LocalDate;
