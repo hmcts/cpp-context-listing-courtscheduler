@@ -47,7 +47,6 @@ import uk.gov.moj.cpp.courtscheduler.common.converter.CourtScheduleToDeleteRespo
 import uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages;
 import uk.gov.moj.cpp.courtscheduler.common.service.mapper.CourtScheduleJudiciaryMapper;
 import uk.gov.moj.cpp.courtscheduler.common.service.mapper.CourtScheduleMapper;
-import uk.gov.moj.cpp.courtscheduler.domain.JudiciarySpecialismType;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.AllocatedListingEachBooked;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.AssignCourtroomRequest;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.AssignCourtroomResponse;
@@ -126,6 +125,8 @@ class SessionsServiceTest {
     private static final String TITLE_JUDICIAL_PREFIX = "His Honour Judge";
     private static final String TITLE_JUDICIAL_PREFIX_WELSH = "Ei Anrhydedd y Barnwr";
     private static final String PERSON_ID = "131172";
+    private static final String SPECIALISM_ATTEMPTED_MURDER = "ATTEMPTED_MURDER";
+    private static final String SPECIALISM_MURDER = "MURDER";
     private static final String VALUE_09_00 = "09:00";
     private static final String VALUE_10_00 = "10:00";
     private static final String VALUE_11_00 = "11:00";
@@ -631,7 +632,7 @@ class SessionsServiceTest {
                 .titleJudicialPrefix(TITLE_JUDICIAL_PREFIX)
                 .titleJudicialPrefixWelsh(TITLE_JUDICIAL_PREFIX_WELSH)
                 .personId(PERSON_ID)
-                .specialisms(List.of("ATTEMPTED_MURDER", "MURDER"))
+                .specialisms(List.of(SPECIALISM_ATTEMPTED_MURDER, SPECIALISM_MURDER))
                 .requestedName("HIS HONOUR JUDGE MELBOURNE INMAN KC HONORARY RECORDER OF BIRMINGHAM");
 
         when(courtScheduleRepository.getCourtSchedulesBy(param)).thenReturn(List.of(schedule));
@@ -650,7 +651,7 @@ class SessionsServiceTest {
         assertThat(enriched.getTitleJudicialPrefix(), is(TITLE_JUDICIAL_PREFIX));
         assertThat(enriched.getTitleJudicialPrefixWelsh(), is(TITLE_JUDICIAL_PREFIX_WELSH));
         assertThat(enriched.getPersonId(), is(PERSON_ID));
-        assertThat(enriched.getSpecialisms(), is(List.of("ATTEMPTED_MURDER", "MURDER")));
+        assertThat(enriched.getSpecialisms(), is(List.of(SPECIALISM_ATTEMPTED_MURDER, SPECIALISM_MURDER)));
         assertThat(enriched.getRequestedName(), is("HIS HONOUR JUDGE MELBOURNE INMAN KC HONORARY RECORDER OF BIRMINGHAM"));
         verify(referenceDataService).getJudiciariesWithSpecialismByIds(List.of(judiciaryId));
     }
@@ -681,7 +682,7 @@ class SessionsServiceTest {
                 .titleJudicialPrefix(TITLE_JUDICIAL_PREFIX)
                 .titleJudicialPrefixWelsh(TITLE_JUDICIAL_PREFIX_WELSH)
                 .personId(PERSON_ID)
-                .specialisms(List.of("ATTEMPTED_MURDER", "MURDER"))
+                .specialisms(List.of(SPECIALISM_ATTEMPTED_MURDER, SPECIALISM_MURDER))
                 .requestedName("HIS HONOUR JUDGE MELBOURNE INMAN KC");
 
         when(courtScheduleRepository.getCourtSchedulesByIdList(List.of(courtScheduleId)))
@@ -699,7 +700,7 @@ class SessionsServiceTest {
         assertThat(enriched.getTitleJudicialPrefix(), is(TITLE_JUDICIAL_PREFIX));
         assertThat(enriched.getTitleJudicialPrefixWelsh(), is(TITLE_JUDICIAL_PREFIX_WELSH));
         assertThat(enriched.getPersonId(), is(PERSON_ID));
-        assertThat(enriched.getSpecialisms(), is(List.of("ATTEMPTED_MURDER", "MURDER")));
+        assertThat(enriched.getSpecialisms(), is(List.of(SPECIALISM_ATTEMPTED_MURDER, SPECIALISM_MURDER)));
         assertThat(enriched.getRequestedName(), is("HIS HONOUR JUDGE MELBOURNE INMAN KC"));
         // Verify enrichWithJudiciary is NOT called directly — it's called inside getCourtSchedulesByIdList
         verify(courtScheduleRepository, never()).enrichWithJudiciary(any());

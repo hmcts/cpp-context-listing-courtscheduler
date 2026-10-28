@@ -16,12 +16,6 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class CourtScheduleToViewConverterTest {
-    private static final String TITLE = "His Honour";
-    private static final String FORENAMES = "Mark J";
-    private static final String SURNAME = "Ainsworth";
-    private static final String EMAIL_ADDRESS = "mark.ainsworth@ejudiciary.net";
-    private static final String JUDICIARY_TYPE = "Recorder";
-    private static final int SEQ_ID = 143_117;
 
     @Test
     void shouldConvert() {
