@@ -75,18 +75,24 @@ public class ChangeJudiciaryForHearingsHelper {
         final Map<String, Map<String, Map<String, JsonObject>>> sessionJudiciariesByHearingId =
                 groupRowsByHearingIdAndSession(hearingSessionJudiciaryRows);
 
-        final List<JsonObject> payloads = new ArrayList<>();
+        final Map<Map<String, JsonObject>, List<String>> hearingIdsByJudiciarySet = new LinkedHashMap<>();
         sessionJudiciariesByHearingId.forEach((hearingId, judiciariesBySession) -> {
             final Set<Map<String, JsonObject>> distinctSessionJudiciaries = new HashSet<>(judiciariesBySession.values());
             if (distinctSessionJudiciaries.size() == 1) {
-                payloads.add(buildChangeJudiciaryForHearingsPayload(hearingId, distinctSessionJudiciaries.iterator().next()));
+                hearingIdsByJudiciarySet
+                        .computeIfAbsent(distinctSessionJudiciaries.iterator().next(), k -> new ArrayList<>())
+                        .add(hearingId);
             } else {
                 logger.info("Skipping change-judiciary-for-hearings for hearing {} - its {} sessions {} do not all have the same judiciaries",
                         hearingId, judiciariesBySession.size(), judiciariesBySession.keySet());
             }
         });
 
-        logger.info("Built {} change-judiciary-for-hearings payloads for {} hearings from {} changed court schedule IDs",
+        final List<JsonObject> payloads = new ArrayList<>();
+        hearingIdsByJudiciarySet.forEach((judiciarySet, hearingIds) ->
+                payloads.add(buildChangeJudiciaryForHearingsPayload(hearingIds, judiciarySet)));
+
+        logger.info("Built {} change-judiciary-for-hearings payloads covering {} hearings from {} changed court schedule IDs",
                 payloads.size(), sessionJudiciariesByHearingId.size(), changedCourtScheduleIds.size());
         return payloads;
     }
@@ -160,12 +166,15 @@ public class ChangeJudiciaryForHearingsHelper {
         return judicialRoleBuilder.build();
     }
 
-    private JsonObject buildChangeJudiciaryForHearingsPayload(final String hearingId, final Map<String, JsonObject> judiciariesByJudiciaryId) {
+    private JsonObject buildChangeJudiciaryForHearingsPayload(final List<String> hearingIds, final Map<String, JsonObject> judiciariesByJudiciaryId) {
+        final JsonArrayBuilder hearingsBuilder = Json.createArrayBuilder();
+        hearingIds.forEach(hearingsBuilder::add);
+
         final JsonArrayBuilder judiciaryBuilder = Json.createArrayBuilder();
         judiciariesByJudiciaryId.values().forEach(judiciaryBuilder::add);
 
         return Json.createObjectBuilder()
-                .add("hearings", Json.createArrayBuilder().add(hearingId))
+                .add("hearings", hearingsBuilder)
                 .add("judiciary", judiciaryBuilder)
                 .add("judiciaryAssignmentSource", JUDICIARY_ASSIGNMENT_SOURCE_AUTO)
                 .build();

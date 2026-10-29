@@ -223,6 +223,36 @@ class ChangeJudiciaryForHearingsHelperTest {
         }
 
         @Test
+        @DisplayName("Should group hearings with identical judiciary sets into one payload")
+        void shouldGroupHearingsWithSameJudiciaryIntoOnePayload() {
+            // given - two single-session hearings on separate court schedules, both assigned jud-1
+            final String courtScheduleIdA = randomUUID().toString();
+            final String courtScheduleIdB = randomUUID().toString();
+            final String hearingId1 = randomUUID().toString();
+            final String hearingId2 = randomUUID().toString();
+            final List<String> changedCourtScheduleIds = List.of(courtScheduleIdA, courtScheduleIdB);
+
+            final List<Object[]> rows = List.<Object[]>of(
+                    new Object[]{hearingId1, courtScheduleIdA, "jud-1", "Magistrate", true, false},
+                    new Object[]{hearingId2, courtScheduleIdB, "jud-1", "Magistrate", true, false});
+            when(courtScheduleJudiciaryService.getHearingSessionJudiciariesForCourtSchedules(eq(changedCourtScheduleIds)))
+                    .thenReturn(rows);
+
+            // when
+            final List<JsonObject> payloads =
+                    changeJudiciaryForHearingsHelper.createChangeJudiciaryForHearingsPayloads(changedCourtScheduleIds);
+
+            // then - one payload because both hearings share the same judiciary set
+            assertEquals(1, payloads.size());
+            final JsonObject payload = payloads.get(0);
+            assertEquals(Set.copyOf(List.of(hearingId1, hearingId2)),
+                    Set.copyOf(toStringList(payload.getJsonArray("hearings"))));
+            assertEquals(1, payload.getJsonArray("judiciary").size());
+            assertEquals("jud-1", payload.getJsonArray("judiciary").getJsonObject(0).getString("judicialId"));
+            assertEquals("AUTO", payload.getString("judiciaryAssignmentSource"));
+        }
+
+        @Test
         @DisplayName("Should build payload with empty judiciary array when no session of the hearing has judiciaries")
         void shouldBuildPayloadWithEmptyJudiciaryWhenAllJudiciariesRemoved() {
             // given - the LEFT JOIN returns null judiciary columns for every session of the hearing
