@@ -12,7 +12,7 @@
       }
     },
     "reserveIfExpired": {
-      "description": "LPT-2611: re-book a booking that would answer NOT_FOUND, under the same id, if the session it expired on still has room. Absent or false: read only.",
+      "description": "LPT-2611: re-book a booking that would answer EXPIRED, under the same id, if the session it expired on still has room. Absent or false: read only.",
       "type": "boolean"
     }
   },
