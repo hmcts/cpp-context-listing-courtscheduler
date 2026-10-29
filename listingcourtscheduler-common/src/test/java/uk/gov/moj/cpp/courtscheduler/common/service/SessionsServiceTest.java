@@ -2893,14 +2893,14 @@ class SessionsServiceTest {
         existingSession.setPanel(ADULT_2);
         existingSession.setSessionDate(LocalDate.of(2026, 1, 23)); // 4th Friday of January 2026
 
-        when(courtScheduleRepository.getSimilarSessions(COURT_CENTRE_1, COURT_ROOM_1, LGT_2, startDate, endDate, MAGISTRATES_2))
+        when(courtScheduleRepository.getSimilarSessions(COURT_CENTRE_1, COURT_ROOM_1, LGT_2, startDate, endDate, MAGISTRATES_2, false))
                 .thenReturn(List.of(existingSession));
 
         // When
         final JsonObject result = sessionsService.validateSessionIntegrity(newSession, startDate, endDate, repeatFor, RepeatFrequency.EVERY_MONTH);
 
         // Then
-        verify(courtScheduleRepository).getSimilarSessions(COURT_CENTRE_1, COURT_ROOM_1, LGT_2, startDate, endDate, MAGISTRATES_2);
+        verify(courtScheduleRepository).getSimilarSessions(COURT_CENTRE_1, COURT_ROOM_1, LGT_2, startDate, endDate, MAGISTRATES_2, false);
         assertTrue(result.containsKey(ERROR_MESSAGE), "Expected error message for duplicate session");
         assertTrue(result.getString(ERROR_MESSAGE).contains(existingSession.getCourtScheduleId()));
     }
@@ -2933,7 +2933,7 @@ class SessionsServiceTest {
         existingSession.setPanel(ADULT_2);
         existingSession.setSessionDate(LocalDate.of(2026, 1, 2)); // 1st Friday of January 2026
 
-        when(courtScheduleRepository.getSimilarSessions(COURT_CENTRE_1, COURT_ROOM_1, LGT_2, startDate, endDate, MAGISTRATES_2))
+        when(courtScheduleRepository.getSimilarSessions(COURT_CENTRE_1, COURT_ROOM_1, LGT_2, startDate, endDate, MAGISTRATES_2, false))
                 .thenReturn(List.of(existingSession));
 
         // When
@@ -2972,7 +2972,7 @@ class SessionsServiceTest {
         existingSession.setPanel(ADULT_2);
         existingSession.setSessionDate(LocalDate.of(2026, 3, 27)); // 4th Friday of March 2026
 
-        when(courtScheduleRepository.getSimilarSessions(COURT_CENTRE_1, COURT_ROOM_1, LGT_2, startDate, endDate, MAGISTRATES_2))
+        when(courtScheduleRepository.getSimilarSessions(COURT_CENTRE_1, COURT_ROOM_1, LGT_2, startDate, endDate, MAGISTRATES_2, false))
                 .thenReturn(List.of(existingSession));
 
         // When
@@ -3011,7 +3011,7 @@ class SessionsServiceTest {
         existingSession.setPanel(ADULT_2);
         existingSession.setSessionDate(LocalDate.of(2026, 2, 26)); // 4th Friday of February 2026
 
-        when(courtScheduleRepository.getSimilarSessions(COURT_CENTRE_1, COURT_ROOM_1, LGT_2, startDate, endDate, MAGISTRATES_2))
+        when(courtScheduleRepository.getSimilarSessions(COURT_CENTRE_1, COURT_ROOM_1, LGT_2, startDate, endDate, MAGISTRATES_2, false))
                 .thenReturn(List.of(existingSession));
 
         // When
@@ -3049,14 +3049,14 @@ class SessionsServiceTest {
         existingSession.setPanel(ADULT_2);
         existingSession.setSessionDate(LocalDate.of(2026, 1, 2)); // First Friday
 
-        when(courtScheduleRepository.getSimilarSessions(COURT_CENTRE_1, COURT_ROOM_1, LGT_2, startDate, endDate, MAGISTRATES_2))
+        when(courtScheduleRepository.getSimilarSessions(COURT_CENTRE_1, COURT_ROOM_1, LGT_2, startDate, endDate, MAGISTRATES_2, false))
                 .thenReturn(List.of(existingSession));
 
         // When
         final JsonObject result = sessionsService.validateSessionIntegrity(newSession, startDate, endDate, repeatFor, RepeatFrequency.EVERY_WEEK);
 
         // Then - Should use weekly validation logic
-        verify(courtScheduleRepository).getSimilarSessions(COURT_CENTRE_1, COURT_ROOM_1, LGT_2, startDate, endDate, MAGISTRATES_2);
+        verify(courtScheduleRepository).getSimilarSessions(COURT_CENTRE_1, COURT_ROOM_1, LGT_2, startDate, endDate, MAGISTRATES_2, false);
         assertTrue(result.containsKey(ERROR_MESSAGE), "Expected error message for duplicate session");
         assertTrue(result.getString(ERROR_MESSAGE).contains(existingSession.getCourtScheduleId()));
     }
@@ -3090,7 +3090,7 @@ class SessionsServiceTest {
                 .index(null) // No index
                 ;
 
-        when(courtScheduleRepository.getSimilarSessions(COURT_CENTRE_1, COURT_ROOM_1, LGT_2, startDate, endDate, MAGISTRATES_2))
+        when(courtScheduleRepository.getSimilarSessions(COURT_CENTRE_1, COURT_ROOM_1, LGT_2, startDate, endDate, MAGISTRATES_2, false))
                 .thenReturn(emptyList());
 
         // When
@@ -3098,6 +3098,81 @@ class SessionsServiceTest {
 
         // Then - Should not detect duplicate (no existing sessions)
         assertFalse(result.containsKey(ERROR_MESSAGE));
+    }
+
+    @Test
+    void shouldOnlyCompareDraftSessionToBeAddedWithOtherDraftSessions() {
+        // Given - a draft PM on Thursday 2026-10-29; the only session that day is a final AD,
+        // which the draft-scoped lookup does not return
+        final LocalDate startDate = LocalDate.of(2026, 10, 26);
+        final LocalDate endDate = LocalDate.of(2026, 11, 1);
+        final Session newSession = thursdaySession(CROWN_2, "PM", true);
+
+        when(courtScheduleRepository.getSimilarSessions(COURT_CENTRE_1, COURT_ROOM_1, LGT_2, startDate, endDate, CROWN_2, true))
+                .thenReturn(emptyList());
+
+        // When
+        final JsonObject result = sessionsService.validateSessionIntegrity(newSession, startDate, endDate, 1, RepeatFrequency.ONCE);
+
+        // Then
+        verify(courtScheduleRepository).getSimilarSessions(COURT_CENTRE_1, COURT_ROOM_1, LGT_2, startDate, endDate, CROWN_2, true);
+        assertFalse(result.containsKey(ERROR_MESSAGE));
+    }
+
+    @Test
+    void shouldRejectDraftSessionToBeAddedWhenDraftAllDaySessionExistsOnTheSameDay() {
+        // Given - a draft PM on Thursday 2026-10-29 and an existing draft AD on the same day
+        final LocalDate startDate = LocalDate.of(2026, 10, 26);
+        final LocalDate endDate = LocalDate.of(2026, 11, 1);
+        final Session newSession = thursdaySession(CROWN_2, "PM", true);
+        final CourtSchedule existingDraftSession = new CourtSchedule();
+        existingDraftSession.setCourtScheduleId(randomUUID().toString());
+        existingDraftSession.setCourtHouseId(COURT_CENTRE_1);
+        existingDraftSession.setCourtRoomId(COURT_ROOM_1);
+        existingDraftSession.setBusinessType(LGT_2);
+        existingDraftSession.setCourtSession("AD");
+        existingDraftSession.setIsDraft(true);
+        existingDraftSession.setSessionDate(LocalDate.of(2026, 10, 29));
+
+        when(courtScheduleRepository.getSimilarSessions(COURT_CENTRE_1, COURT_ROOM_1, LGT_2, startDate, endDate, CROWN_2, true))
+                .thenReturn(List.of(existingDraftSession));
+
+        // When
+        final JsonObject result = sessionsService.validateSessionIntegrity(newSession, startDate, endDate, 1, RepeatFrequency.ONCE);
+
+        // Then
+        assertTrue(result.containsKey(ERROR_MESSAGE), "Expected error message for duplicate session");
+    }
+
+    @Test
+    void shouldCompareSessionToBeAddedWithFinalSessionsWhenIsDraftIsNotSupplied() {
+        // Given - create() persists a session without isDraft as final, so the duplicate check
+        // has to look at final sessions for it
+        final LocalDate startDate = LocalDate.of(2026, 10, 26);
+        final LocalDate endDate = LocalDate.of(2026, 11, 1);
+        final Session newSession = thursdaySession(MAGISTRATES_2, "AM", null);
+
+        when(courtScheduleRepository.getSimilarSessions(COURT_CENTRE_1, COURT_ROOM_1, LGT_2, startDate, endDate, MAGISTRATES_2, false))
+                .thenReturn(emptyList());
+
+        // When
+        final JsonObject result = sessionsService.validateSessionIntegrity(newSession, startDate, endDate, 1, RepeatFrequency.ONCE);
+
+        // Then
+        verify(courtScheduleRepository).getSimilarSessions(COURT_CENTRE_1, COURT_ROOM_1, LGT_2, startDate, endDate, MAGISTRATES_2, false);
+        assertFalse(result.containsKey(ERROR_MESSAGE));
+    }
+
+    private static Session thursdaySession(final String jurisdiction, final String sessionType, final Boolean isDraft) {
+        return new Session()
+                .courtCentreId(COURT_CENTRE_1)
+                .courtRoomId(COURT_ROOM_1)
+                .businessType(LGT_2)
+                .sessionType(sessionType)
+                .panel(ADULT_2)
+                .jurisdiction(jurisdiction)
+                .isDraft(isDraft)
+                .repeatDays(toRepeatDayStrings(Set.of(DayOfWeek.THURSDAY)));
     }
 
     @Test

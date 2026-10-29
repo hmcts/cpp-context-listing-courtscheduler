@@ -80,7 +80,6 @@ import uk.gov.moj.cpp.courtscheduler.openapi.model.MagsSearchAndBookRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.MagsSearchAndBookResponse;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.MiFilterCriteria;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.MoveHearingToPastDateRequest;
-import uk.gov.moj.cpp.courtscheduler.domain.MoveHearingToPastDateResponse;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.ProvisionalBookingSlots;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.RequestedSlots;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.Result;
@@ -140,6 +139,7 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
     private static final String CHANGE_ROOM_MULTIDAY_MT = "application/vnd.courtscheduler.change-court-room-for-multiday-hearing";
     private static final String CROWN_JURISDICTION = "CROWN";
     private static final String FUTURE_DATE_NOT_ALLOWED = "FUTURE_DATE_NOT_ALLOWED";
+    private static final String MULTI_DAY_NOT_ALLOWED = "MULTI_DAY_NOT_ALLOWED";
     private static final String MOVE_TO_PAST_DATE_SOURCE = "MOVE_TO_PAST_DATE";
     // main: a multi-day move books a full court day per sitting day
     private static final int MULTI_DAY_DURATION_MINUTES = 360;
@@ -672,14 +672,15 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
 
     /**
      * courtCentreId/courtRoomId/jurisdiction/startTime/endTime mirror main's contract (the review
-     * artifact this reconciles); courtScheduleId is an additive CROWN payback anchor main has no
-     * equivalent for. startTime/endTime are absolute UTC instants. Only past dates are accepted:
+     * artifact this reconciles). startTime/endTime are absolute UTC instants. A multi-day CROWN move is
+     * not supported: 422 MULTI_DAY_NOT_ALLOWED. Only past dates are accepted:
      * today or later is a 422 FUTURE_DATE_NOT_ALLOWED before anything else is looked at.
      *
-     * <p>CROWN keeps the team (ccsph2) consecutive-run behaviour. MAGISTRATES takes main's path
-     * (SPRDT-1447, restored after the 8de19ce main merge dropped it): the session whose window
-     * contains the submitted start time, the submitted window as the booked duration, and the
-     * submitted start/end stamped on each returned session.</p>
+     * <p>Every move - MAGISTRATES and CROWN alike - takes main's path (SPRDT-1447, restored after the
+     * 8de19ce main merge dropped it, extended to CROWN by the SPRDT-1447 test findings): the non-draft
+     * session in the requested room whose window contains the submitted start time, the submitted
+     * window as the booked duration, and the submitted start/end stamped on the booking and on each
+     * returned session.</p>
      */
     private ResponseEntity<Map<String, Object>> moveHearingToPastDate(final String hearingId, final JsonObject payload) {
         final String startTimeRaw = getStringOrNull(payload, "startTime");
@@ -704,27 +705,28 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
                 .endDate(endDate)
                 .startTime(startTimeRaw)
                 .endTime(endTimeRaw)
-                .durationInMinutes(payload.containsKey(DURATION_IN_MINUTES) ? payload.getInt(DURATION_IN_MINUTES) : 0)
-                .courtScheduleId(getStringOrNull(payload, "courtScheduleId"));
+                .durationInMinutes(payload.containsKey(DURATION_IN_MINUTES) ? payload.getInt(DURATION_IN_MINUTES) : 0);
 
         final JsonObject validationError = hearingSlotsApiValidator.moveHearingToPastDateValidation(moveRequest);
         if (!validationError.isEmpty()) {
             throw new ValidationException(validationError);
         }
-        if (CROWN_JURISDICTION.equalsIgnoreCase(moveRequest.getJurisdiction())) {
-            final MoveHearingToPastDateResponse response = slotsUpdateService.moveHearingToPastDate(moveRequest);
-            return ResponseEntity.ok(toResponseMap(response));
+        // A multi-day CROWN move to past is not supported (requirement update, SPRDT-1447).
+        if (CROWN_JURISDICTION.equalsIgnoreCase(moveRequest.getJurisdiction())
+                && endDate != null && endDate.isAfter(startDate)) {
+            return ResponseEntity.unprocessableEntity()
+                    .body(JsonValueConverter.toMap(buildErrorBody(MULTI_DAY_NOT_ALLOWED, "Only a single day Crown hearing can be moved to a past date")));
         }
-        return moveMagistratesHearingToPastDate(hearingId, moveRequest, startInstant, endInstant);
+        return moveHearingToPastSessions(hearingId, moveRequest, startInstant, endInstant);
     }
 
     /**
-     * MAGISTRATES half of {@link #moveHearingToPastDate(String, JsonObject)} - main's controller
-     * logic: the day and time-of-day for the range-containment search AND the stamped sessions are
+     * Booking half of {@link #moveHearingToPastDate(String, JsonObject)}, both jurisdictions -
+     * main's controller logic: the day and time-of-day for the range-containment search AND the stamped sessions are
      * derived from the submitted instants; a multi-day move books a full court day per sitting day,
      * a single-day move the submitted window. Returned as {@code {hearingId, source, sessions[]}}.
      */
-    private ResponseEntity<Map<String, Object>> moveMagistratesHearingToPastDate(final String hearingId,
+    private ResponseEntity<Map<String, Object>> moveHearingToPastSessions(final String hearingId,
                                                                                 final MoveHearingToPastDateRequest moveRequest,
                                                                                 final ZonedDateTime startInstant,
                                                                                 final ZonedDateTime endInstant) {

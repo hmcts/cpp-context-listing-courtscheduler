@@ -6,6 +6,7 @@
       "type": "string",
       "enum": [
         "FUTURE_DATE_NOT_ALLOWED",
+        "MULTI_DAY_NOT_ALLOWED",
         "NO_SESSION_FOUND"
       ]
     },

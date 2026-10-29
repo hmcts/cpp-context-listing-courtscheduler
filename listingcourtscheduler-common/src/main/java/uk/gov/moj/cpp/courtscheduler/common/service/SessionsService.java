@@ -772,7 +772,7 @@ public class SessionsService {
                 .maxDurationForAfternoon(session.getMaxDurationForAfternoon())
                 .overbookingAllowed(TRUE.equals(session.getIsOverbookingAllowed()))
                 .nationalBreakTime(toOffsetDateTime(TimezoneUtils.calculateNationalBreakTime(sessionDateCandidate)))
-                .draft(!isNull(session.getIsDraft()) && session.getIsDraft())
+                .draft(isStoredAsDraft(session))
                 .jurisdiction(isNull(session.getJurisdiction()) ? MAGISTRATES.getJurisdiction() : session.getJurisdiction());
         enrichSession(courtSchedule, isNull(session.getDuration()) ? 0 : session.getDuration());
 
@@ -898,15 +898,25 @@ public class SessionsService {
         return validateSessionIntegrity(session, startDate, endDate, repeatFor, null);
     }
 
+    /**
+     * The draft state a session is stored with: a session without isDraft is stored as final.
+     * Every duplicate check (stored sessions and sessions in the same payload) compares this value,
+     * so it agrees with the is_draft column of the unique indexes in changeset 051.
+     */
+    public static boolean isStoredAsDraft(final Session session) {
+        return TRUE.equals(session.getIsDraft());
+    }
+
     public JsonObject validateSessionIntegrity(final Session session, final LocalDate startDate, final LocalDate endDate, final Integer repeatFor, final RepeatFrequency frequency) {
         final long totalStartTime = System.currentTimeMillis();
         logger.info("validateSessionIntegrity to check session integrity");
         
         final String jurisdiction = nonNull(session.getJurisdiction()) ? session.getJurisdiction() : MAGISTRATES.getJurisdiction();
+        final boolean isDraft = isStoredAsDraft(session);
         
         long stepStart = System.currentTimeMillis();
         final List<uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule> sessionsToCompare = courtScheduleRepository
-                .getSimilarSessions(session.getCourtCentreId(), session.getCourtRoomId(), session.getBusinessType(), startDate, endDate, jurisdiction);
+                .getSimilarSessions(session.getCourtCentreId(), session.getCourtRoomId(), session.getBusinessType(), startDate, endDate, jurisdiction, isDraft);
         logger.info("[PERF] getSimilarSessions DB query took {} ms, returned {} records", System.currentTimeMillis() - stepStart, sessionsToCompare.size());
         
         stepStart = System.currentTimeMillis();

@@ -55,6 +55,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -1028,6 +1030,77 @@ class SessionsApiValidatorTest {
         final JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam);
 
         assertEquals(SESSION_TO_BE_ADDED_HAS_A_DUPLICATE, result.getString(ERROR_MESSAGE));
+    }
+
+    /**
+     * A session without isDraft is stored as final, so inside the payload it has to clash with an
+     * explicit isDraft=false session the same way it would with the stored row.
+     */
+    @ParameterizedTest
+    @CsvSource(value = {"omitted, false", "false, omitted"}, nullValues = "omitted")
+    void shouldReturnErrorWhenSessionWithoutIsDraftDuplicatesAFinalSessionInPayload(final Boolean sessionInListIsDraft,
+                                                                                    final Boolean sessionToBeAddedIsDraft) {
+        final LocalDate futureDate = LocalDate.now().plusDays(1);
+
+        final Session sessionInList = createAMSession()
+                .jurisdiction(MAGISTRATES_2)
+                .isDraft(sessionInListIsDraft);
+        final Session sessionToBeAdded = createAMSession()
+                .jurisdiction(MAGISTRATES_2)
+                .isDraft(sessionToBeAddedIsDraft);
+
+        when(createSessionRequestParam.getRepeatPattern()).thenReturn(repeatPattern);
+        when(createSessionRequestParam.getSessionToBeAdded()).thenReturn(sessionToBeAdded);
+        when(createSessionRequestParam.getSessions()).thenReturn(List.of(sessionInList));
+        when(repeatPattern.getStartDate()).thenReturn(futureDate.toString());
+        when(repeatPattern.getEndDate()).thenReturn(null);
+        when(repeatPattern.getFrequency()).thenReturn(ONCE_2);
+
+        final JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam);
+
+        assertEquals(SESSION_TO_BE_ADDED_HAS_A_DUPLICATE, result.getString(ERROR_MESSAGE));
+    }
+
+    @Test
+    void shouldAllowDraftAndFinalSessionsWithSameSessionTypeOnTheSameDayInPayload() {
+        final LocalDate futureDate = LocalDate.now().plusDays(1);
+
+        final Session draftSession = new Session()
+                .courtCentreId(courtCentreId)
+                .courtRoomId(courtRoomId)
+                .sessionType("AM")
+                .businessType(DVLA_2)
+                .repeatDays(toRepeatDayStrings(Set.of(DayOfWeek.MONDAY)))
+                .isDraft(true)
+                .jurisdiction(CROWN_2)
+                ;
+        final Session sessionToBeAdded = new Session()
+                .courtCentreId(courtCentreId)
+                .courtRoomId(courtRoomId)
+                .sessionType("AM")
+                .businessType(DVLA_2)
+                .repeatDays(toRepeatDayStrings(Set.of(DayOfWeek.MONDAY)))
+                .isDraft(false)
+                .jurisdiction(CROWN_2)
+                .duration(60)
+                ;
+
+        when(createSessionRequestParam.getRepeatPattern()).thenReturn(repeatPattern);
+        when(createSessionRequestParam.getSessionToBeAdded()).thenReturn(sessionToBeAdded);
+        when(createSessionRequestParam.getSessions()).thenReturn(List.of(draftSession));
+        when(repeatPattern.getStartDate()).thenReturn(futureDate.toString());
+        when(repeatPattern.getEndDate()).thenReturn(null);
+        when(repeatPattern.getFrequency()).thenReturn(ONCE_2);
+
+        final BusinessType businessType = new BusinessType().id(DVLA_2).seqNum(1).typeCode(DESCRIPTION).typeDescription(CATEGORY).slot(true).duration(false).jurisdiction(CROWN_2);
+        when(referenceDataCache.getRotaBusinessTypeByCode(DVLA_2)).thenReturn(Optional.of(businessType));
+        stubCrownCourtRoomAvailable(courtRoomId);
+        when(sessionsService.validateSessionIntegrity(any(Session.class), any(LocalDate.class), nullable(LocalDate.class), nullable(Integer.class), any(RepeatFrequency.class)))
+                .thenReturn(EMPTY_JSON_OBJECT);
+
+        final JsonObject result = sessionsApiValidator.getSessionsCreateValidation(createSessionRequestParam);
+
+        assertEquals(EMPTY_JSON_OBJECT, result);
     }
 
     private Session createAMSession() {

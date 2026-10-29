@@ -24,6 +24,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 class MoveHearingToPastDateRepositoryTest extends AbstractRepositoryTest {
 
     private static final String MAGISTRATES = "MAGISTRATES";
+    private static final String CROWN = "CROWN";
 
     @Autowired
     private CourtScheduleRepository courtScheduleRepository;
@@ -58,7 +59,7 @@ class MoveHearingToPastDateRepositoryTest extends AbstractRepositoryTest {
         final String courtCentreId = randomUUID().toString();
         final LocalDate sessionDate = LocalDate.of(2024, 3, 4);
 
-        createMoveToPastDateSchedule(courtCentreId, sessionDate, "CROWN");
+        createMoveToPastDateSchedule(courtCentreId, sessionDate, CROWN);
 
         final Optional<CourtSchedule> result = courtScheduleRepository.findSessionForMoveToPastDate(courtCentreId, null, sessionDate, null, MAGISTRATES);
 
@@ -70,9 +71,9 @@ class MoveHearingToPastDateRepositoryTest extends AbstractRepositoryTest {
         final String courtCentreId = randomUUID().toString();
         final LocalDate sessionDate = LocalDate.of(2024, 3, 4);
 
-        final CourtSchedule schedule = createMoveToPastDateSchedule(courtCentreId, sessionDate, "CROWN");
+        final CourtSchedule schedule = createMoveToPastDateSchedule(courtCentreId, sessionDate, CROWN);
 
-        final Optional<CourtSchedule> result = courtScheduleRepository.findSessionForMoveToPastDate(courtCentreId, null, sessionDate, null, "CROWN");
+        final Optional<CourtSchedule> result = courtScheduleRepository.findSessionForMoveToPastDate(courtCentreId, null, sessionDate, null, CROWN);
 
         assertTrue(result.isPresent());
         assertEquals(schedule.getCourtScheduleId(), result.get().getCourtScheduleId());
@@ -129,6 +130,48 @@ class MoveHearingToPastDateRepositoryTest extends AbstractRepositoryTest {
                 courtCentreId, null, sessionDate, LocalDateTime.of(sessionDate, LocalTime.of(14, 0)), MAGISTRATES);
         assertTrue(afternoon.isPresent());
         assertEquals(afternoonSession.getCourtScheduleId(), afternoon.get().getCourtScheduleId());
+    }
+
+    @Test
+    void shouldNeverReturnADraftSession_evenWhenItIsTheOnlyMatch() {
+        final String courtCentreId = randomUUID().toString();
+        final LocalDate sessionDate = LocalDate.of(2024, 3, 4);
+        final String room = randomUUID().toString();
+
+        createDraftTimedSchedule(courtCentreId, sessionDate, MAGISTRATES, room, 9, 13);
+        createDraftTimedSchedule(courtCentreId, sessionDate, CROWN, room, 14, 17);
+
+        final Optional<CourtSchedule> magistrates = courtScheduleRepository.findSessionForMoveToPastDate(
+                courtCentreId, room, sessionDate, LocalDateTime.of(sessionDate, LocalTime.of(10, 0)), MAGISTRATES);
+        final Optional<CourtSchedule> crown = courtScheduleRepository.findSessionForMoveToPastDate(
+                courtCentreId, room, sessionDate, LocalDateTime.of(sessionDate, LocalTime.of(15, 0)), CROWN);
+
+        assertFalse(magistrates.isPresent());
+        assertFalse(crown.isPresent());
+    }
+
+    @Test
+    void shouldReturnTheFinalSession_whenADraftCoversTheSameRoomAndTime() {
+        final String courtCentreId = randomUUID().toString();
+        final LocalDate sessionDate = LocalDate.of(2024, 3, 4);
+        final String room = randomUUID().toString();
+
+        createDraftTimedSchedule(courtCentreId, sessionDate, CROWN, room, 9, 13);
+        final CourtSchedule finalSession = createTimedSchedule(courtCentreId, sessionDate, CROWN, room, 9, 13, 2);
+
+        final Optional<CourtSchedule> result = courtScheduleRepository.findSessionForMoveToPastDate(
+                courtCentreId, room, sessionDate, LocalDateTime.of(sessionDate, LocalTime.of(10, 0)), CROWN);
+
+        assertTrue(result.isPresent());
+        assertEquals(finalSession.getCourtScheduleId(), result.get().getCourtScheduleId());
+    }
+
+    private CourtSchedule createDraftTimedSchedule(final String courtCentreId, final LocalDate sessionDate, final String jurisdiction,
+                                                   final String courtRoomId, final int startHour, final int endHour) {
+        final CourtSchedule schedule = createTimedSchedule(courtCentreId, sessionDate, jurisdiction, courtRoomId, startHour, endHour, 1);
+        schedule.setIsDraft(true);
+        courtScheduleRepository.save(schedule);
+        return schedule;
     }
 
     private CourtSchedule createMoveToPastDateSchedule(final String courtCentreId, final LocalDate sessionDate, final String jurisdiction) {
