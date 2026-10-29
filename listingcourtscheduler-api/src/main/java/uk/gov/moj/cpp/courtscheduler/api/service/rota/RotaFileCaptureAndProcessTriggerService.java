@@ -87,6 +87,13 @@ public class RotaFileCaptureAndProcessTriggerService {
                                 newRotaFileProcessor.downloadAndProcessForEachFile(blobContent, blobName, leaseId);
                         changedCourtScheduleIds.addAll(changedIdsForBlob);
                         logger.info("Blob {} produced {} changed court schedule IDs", blobName, changedIdsForBlob.size());
+
+                        final List<JsonObject> changeJudiciaryForHearingsPayloads =
+                                changeJudiciaryForHearingsHelper.createChangeJudiciaryForHearingsPayloads(changedIdsForBlob);
+                        logger.info("Built {} change-judiciary-for-hearings payloads for blob {}", changeJudiciaryForHearingsPayloads.size(), blobName);
+                        final int sentCommandCount =
+                                changeJudiciaryForHearingsHelper.sendChangeJudiciaryForHearingsCommands(changeJudiciaryForHearingsPayloads);
+                        logger.info("Sent {} change-judiciary-for-hearings commands for blob {}", sentCommandCount, blobName);
                     }
                 } catch (AzureBlobClientException ignoredException) {
                     logger.info("File {} already leased and skipping to the next file", blobName);
@@ -94,17 +101,8 @@ public class RotaFileCaptureAndProcessTriggerService {
             }
         } while (fileAvailable);
 
-        logger.info("RotaFileCaptureAndProcessTriggerService.captureRotaFilesAndProcessEach completed with {} changed court schedule IDs: {}",
+        logger.info("RotaFileCaptureAndProcessTriggerService.captureRotaFilesAndProcessEach completed with {} total changed court schedule IDs: {}",
                 changedCourtScheduleIds.size(), changedCourtScheduleIds);
-
-        // Build and send the listing.command.change-judiciary-for-hearings commands for the changed court schedules
-        final List<JsonObject> changeJudiciaryForHearingsPayloads =
-                changeJudiciaryForHearingsHelper.createChangeJudiciaryForHearingsPayloads(changedCourtScheduleIds);
-        logger.info("Built {} change-judiciary-for-hearings payloads for the listing context", changeJudiciaryForHearingsPayloads.size());
-
-        final int sentCommandCount =
-                changeJudiciaryForHearingsHelper.sendChangeJudiciaryForHearingsCommands(changeJudiciaryForHearingsPayloads);
-        logger.info("Sent {} change-judiciary-for-hearings commands to the listing context", sentCommandCount);
     }
 
     private void loadReferenceData() {

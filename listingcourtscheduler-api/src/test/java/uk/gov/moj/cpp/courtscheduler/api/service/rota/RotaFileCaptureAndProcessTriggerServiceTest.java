@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import uk.gov.moj.cpp.courtscheduler.api.service.rota.helper.ChangeJudiciaryForHearingsHelper;
@@ -121,15 +122,10 @@ class RotaFileCaptureAndProcessTriggerServiceTest {
     @Test
     void shouldBuildAndSendNoCommandsWhenNoFilesWereProcessed() {
         when(azureBlobClientService.findAvailableFile(eq("lja_"))).thenReturn(Optional.empty());
-        when(changeJudiciaryForHearingsHelper.createChangeJudiciaryForHearingsPayloads(eq(List.of())))
-                .thenReturn(List.of());
-        when(changeJudiciaryForHearingsHelper.sendChangeJudiciaryForHearingsCommands(eq(List.of())))
-                .thenReturn(0);
 
         rotaFileCaptureAndProcessTriggerService.captureRotaFilesAndProcessEach(false, "new");
 
-        verify(changeJudiciaryForHearingsHelper).createChangeJudiciaryForHearingsPayloads(eq(List.of()));
-        verify(changeJudiciaryForHearingsHelper).sendChangeJudiciaryForHearingsCommands(eq(List.of()));
+        verifyNoInteractions(changeJudiciaryForHearingsHelper);
     }
 
     private byte[] givenBlobContent(final String file) throws IOException {
