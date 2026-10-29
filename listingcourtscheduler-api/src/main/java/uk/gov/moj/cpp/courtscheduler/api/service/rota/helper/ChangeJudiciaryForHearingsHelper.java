@@ -80,7 +80,7 @@ public class ChangeJudiciaryForHearingsHelper {
             final Set<Map<String, JsonObject>> distinctSessionJudiciaries = new HashSet<>(judiciariesBySession.values());
             if (distinctSessionJudiciaries.size() == 1) {
                 hearingIdsByJudiciarySet
-                        .computeIfAbsent(distinctSessionJudiciaries.iterator().next(), k -> new ArrayList<>())
+                        .computeIfAbsent(distinctSessionJudiciaries.iterator().next(), _ -> new ArrayList<>())
                         .add(hearingId);
             } else {
                 logger.info("Skipping change-judiciary-for-hearings for hearing {} - its {} sessions {} do not all have the same judiciaries",

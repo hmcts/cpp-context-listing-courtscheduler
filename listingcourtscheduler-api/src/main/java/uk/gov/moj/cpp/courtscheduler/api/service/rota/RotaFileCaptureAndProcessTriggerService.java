@@ -7,7 +7,6 @@ import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataMapperService;
 import uk.gov.moj.cpp.courtscheduler.common.service.data.BlobContent;
 import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.RotaFileProcessorService;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -54,7 +53,6 @@ public class RotaFileCaptureAndProcessTriggerService {
 
         boolean referenceDataLoaded = false;
         boolean fileAvailable;
-        final List<String> changedCourtScheduleIds = new ArrayList<>();
 
         do {
             // Look for an available file without an active lease
@@ -85,8 +83,7 @@ public class RotaFileCaptureAndProcessTriggerService {
                         logger.info("Using new rota file processor service for blob: {}", blobName);
                         final List<String> changedIdsForBlob =
                                 newRotaFileProcessor.downloadAndProcessForEachFile(blobContent, blobName, leaseId);
-                        changedCourtScheduleIds.addAll(changedIdsForBlob);
-                        logger.info("Blob {} produced {} changed court schedule IDs", blobName, changedIdsForBlob.size());
+                        logger.info("Blob {} produced {} changed court schedule IDs: {}", blobName, changedIdsForBlob.size(), changedIdsForBlob);
 
                         final List<JsonObject> changeJudiciaryForHearingsPayloads =
                                 changeJudiciaryForHearingsHelper.createChangeJudiciaryForHearingsPayloads(changedIdsForBlob);
@@ -101,8 +98,7 @@ public class RotaFileCaptureAndProcessTriggerService {
             }
         } while (fileAvailable);
 
-        logger.info("RotaFileCaptureAndProcessTriggerService.captureRotaFilesAndProcessEach completed with {} total changed court schedule IDs: {}",
-                changedCourtScheduleIds.size(), changedCourtScheduleIds);
+        logger.info("RotaFileCaptureAndProcessTriggerService.captureRotaFilesAndProcessEach completed");
     }
 
     private void loadReferenceData() {

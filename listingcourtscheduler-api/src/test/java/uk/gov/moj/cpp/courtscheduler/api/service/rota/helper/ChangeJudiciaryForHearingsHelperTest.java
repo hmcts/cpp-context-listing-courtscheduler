@@ -253,6 +253,57 @@ class ChangeJudiciaryForHearingsHelperTest {
         }
 
         @Test
+        @DisplayName("Should partition hearings into separate payloads when their judiciary sets differ")
+        void shouldPartitionHearingsWithDifferentJudiciariesIntoSeparatePayloads() {
+            // given - hearing1 and hearing2 share jud-1 (Magistrate); hearing3 has jud-2 (District Judge)
+            // Expected: 2 payloads — one with [hearing1, hearing2] and one with [hearing3]
+            final String courtScheduleIdA = randomUUID().toString();
+            final String courtScheduleIdB = randomUUID().toString();
+            final String courtScheduleIdC = randomUUID().toString();
+            final String hearingId1 = randomUUID().toString();
+            final String hearingId2 = randomUUID().toString();
+            final String hearingId3 = randomUUID().toString();
+            final List<String> changedCourtScheduleIds = List.of(courtScheduleIdA, courtScheduleIdB, courtScheduleIdC);
+
+            final List<Object[]> rows = List.<Object[]>of(
+                    new Object[]{hearingId1, courtScheduleIdA, "jud-1", "Magistrate", true, false},
+                    new Object[]{hearingId2, courtScheduleIdB, "jud-1", "Magistrate", true, false},
+                    new Object[]{hearingId3, courtScheduleIdC, "jud-2", "District Judge", false, true});
+            when(courtScheduleJudiciaryService.getHearingSessionJudiciariesForCourtSchedules(eq(changedCourtScheduleIds)))
+                    .thenReturn(rows);
+
+            // when
+            final List<JsonObject> payloads =
+                    changeJudiciaryForHearingsHelper.createChangeJudiciaryForHearingsPayloads(changedCourtScheduleIds);
+
+            // then - two payloads: one grouping hearing1+hearing2, one for hearing3 alone
+            assertEquals(2, payloads.size());
+
+            final Map<String, JsonObject> payloadsByFirstHearing = payloads.stream()
+                    .collect(java.util.stream.Collectors.toMap(
+                            p -> toStringList(p.getJsonArray("hearings")).get(0), p -> p));
+
+            // hearing1 and hearing2 are grouped together (order within the hearings array is not contractual)
+            final JsonObject groupedPayload = payloads.stream()
+                    .filter(p -> toStringList(p.getJsonArray("hearings")).size() == 2)
+                    .findFirst()
+                    .orElseThrow(() -> new AssertionError("Expected a payload with 2 hearing IDs"));
+            assertEquals(Set.copyOf(List.of(hearingId1, hearingId2)),
+                    Set.copyOf(toStringList(groupedPayload.getJsonArray("hearings"))));
+            assertEquals("jud-1", groupedPayload.getJsonArray("judiciary").getJsonObject(0).getString("judicialId"));
+
+            // hearing3 gets its own payload
+            final JsonObject soloPayload = payloads.stream()
+                    .filter(p -> toStringList(p.getJsonArray("hearings")).size() == 1)
+                    .findFirst()
+                    .orElseThrow(() -> new AssertionError("Expected a payload with 1 hearing ID"));
+            assertEquals(List.of(hearingId3), toStringList(soloPayload.getJsonArray("hearings")));
+            assertEquals("jud-2", soloPayload.getJsonArray("judiciary").getJsonObject(0).getString("judicialId"));
+
+            payloads.forEach(p -> assertEquals("AUTO", p.getString("judiciaryAssignmentSource")));
+        }
+
+        @Test
         @DisplayName("Should build payload with empty judiciary array when no session of the hearing has judiciaries")
         void shouldBuildPayloadWithEmptyJudiciaryWhenAllJudiciariesRemoved() {
             // given - the LEFT JOIN returns null judiciary columns for every session of the hearing
