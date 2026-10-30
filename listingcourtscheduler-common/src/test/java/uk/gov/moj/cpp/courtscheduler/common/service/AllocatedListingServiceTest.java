@@ -5,6 +5,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.verify;
@@ -17,8 +18,10 @@ import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.IdResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant;
 import uk.gov.moj.cpp.courtscheduler.repository.AllocatedListingRepository;
+import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 
 import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -43,6 +46,12 @@ class AllocatedListingServiceTest {
 
     @Mock
     private AllocatedListingRepository allocatedListingRepository;
+
+    @Mock
+    private CourtScheduleRepository courtScheduleRepository;
+
+    @Mock
+    private uk.gov.moj.cpp.courtscheduler.repository.BookingLogRepository bookingLogRepository;
 
     @Spy
     private ObjectToJsonObjectConverter objectToJsonObjectConverter = new uk.gov.moj.cpp.courtscheduler.common.converter.ObjectToJsonObjectConverter(new com.fasterxml.jackson.databind.ObjectMapper().findAndRegisterModules());
@@ -75,6 +84,33 @@ class AllocatedListingServiceTest {
         final int expectedNumberOfDeletion = allocatedListingService.deleteRedundantRotaData(numberOfPreviousMonthsAndOlder);
         verify(allocatedListingRepository, atLeastOnce()).deleteRedundantRotaData(eq(numberOfPreviousMonthsAndOlder * 30));
         assertThat(expectedNumberOfDeletion, is(numberOfDeleted));
+    }
+
+    @Test
+    void shouldPurgeExpiredReservedSessionsRestoringCapacity() {
+        final int numberOfReleased = 3;
+        when(courtScheduleRepository.releaseExpiredReservations(any(LocalDate.class))).thenReturn(numberOfReleased);
+
+        final int actual = allocatedListingService.purgeExpiredReservedSessions();
+
+        final org.mockito.ArgumentCaptor<LocalDate> cutoffCaptor = org.mockito.ArgumentCaptor.forClass(LocalDate.class);
+        verify(courtScheduleRepository, atLeastOnce()).releaseExpiredReservations(cutoffCaptor.capture());
+        assertEquals(LocalDate.now(ZoneOffset.UTC), cutoffCaptor.getValue());
+        assertThat(actual, is(numberOfReleased));
+    }
+
+    // LPT-2611: the booking log is cleared by the same nightly run, after the retention period.
+    @Test
+    void shouldClearBookingLogRowsOlderThanTheRetentionPeriod() {
+        org.springframework.test.util.ReflectionTestUtils.setField(allocatedListingService, "bookingLogRetentionDays", 90);
+
+        allocatedListingService.purgeExpiredReservedSessions();
+
+        final org.mockito.ArgumentCaptor<java.time.Instant> cutoff = org.mockito.ArgumentCaptor.forClass(java.time.Instant.class);
+        verify(bookingLogRepository).deleteRecordedBefore(cutoff.capture());
+        final java.time.Instant expected = java.time.Instant.now().minus(90, java.time.temporal.ChronoUnit.DAYS);
+        assertTrue(java.time.Duration.between(cutoff.getValue(), expected).abs().getSeconds() < 5,
+                "cutoff " + cutoff.getValue() + " should be ~" + expected);
     }
 
     private List<AllocatedListingTotalBooked> getAllocatedListingTotalBooked(final List<String> courtScheduleIds) {

@@ -145,6 +145,24 @@ protocols: [ HTTP, HTTPS ]
           application/vnd.courtscheduler.search.court-schedules-by-id+json:
             schema: !include json/schema/courtscheduler.search.courtschedules.by.id.response.json
             example: !include json/courtscheduler.search.courtschedules.by.id.response.json
+  post:
+    description: |
+      Purge allocated listings (reserved sessions) whose expiresAt has already passed (any
+      backlog, not just yesterday's, so a missed daily run is self-healing).
+      Intended to be called once a day (around 03:00) by a scheduled job to clean up
+      unconfirmed bookings that were never confirmed before expiry.
+      ...
+      (mapping):
+          requestType: application/vnd.courtscheduler.purge-expired-reserved-sessions+json
+          name: courtscheduler.purge-expired-reserved-sessions
+      ...
+    body:
+      application/vnd.courtscheduler.purge-expired-reserved-sessions+json:
+        schema: !include json/schema/courtscheduler.purge-expired-reserved-sessions.json
+        example: !include json/courtscheduler.purge-expired-reserved-sessions.json
+    responses:
+      202:
+        description: Request Accepted
 
 /sessions/judiciaries:
   post:
@@ -457,32 +475,32 @@ protocols: [ HTTP, HTTPS ]
           session and courtroom; only the tail days are booked (into the request's courtRoomId when
           supplied) or released.
 
-/provisionalBooking:
+/unconfirmedBooking:
   post:
     description:  |
       You can book slot provisionally by giving corresponding courtScheduleId(s) inside request body
       ...
         (mapping):
-            requestType: application/vnd.courtscheduler.create.provisional.booking+json
-            name: courtscheduler.create.provisional.booking
+            requestType: application/vnd.courtscheduler.create.unconfirmed.booking+json
+            name: courtscheduler.create.unconfirmed.booking
       ...
     body:
-      application/vnd.courtscheduler.create.provisional.booking+json:
-        schema:  !include json/schema/courtscheduler.create.provisional.booking.json
-        example:  !include json/courtscheduler.create.provisional.booking.json
+      application/vnd.courtscheduler.create.unconfirmed.booking+json:
+        schema:  !include json/schema/courtscheduler.create.unconfirmed.booking.json
+        example:  !include json/courtscheduler.create.unconfirmed.booking.json
     responses:
       200:
         body:
-          example: !include json/courtscheduler.create.provisional.booking.response.json
-          schema:  !include json/schema/courtscheduler.create.provisional.booking.response.json
+          example: !include json/courtscheduler.create.unconfirmed.booking.response.json
+          schema:  !include json/schema/courtscheduler.create.unconfirmed.booking.response.json
 
   get:
     description:  |
       Query via parameters
       ...
         (mapping):
-            responseType: application/vnd.courtscheduler.get.provisional.booking+json
-            name: courtscheduler.get.provisional.booking
+            responseType: application/vnd.courtscheduler.get.unconfirmed.booking+json
+            name: courtscheduler.get.unconfirmed.booking
       ...
     queryParameters:
       bookingIds:
@@ -492,9 +510,68 @@ protocols: [ HTTP, HTTPS ]
     responses:
       200:
         body:
-          application/vnd.courtscheduler.get.provisional.booking+json:
-            example: !include json/courtscheduler.get.provisional.booking.json
-            schema:  !include json/schema/courtscheduler.get.provisional.booking.json
+          application/vnd.courtscheduler.get.unconfirmed.booking+json:
+            example: !include json/courtscheduler.get.unconfirmed.booking.json
+            schema:  !include json/schema/courtscheduler.get.unconfirmed.booking.json
+
+/unconfirmedBooking/status:
+  post:
+    description:  |
+      Reports, for each booking id, whether the draft that carries it is still safe to share, and
+      why. Used by the pre-share gate in the results UI (through listing), which must block the
+      share synchronously because sharing itself is asynchronous.
+
+      status says where the booking is; safeToShare whether a share may go ahead with it, so
+      callers need no rule of their own. With rows: RESERVED (a reservation still holds
+      capacity) or SHARED (already shared - the confirmed row carries this booking id). With no
+      rows, the booking log says why: SURPLUS (a share merged its line onto another booking's
+      session), UNLISTED (its listing was freed, e.g. by a re-share), EXPIRED (the hold lapsed and
+      was purged), RELEASED (dropped from the draft, or released without a reason) or NOT_FOUND
+      (nothing recorded). REBOOKED: see below. safeToShare is true for RESERVED, REBOOKED, SHARED,
+      SURPLUS and UNLISTED - progression places SURPLUS and UNLISTED from its own record.
+
+      With reserveIfExpired (LPT-2611), a booking that would answer EXPIRED is first re-reserved
+      under the same booking id if the session its hold expired on still has room (capacity
+      counted from allocated_listings, isOverbookingAllowed honoured), and then answers REBOOKED.
+      A POST because it can book capacity; without the flag it only reads.
+      ...
+        (mapping):
+            requestType: application/vnd.courtscheduler.query.booking.status+json
+            name: courtscheduler.query.booking.status
+      ...
+    body:
+      application/vnd.courtscheduler.query.booking.status+json:
+        schema:  !include json/schema/courtscheduler.query.booking.status.json
+        example:  !include json/courtscheduler.query.booking.status.json
+    responses:
+      200:
+        body:
+          application/vnd.courtscheduler.query.booking.status.response+json:
+            example: !include json/courtscheduler.query.booking.status.response.json
+            schema:  !include json/schema/courtscheduler.query.booking.status.response.json
+
+/unconfirmedBooking/release:
+  post:
+    description:  |
+      Releases the UNCONFIRMED holds (reservations) taken under each booking id, giving their
+      sessions' capacity back, in one transaction. A confirmed listing that carries the same
+      booking id is never touched, and nothing keyed by hearing id is - only a share may change a
+      confirmed booking. Unknown ids are no-ops, duplicates count once, and repeating the call is
+      harmless. Called by hearing when a draft result drops a picked next hearing, and by
+      progression to release surplus holds. The optional reason (DROPPED_FROM_DRAFT or SURPLUS) is
+      recorded in the booking log (LPT-2611).
+      ...
+        (mapping):
+            requestType: application/vnd.courtscheduler.release.unconfirmed.bookings+json
+            name: courtscheduler.release.unconfirmed.bookings
+      ...
+    body:
+      application/vnd.courtscheduler.release.unconfirmed.bookings+json:
+        schema:  !include json/schema/courtscheduler.release.unconfirmed.bookings.json
+        example:  !include json/courtscheduler.release.unconfirmed.bookings.json
+    responses:
+      202:
+        description: Request Accepted
 
 /mi/court_schedules:
   get:

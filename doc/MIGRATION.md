@@ -87,8 +87,8 @@ System user UUID is read from `courtscheduler.system-user-id` (env: `COURTSCHEDU
 | `PUT /list/hearingslots` | `HearingSlotsController` | `SlotsUpdateService.listHearingSlots` |
 | `PUT /searchupdate/hearingslots` | `HearingSlotsController` | `SlotsUpdateService.searchUpdate` |
 | `GET /searchlist/hearingslots` | `HearingSlotsController` | `SlotsUpdateService.searchAndBook` |
-| `POST /provisionalBooking` | [`ProvisionalBookingController`](src/main/java/uk/gov/moj/cpp/courtscheduler/controllers/ProvisionalBookingController.java) | `ProvisionalBookingService.bookProvisionalSlots` |
-| `GET /provisionalBooking` | `ProvisionalBookingController` | `ProvisionalBookingService.fetchProvisionalSlots` |
+| `POST /unconfirmedBooking` | [`ProvisionalBookingController`](src/main/java/uk/gov/moj/cpp/courtscheduler/controllers/ProvisionalBookingController.java) | `ProvisionalBookingService.bookProvisionalSlots` |
+| `GET /unconfirmedBooking` | `ProvisionalBookingController` | `ProvisionalBookingService.fetchProvisionalSlots` |
 | `GET /mi/court_schedules` | [`MiController`](src/main/java/uk/gov/moj/cpp/courtscheduler/controllers/MiController.java) | `MiService.getCourtSchedules` |
 | `GET /mi/court_schedule_judiciaries` | `MiController` | `MiService.getCourtSchedulesJudiciary` |
 | `GET /mi/allocated_listings` | `MiController` | `MiService.getAllocatedListings` |

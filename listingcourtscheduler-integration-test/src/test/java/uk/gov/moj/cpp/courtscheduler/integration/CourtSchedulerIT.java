@@ -20,6 +20,7 @@ import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.RestPoller.poll;
 import static uk.gov.moj.cpp.courtscheduler.common.Jurisdiction.CROWN;
@@ -167,6 +168,7 @@ class CourtSchedulerIT extends AbstractIT {
     private static final String ASSIGN_JUDICIARY_CONTENT_TYPE = "application/vnd.courtscheduler.assign-judiciary+json";
     private static final String UNASSIGN_JUDICIARY_CONTENT_TYPE = "application/vnd.courtscheduler.unassign.judiciary+json";
     private static final String REMOVE_ALL_JUDICIARY_CONTENT_TYPE = "application/vnd.courtscheduler.remove-all-judiciary+json";
+    private static final String PURGE_EXPIRED_RESERVED_SESSIONS_CONTENT_TYPE = "application/vnd.courtscheduler.purge-expired-reserved-sessions+json";
     private static final String ASSIGN_JUDICIARY_TO_SESSIONS_URL = "/sessions/bulk-assign-judiciaries";
     private static final String ASSIGN_JUDICIARY_TO_SESSIONS_CONTENT_TYPE =
             "application/vnd.courtscheduler.assign-judiciary-to-sessions+json";
@@ -5386,6 +5388,122 @@ class CourtSchedulerIT extends AbstractIT {
             assertTrue(returnedIds.contains(expected.getCourtScheduleId()),
                     "Response should contain courtScheduleId: " + expected.getCourtScheduleId());
         }
+    }
+
+    /**
+     * BUG-1 guard. A bare {@code DELETE} used to remove an expired reservation row without ever
+     * restoring the session's capacity, so {@code court_schedule.available_slots} stayed
+     * decremented forever. Seeding rows directly with {@code databaseSeeder.insertAllocatedListing}
+     * would never exercise that bug — direct seeding never decrements {@code available_slots} in
+     * the first place, so "assert capacity restored" would just be asserting nothing changed from
+     * nothing. Reservations here are therefore created through the real
+     * {@code POST /unconfirmedBooking} path (mirrors {@code ProvisionalBookingIT}), so capacity is
+     * genuinely taken before the purge runs. Do not "simplify" this back to direct seeding — that
+     * silently removes the guard and lets BUG-1 back in unnoticed.
+     */
+    @Test
+    void shouldPurgeAllocatedListingsWhoseExpiresAtHasAlreadyPassed() throws Exception {
+        final CourtSchedule courtSchedule = reservableCourtSchedule();
+        databaseSeeder.insertCourtSchedule(courtSchedule);
+        final String courtScheduleId = courtSchedule.getCourtScheduleId();
+
+        final int initialAvailableSlots = databaseReader.slotsLeft(courtScheduleId);
+
+        // Two INDEPENDENT reservations via the real endpoint — not one booking with two slots —
+        // so one can be aged into expiry while the other is left alone, proving the purge is
+        // selective as well as capacity-restoring.
+        final String expiringBookingId = reserveViaProvisionalBooking(courtScheduleId);
+        final String survivingBookingId = reserveViaProvisionalBooking(courtScheduleId);
+
+        // If capacity hasn't genuinely dropped by two here, the reservations never went through
+        // the real pipeline and every assertion below would be meaningless.
+        assertEquals(initialAvailableSlots - 2,
+                databaseReader.slotsLeft(courtScheduleId),
+                "reservations were not taken through the real booking pipeline — availableSlots "
+                        + "did not drop by 2, so this test cannot prove anything about the purge");
+
+        final AllocatedListing expiredYesterday = allocatedListingForBookingId(expiringBookingId);
+        final AllocatedListing notYetExpired = allocatedListingForBookingId(survivingBookingId);
+
+        databaseSeeder.updateAllocatedListingExpiresAt(expiredYesterday.getId(), LocalDate.now().minusDays(1));
+
+        // The purge cutoff is today's date, not "start of today" as an instant — a today-dated
+        // expiry isn't purged until the day rolls over, so "not yet expired" must be set in the
+        // FUTURE (tomorrow) to actually exercise the not-purged branch.
+        databaseSeeder.updateAllocatedListingExpiresAt(notYetExpired.getId(), LocalDate.now().plusDays(1));
+
+        final Response response = postCommand(SEARCH_BY_ID_URL,
+                PURGE_EXPIRED_RESERVED_SESSIONS_CONTENT_TYPE,
+                SYSTEM_USER_ID,
+                "{}");
+
+        assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
+
+        final List<String> remainingIds = databaseReader.allocatedListings().stream()
+                .map(AllocatedListing::getId)
+                .toList();
+        assertFalse(remainingIds.contains(expiredYesterday.getId()));
+        assertTrue(remainingIds.contains(notYetExpired.getId()));
+
+        // The purged reservation's slot must come back — exactly one, not zero (BUG-1) and not
+        // two (the surviving reservation's slot must NOT also be released).
+        assertEquals(initialAvailableSlots - 1,
+                databaseReader.slotsLeft(courtScheduleId),
+                "the purge deleted the row without restoring its slot — this is BUG-1");
+    }
+
+    /**
+     * Pins exactly the fields the reservation pipeline depends on, on top of
+     * {@link #createTestCourtSchedule()}: active, slot-based, a future sessionDate, and a KNOWN
+     * {@code availableSlots}/{@code maxSlots} (5) rather than whatever value
+     * {@code createTestCourtSchedule()} happens to set — the purge-capacity assertions below need
+     * an exact, known number to diff against, not just "some" pinned value. Mirrors
+     * {@code ProvisionalBookingIT#bookableCourtSchedule}.
+     */
+    private CourtSchedule reservableCourtSchedule() {
+        final CourtSchedule courtSchedule = createTestCourtSchedule();
+        courtSchedule.setActive(true);
+        courtSchedule.setSlotBased(true);
+        courtSchedule.setSessionDate(LocalDate.now().plusDays(30));
+        courtSchedule.setMaxSlots(5);
+        courtSchedule.setAvailableSlots(5);
+        return courtSchedule;
+    }
+
+    /**
+     * Picks the given session for the first time via the real {@code POST /unconfirmedBooking}
+     * endpoint (no {@code bookingId} supplied, so the server mints a new one) — this is what
+     * actually decrements {@code court_schedule.available_slots}, unlike direct seeding.
+     */
+    private String reserveViaProvisionalBooking(final String courtScheduleId) throws Exception {
+        final String payload = getPayload("courtscheduler.create.unconfirmed.booking.json")
+                .replace("COURTSCHEDULER_ID", courtScheduleId);
+
+        final Response response = postCommand("/unconfirmedBooking",
+                "application/vnd.courtscheduler.create.unconfirmed.booking+json",
+                SYSTEM_USER_ID,
+                payload);
+
+        final String body = response.readEntity(String.class);
+        assertThat("the reservation must succeed: " + body, response.getStatus(), is(OK.getStatusCode()));
+
+        try (final JsonReader jsonReader = Json.createReader(new StringReader(body))) {
+            return jsonReader.readObject().getString("bookingId");
+        }
+    }
+
+    /**
+     * A reservation is identified by its {@code booking_id}; {@code hearing_id} stays null until a
+     * share confirms it. This is how the row created by {@link #reserveViaProvisionalBooking} is
+     * found again in order to age it for the purge.
+     */
+    private AllocatedListing allocatedListingForBookingId(final String bookingId) throws SQLException {
+        return databaseReader.allocatedListings().stream()
+                .filter(row -> bookingId.equals(row.getBookingId()))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError(
+                        "no allocated_listings row found for bookingId " + bookingId
+                                + " — the reservation did not actually persist a row"));
     }
 
     private static LocalDate getNextWeekdayMonToWed() {

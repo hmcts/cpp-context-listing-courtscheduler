@@ -25,6 +25,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.owasp.encoder.Encode;
@@ -48,6 +49,7 @@ import uk.gov.moj.cpp.courtscheduler.api.validator.JudiciariesApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.ProvisionalBookingApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.SessionsApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.ValidationException;
+import uk.gov.moj.cpp.courtscheduler.common.service.AllocatedListingService;
 import uk.gov.moj.cpp.courtscheduler.common.service.JudiciaryAssignmentService;
 import uk.gov.moj.cpp.courtscheduler.common.service.JudiciaryUnassignmentService;
 import uk.gov.moj.cpp.courtscheduler.common.service.SessionsService;
@@ -67,6 +69,8 @@ import uk.gov.moj.cpp.courtscheduler.openapi.model.Session;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.SessionsParam;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtScheduleDeleteResponse;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerGetCourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerQueryBookingStatus;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerReleaseUnconfirmedBookings;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerSearchCourtSchedulesByIdResponse;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.CrownSearchAndBookRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.BookedPastSession;
@@ -92,7 +96,7 @@ import uk.gov.moj.cpp.courtscheduler.envelope.SkipEnvelope;
 import uk.gov.moj.cpp.courtscheduler.openapi.api.CourtscheduleOpenApi;
 import uk.gov.moj.cpp.courtscheduler.openapi.api.HearingsOpenApi;
 import uk.gov.moj.cpp.courtscheduler.openapi.api.MiOpenApi;
-import uk.gov.moj.cpp.courtscheduler.openapi.api.ProvisionalBookingOpenApi;
+import uk.gov.moj.cpp.courtscheduler.openapi.api.UnconfirmedBookingOpenApi;
 import uk.gov.moj.cpp.courtscheduler.openapi.api.SessionOpenApi;
 import uk.gov.moj.cpp.courtscheduler.openapi.api.ValidateOpenApi;
 
@@ -113,8 +117,9 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
                                           HearingsOpenApi,
                                           MiOpenApi,
                                           ValidateOpenApi,
-                                          ProvisionalBookingOpenApi {
+                                          UnconfirmedBookingOpenApi {
 
+    private static final String ERROR_MESSAGE = "errorMessage";
     private static final Logger LOG = LoggerFactory.getLogger(CourtSchedulerApi.class);
 
     private static final String ASSIGN_MT = "application/vnd.courtscheduler.assign-judiciary+json";
@@ -152,6 +157,7 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
 
     // --- court schedule CRUD
     private final SessionsService sessionsService;
+    private final AllocatedListingService allocatedListingService;
     private final SessionsApiValidator sessionsApiValidator;
     private final CourtScheduleApiValidator courtScheduleApiValidator;
     private final ValidateSessionAvailabilityRequestParamConverter validateSessionAvailabilityRequestParamConverter;
@@ -180,6 +186,7 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
     public CourtSchedulerApi(final ObjectMapper objectMapper,
                              final HttpServletRequest request,
                              final SessionsService sessionsService,
+                             final AllocatedListingService allocatedListingService,
                              final SessionsApiValidator sessionsApiValidator,
                              final CourtScheduleApiValidator courtScheduleApiValidator,
                              final ValidateSessionAvailabilityRequestParamConverter validateSessionAvailabilityRequestParamConverter,
@@ -201,6 +208,7 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
                 .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
         this.request = request;
         this.sessionsService = sessionsService;
+        this.allocatedListingService = allocatedListingService;
         this.sessionsApiValidator = sessionsApiValidator;
         this.courtScheduleApiValidator = courtScheduleApiValidator;
         this.validateSessionAvailabilityRequestParamConverter = validateSessionAvailabilityRequestParamConverter;
@@ -427,7 +435,7 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
         final Result result = sessionsService.update(body);
         if (!Boolean.TRUE.equals(result.getSuccess())) {
             throw new ValidationException(
-                    Json.createObjectBuilder().add("errorMessage", result.getMsg()).build());
+                    Json.createObjectBuilder().add(ERROR_MESSAGE, result.getMsg()).build());
         }
         return ResponseEntity.status(HttpStatus.ACCEPTED).build();
     }
@@ -501,7 +509,7 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
         } catch (final IllegalArgumentException e) {
             LOG.warn("courtscheduler.assign-judiciary-to-sessions: {}", e.getMessage());
             throw new ValidationException(
-                    Json.createObjectBuilder().add("errorMessage", e.getMessage()).build());
+                    Json.createObjectBuilder().add(ERROR_MESSAGE, e.getMessage()).build());
         }
         return ResponseEntity.status(HttpStatus.ACCEPTED).build();
     }
@@ -530,6 +538,15 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
         }
 
         judiciaryUnassignmentService.removeAllJudiciaryByCourtScheduleIds(courtScheduleIds);
+        return ResponseEntity.status(HttpStatus.ACCEPTED).build();
+    }
+
+    /** POST /sessions — purge allocated listings (reserved sessions) whose expiresAt has already passed. */
+    @Override
+    public ResponseEntity<Void> postPurgeExpiredReservedSessions(final Map<String, Object> body) {
+        LOG.info("courtscheduler.purge-expired-reserved-sessions requested");
+        final int purged = allocatedListingService.purgeExpiredReservedSessions();
+        LOG.info("courtscheduler.purge-expired-reserved-sessions purged {} allocated listing(s)", purged);
         return ResponseEntity.status(HttpStatus.ACCEPTED).build();
     }
 
@@ -899,17 +916,20 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
     }
 
     /* ============================================================
-     *  ProvisionalBookingOpenApi — provisional booking endpoints
+     *  UnconfirmedBookingOpenApi — unconfirmed booking endpoints
      * ============================================================ */
 
     @Override
     public ResponseEntity<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerCreateProvisionalBookingResponse> postCreateProvisionalBooking(final ProvisionalBookingSlots body) {
-        LOG.info("courtscheduler.create.provisional.booking: {}", body);
+        LOG.info("courtscheduler.create.unconfirmed.booking: {}", body);
         final ProvisionalBookingSlots slots = provisionalSlotConverter.convert(toJson(body));
         final JsonObject validate = provisionalBookingApiValidator.createProvisionalBookingValidation(slots);
         if (!validate.isEmpty()) {
             throw new ValidationException(validate);
         }
+        // The typed response comes from ccsph2's generated-model work. A reservation that cannot be
+        // held refuses loudly rather than report a booking that took no capacity: the
+        // NoCapacityException it throws is mapped to 422 by GlobalExceptionHandler#handleNoCapacity.
         final JsonObject response = provisionalBookingService.bookProvisionalSlots(slots);
         return ResponseEntity.ok(objectMapper.convertValue(JsonValueConverter.toMap(response),
                 uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerCreateProvisionalBookingResponse.class));
@@ -917,7 +937,7 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
 
     @Override
     public ResponseEntity<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerGetProvisionalBooking> getProvisionalBooking(final String bookingIds) {
-        LOG.info("courtscheduler.get.provisional.booking bookingIds={}", bookingIds);
+        LOG.info("courtscheduler.get.unconfirmed.booking bookingIds={}", bookingIds);
         final JsonObject validate = provisionalBookingApiValidator.getProvisionalBookingValidation(bookingIds);
         if (!validate.isEmpty()) {
             throw new ValidationException(validate);
@@ -925,5 +945,51 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
         final JsonObject response = provisionalBookingService.fetchProvisionalSlots(bookingIds);
         return ResponseEntity.ok(objectMapper.convertValue(JsonValueConverter.toMap(response),
                 uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerGetProvisionalBooking.class));
+    }
+
+    /**
+     * POST /unconfirmedBooking/status — the pre-share check: is each booking still safe to share?
+     * With {@code reserveIfExpired} (LPT-2611) a booking that would answer NOT_FOUND is first
+     * re-booked under the same id if its session still has room. Refuses a bad body on its own as well, in case the
+     * schema filter is not in front of it.
+     */
+    @Override
+    public ResponseEntity<Map<String, Object>> postBookingStatus(final CourtschedulerQueryBookingStatus body) {
+        final List<String> bookingIds = body.getBookingIds();
+        if (bookingIds == null || bookingIds.isEmpty() || bookingIds.stream().anyMatch(StringUtils::isBlank)) {
+            throw new ValidationException(Json.createObjectBuilder()
+                    .add(ERROR_MESSAGE, "bookingIds must be a non-empty list of non-blank booking ids")
+                    .build());
+        }
+        final boolean reserveIfExpired = Boolean.TRUE.equals(body.getReserveIfExpired());
+        LOG.info("courtscheduler.post.booking-status bookingIds={} reserveIfExpired={}",
+                Encode.forJava(String.valueOf(bookingIds)), reserveIfExpired);
+        return ResponseEntity.ok(JsonValueConverter.toMap(provisionalBookingService.getBookingStatus(bookingIds, reserveIfExpired)));
+    }
+
+    /**
+     * POST /unconfirmedBooking/release — gives back the unconfirmed holds of each booking id.
+     * Called by hearing when a draft result is saved without the next hearing it had picked, and
+     * later by progression to release surplus holds. It releases unconfirmed holds only, by
+     * construction (see {@code ReservationService#releaseUnconfirmedBookings}), so it can never
+     * unlist a confirmed hearing.
+     *
+     * <p>The body is normally refused earlier by {@code RequestSchemaValidationFilter}; this check
+     * covers a body that reaches here without it (the filter passes through when it cannot load
+     * the schema), so a blank id is never handed to the release.
+     */
+    @Override
+    public ResponseEntity<Void> postReleaseUnconfirmedBookings(
+            final CourtschedulerReleaseUnconfirmedBookings body) {
+        final List<String> bookingIds = body.getBookingIds();
+        if (bookingIds == null || bookingIds.isEmpty() || bookingIds.stream().anyMatch(StringUtils::isBlank)) {
+            throw new ValidationException(Json.createObjectBuilder()
+                    .add(ERROR_MESSAGE, "bookingIds must be a non-empty list of non-blank booking ids")
+                    .build());
+        }
+        LOG.info("courtscheduler.release.unconfirmed.bookings bookingIds={} reason={}",
+                Encode.forJava(String.valueOf(bookingIds)), Encode.forJava(String.valueOf(body.getReason())));
+        provisionalBookingService.releaseUnconfirmedBookings(bookingIds, body.getReason());
+        return ResponseEntity.status(HttpStatus.ACCEPTED).build();
     }
 }

@@ -1,0 +1,23 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "bookingIds": {
+      "description": "Booking ids to report on, in the order they are answered.",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "pattern": "\\S"
+      }
+    },
+    "reserveIfExpired": {
+      "description": "LPT-2611: re-book a booking that would answer EXPIRED, under the same id, if the session it expired on still has room. Absent or false: read only.",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "bookingIds"
+  ],
+  "additionalProperties": false
+}

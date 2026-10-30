@@ -106,7 +106,7 @@ public class SlotsUpdateService {
         if (isBookingBasedSlot(slots)) {
             final AllocatedSlot singleBookingSlot = slots.get(0);
             final List<String> bookingSlots = List.of(singleBookingSlot.getBookingId());
-            final Map<String, Instant> provisionalBookingCourtScheduleInfo = provisionalBookingRepository.getCourtScheduleInfo(bookingSlots);
+            final Map<String, Instant> provisionalBookingCourtScheduleInfo = resolveBookingSessions(singleBookingSlot.getBookingId());
 
             final List<String> provisionalBookingCourtScheduleIdList = new ArrayList<>(provisionalBookingCourtScheduleInfo.keySet());
 
@@ -126,8 +126,9 @@ public class SlotsUpdateService {
 
             slots.forEach(allocatedSlot -> {
                 final Instant date = provisionalBookingCourtScheduleInfo.get(allocatedSlot.getCourtScheduleId());
-                final String isoString = DateUtils.toIsoString(date);
-                allocatedSlot.setHearingStartTime(isoString);
+                if (date != null) {
+                    allocatedSlot.setHearingStartTime(DateUtils.toIsoString(date));
+                }
             });
 
             slotUpdateResult = courtScheduleRepository.saveBookedSlots(slots, true, false);
@@ -142,6 +143,34 @@ public class SlotsUpdateService {
         });
 
         return createObjectBuilder().add(SCHEDULES, hearingDaysJsonArrBuilder).build();
+    }
+
+    /**
+     * Resolves a bookingId to {@code courtScheduleId → hearingStartTime} for every session the
+     * clerk picked, reservations first and legacy {@code provisional_booking} as the fallback —
+     * the same two-source shape {@code ProvisionalBookingService.fetchProvisionalSlots} uses.
+     *
+     * <p>A reservation is an {@code allocated_listings} row whose {@code hearing_id} is the minted
+     * bookingId and whose {@code expires_at} is non-null; it carries both the court schedule id
+     * and the hearing start time, so it answers this question directly. Since reserve-a-slot
+     * shipped no {@code provisional_booking} row is written any more, so for a new booking the
+     * legacy table is always empty — reading it alone made every reservation-backed booking
+     * impossible to confirm.
+     *
+     * <p>Drafts saved before reserve-a-slot shipped have only the legacy row and no TTL, so the
+     * fallback is permanent. An empty result from both sources is the genuine "nothing held"
+     * case and the caller raises {@link ProvisionalSlotNotFoundException}.
+     */
+    private Map<String, Instant> resolveBookingSessions(final String bookingId) {
+        final Map<String, Instant> fromReservations = new LinkedHashMap<>();
+        allocatedListingRepository.findByBookingId(bookingId).stream()
+                .filter(row -> row.getExpiresAt() != null)
+                .forEach(row -> fromReservations.put(row.getCourtScheduleId(), row.getHearingStartTime()));
+
+        if (!fromReservations.isEmpty()) {
+            return fromReservations;
+        }
+        return provisionalBookingRepository.getCourtScheduleInfo(List.of(bookingId));
     }
 
     public ListHearingSlotsResponse listHearingSlots(final RequestedSlots hearingSlots) {
@@ -645,6 +674,10 @@ public class SlotsUpdateService {
             LOGGER.info("[MOVE-PAST] Releasing prior allocation - hearingId: {}", Encode.forJava(hearingId));
             courtScheduleRepository.releaseOldAllocatedListings(hearingId);
         }
+        // What each day already holds, before this hearing is booked onto it: counted from
+        // allocated_listings, not court_schedule's available_* counters, which bookings no longer
+        // keep up to date.
+        final Map<String, Integer> bookedBefore = bookedPerSession(sessions);
         final Result persistResult = courtScheduleRepository.saveBookedSlots(slots, false, false);
         if (!Boolean.TRUE.equals(persistResult.getSuccess())) {
             throw new MoveHearingToPastDateNoSessionException(
@@ -654,7 +687,8 @@ public class SlotsUpdateService {
         final List<BookedPastSession> responses = new ArrayList<>();
         for (int i = 0; i < sittingDays.size(); i++) {
             responses.add(toBookedPastSession(hearingId, durationInMinutes,
-                    sittingDays.get(i), hearingStartTime, hearingEndTime, sessions.get(i)));
+                    sittingDays.get(i), hearingStartTime, hearingEndTime, sessions.get(i),
+                    bookedBefore.getOrDefault(sessions.get(i).getCourtScheduleId(), 0)));
         }
         return responses;
     }
@@ -714,12 +748,27 @@ public class SlotsUpdateService {
         return slot;
     }
 
+    private Map<String, Integer> bookedPerSession(final List<uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule> sessions) {
+        final Map<String, Integer> booked = new HashMap<>();
+        allocatedListingRepository.getAllocatedListingsByCourtScheduleId(sessions.stream()
+                        .map(uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule::getCourtScheduleId)
+                        .distinct()
+                        .toList())
+                .forEach(total -> booked.put(total.getCourtScheduleId(), total.getTotalBooked() == null ? 0 : total.getTotalBooked()));
+        return booked;
+    }
+
+    /**
+     * @param booked what the session already held before this hearing: holds and listings counted
+     *               for a slot-based session, their minutes summed for a duration-based one
+     */
     private static BookedPastSession toBookedPastSession(final String hearingId, final int durationInMinutes,
                                                          final LocalDate day, final String hearingStartTime,
-                                                         final String hearingEndTime, final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule session) {
+                                                         final String hearingEndTime, final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule session,
+                                                         final int booked) {
         final boolean overbooked = session.isSlotBased()
-                ? (session.getAvailableSlots() != null && session.getAvailableSlots() <= 0)
-                : (session.getAvailableDuration() != null && session.getAvailableDuration() < durationInMinutes);
+                ? session.getMaxSlots() != null && booked >= session.getMaxSlots()
+                : session.getMaxDuration() != null && session.getMaxDuration() - booked < durationInMinutes;
 
         // sessionStartTime/sessionEndTime carry the SUBMITTED start/end time-of-day on this sitting
         // day (falling back to the court-schedule window only if a time-of-day was not supplied).
@@ -948,47 +997,20 @@ public class SlotsUpdateService {
     }
 
     /**
-     * Select a valid consecutive run (dedupe, length, consecutive business days). Does NOT
+     * Select a valid consecutive run (dedupe, length, consecutive business days). Delegates to
+     * {@link ConsecutiveSessionSelector} — extracted so this booking path and {@link
+     * ReservationService}'s reservation path resolve the SAME run for the SAME anchor. Does NOT
      * persist — callers persist separately so a release-then-book sequence can be ordered safely.
      *
      * <p>Court-calendar rule (F1): a lack of session capacity must NEVER block the assignment —
-     * hearings are placed even when a day is full and {@code is_overbooking_allowed=false}. The
-     * per-date dedupe therefore prefers a row that can actually take {@code perDayMinutes}
-     * (falling back to an overbooking-allowed row, then to any row), and the old hard
-     * availability rejection is replaced by an advisory log of the days being overbooked.
-     * Only STRUCTURAL failures (not enough session days, non-consecutive dates) reject the run.</p>
+     * hearings are placed even when a day is full and {@code is_overbooking_allowed=false}. See
+     * {@link ConsecutiveSessionSelector#selectConsecutiveSessions} for the full rule; only
+     * STRUCTURAL failures (not enough session days, non-consecutive dates) reject the run.</p>
      */
     private List<CourtSchedule> selectConsecutiveSessions(
             final List<CourtSchedule> rawCandidates, final int daysNeeded, final String hearingId,
             final int perDayMinutes) {
-        final List<CourtSchedule> candidates = dedupeByDatePreferringBookable(
-                rawCandidates == null ? Collections.emptyList() : rawCandidates, perDayMinutes);
-        if (candidates.size() < daysNeeded) {
-            return Collections.emptyList();
-        }
-        final List<CourtSchedule> sessions = candidates.subList(0, daysNeeded);
-        if (!areConsecutiveBusinessDays(sessions, hearingId)) {
-            return Collections.emptyList();
-        }
-        logSessionsBookedBeyondCapacity(sessions, hearingId, perDayMinutes);
-        return new ArrayList<>(sessions);
-    }
-
-    /**
-     * Advisory replacement for the old all-or-nothing availability rejection: names each day being
-     * booked beyond its remaining capacity (including overbooking-disallowed sessions) so support can
-     * trace intentional overbooking, but never blocks the assignment.
-     */
-    private static void logSessionsBookedBeyondCapacity(
-            final List<CourtSchedule> sessions, final String hearingId, final int perDayMinutes) {
-        for (final CourtSchedule session : sessions) {
-            final int available = getEffectiveAvailableDuration(session);
-            if (available < perDayMinutes) {
-                LOGGER.info("[CROWN-SAB] Overbooking session {} on {} for hearingId {} — {}mins available, {}mins needed, overbookingAllowed={} (court-calendar always-assign rule)",
-                        Encode.forJava(session.getCourtScheduleId()), session.getSessionDate(), Encode.forJava(hearingId),
-                        available, perDayMinutes, session.getOverbookingAllowed());
-            }
-        }
+        return ConsecutiveSessionSelector.selectConsecutiveSessions(rawCandidates, daysNeeded, hearingId, perDayMinutes);
     }
 
     /**
@@ -1030,12 +1052,11 @@ public class SlotsUpdateService {
     /**
      * Per-day duration written to each booked slot: the request total split across the booked days
      * ({@code total/days}), or one full court day when no total is supplied (the date-range form).
+     * Delegates to {@link ConsecutiveSessionSelector#perDayDuration} — the identical arithmetic
+     * {@link ReservationService} uses to expand a Crown multi-day reservation.
      */
     private static int perDayDuration(final int totalDurationInMinutes, final int daysNeeded) {
-        if (totalDurationInMinutes <= 0 || daysNeeded <= 0) {
-            return MINUTES_IN_DAY;
-        }
-        return Math.max(totalDurationInMinutes / daysNeeded, 1);
+        return ConsecutiveSessionSelector.perDayDuration(totalDurationInMinutes, daysNeeded);
     }
 
     /**
@@ -1098,63 +1119,23 @@ public class SlotsUpdateService {
         }
     }
 
-   /* package */ static boolean areConsecutiveBusinessDays(final List<CourtSchedule> sessions,
+    /** Delegates to {@link ConsecutiveSessionSelector#areConsecutiveBusinessDays} — kept here (same
+     * signature) purely so existing callers/tests of this class are unaffected by the extraction. */
+    /* package */ static boolean areConsecutiveBusinessDays(final List<CourtSchedule> sessions,
                                               final String hearingId) {
-        for (int i = 1; i < sessions.size(); i++) {
-            final LocalDate previousDate = sessions.get(i - 1).getSessionDate();
-            final LocalDate currentDate = sessions.get(i).getSessionDate();
-            final LocalDate expectedNextBusinessDay = getNextBusinessDay(previousDate);
-            if (!currentDate.equals(expectedNextBusinessDay)) {
-                LOGGER.info("[MULTIDAY-SEARCH] hearingId: {}, gap detected between {} ({}) and {} ({}), expected next business day: {}",
-                        Encode.forJava(hearingId),
-                        Encode.forJava(sessions.get(i - 1).getCourtScheduleId()), previousDate,
-                        Encode.forJava(sessions.get(i).getCourtScheduleId()), currentDate,
-                        expectedNextBusinessDay);
-                return false;
-            }
-        }
-        return true;
+        return ConsecutiveSessionSelector.areConsecutiveBusinessDays(sessions, hearingId);
     }
 
-   /* package */ static LocalDate getNextBusinessDay(final LocalDate date) {
-        return SessionAvailability.getNextBusinessDay(date);
-    }
-
-   /* package */ static List<CourtSchedule> dedupeByDatePreferringBookable(
+    /** Delegates to {@link ConsecutiveSessionSelector#dedupeByDatePreferringBookable}. */
+    /* package */ static List<CourtSchedule> dedupeByDatePreferringBookable(
             final List<CourtSchedule> sessions,
             final int requiredPerDayMinutes) {
-        final Map<LocalDate, CourtSchedule> byDate = new LinkedHashMap<>();
-        for (final CourtSchedule cs : sessions) {
-            if (cs.getSessionDate() == null) {
-                continue;
-            }
-            byDate.merge(cs.getSessionDate(), cs, (existing, incoming) ->
-                    preferBookable(existing, incoming, requiredPerDayMinutes));
-        }
-        final List<CourtSchedule> out = new ArrayList<>(byDate.values());
-        out.sort(Comparator.comparing(CourtSchedule::getSessionDate));
-        return out;
+        return ConsecutiveSessionSelector.dedupeByDatePreferringBookable(sessions, requiredPerDayMinutes);
     }
 
-    private static CourtSchedule preferBookable(
-            final CourtSchedule existing,
-            final CourtSchedule incoming,
-            final int requiredPerDayMinutes) {
-        final boolean existingFits = getEffectiveAvailableDuration(existing) >= requiredPerDayMinutes;
-        final boolean incomingFits = getEffectiveAvailableDuration(incoming) >= requiredPerDayMinutes;
-        if (existingFits != incomingFits) {
-            return existingFits ? existing : incoming;
-        }
-        if (existingFits) {
-            // both fit: prefer NOT-overbookingAllowed, matching slot-search's preferNonOverbooking
-            return existing.getOverbookingAllowed() && !incoming.getOverbookingAllowed() ? incoming : existing;
-        }
-        // neither fits: prefer the row where overbooking is explicitly allowed
-        return !existing.getOverbookingAllowed() && incoming.getOverbookingAllowed() ? incoming : existing;
-    }
-
-   /* package */ static int getEffectiveAvailableDuration(final CourtSchedule cs) {
-        return SessionAvailability.getEffectiveAvailableDuration(cs);
+    /** Delegates to {@link ConsecutiveSessionSelector#getEffectiveAvailableDuration}. */
+    /* package */ static int getEffectiveAvailableDuration(final CourtSchedule cs) {
+        return ConsecutiveSessionSelector.getEffectiveAvailableDuration(cs);
     }
 
     private boolean isCourtScheduleIdsMatching(final List<String> slotsCourtScheduleIdList, final List<String> provisionalBookingCourtScheduleIdList) {

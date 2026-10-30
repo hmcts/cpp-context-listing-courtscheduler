@@ -47,7 +47,9 @@ import uk.gov.moj.cpp.courtscheduler.openapi.model.SlotStartTime;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.UpdateCourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.TimezoneUtils;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.AllocatedListingTotalBooked;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.BookingState;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.ProvisionalBooking;
@@ -65,10 +67,12 @@ import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -239,6 +243,17 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
     public static final String DELETE_UNALLOCATED_FORECAST_SLOT_QUERY = "DELETE FROM court_schedule " +
             "WHERE court_listing_profile_id is null AND not exists (select 1 from allocated_listings al where al.court_schedule_id = id) AND oucode IN (:ouCodes) " +
             "AND active =true and not exists( " + EXISTS_PROVISIONAL_DATA_COURT_SCHEDULE.getQuery() + ")";
+
+    // Releasing unconfirmed holds by booking id (releaseUnconfirmedReservations).
+    // The WHERE is the safety property: a listing a share confirmed keeps its booking_id but has
+    // no expires_at, so it can never be deleted here.
+    private static final String DELETE_UNCONFIRMED_RESERVATIONS_QUERY = """
+            DELETE FROM allocated_listings
+             WHERE booking_id IN (:bookingIds)
+               AND expires_at IS NOT NULL
+            RETURNING court_schedule_id, duration, id, booking_id, hearing_id, oucode, court_room_id,
+                      rota_business_type, hearing_start_time, expires_at
+            """;
 
     public static final String DELETE_SLOTS_BY_IDS_QUERY = "DELETE FROM court_schedule cs WHERE cs.id IN (:courtScheduleIds) AND cs.court_listing_profile_id is not null AND not exists (select 1 from allocated_listings al where al.court_schedule_id = cs.id) AND  not exists(" + EXISTS_PROVISIONAL_DATA_COURT_SCHEDULE.getQuery() + ")";
 
@@ -451,6 +466,9 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
     /* package */ uk.gov.moj.cpp.courtscheduler.service.CourtScheduleBatchInsertService courtScheduleBatchInsertService;
     @Inject
     private AllocatedListingRepository allocatedListingRepository;
+
+    @Inject
+    private BookingLogRepository bookingLogRepository;
     @Inject
     private CourtScheduleJudiciaryRepository courtScheduleJudiciaryRepository;
     @Inject
@@ -858,10 +876,13 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
                 // ouCode, courtRoomId). convertForOverbooking() leaves sessionDate null, which
                 // trips a NullPointerException when SlotsUpdateService renders the response.
                 final CourtSchedule entity = candidate.get();
-                final boolean lacksCapacity = entity.getAvailableDuration() == null
-                        || entity.getAvailableDuration() < durationInMinutes;
+                final int booked = allocatedListingRepository.getAllocatedListingsByCourtScheduleId(List.of(entity.getCourtScheduleId())).stream()
+                        .map(AllocatedListingTotalBooked::getTotalBooked)
+                        .filter(Objects::nonNull)
+                        .mapToInt(Integer::intValue)
+                        .sum();
                 return of(new CrownFallbackSearchResult(
-                        toCrownFallbackDomain(entity), lacksCapacity));
+                        toCrownFallbackDomain(entity), lacksCapacity(entity, booked, durationInMinutes)));
             }
         }
         return Optional.empty();
@@ -1125,7 +1146,19 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
         updateCourtSchedule(updateAllocatedSlots);
         saveAllocatedListing(updateAllocatedSlots);
         if (isProvisionalSlot) {
-            deleteProvisionalBooking(slots.get(0).getBookingId());
+            final String bookingId = slots.get(0).getBookingId();
+            // Release the hold the clerk took at slot-pick time. Keyed on the bookingId, so the
+            // pipeline's hearing-wide release (which uses the real hearing id) does not cover it.
+            // A no-op when there is nothing to release — legacy drafts have only a
+            // provisional_booking row, which deleteProvisionalBooking still soft-deletes.
+            //
+            // Only the unconfirmed rows go: the confirmed listing being written by this very call
+            // carries the same booking_id, so releasing by booking_id alone would delete it.
+            releaseReservationsForBooking(bookingId);
+            bookingLogRepository.record(BookingState.CONFIRMED, allocatedListingRepository.findByBookingId(bookingId).stream()
+                    .filter(row -> row.getExpiresAt() == null)
+                    .toList());
+            deleteProvisionalBooking(bookingId);
         }
     }
 
@@ -1324,21 +1357,32 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
 
          final List<Hearing> hearings = flattenHearingSlots(slots);
 
+        // BUG-3 Task 1: release the hold taken at slot-pick time before the loop below charges
+        // each session for the real booking. The hold is keyed on the bookingId, so the
+        // hearing-wide release inside the loop (keyed on the real hearing id) does not cover it:
+        // a hold lives in booking_id with hearing_id null, so only a booking-keyed release sees it.
+        // Without this the session is decremented twice — once by the hold, once by the booking —
+        // until the 01:00 purge. Released once per distinct booking, before the loop, so a
+        // multi-session booking is released as a unit rather than re-attempted per session.
+        // No-op when there is nothing to release: a pre-go-live draft has only a
+        // provisional_booking row.
+        slots.getHearingSlots().stream()
+                .map(HearingSlot::getBookingId)
+                .filter(StringUtils::isNotBlank)
+                .distinct()
+                .forEach(this::releaseReservationsForBooking);
+
          hearings.forEach(hearing -> {
              final CourtSchedule cs = entityManager.find(CourtSchedule.class, hearing.getCourtScheduleId());
             if (cs != null) {
-                //check slot based /duration based for deducting the available slots
+                // team/ccsph2 bookkeeping, kept for the MI export (GET /mi/court_schedules) until SPRDT-1406 drops court_schedule.available_slot / available_duration_mins. Reserve-a-slot holds never touch these columns, and nothing decides from them - availability is counted from allocated_listings.
                 if (cs.isSlotBased()) {
                     cs.setAvailableSlots(cs.getAvailableSlots() - 1);
                 } else {
                     cs.setAvailableDuration(cs.getAvailableDuration() - hearing.getDuration());
                 }
 
-                // F3 (capacity drift): release via the RESTORING path. The old call
-                // (releaseOldListingsFromAllocatedListings) deleted the hearing's allocated_listings
-                // rows WITHOUT paying their minutes/slots back into court_schedule, while the deduction
-                // above charged the session again — so available_duration_mins leaked the hearing's full
-                // duration on every book→list cycle and sessions falsely reported no availability.
+                // A re-list replaces the hearing's previous allocation.
                 final boolean isCourtScheduleReleased = !allocatedListingRepository.findByHearingId(hearing.getHearingId()).isEmpty();
                 if (isCourtScheduleReleased) {
                     releaseOldAllocatedListings(hearing.getHearingId());
@@ -1352,6 +1396,7 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
                 //prepare allocated listing
                 final AllocatedListing allocatedlisting = new AllocatedListing();
                 allocatedlisting.setHearingId(hearing.getHearingId());
+                allocatedlisting.setBookingId(hearing.getBookingId());
                 allocatedlisting.setCourtScheduleId(hearing.getCourtScheduleId());
                 allocatedlisting.setCourtRoomId(cs.getCourtRoomNumber());
                 allocatedlisting.setOucode(cs.getOuCode());
@@ -1379,6 +1424,7 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
 
         updateCourtScheduleWithRequestedList(courtSchedules);
         saveAllocatedListingWithRequestedList(allocatedListings);
+        bookingLogRepository.record(BookingState.CONFIRMED, allocatedListings);
 
         return hearings;
     }
@@ -1391,9 +1437,9 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
         return nonNull(hearing.getDuration()) ? hearing.getDuration() : DEFAULT_DURATION_TO_BE_RETURNED;
     }
 
+    // Saves the counter decrements made above. team/ccsph2 bookkeeping, kept for the MI export (GET /mi/court_schedules) until SPRDT-1406 drops court_schedule.available_slot / available_duration_mins. Reserve-a-slot holds never touch these columns, and nothing decides from them - availability is counted from allocated_listings.
     private void updateCourtScheduleWithRequestedList(final List<CourtSchedule> slots) {
         slots.forEach(this::saveInternal);
-
     }
 
     private void saveAllocatedListingWithRequestedList(final List<AllocatedListing> slots) {
@@ -1897,6 +1943,7 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
                 .executeUpdate();
     }
 
+    /** team/ccsph2 bookkeeping, kept for the MI export (GET /mi/court_schedules) until SPRDT-1406 drops court_schedule.available_slot / available_duration_mins. Reserve-a-slot holds never touch these columns, and nothing decides from them - availability is counted from allocated_listings. */
     @Override
     @Transactional
     public void releaseAllocatedSlotsOrDurationFromCourtSchedule(final List<AllocatedListing> allocatedListings) {
@@ -2354,19 +2401,19 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
         return selectQuery.getResultList();
     }
 
+    /** team/ccsph2 bookkeeping, kept for the MI export (GET /mi/court_schedules) until SPRDT-1406 drops court_schedule.available_slot / available_duration_mins. Reserve-a-slot holds never touch these columns, and nothing decides from them - availability is counted from allocated_listings. */
     protected void updateCourtSchedule(final List<AllocatedSlot> allocatedSlots) {
-        allocatedSlots.forEach(allocatedSlot -> {
+        allocatedSlots.stream()
+                // A hold (expiresAt set) is reserve-a-slot's: it never takes from the counters, so
+                // none of its releases has anything to give back.
+                .filter(allocatedSlot -> allocatedSlot.getExpiresAt() == null)
+                .forEach(allocatedSlot -> {
             final CourtSchedule courtSchedule = entityManager.find(CourtSchedule.class, allocatedSlot.getCourtScheduleId());
-            LOGGER.info("CourtSchedule to be updated after allocation : is {}", courtSchedule);
             if (courtSchedule.isSlotBased()) {
-                final Integer availableSlots = courtSchedule.getAvailableSlots();
-                LOGGER.info("CourtSchedule to be updated after allocation : with available slots {}", availableSlots);
-                courtSchedule.setAvailableSlots(availableSlots - 1);
+                courtSchedule.setAvailableSlots(courtSchedule.getAvailableSlots() - 1);
             } else {
-                LOGGER.info("CourtSchedule to be updated after allocation : with available duration {}", courtSchedule.getAvailableDuration());
                 courtSchedule.setAvailableDuration(courtSchedule.getAvailableDuration() - allocatedSlot.getDuration());
             }
-            LOGGER.info("Final CourtSchedule object before update : with available slots {}", courtSchedule);
             saveInternal(courtSchedule);
         });
     }
@@ -2375,7 +2422,15 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
     protected void saveAllocatedListing(final List<AllocatedSlot> allocatedSlots) {
         allocatedSlots.forEach(allocatedSlot -> {
             // Check if record already exists
-            final List<AllocatedListing> existingListings = allocatedListingRepository.findByCourtScheduleIdAndHearingId(allocatedSlot.getCourtScheduleId(), allocatedSlot.getHearingId());
+            // A reservation has no hearing_id, and findByCourtScheduleIdAndHearingId(id, null)
+            // matches nothing in SQL, so it would never detect its own duplicate. Dedupe such a
+            // row on the column it actually uses.
+            final List<AllocatedListing> existingListings = allocatedSlot.getHearingId() == null
+                    ? allocatedListingRepository.findByBookingId(allocatedSlot.getBookingId()).stream()
+                        .filter(row -> row.getExpiresAt() != null)
+                        .filter(row -> Objects.equals(row.getCourtScheduleId(), allocatedSlot.getCourtScheduleId()))
+                        .toList()
+                    : allocatedListingRepository.findByCourtScheduleIdAndHearingId(allocatedSlot.getCourtScheduleId(), allocatedSlot.getHearingId());
             if (existingListings.isEmpty()) {
                 final CourtSchedule courtSchedule = entityManager.find(CourtSchedule.class, allocatedSlot.getCourtScheduleId());
                 final AllocatedListing allocatedListing = new AllocatedListing();
@@ -2389,6 +2444,7 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
                 allocatedListing.setDuration(Boolean.TRUE.equals(allocatedSlot.getSlotBased()) ? SLOT_DEFAULT : allocatedSlot.getDuration());
                 allocatedListing.setHearingStartTime(toExactTimestamp(allocatedSlot.getHearingStartTime()).toInstant());
                 allocatedListing.setSource(allocatedSlot.getSource());
+                allocatedListing.setExpiresAt(allocatedSlot.getExpiresAt());
                 LOGGER.info("bookSlotsWithoutCourtScheduleId saveAllocatedListing {}", allocatedListing);
                 this.allocatedListingRepository.save(allocatedListing);
             } else {
@@ -2407,14 +2463,119 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
             provisionalBooking.setActive(false);
             this.provisionalBookingRepository.save(provisionalBooking);
         } else {
-            LOGGER.error(format("CHECK: bookingid not found %s", bookingId));
+            // Not an error since reserve-a-slot shipped: a booking now holds capacity through a
+            // reservation in allocated_listings and writes no provisional_booking row at all, so
+            // "no legacy row" is the normal case on every successful confirm. Only legacy drafts
+            // still have a row here, which is why the call itself stays.
+            LOGGER.debug("No legacy provisional_booking row to soft-delete for bookingId {}", bookingId);
         }
     }
 
+    /**
+     * The hearing these slots belong to, if they belong to one at all.
+     *
+     * <p>The {@code nonNull} filter is required, not defensive: a reservation carries its id in
+     * booking_id and leaves hearing_id null, and {@link java.util.stream.Stream#findFirst()}
+     * throws {@link NullPointerException} when the element it selects is null. Without it, every
+     * reservation NPEs here before the caller can even decide whether it wants a hearing-wide
+     * release — and GlobalExceptionHandler turns that into a 400 reading "Request body is missing
+     * a required field: null", which points at the caller's payload rather than at this line.
+     */
     private Optional<String> getHearingId(final List<AllocatedSlot> slots) {
         return slots.stream()
                 .map(AllocatedSlot::getHearingId)
+                .filter(Objects::nonNull)
                 .findFirst();
+    }
+
+    /**
+     * Releases every UNCONFIRMED reservation held under {@code bookingId}, restoring each
+     * session's capacity — the booking-keyed counterpart of
+     * {@link #releaseOldAllocatedListings(String)}, which is keyed on hearing_id and therefore
+     * only ever sees confirmed listings.
+     *
+     * <p>The {@code expiresAt != null} filter is the safety property of this method, not an
+     * optimisation. A confirmed listing carries the same booking_id as the reservation it grew
+     * from, so without the filter this would delete a real court listing when asked to release a
+     * hold. Only a share may change a confirmed booking; this method must never touch one.
+     */
+    @Override
+    @Transactional
+    public List<AllocatedListing> releaseReservationsForBooking(final String bookingId) {
+
+        // Through the entities rather than releaseUnconfirmedReservations: the re-pick and confirm
+        // callers hold court_schedule entities in this transaction, and a bulk UPDATE would leave
+        // those stale for them to save back over.
+        final List<AllocatedListing> reservations = allocatedListingRepository.findUnconfirmedByBookingIds(List.of(bookingId));
+
+        if (isNotEmpty(reservations)) {
+            reservations.forEach(allocatedListingRepository::remove);
+            releaseCourtScheduleAllocatedSlotsForBookingId(reservations);
+        }
+        return reservations;
+    }
+
+    /**
+     * Releases the unconfirmed holds of all these bookings in one DELETE, whose WHERE takes only
+     * rows still carrying an expires_at, returning what it removed for the booking log. Holds never
+     * touched the court_schedule counters, so there is nothing to give back there.
+     *
+     * <p>Plain SQL, so it bypasses the persistence context: call it from a transaction of its own
+     * (POST /unconfirmedBooking/release), not one already holding court_schedule entities. A hold
+     * has no provisional_booking row since reserve-a-slot, so there is nothing to reactivate.
+     */
+    @Override
+    @Transactional
+    public int releaseUnconfirmedReservations(final Collection<String> bookingIds, final BookingState state) {
+        if (bookingIds.isEmpty()) {
+            return 0;
+        }
+        @SuppressWarnings("unchecked")
+        final List<Object[]> released = entityManager.createNativeQuery(DELETE_UNCONFIRMED_RESERVATIONS_QUERY)
+                .setParameter("bookingIds", bookingIds)
+                .getResultList();
+        final List<AllocatedListing> releasedHolds = released.stream().map(CourtScheduleRepositoryImpl::releasedHold).toList();
+        bookingLogRepository.record(state, releasedHolds);
+        // A booking that held nothing any more (the purge got there first) is still recorded as
+        // released, so its latest event is no longer EXPIRED and it can never be re-booked.
+        final Set<String> releasedBookingIds = releasedHolds.stream().map(AllocatedListing::getBookingId).collect(Collectors.toSet());
+        bookingLogRepository.record(state, bookingIds.stream()
+                .filter(bookingId -> !releasedBookingIds.contains(bookingId))
+                .map(CourtScheduleRepositoryImpl::bookingWithNothingHeld)
+                .toList());
+
+        return released.size();
+    }
+
+    private static AllocatedListing bookingWithNothingHeld(final String bookingId) {
+        final AllocatedListing booking = new AllocatedListing();
+        booking.setBookingId(bookingId);
+        return booking;
+    }
+
+    /**
+     * Whether a Crown fallback session cannot take {@code durationInMinutes} more: what its
+     * bookings ({@code booked} minutes, from allocated_listings) leave of max_duration_mins. Not
+     * available_duration_mins, which bookings no longer keep up to date.
+     */
+    /* package */ static boolean lacksCapacity(final CourtSchedule session, final int booked, final int durationInMinutes) {
+        return session.getMaxDuration() == null || session.getMaxDuration() - booked < durationInMinutes;
+    }
+
+    /** A row of DELETE_UNCONFIRMED_RESERVATIONS_QUERY's RETURNING list, as the hold it was. */
+    private static AllocatedListing releasedHold(final Object... row) {
+        final AllocatedListing hold = new AllocatedListing();
+        hold.setCourtScheduleId((String) row[0]);
+        hold.setDuration(row[1] == null ? null : ((Number) row[1]).intValue());
+        hold.setId((String) row[2]);
+        hold.setBookingId((String) row[3]);
+        hold.setHearingId((String) row[4]);
+        hold.setOucode((String) row[5]);
+        hold.setCourtRoomId(row[6] == null ? null : ((Number) row[6]).intValue());
+        hold.setRotaBusinessType((String) row[7]);
+        hold.setHearingStartTime(row[8] == null ? null : toTimestamp(row[8]).toInstant());
+        hold.setExpiresAt(toLocalDate(row[9]));
+        return hold;
     }
 
     @Override
@@ -2424,6 +2585,10 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
         final List<AllocatedListing> allocatedListings = getExistingAllocatedListings(hearingId);
 
         if (isNotEmpty(allocatedListings)) {
+            // Logged before they go, like the purge: without it a freed listing leaves its booking
+            // with no rows and a latest state of CONFIRMED, and the status check cannot tell it
+            // from a booking that never existed.
+            bookingLogRepository.record(BookingState.UNLISTED, allocatedListings);
             releaseOldListingsFromAllocatedListings(hearingId);
             releaseCourtScheduleAllocatedSlotsForBookingId(allocatedListings);
             releaseAllocatedSlotsOrDurationFromCourtSchedule(allocatedListings);
@@ -2485,6 +2650,7 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
                 .toList();
 
         if (isNotEmpty(allocatedListings)) {
+            bookingLogRepository.record(BookingState.UNLISTED, allocatedListings);
             allocatedListings.forEach(allocatedListingRepository::remove);
             releaseCourtScheduleAllocatedSlotsForBookingId(allocatedListings);
             releaseAllocatedSlotsOrDurationFromCourtSchedule(allocatedListings);
@@ -2493,6 +2659,28 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
 
     private List<AllocatedListing> getExistingAllocatedListings(final String hearingId) {
         return allocatedListingRepository.findByHearingId(hearingId);
+    }
+
+    /**
+     * Releases every reservation whose expiresAt is before {@code cutoff}: removes the
+     * allocated_listings rows and restores each session's capacity via the same three-step
+     * release {@link #releaseOldAllocatedListings(String)} performs. A bare DELETE would strand
+     * the capacity on court_schedule permanently, since the row that tracked it is gone.
+     * "No reservation found" is a no-op, not an error.
+     */
+    @Override
+    @Transactional
+    public int releaseExpiredReservations(final LocalDate cutoff) {
+        final List<AllocatedListing> expired = allocatedListingRepository.findExpiredReservedSessions(cutoff);
+        if (expired.isEmpty()) {
+            return 0;
+        }
+        // Logged before they go: once removed, nothing else records which session each hold was
+        // on, and the pre-share check re-books an expired booking from exactly these rows.
+        bookingLogRepository.record(BookingState.EXPIRED, expired);
+        expired.forEach(allocatedListingRepository::remove);
+        releaseCourtScheduleAllocatedSlotsForBookingId(expired);
+        return expired.size();
     }
 
     private Map<String, List<SlotStartTime>> getCountBasedAllocatedListing(final Set<String> courtScheduleIds, final Map<String, CourtSchedule> courtScheduleMap) {
@@ -2835,6 +3023,7 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
             for (final RequestedCourtSchedule requestedCourtSchedule : hearingSlot.getCourtScheduleIds()) {
                 final Hearing hearing = new Hearing();
                 hearing.setHearingId(hearingSlot.getHearingId());
+                hearing.setBookingId(hearingSlot.getBookingId());
                 hearing.setCourtScheduleId(requestedCourtSchedule.getCourtScheduleId());
                 hearing.setHearingStartTime(requestedCourtSchedule.getHearingStartTime());
                 hearing.setDuration(requestedCourtSchedule.getDurationInMinutes());

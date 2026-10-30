@@ -1,6 +1,7 @@
 package uk.gov.moj.cpp.courtscheduler.persist.entity;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.Objects;
 
 import jakarta.persistence.Column;
@@ -24,7 +25,9 @@ public class AllocatedListing {
     @Column(name = "booking_id")
     private String bookingId;
 
-    @Column(name = "hearing_id", nullable = false)
+    // Null on an unconfirmed hold until a share confirms it (changeset 053); the column has
+    // never been NOT NULL.
+    @Column(name = "hearing_id")
     private String hearingId;
 
     @Column(name = "oucode", nullable = false)
@@ -52,6 +55,9 @@ public class AllocatedListing {
 
     @Column(name = "source", nullable = false)
     private String source;
+
+    @Column(name = "expires_at")
+    private LocalDate expiresAt;
 
     public String getId() {
         return id;
@@ -149,6 +155,14 @@ public class AllocatedListing {
         this.source = source;
     }
 
+    public LocalDate getExpiresAt() {
+        return expiresAt;
+    }
+
+    public void setExpiresAt(final LocalDate expiresAt) {
+        this.expiresAt = expiresAt;
+    }
+
     @Override
     public boolean equals(final Object o) {
         if (this == o) {
@@ -181,6 +195,7 @@ public class AllocatedListing {
                 ", updatedOn=" + updatedOn +
                 ", createdOn=" + createdOn +
                 ", source=" + source +
+                ", expiresAt=" + expiresAt +
                 '}';
     }
 }

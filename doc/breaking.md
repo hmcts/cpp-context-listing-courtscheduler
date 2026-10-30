@@ -40,7 +40,7 @@ use the same key and are likewise unchanged. *Verified: full IT suite green.*
 A request whose `Accept` matches no producible media type was being mapped to **500** by the
 catch-all handler. Added a `HttpMediaTypeNotAcceptableException` handler so it returns **406**, as
 WildFly/JAX-RS did. Conforming clients (sending the vendor `Accept`) never hit this. Separately,
-`POST /provisionalBooking` now also `produces application/json` (what WildFly returned for it, since
+`POST /unconfirmedBooking` now also `produces application/json` (what WildFly returned for it, since
 its RAML response declared no media type), so an `application/json` client gets 200 not an error.
 
 ### Request JSON-schema validation restored  ✅ fixed

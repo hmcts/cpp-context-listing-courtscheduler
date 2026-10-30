@@ -8,6 +8,7 @@ import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -160,6 +161,95 @@ class SlotsUpdateServiceTest {
 
             service.update(allocatedSlots);
         });
+    }
+
+    // -----------------------------------------------------------------------
+    // CRITICAL 2: a booking's sessions resolve from reservations first, legacy
+    // provisional_booking second; only "neither" is a not-found.
+    // -----------------------------------------------------------------------
+
+    @Test
+    void shouldConfirmAReservationBackedBookingWithoutAnyLegacyProvisionalBookingRow() throws Exception {
+        // Since Task 5 nothing writes provisional_booking, so reading only that table made every
+        // new booking throw ProvisionalSlotNotFoundException and never reach the
+        // isProvisionalSlot=true call that releases the reservation.
+        final List<AllocatedSlot> allocatedSlots = bookingBasedSlots();
+        final String bookingId = allocatedSlots.get(0).getBookingId();
+        final String courtScheduleId = allocatedSlots.get(0).getCourtScheduleId();
+
+        final AllocatedListing reservation = new AllocatedListing();
+        reservation.setBookingId(bookingId);
+        reservation.setCourtScheduleId(courtScheduleId);
+        reservation.setHearingStartTime(Instant.ofEpochMilli(1_600_000_000_000L));
+        reservation.setExpiresAt(LocalDate.now());
+
+        when(allocatedListingRepository.findByBookingId(bookingId)).thenReturn(List.of(reservation));
+        when(courtScheduleRepository.saveBookedSlots(any(), anyBoolean(), anyBoolean())).thenReturn(new Result().msg("").success(true));
+
+        service.update(allocatedSlots);
+
+        // isProvisionalSlot=true is the only flag that reaches persistHearingSlots' release of the
+        // bookingId-keyed hold, so the confirm path must still take it for a reservation.
+        verify(courtScheduleRepository).saveBookedSlots(allocatedSlots, true, false);
+        // and the legacy table must not be consulted when a reservation answered the question
+        verify(provisionalBookingRepository, never()).getCourtScheduleInfo(any());
+    }
+
+    @Test
+    void shouldFallBackToLegacyProvisionalBookingWhenTheBookingHasNoReservation() throws Exception {
+        // Pre-go-live magistrates drafts have only a provisional_booking row and no TTL, so this
+        // fallback has to keep working indefinitely.
+        final List<AllocatedSlot> allocatedSlots = bookingBasedSlots();
+        final String bookingId = allocatedSlots.get(0).getBookingId();
+        final String courtScheduleId = allocatedSlots.get(0).getCourtScheduleId();
+
+        when(allocatedListingRepository.findByBookingId(bookingId)).thenReturn(Collections.emptyList());
+        when(provisionalBookingRepository.getCourtScheduleInfo(List.of(bookingId)))
+                .thenReturn(Map.of(courtScheduleId, Instant.ofEpochMilli(1_600_000_000_000L)));
+        when(courtScheduleRepository.saveBookedSlots(any(), anyBoolean(), anyBoolean())).thenReturn(new Result().msg("").success(true));
+
+        service.update(allocatedSlots);
+
+        verify(courtScheduleRepository).saveBookedSlots(allocatedSlots, true, false);
+    }
+
+    @Test
+    void shouldIgnoreAConfirmedAllocationWhenResolvingABookingsSessions() throws Exception {
+        // expires_at, not source, is the discriminator: a row with a null expiry under the same
+        // key is a confirmed booking, not a hold, and must not answer for the booking.
+        final List<AllocatedSlot> allocatedSlots = bookingBasedSlots();
+        final String bookingId = allocatedSlots.get(0).getBookingId();
+
+        final AllocatedListing confirmed = new AllocatedListing();
+        confirmed.setBookingId(bookingId);
+        confirmed.setHearingId("a-real-hearing-id");
+        confirmed.setCourtScheduleId(allocatedSlots.get(0).getCourtScheduleId());
+        confirmed.setExpiresAt(null);
+
+        when(allocatedListingRepository.findByBookingId(bookingId)).thenReturn(List.of(confirmed));
+        when(provisionalBookingRepository.getCourtScheduleInfo(List.of(bookingId))).thenReturn(Collections.emptyMap());
+
+        Assertions.assertThrows(uk.gov.moj.cpp.courtscheduler.exception.ProvisionalSlotNotFoundException.class,
+                () -> service.update(allocatedSlots));
+    }
+
+    @Test
+    void shouldThrowProvisionalSlotNotFoundOnlyWhenBothSourcesAreEmpty() throws Exception {
+        final List<AllocatedSlot> allocatedSlots = bookingBasedSlots();
+        final String bookingId = allocatedSlots.get(0).getBookingId();
+
+        when(allocatedListingRepository.findByBookingId(bookingId)).thenReturn(Collections.emptyList());
+        when(provisionalBookingRepository.getCourtScheduleInfo(List.of(bookingId))).thenReturn(Collections.emptyMap());
+
+        Assertions.assertThrows(uk.gov.moj.cpp.courtscheduler.exception.ProvisionalSlotNotFoundException.class,
+                () -> service.update(allocatedSlots));
+
+        verify(courtScheduleRepository, never()).saveBookedSlots(any(), anyBoolean(), anyBoolean());
+    }
+
+    private static List<AllocatedSlot> bookingBasedSlots() {
+        final String payload = fileToString("/test-data/courtscheduler.update.available.hearing.slots-with-bookingid.json");
+        return new AllocatedSlotConverter().convert(payload).getHearingSlots();
     }
 
     @Test
@@ -605,7 +695,7 @@ class SlotsUpdateServiceTest {
             when(courtScheduleRepository.createCrownFallbackSession(eq(request)))
                     .thenReturn(Optional.of(new CrownFallbackSearchResult(created, false)));
             final org.mockito.ArgumentCaptor<List<AllocatedSlot>> slotCaptor =
-                    org.mockito.ArgumentCaptor.forClass(List.class);
+                    org.mockito.ArgumentCaptor.captor();
             when(courtScheduleRepository.saveBookedSlots(slotCaptor.capture(), eq(false), eq(false)))
                     .thenReturn(new Result().msg("").success(true));
 
@@ -656,7 +746,7 @@ class SlotsUpdateServiceTest {
             when(courtScheduleRepository.searchCrownFallbackSlots(any(), any(), org.mockito.ArgumentMatchers.anyInt(), any(), any()))
                     .thenReturn(Optional.of(new CrownFallbackSearchResult(session, false)));
             final org.mockito.ArgumentCaptor<List<AllocatedSlot>> slotCaptor =
-                    org.mockito.ArgumentCaptor.forClass(List.class);
+                    org.mockito.ArgumentCaptor.captor();
             when(courtScheduleRepository.saveBookedSlots(slotCaptor.capture(), eq(false), eq(false)))
                     .thenReturn(new Result().msg("").success(true));
 
@@ -683,7 +773,7 @@ class SlotsUpdateServiceTest {
             when(courtScheduleRepository.searchCrownFallbackSlots(any(), any(), org.mockito.ArgumentMatchers.anyInt(), any(), any()))
                     .thenReturn(Optional.of(new CrownFallbackSearchResult(session, false)));
             final org.mockito.ArgumentCaptor<List<AllocatedSlot>> slotCaptor =
-                    org.mockito.ArgumentCaptor.forClass(List.class);
+                    org.mockito.ArgumentCaptor.captor();
             when(courtScheduleRepository.saveBookedSlots(slotCaptor.capture(), eq(false), eq(false)))
                     .thenReturn(new Result().msg("").success(true));
 
@@ -751,7 +841,7 @@ class SlotsUpdateServiceTest {
                     .thenReturn(Optional.of(new CrownFallbackSearchResult(session, false)));
 
             final org.mockito.ArgumentCaptor<List<AllocatedSlot>> slotCaptor =
-                    org.mockito.ArgumentCaptor.forClass(List.class);
+                    org.mockito.ArgumentCaptor.captor();
             when(courtScheduleRepository.saveBookedSlots(slotCaptor.capture(), eq(false), eq(false)))
                     .thenReturn(new Result().msg("").success(true));
 
@@ -1152,7 +1242,7 @@ class SlotsUpdateServiceTest {
             verify(courtScheduleRepository).releaseOldAllocatedListings(hearingId);
             @SuppressWarnings(UNCHECKED)
             final org.mockito.ArgumentCaptor<List<AllocatedSlot>> slotsCaptor =
-                    org.mockito.ArgumentCaptor.forClass(List.class);
+                    org.mockito.ArgumentCaptor.captor();
             verify(courtScheduleRepository).saveBookedSlots(slotsCaptor.capture(), eq(false), eq(false));
             assertTrue(slotsCaptor.getValue().stream().allMatch(s -> MOVE_2.equals(s.getSource())));
             verify(allocatedListingRepository, org.mockito.Mockito.never()).updateSourceByHearingId(any(), any());
@@ -1190,7 +1280,7 @@ class SlotsUpdateServiceTest {
             verify(courtScheduleRepository).releaseOldAllocatedListings(hearingId);
             @SuppressWarnings(UNCHECKED)
             final org.mockito.ArgumentCaptor<List<AllocatedSlot>> slotsCaptor =
-                    org.mockito.ArgumentCaptor.forClass(List.class);
+                    org.mockito.ArgumentCaptor.captor();
             verify(courtScheduleRepository).saveBookedSlots(slotsCaptor.capture(), eq(false), eq(false));
             assertTrue(slotsCaptor.getValue().stream().allMatch(s -> MOVE_2.equals(s.getSource())));
             verify(allocatedListingRepository, org.mockito.Mockito.never()).updateSourceByHearingId(any(), any());
@@ -1244,7 +1334,7 @@ class SlotsUpdateServiceTest {
             verify(courtScheduleRepository).releaseOldAllocatedListings(hearingId);
             @SuppressWarnings(UNCHECKED)
             final org.mockito.ArgumentCaptor<List<AllocatedSlot>> slotsCaptor =
-                    org.mockito.ArgumentCaptor.forClass(List.class);
+                    org.mockito.ArgumentCaptor.captor();
             verify(courtScheduleRepository).saveBookedSlots(slotsCaptor.capture(), eq(false), eq(false));
             assertTrue(slotsCaptor.getValue().stream().allMatch(s -> MOVE_2.equals(s.getSource())));
             verify(allocatedListingRepository, org.mockito.Mockito.never()).updateSourceByHearingId(any(), any());
@@ -1677,7 +1767,7 @@ class SlotsUpdateServiceTest {
             final MagsSearchAndBookResponse response = service.magsSearchAndBook(request);
 
             final org.mockito.ArgumentCaptor<List<AllocatedSlot>> captor =
-                    org.mockito.ArgumentCaptor.forClass(List.class);
+                    org.mockito.ArgumentCaptor.captor();
             verify(courtScheduleRepository).searchBookHearingSlots(captor.capture());
             final AllocatedSlot booked = captor.getValue().get(0);
             assertEquals(courtCentreId, booked.getCourtCentreId());
@@ -1806,7 +1896,7 @@ class SlotsUpdateServiceTest {
 
             @SuppressWarnings(UNCHECKED)
             final org.mockito.ArgumentCaptor<List<AllocatedSlot>> slotsCaptor =
-                    org.mockito.ArgumentCaptor.forClass(List.class);
+                    org.mockito.ArgumentCaptor.captor();
             // Booking for changeCourtRoomForMultidayHearing must go through the NO-RELEASE variant
             // (releaseExistingHearingAllocations=false): the service already scoped its own release
             // to just the changed dates via releaseAllocatedListingsForDates, and the plain 3-arg
@@ -1923,7 +2013,7 @@ class SlotsUpdateServiceTest {
                     .thenReturn(List.of(fullSession));
             @SuppressWarnings(UNCHECKED)
             final org.mockito.ArgumentCaptor<List<AllocatedSlot>> slotsCaptor =
-                    org.mockito.ArgumentCaptor.forClass(List.class);
+                    org.mockito.ArgumentCaptor.captor();
             when(courtScheduleRepository.saveBookedSlots(slotsCaptor.capture(), eq(false), eq(false), eq(false)))
                     .thenReturn(new Result().msg("").success(true));
 
@@ -2106,6 +2196,43 @@ class SlotsUpdateServiceTest {
             assertEquals(session.getCourtScheduleId(), bookedSlot.getCourtScheduleId());
             assertEquals(MOVE_TO_PAST_DATE_SOURCE, bookedSlot.getSource());
             assertEquals(30, bookedSlot.getDuration());
+        }
+
+        // The day's bookings, not court_schedule.available_duration_mins (no longer kept up to date
+        // by bookings), say whether the moved hearing fits.
+        @Test
+        void shouldReportTheDayOverbooked_whenItsBookingsLeaveNoRoom_whateverTheCounterSays() {
+            final String courtCentreId = UUID.randomUUID().toString();
+            final LocalDate startDate = LocalDate.of(2026, 5, 1);
+            final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule session = buildPastSession(startDate);
+            session.setAvailableDuration(240);
+            when(courtScheduleRepository.findSessionForMoveToPastDate(eq(courtCentreId), any(), eq(startDate), any(), eq(MAGISTRATES)))
+                    .thenReturn(Optional.of(session));
+            when(allocatedListingRepository.getAllocatedListingsByCourtScheduleId(List.of(session.getCourtScheduleId())))
+                    .thenReturn(List.of(new uk.gov.moj.cpp.courtscheduler.openapi.model.AllocatedListingTotalBooked()
+                            .courtScheduleId(session.getCourtScheduleId()).totalBooked(220)));
+            when(courtScheduleRepository.saveBookedSlots(any(), eq(false), eq(false))).thenReturn(success());
+
+            final BookedPastSession response = service.moveHearingToPastDate(
+                    UUID.randomUUID().toString(), courtCentreId, null, startDate, startDate, NINE_AM, NOON, MAGISTRATES, 30).get(0);
+
+            Assertions.assertTrue(response.overbooked());
+        }
+
+        @Test
+        void shouldNotReportTheDayOverbooked_whenItsBookingsLeaveRoom_whateverTheCounterSays() {
+            final String courtCentreId = UUID.randomUUID().toString();
+            final LocalDate startDate = LocalDate.of(2026, 5, 1);
+            final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule session = buildPastSession(startDate);
+            session.setAvailableDuration(0);
+            when(courtScheduleRepository.findSessionForMoveToPastDate(eq(courtCentreId), any(), eq(startDate), any(), eq(MAGISTRATES)))
+                    .thenReturn(Optional.of(session));
+            when(courtScheduleRepository.saveBookedSlots(any(), eq(false), eq(false))).thenReturn(success());
+
+            final BookedPastSession response = service.moveHearingToPastDate(
+                    UUID.randomUUID().toString(), courtCentreId, null, startDate, startDate, NINE_AM, NOON, MAGISTRATES, 30).get(0);
+
+            Assertions.assertFalse(response.overbooked());
         }
 
         @Test
@@ -2442,7 +2569,7 @@ class SlotsUpdateServiceTest {
 
         @SuppressWarnings(UNCHECKED)
         private List<AllocatedSlot> capturedBookedSlots() {
-            final org.mockito.ArgumentCaptor<List<AllocatedSlot>> captor = org.mockito.ArgumentCaptor.forClass(List.class);
+            final org.mockito.ArgumentCaptor<List<AllocatedSlot>> captor = org.mockito.ArgumentCaptor.captor();
             verify(courtScheduleRepository).saveBookedSlots(captor.capture(), eq(false), eq(false));
             return captor.getValue();
         }
@@ -2459,6 +2586,7 @@ class SlotsUpdateServiceTest {
             session.setIsDraft(false);
             session.setBusinessType("NGAP");
             session.setSlotBased(false);
+            session.setMaxDuration(240);
             session.setAvailableDuration(240);
             return session;
         }

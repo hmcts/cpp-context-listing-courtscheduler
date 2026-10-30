@@ -9,7 +9,7 @@ import org.junit.jupiter.api.Disabled;
  * Services framework primitives — {@code Enveloper}, {@code Requester},
  * {@code JsonEnvelope} — and asserted envelope-shaped responses from a CDI
  * "fat" controller that mixed court-schedule CRUD, sessions, OU-code migration,
- * MI exports, validation and provisional-booking endpoints into one class.</p>
+ * MI exports, validation and unconfirmed-booking endpoints into one class.</p>
  *
  * <p>The Spring Boot port (see {@link CourtSchedulerApi}) preserves the omnibus
  * shape but every method signature changed: each endpoint now takes a plain
