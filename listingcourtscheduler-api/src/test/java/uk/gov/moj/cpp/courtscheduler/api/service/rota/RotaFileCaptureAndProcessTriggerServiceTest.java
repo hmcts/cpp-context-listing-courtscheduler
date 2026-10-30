@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -117,6 +118,74 @@ class RotaFileCaptureAndProcessTriggerServiceTest {
         verify(newRotaFileProcessor).downloadAndProcessForEachFile(eq(blobContent), eq(blobName), eq("lease-1"));
         verify(changeJudiciaryForHearingsHelper).createChangeJudiciaryForHearingsPayloads(eq(changedCourtScheduleIds));
         verify(changeJudiciaryForHearingsHelper).sendChangeJudiciaryForHearingsCommands(eq(List.of(payload)));
+    }
+
+    @Test
+    void shouldCallSyncHelperOncePerBlobWithThatBlobsChangedIds() {
+        final BlobItem blobItem2 = mock(BlobItem.class);
+        final BlobContent blobContent1 = new BlobContent(new byte[0]);
+        final BlobContent blobContent2 = new BlobContent(new byte[0]);
+        final List<String> changedIds1 = List.of("cs-1");
+        final List<String> changedIds2 = List.of("cs-2", "cs-3");
+
+        when(blobItem.getName()).thenReturn("lja_file1.xml");
+        when(blobItem2.getName()).thenReturn("lja_file2.xml");
+        when(azureBlobClientService.findAvailableFile(eq("lja_")))
+                .thenReturn(Optional.of(new AbstractMap.SimpleEntry<>("lease-1", blobItem)))
+                .thenReturn(Optional.of(new AbstractMap.SimpleEntry<>("lease-2", blobItem2)))
+                .thenReturn(Optional.empty());
+        when(azureBlobClientService.downloadFiles(any(BlobItem.class)))
+                .thenReturn(blobContent1)
+                .thenReturn(blobContent2);
+        when(newRotaFileProcessor.downloadAndProcessForEachFile(eq(blobContent1), eq("lja_file1.xml"), eq("lease-1")))
+                .thenReturn(changedIds1);
+        when(newRotaFileProcessor.downloadAndProcessForEachFile(eq(blobContent2), eq("lja_file2.xml"), eq("lease-2")))
+                .thenReturn(changedIds2);
+        when(changeJudiciaryForHearingsHelper.createChangeJudiciaryForHearingsPayloads(eq(changedIds1)))
+                .thenReturn(List.of());
+        when(changeJudiciaryForHearingsHelper.createChangeJudiciaryForHearingsPayloads(eq(changedIds2)))
+                .thenReturn(List.of());
+        when(changeJudiciaryForHearingsHelper.sendChangeJudiciaryForHearingsCommands(eq(List.of())))
+                .thenReturn(0);
+
+        rotaFileCaptureAndProcessTriggerService.captureRotaFilesAndProcessEach(false, "new");
+
+        verify(changeJudiciaryForHearingsHelper).createChangeJudiciaryForHearingsPayloads(eq(changedIds1));
+        verify(changeJudiciaryForHearingsHelper).createChangeJudiciaryForHearingsPayloads(eq(changedIds2));
+    }
+
+    @Test
+    void shouldContinueProcessingNextBlobWhenSyncFailsForCurrentBlob() {
+        final BlobItem blobItem2 = mock(BlobItem.class);
+        final BlobContent blobContent1 = new BlobContent(new byte[0]);
+        final BlobContent blobContent2 = new BlobContent(new byte[0]);
+        final List<String> changedIds1 = List.of("cs-1");
+        final List<String> changedIds2 = List.of("cs-2");
+
+        when(blobItem.getName()).thenReturn("lja_file1.xml");
+        when(blobItem2.getName()).thenReturn("lja_file2.xml");
+        when(azureBlobClientService.findAvailableFile(eq("lja_")))
+                .thenReturn(Optional.of(new AbstractMap.SimpleEntry<>("lease-1", blobItem)))
+                .thenReturn(Optional.of(new AbstractMap.SimpleEntry<>("lease-2", blobItem2)))
+                .thenReturn(Optional.empty());
+        when(azureBlobClientService.downloadFiles(any(BlobItem.class)))
+                .thenReturn(blobContent1)
+                .thenReturn(blobContent2);
+        when(newRotaFileProcessor.downloadAndProcessForEachFile(eq(blobContent1), eq("lja_file1.xml"), eq("lease-1")))
+                .thenReturn(changedIds1);
+        when(newRotaFileProcessor.downloadAndProcessForEachFile(eq(blobContent2), eq("lja_file2.xml"), eq("lease-2")))
+                .thenReturn(changedIds2);
+        when(changeJudiciaryForHearingsHelper.createChangeJudiciaryForHearingsPayloads(eq(changedIds1)))
+                .thenThrow(new RuntimeException("listing unavailable"));
+        when(changeJudiciaryForHearingsHelper.createChangeJudiciaryForHearingsPayloads(eq(changedIds2)))
+                .thenReturn(List.of());
+        when(changeJudiciaryForHearingsHelper.sendChangeJudiciaryForHearingsCommands(eq(List.of())))
+                .thenReturn(0);
+
+        rotaFileCaptureAndProcessTriggerService.captureRotaFilesAndProcessEach(false, "new");
+
+        // blob 2 sync must be attempted even though blob 1 threw
+        verify(changeJudiciaryForHearingsHelper).createChangeJudiciaryForHearingsPayloads(eq(changedIds2));
     }
 
     @Test

@@ -84,13 +84,7 @@ public class RotaFileCaptureAndProcessTriggerService {
                         final List<String> changedIdsForBlob =
                                 newRotaFileProcessor.downloadAndProcessForEachFile(blobContent, blobName, leaseId);
                         logger.info("Blob {} produced {} changed court schedule IDs: {}", blobName, changedIdsForBlob.size(), changedIdsForBlob);
-
-                        final List<JsonObject> changeJudiciaryForHearingsPayloads =
-                                changeJudiciaryForHearingsHelper.createChangeJudiciaryForHearingsPayloads(changedIdsForBlob);
-                        logger.info("Built {} change-judiciary-for-hearings payloads for blob {}", changeJudiciaryForHearingsPayloads.size(), blobName);
-                        final int sentCommandCount =
-                                changeJudiciaryForHearingsHelper.sendChangeJudiciaryForHearingsCommands(changeJudiciaryForHearingsPayloads);
-                        logger.info("Sent {} change-judiciary-for-hearings commands for blob {}", sentCommandCount, blobName);
+                        syncJudiciaryWithListing(blobName, changedIdsForBlob);
                     }
                 } catch (AzureBlobClientException ignoredException) {
                     logger.info("File {} already leased and skipping to the next file", blobName);
@@ -99,6 +93,18 @@ public class RotaFileCaptureAndProcessTriggerService {
         } while (fileAvailable);
 
         logger.info("RotaFileCaptureAndProcessTriggerService.captureRotaFilesAndProcessEach completed");
+    }
+
+    private void syncJudiciaryWithListing(final String blobName, final List<String> changedIdsForBlob) {
+        try {
+            final List<JsonObject> payloads =
+                    changeJudiciaryForHearingsHelper.createChangeJudiciaryForHearingsPayloads(changedIdsForBlob);
+            logger.info("Built {} change-judiciary-for-hearings payloads for blob {}", payloads.size(), blobName);
+            final int sentCommandCount = changeJudiciaryForHearingsHelper.sendChangeJudiciaryForHearingsCommands(payloads);
+            logger.info("Sent {} change-judiciary-for-hearings commands for blob {}", sentCommandCount, blobName);
+        } catch (final RuntimeException ex) {
+            logger.error("Failed to sync judiciary with listing for blob {} - court schedule IDs {}", blobName, changedIdsForBlob, ex);
+        }
     }
 
     private void loadReferenceData() {

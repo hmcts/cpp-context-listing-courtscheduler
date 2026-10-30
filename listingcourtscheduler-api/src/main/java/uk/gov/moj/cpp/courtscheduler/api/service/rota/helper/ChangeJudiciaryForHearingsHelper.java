@@ -51,15 +51,17 @@ public class ChangeJudiciaryForHearingsHelper {
 
     /**
      * Finds the hearings allocated to the supplied court schedule IDs, along with the judiciaries
-     * of every session each hearing is allocated to, and builds one
-     * {@code listing.command.change-judiciary-for-hearings} payload per hearing whose sessions all
-     * have the same judiciaries (judicialId, judicialRoleType, isBenchChairman, isDeputy).
-     * A hearing whose sessions have no judiciaries at all still produces a payload, with an empty
-     * {@code judiciary} array, so listing clears the judiciary from the hearing. A hearing whose
-     * sessions have different judiciaries produces no payload.
+     * of every session each hearing is allocated to, and groups hearings that share an identical
+     * judiciary set into one {@code listing.command.change-judiciary-for-hearings} payload.
+     * A hearing is only included when every one of its sessions has the same judiciaries
+     * (judicialId, judicialRoleType, isBenchChairman, isDeputy). A hearing whose sessions have no
+     * judiciaries at all still produces a payload, with an empty {@code judiciary} array, so listing
+     * clears the judiciary from the hearing. A hearing whose sessions have different judiciaries
+     * produces no payload.
      *
      * @param changedCourtScheduleIds the court schedule IDs whose judiciaries changed
-     * @return the change-judiciary-for-hearings payloads, one per hearing with a consistent judiciary
+     * @return one payload per distinct judiciary set, each containing all hearing IDs whose sessions
+     *         share that set
      */
     public List<JsonObject> createChangeJudiciaryForHearingsPayloads(final List<String> changedCourtScheduleIds) {
         if (changedCourtScheduleIds == null || changedCourtScheduleIds.isEmpty()) {
@@ -80,7 +82,7 @@ public class ChangeJudiciaryForHearingsHelper {
             final Set<Map<String, JsonObject>> distinctSessionJudiciaries = new HashSet<>(judiciariesBySession.values());
             if (distinctSessionJudiciaries.size() == 1) {
                 hearingIdsByJudiciarySet
-                        .computeIfAbsent(distinctSessionJudiciaries.iterator().next(), _ -> new ArrayList<>())
+                        .computeIfAbsent(distinctSessionJudiciaries.iterator().next(), k -> new ArrayList<>())
                         .add(hearingId);
             } else {
                 logger.info("Skipping change-judiciary-for-hearings for hearing {} - its {} sessions {} do not all have the same judiciaries",
@@ -92,8 +94,9 @@ public class ChangeJudiciaryForHearingsHelper {
         hearingIdsByJudiciarySet.forEach((judiciarySet, hearingIds) ->
                 payloads.add(buildChangeJudiciaryForHearingsPayload(hearingIds, judiciarySet)));
 
-        logger.info("Built {} change-judiciary-for-hearings payloads covering {} hearings from {} changed court schedule IDs",
-                payloads.size(), sessionJudiciariesByHearingId.size(), changedCourtScheduleIds.size());
+        final int sentHearingCount = hearingIdsByJudiciarySet.values().stream().mapToInt(List::size).sum();
+        logger.info("Built {} change-judiciary-for-hearings payloads covering {} hearings ({} evaluated) from {} changed court schedule IDs",
+                payloads.size(), sentHearingCount, sessionJudiciariesByHearingId.size(), changedCourtScheduleIds.size());
         return payloads;
     }
 

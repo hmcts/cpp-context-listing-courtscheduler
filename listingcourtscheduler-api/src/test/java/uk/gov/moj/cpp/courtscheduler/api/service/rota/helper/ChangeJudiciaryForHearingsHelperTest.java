@@ -279,10 +279,6 @@ class ChangeJudiciaryForHearingsHelperTest {
             // then - two payloads: one grouping hearing1+hearing2, one for hearing3 alone
             assertEquals(2, payloads.size());
 
-            final Map<String, JsonObject> payloadsByFirstHearing = payloads.stream()
-                    .collect(java.util.stream.Collectors.toMap(
-                            p -> toStringList(p.getJsonArray("hearings")).get(0), p -> p));
-
             // hearing1 and hearing2 are grouped together (order within the hearings array is not contractual)
             final JsonObject groupedPayload = payloads.stream()
                     .filter(p -> toStringList(p.getJsonArray("hearings")).size() == 2)
