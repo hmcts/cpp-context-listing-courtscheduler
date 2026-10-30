@@ -7,7 +7,6 @@ import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataMapperService;
 import uk.gov.moj.cpp.courtscheduler.common.service.data.BlobContent;
 import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.RotaFileProcessorService;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -54,7 +53,6 @@ public class RotaFileCaptureAndProcessTriggerService {
 
         boolean referenceDataLoaded = false;
         boolean fileAvailable;
-        final List<String> changedCourtScheduleIds = new ArrayList<>();
 
         do {
             // Look for an available file without an active lease
@@ -85,8 +83,8 @@ public class RotaFileCaptureAndProcessTriggerService {
                         logger.info("Using new rota file processor service for blob: {}", blobName);
                         final List<String> changedIdsForBlob =
                                 newRotaFileProcessor.downloadAndProcessForEachFile(blobContent, blobName, leaseId);
-                        changedCourtScheduleIds.addAll(changedIdsForBlob);
-                        logger.info("Blob {} produced {} changed court schedule IDs", blobName, changedIdsForBlob.size());
+                        logger.info("Blob {} produced {} changed court schedule IDs: {}", blobName, changedIdsForBlob.size(), changedIdsForBlob);
+                        syncJudiciaryWithListing(blobName, changedIdsForBlob);
                     }
                 } catch (AzureBlobClientException ignoredException) {
                     logger.info("File {} already leased and skipping to the next file", blobName);
@@ -94,17 +92,19 @@ public class RotaFileCaptureAndProcessTriggerService {
             }
         } while (fileAvailable);
 
-        logger.info("RotaFileCaptureAndProcessTriggerService.captureRotaFilesAndProcessEach completed with {} changed court schedule IDs: {}",
-                changedCourtScheduleIds.size(), changedCourtScheduleIds);
+        logger.info("RotaFileCaptureAndProcessTriggerService.captureRotaFilesAndProcessEach completed");
+    }
 
-        // Build and send the listing.command.change-judiciary-for-hearings commands for the changed court schedules
-        final List<JsonObject> changeJudiciaryForHearingsPayloads =
-                changeJudiciaryForHearingsHelper.createChangeJudiciaryForHearingsPayloads(changedCourtScheduleIds);
-        logger.info("Built {} change-judiciary-for-hearings payloads for the listing context", changeJudiciaryForHearingsPayloads.size());
-
-        final int sentCommandCount =
-                changeJudiciaryForHearingsHelper.sendChangeJudiciaryForHearingsCommands(changeJudiciaryForHearingsPayloads);
-        logger.info("Sent {} change-judiciary-for-hearings commands to the listing context", sentCommandCount);
+    private void syncJudiciaryWithListing(final String blobName, final List<String> changedIdsForBlob) {
+        try {
+            final List<JsonObject> payloads =
+                    changeJudiciaryForHearingsHelper.createChangeJudiciaryForHearingsPayloads(changedIdsForBlob);
+            logger.info("Built {} change-judiciary-for-hearings payloads for blob {}", payloads.size(), blobName);
+            final int sentCommandCount = changeJudiciaryForHearingsHelper.sendChangeJudiciaryForHearingsCommands(payloads);
+            logger.info("Sent {} change-judiciary-for-hearings commands for blob {}", sentCommandCount, blobName);
+        } catch (final RuntimeException ex) {
+            logger.error("Failed to sync judiciary with listing for blob {} - court schedule IDs {}", blobName, changedIdsForBlob, ex);
+        }
     }
 
     private void loadReferenceData() {
