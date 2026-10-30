@@ -49,17 +49,17 @@ class CourtScheduleJudiciaryServiceTest {
         final List<CourtScheduleJudiciary> courtScheduleJudiciaryEntities = getCourtScheduleJudiciaryEntities(courtScheduleId, courtListingProfileId);
         when(courtScheduleJudiciaryRepository.findInCourtScheduleIds(eq(courtScheduleIds))).thenReturn(courtScheduleJudiciaryEntities);
 
-        final Map<String, List<uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary>> judiciarySchedulesMap = courtScheduleJudiciaryService.findRelatedJudiciarySchedules(courtScheduleIds);
+        final Map<String, List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtScheduleJudiciary>> judiciarySchedulesMap = courtScheduleJudiciaryService.findRelatedJudiciarySchedules(courtScheduleIds);
 
         assertFalse(judiciarySchedulesMap.isEmpty());
         assertTrue(judiciarySchedulesMap.containsKey(courtListingProfileId));
         assertEquals(1, judiciarySchedulesMap.size());
 
-        final List<uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary> courtScheduleJudiciaries = judiciarySchedulesMap.get(courtListingProfileId);
+        final List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtScheduleJudiciary> courtScheduleJudiciaries = judiciarySchedulesMap.get(courtListingProfileId);
         courtScheduleJudiciaryEntities.forEach(
                 courtScheduleJudiciaryEntity -> {
                     courtScheduleJudiciaries.stream()
-                            .filter(courtScheduleJudiciary -> courtScheduleJudiciaryEntity.getId().getJudiciaryId().equals(courtScheduleJudiciary.getJudiciaryId()))
+                            .filter(courtScheduleJudiciary -> courtScheduleJudiciaryEntity.getId().getJudiciaryId().equals(courtScheduleJudiciary.getId()))
                             .findFirst()
                             .ifPresent(courtScheduleJudiciary -> {
                                 assertEquals(courtScheduleJudiciary.getCourtListingProfileId(), courtScheduleJudiciaryEntity.getCourtListingProfileId());
@@ -90,27 +90,27 @@ class CourtScheduleJudiciaryServiceTest {
                 eq(startDate), eq(endDate), eq(ouCodes)))
                 .thenReturn(List.of(judiciaryA1, judiciaryA2, judiciaryB1));
 
-        final Map<String, List<uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary>> result =
+        final Map<String, List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtScheduleJudiciary>> result =
                 courtScheduleJudiciaryService.getCourtScheduleJudiciariesForRotaPeriod(startDate, endDate, ouCodes);
 
         assertEquals(2, result.size());
         assertEquals(2, result.get(courtScheduleIdA).size());
         assertEquals(1, result.get(courtScheduleIdB).size());
 
-        final uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary mappedJudiciary = result.get(courtScheduleIdB).get(0);
+        final uk.gov.moj.cpp.courtscheduler.openapi.model.CourtScheduleJudiciary mappedJudiciary = result.get(courtScheduleIdB).get(0);
         assertEquals(courtScheduleIdB, mappedJudiciary.getCourtScheduleId());
-        assertEquals("jud-3", mappedJudiciary.getJudiciaryId());
+        assertEquals("jud-3", mappedJudiciary.getId());
         assertEquals(judiciaryB1.getRotaJudiciaryId(), mappedJudiciary.getRotaJudiciaryId());
-        assertEquals(judiciaryB1.getTitle(), mappedJudiciary.getTitle());
+        assertEquals(judiciaryB1.getTitle(), mappedJudiciary.getTitlePrefix());
         assertEquals(judiciaryB1.getForenames(), mappedJudiciary.getForenames());
         assertEquals(judiciaryB1.getSurname(), mappedJudiciary.getSurname());
         assertEquals(judiciaryB1.getEmail(), mappedJudiciary.getEmailAddress());
         assertEquals(judiciaryB1.getJudiciaryType(), mappedJudiciary.getJudiciaryType());
-        assertEquals(judiciaryB1.isBenchChairman(), mappedJudiciary.isBenchChairman());
-        assertEquals(judiciaryB1.isDeputy(), mappedJudiciary.isDeputy());
+        assertEquals(judiciaryB1.isBenchChairman(), mappedJudiciary.getIsBenchChairman());
+        assertEquals(judiciaryB1.isDeputy(), mappedJudiciary.getIsDeputy());
         assertEquals(judiciaryB1.getPosition(), mappedJudiciary.getPosition());
         assertEquals(judiciaryB1.getCourtListingProfileId(), mappedJudiciary.getCourtListingProfileId());
-        assertTrue(mappedJudiciary.isActive());
+        assertTrue(mappedJudiciary.getActive());
     }
 
     @Test
@@ -122,7 +122,7 @@ class CourtScheduleJudiciaryServiceTest {
                 eq(startDate), eq(endDate), eq(ouCodes)))
                 .thenReturn(List.of());
 
-        final Map<String, List<uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary>> result =
+        final Map<String, List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtScheduleJudiciary>> result =
                 courtScheduleJudiciaryService.getCourtScheduleJudiciariesForRotaPeriod(startDate, endDate, ouCodes);
 
         assertTrue(result.isEmpty());

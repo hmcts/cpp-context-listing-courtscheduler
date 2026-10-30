@@ -15,8 +15,8 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalBookingSlots;
-import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalSlot;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.ProvisionalBookingSlots;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.ProvisionalSlot;
 import uk.gov.moj.cpp.courtscheduler.exception.PersistenceStoreException;
 import uk.gov.moj.cpp.courtscheduler.exception.SlotsBookException;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
@@ -58,7 +58,7 @@ class ProvisionalBookingServiceTest {
     void shouldProcessProvisionalBookingRequestSuccessfully() {
         final ProvisionalBookingSlots provisionalBookingSlots = new ProvisionalBookingSlots();
         final List<ProvisionalSlot> provisionalSlotList = new ArrayList<>();
-        final ProvisionalSlot provisionalSlot = new ProvisionalSlot("2523432432");
+        final ProvisionalSlot provisionalSlot = new ProvisionalSlot().courtScheduleId("2523432432");
         provisionalSlotList.add(provisionalSlot);
         provisionalBookingSlots.setProvisionalSlots(provisionalSlotList);
 
@@ -199,7 +199,7 @@ class ProvisionalBookingServiceTest {
     @Test
     void shouldThrowSlotsBookExceptionWhenSaveProvisionalBookingFails() {
         final ProvisionalBookingSlots provisionalBookingSlots = new ProvisionalBookingSlots();
-        final ProvisionalSlot provisionalSlot = new ProvisionalSlot("2523432432");
+        final ProvisionalSlot provisionalSlot = new ProvisionalSlot().courtScheduleId("2523432432");
         provisionalBookingSlots.setProvisionalSlots(List.of(provisionalSlot));
 
         when(courtScheduleRepository.findBy(anyString())).thenReturn(new CourtSchedule());

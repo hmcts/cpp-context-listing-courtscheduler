@@ -29,8 +29,8 @@ import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload.SCHEDULE;
 // (removed) Requester replaced by Spring CommonPlatformQueryClient
 import uk.gov.moj.cpp.courtscheduler.api.service.rota.RotaReferenceDataService;
 import uk.gov.moj.cpp.courtscheduler.common.service.RotaProcessLogService;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
-import uk.gov.moj.cpp.courtscheduler.domain.Judiciary;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtScheduleJudiciary;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.Judiciary;
 import uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload;
 import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.enricher.JudiciaryBuilder;
 
@@ -190,7 +190,7 @@ public class RotaJudiciaryHelper {
             final CourtScheduleJudiciary schedule,
             final Map<String, UUID> judiciaryMap,
             final Map<String, Set<UUID>> courtScheduleMap) {
-        final String judiciaryId = schedule.getJudiciaryId();
+        final String judiciaryId = schedule.getId();
         final String courtListingProfileId = schedule.getCourtListingProfileId();
 
         if (!isNotEmpty(judiciaryId) || !isNotEmpty(courtListingProfileId)) {
@@ -227,7 +227,7 @@ public class RotaJudiciaryHelper {
     private void addCourtListingProfileToMap(
             final Map<String, List<String>> judiciaryCourtListingProfileMap,
             final CourtScheduleJudiciary schedule) {
-        final String judiciaryId = schedule.getJudiciaryId();
+        final String judiciaryId = schedule.getId();
         final String courtListingProfileId = schedule.getCourtListingProfileId();
 
         judiciaryCourtListingProfileMap.compute(judiciaryId, (key, existingList) -> 
@@ -235,7 +235,7 @@ public class RotaJudiciaryHelper {
 
         logger.debug("Mapped judiciaryId {} to court schedule(s) with listingProfileId: {}, position: {}, isBenchChairman: {}, isDeputy: {}",
                 judiciaryId, courtListingProfileId,
-                schedule.getPosition(), schedule.isBenchChairman(), schedule.isDeputy());
+                schedule.getPosition(), schedule.getIsBenchChairman(), schedule.getIsDeputy());
     }
 
 
@@ -268,8 +268,8 @@ public class RotaJudiciaryHelper {
                 new ArrayList<>(scheduleIds),
                 schedule.getRotaJudiciaryId(),
                 schedule.getPosition(),
-                schedule.isBenchChairman(),
-                schedule.isDeputy()
+                schedule.getIsBenchChairman(),
+                schedule.getIsDeputy()
         );
     }
 
@@ -441,7 +441,7 @@ public class RotaJudiciaryHelper {
         }
 
         scheduleJudiciaryList.forEach(schedule -> {
-            final String judiciaryId = schedule.getJudiciaryId();
+            final String judiciaryId = schedule.getId();
             final String courtListingProfileId = schedule.getCourtListingProfileId();
             
             if (isNotEmpty(judiciaryId) && isNotEmpty(courtListingProfileId)) {
@@ -584,7 +584,7 @@ public class RotaJudiciaryHelper {
         final String courtScheduleId = randomUUID().toString();
         final CourtScheduleJudiciary courtScheduleJudiciary = judiciaryBuilder.build(schedule, courtScheduleId);
 
-        if (isNotEmpty(courtScheduleJudiciary.getJudiciaryId())) {
+        if (isNotEmpty(courtScheduleJudiciary.getId())) {
             scheduleJudiciaryList.add(courtScheduleJudiciary);
             logger.debug("Created schedule judiciary mapping - listingProfileId: {}, judiciaryId: {}",
                     courtListingProfileId, judiciaryId);

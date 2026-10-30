@@ -3,7 +3,7 @@ package uk.gov.moj.cpp.courtscheduler.common.service;
 import static org.apache.commons.collections.CollectionUtils.isNotEmpty;
 
 import uk.gov.moj.cpp.courtscheduler.common.service.mapper.CourtScheduleJudiciaryMapper;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleJudiciaryRepository;
 
 import java.time.LocalDate;

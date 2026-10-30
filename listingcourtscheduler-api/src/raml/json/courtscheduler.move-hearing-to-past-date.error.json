@@ -1,0 +1,4 @@
+{
+  "errorCode": "FUTURE_DATE_NOT_ALLOWED",
+  "message": "startDate/endDate must be before today"
+}

@@ -1,7 +1,7 @@
 package uk.gov.moj.cpp.courtscheduler.common.service;
 
 import uk.gov.moj.cpp.courtscheduler.common.service.mapper.CourtScheduleJudiciaryMapper;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleJudiciaryRepository;
 
 import java.util.ArrayList;
@@ -58,9 +58,9 @@ public class JudiciaryChangeDetectionService {
 
     private int hash(final CourtScheduleJudiciary csj) {
         return Objects.hash(
-                csj.getJudiciaryId(),
+                csj.getId(),
                 csj.getRotaJudiciaryId(),
-                csj.getTitle(),
+                csj.getTitlePrefix(),
                 csj.getForenames(),
                 csj.getSurname(),
                 csj.getEmailAddress(),
@@ -68,8 +68,8 @@ public class JudiciaryChangeDetectionService {
                 csj.getCourtListingProfileId(),
                 csj.getJudiciaryType(),
                 csj.getPosition(),
-                csj.isBenchChairman(),
-                csj.isDeputy(),
-                csj.isActive());
+                csj.getIsBenchChairman(),
+                csj.getIsDeputy(),
+                csj.getActive());
     }
 }

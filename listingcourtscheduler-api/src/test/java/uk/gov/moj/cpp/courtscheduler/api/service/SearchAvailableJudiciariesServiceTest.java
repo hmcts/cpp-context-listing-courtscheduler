@@ -11,7 +11,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataService;
-import uk.gov.moj.cpp.courtscheduler.domain.Judiciary;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.Judiciary;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 
@@ -74,11 +74,8 @@ class SearchAvailableJudiciariesServiceTest {
 
     @Test
     void ignoreAvailabilitySkipsFiltering() {
-        final Judiciary j = Judiciary.JudiciaryBuilder.aJudiciary()
-                .withId("11111111-1111-1111-1111-111111111111")
-                .withSurname("Smith")
-                .build();
-        when(referenceDataService.searchJudiciaries(eq(ABCD), eq(""), eq(50), eq(true)))
+        final Judiciary j = new Judiciary().id("11111111-1111-1111-1111-111111111111").surname("Smith");
+        when(referenceDataService.searchJudiciaries(eq("abcd"), eq(""), eq(50), eq(true)))
                 .thenReturn(List.of(j));
 
         final List<Judiciary> result = service.search(Json.createObjectBuilder()
@@ -129,8 +126,8 @@ class SearchAvailableJudiciariesServiceTest {
 
     @Test
     void shouldFilterByDatesModeUsingAvailabilityServiceIds() {
-        final Judiciary a = Judiciary.JudiciaryBuilder.aJudiciary().withId("a").withSurname("A").build();
-        final Judiciary b = Judiciary.JudiciaryBuilder.aJudiciary().withId("b").withSurname("B").build();
+        final Judiciary a = new Judiciary().id("a").surname("A");
+        final Judiciary b = new Judiciary().id("b").surname("B");
 
         when(referenceDataService.searchJudiciaries(eq(ABCD), eq(""), eq(50), eq(true)))
                 .thenReturn(List.of(a, b));
@@ -154,8 +151,8 @@ class SearchAvailableJudiciariesServiceTest {
                 .add(COURT_SCHEDULE_IDS, ID1)
                 .build();
         when(referenceDataService.searchJudiciaries(any(), any(), any(Integer.class), eq(true)))
-                .thenReturn(List.of(Judiciary.JudiciaryBuilder.aJudiciary().withId("a").withSurname("A").build()));
-        when(courtScheduleRepository.findByCourtScheduleIds(List.of(ID1))).thenReturn(List.of());
+                .thenReturn(List.of(new Judiciary().id("a").surname("A")));
+        when(courtScheduleRepository.findByCourtScheduleIds(List.of("id1"))).thenReturn(List.of());
 
         assertThrows(ResponseStatusException.class, () -> service.search(payload));
     }
@@ -174,8 +171,8 @@ class SearchAvailableJudiciariesServiceTest {
         when(s2.getCourtHouseId()).thenReturn("house-2");
 
         when(referenceDataService.searchJudiciaries(any(), any(), any(Integer.class), eq(true)))
-                .thenReturn(List.of(Judiciary.JudiciaryBuilder.aJudiciary().withId("a").withSurname("A").build()));
-        when(courtScheduleRepository.findByCourtScheduleIds(List.of(ID1, "id2"))).thenReturn(List.of(s1, s2));
+                .thenReturn(List.of(new Judiciary().id("a").surname("A")));
+        when(courtScheduleRepository.findByCourtScheduleIds(List.of("id1", "id2"))).thenReturn(List.of(s1, s2));
 
         assertThrows(ResponseStatusException.class, () -> service.search(payload));
     }
@@ -188,8 +185,8 @@ class SearchAvailableJudiciariesServiceTest {
         when(s1.getSessionDate()).thenReturn(LocalDate.of(2026, 1, 5));
         when(s1.getCourtSession()).thenReturn("AM");
 
-        final Judiciary a = Judiciary.JudiciaryBuilder.aJudiciary().withId("a").withSurname("A").build();
-        final Judiciary b = Judiciary.JudiciaryBuilder.aJudiciary().withId("b").withSurname("B").build();
+        final Judiciary a = new Judiciary().id("a").surname("A");
+        final Judiciary b = new Judiciary().id("b").surname("B");
 
         when(referenceDataService.searchJudiciaries(eq(ABCD), eq(""), eq(50), eq(true)))
                 .thenReturn(List.of(a, b));

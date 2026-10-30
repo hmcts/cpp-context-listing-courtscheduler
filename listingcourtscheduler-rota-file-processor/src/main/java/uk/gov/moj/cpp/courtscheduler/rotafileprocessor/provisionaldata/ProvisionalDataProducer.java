@@ -5,7 +5,7 @@ import static java.util.Objects.nonNull;
 import static java.util.UUID.randomUUID;
 
 import uk.gov.moj.cpp.courtscheduler.common.service.SessionsService;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule;
 
 import java.time.LocalDate;
 import java.util.ArrayList;

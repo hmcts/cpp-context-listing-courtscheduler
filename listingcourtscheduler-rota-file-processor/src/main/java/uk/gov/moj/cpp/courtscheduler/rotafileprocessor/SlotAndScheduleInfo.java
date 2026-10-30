@@ -1,7 +1,7 @@
 package uk.gov.moj.cpp.courtscheduler.rotafileprocessor;
 
-import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtScheduleJudiciary;
 
 import java.util.Collection;
 import java.util.List;

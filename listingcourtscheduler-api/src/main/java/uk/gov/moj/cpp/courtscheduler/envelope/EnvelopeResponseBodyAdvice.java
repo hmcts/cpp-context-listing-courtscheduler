@@ -1,5 +1,6 @@
 package uk.gov.moj.cpp.courtscheduler.envelope;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.MethodParameter;
@@ -25,8 +26,14 @@ public class EnvelopeResponseBodyAdvice implements ResponseBodyAdvice<Object> {
     private static final String CPP_ACTION = "CPP-ACTION";
     private static final int HTTP_ERROR_STATUS_THRESHOLD = 400;
 
+    private final ObjectMapper objectMapper;
+
     @Value("${courtscheduler.envelope.enabled:true}")
     private boolean envelopeEnabled;
+
+    public EnvelopeResponseBodyAdvice(final ObjectMapper objectMapper) {
+        this.objectMapper = objectMapper;
+    }
 
     @Override
     public boolean supports(final MethodParameter returnType,
@@ -66,7 +73,7 @@ public class EnvelopeResponseBodyAdvice implements ResponseBodyAdvice<Object> {
         final HttpServletRequest http = servletRequest.getServletRequest();
         final String userId = http.getHeader(CJSCPPUID);
         final String action = http.getHeader(CPP_ACTION);
-        return JsonEnvelopeWrapper.wrap(body, action, userId);
+        return JsonEnvelopeWrapper.wrap(body, action, userId, objectMapper);
     }
 
     // No local variable for the ServletServerHttpResponse: it is owned (and closed) by Spring MVC,

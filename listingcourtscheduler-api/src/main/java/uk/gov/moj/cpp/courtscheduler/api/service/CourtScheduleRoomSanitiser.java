@@ -1,6 +1,6 @@
 package uk.gov.moj.cpp.courtscheduler.api.service;
 
-import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.CrownFallbackResponse;
 
 import java.util.List;
@@ -23,7 +23,7 @@ public final class CourtScheduleRoomSanitiser {
             return;
         }
         for (final CourtSchedule courtSchedule : courtSchedules) {
-            if (courtSchedule != null && courtSchedule.isDraft()) {
+            if (courtSchedule != null && Boolean.TRUE.equals(courtSchedule.getDraft())) {
                 courtSchedule.setCourtRoomId(null);
                 courtSchedule.setCourtRoomName(null);
                 courtSchedule.setCourtRoomNumber(null);

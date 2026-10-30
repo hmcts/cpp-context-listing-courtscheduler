@@ -13,13 +13,13 @@ import uk.gov.moj.cpp.courtscheduler.common.AzureBlobClientService;
 import uk.gov.moj.cpp.courtscheduler.common.service.JudiciaryAssignmentService;
 import uk.gov.moj.cpp.courtscheduler.common.service.RotaFileProcessHistoryService;
 import uk.gov.moj.cpp.courtscheduler.common.service.data.BlobContent;
-import uk.gov.moj.cpp.courtscheduler.domain.AssignJudiciariesResponse;
-import uk.gov.moj.cpp.courtscheduler.domain.AssignJudiciariesRequest;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload;
-import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.provisionaldata.RotaPeriodDateInfoProvider;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.AssignJudiciariesRequest;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.AssignJudiciariesResponse;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.RotaFileProcessHistory;
 import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.RotaFileParser;
+import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.provisionaldata.RotaPeriodDateInfoProvider;
 
 import java.io.ByteArrayInputStream;
 import java.util.HashMap;
@@ -277,9 +277,9 @@ public class RotaFileProcessor {
      */
     private int hashCourtScheduleJudiciary(final CourtScheduleJudiciary courtScheduleJudiciary) {
         return Objects.hash(
-                courtScheduleJudiciary.getJudiciaryId(),
+                courtScheduleJudiciary.getId(),
                 courtScheduleJudiciary.getRotaJudiciaryId(),
-                courtScheduleJudiciary.getTitle(),
+                courtScheduleJudiciary.getTitlePrefix(),
                 courtScheduleJudiciary.getForenames(),
                 courtScheduleJudiciary.getSurname(),
                 courtScheduleJudiciary.getEmailAddress(),
@@ -287,9 +287,9 @@ public class RotaFileProcessor {
                 courtScheduleJudiciary.getCourtListingProfileId(),
                 courtScheduleJudiciary.getJudiciaryType(),
                 courtScheduleJudiciary.getPosition(),
-                courtScheduleJudiciary.isBenchChairman(),
-                courtScheduleJudiciary.isDeputy(),
-                courtScheduleJudiciary.isActive());
+                courtScheduleJudiciary.getIsBenchChairman(),
+                courtScheduleJudiciary.getIsDeputy(),
+                courtScheduleJudiciary.getActive());
     }
 
     /**

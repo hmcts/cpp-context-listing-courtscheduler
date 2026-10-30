@@ -1,6 +1,18 @@
 {
   "judiciaries": [
     {
+      "id": "7e2f843e-d639-40b3-8611-8015f3a13333",
+      "seqId": 1,
+      "titlePrefix": "Mr",
+      "forenames": "John",
+      "surname": "Doe",
+      "judiciaryType": "Recorder",
+      "personId": "30644",
+      "emailAddress": "john.doe@example.com",
+      "requestedName": "HER HONOUR JUDGE K WANT QC, HONORARY RECORDER OF WALES",
+      "specialisms": ["ATTEMPTED_MURDER"]
+    },
+    {
       "id": "9ac02e8d-ee90-3da6-8d3e-0dd0af2cb976",
       "seqId": 94450,
       "titlePrefix": "Miss",

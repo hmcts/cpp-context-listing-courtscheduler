@@ -15,7 +15,8 @@ import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload.ROTA_PERIOD;
 
 import uk.gov.moj.cpp.courtscheduler.common.service.CourtScheduleJudiciaryService;
 import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataMapperService;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtRoom;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload;
 import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.provisionaldata.RotaPeriodDateInfoProvider;
 
@@ -161,16 +162,16 @@ class RotaLocationPeriodHelperTest {
             final List<String> locationIds = List.of(VALUE_100, VALUE_200);
             final UUID roomId1 = UUID.randomUUID();
             final UUID roomId2 = UUID.randomUUID();
-            final CourtRoom courtRoom1 = CourtRoom.CourtRoomBuilder.aCourtRoom()
-                    .withRotaLocationId(100)
-                    .withOucode(OU001_2)
-                    .withCourtRoomId(roomId1.toString())
-                    .build();
-            final CourtRoom courtRoom2 = CourtRoom.CourtRoomBuilder.aCourtRoom()
-                    .withRotaLocationId(200)
-                    .withOucode(OU002_2)
-                    .withCourtRoomId(roomId2.toString())
-                    .build();
+            final CourtRoom courtRoom1 = new CourtRoom()
+                    .rotaLocationId(100)
+                    .oucode(OU001_2)
+                    .courtroomId(roomId1.toString())
+                    ;
+            final CourtRoom courtRoom2 = new CourtRoom()
+                    .rotaLocationId(200)
+                    .oucode(OU002_2)
+                    .courtroomId(roomId2.toString())
+                    ;
             courtRoomsMap.put(roomId1, courtRoom1);
             courtRoomsMap.put(roomId2, courtRoom2);
             when(referenceDataMapperService.getCourtRoomsMap()).thenReturn(courtRoomsMap);
@@ -217,16 +218,16 @@ class RotaLocationPeriodHelperTest {
             final List<String> locationIds = List.of(VALUE_100, VALUE_100, VALUE_200);
             final UUID roomId1 = UUID.randomUUID();
             final UUID roomId2 = UUID.randomUUID();
-            final CourtRoom courtRoom1 = CourtRoom.CourtRoomBuilder.aCourtRoom()
-                    .withRotaLocationId(100)
-                    .withOucode(OU001_2)
-                    .withCourtRoomId(roomId1.toString())
-                    .build();
-            final CourtRoom courtRoom2 = CourtRoom.CourtRoomBuilder.aCourtRoom()
-                    .withRotaLocationId(200)
-                    .withOucode(OU002_2)
-                    .withCourtRoomId(roomId2.toString())
-                    .build();
+            final CourtRoom courtRoom1 = new CourtRoom()
+                    .rotaLocationId(100)
+                    .oucode(OU001_2)
+                    .courtroomId(roomId1.toString())
+                    ;
+            final CourtRoom courtRoom2 = new CourtRoom()
+                    .rotaLocationId(200)
+                    .oucode(OU002_2)
+                    .courtroomId(roomId2.toString())
+                    ;
             courtRoomsMap.put(roomId1, courtRoom1);
             courtRoomsMap.put(roomId2, courtRoom2);
             when(referenceDataMapperService.getCourtRoomsMap()).thenReturn(courtRoomsMap);
@@ -248,11 +249,11 @@ class RotaLocationPeriodHelperTest {
             // given
             final List<String> locationIds = List.of(VALUE_100, "999");
             final UUID roomId1 = UUID.randomUUID();
-            final CourtRoom courtRoom1 = CourtRoom.CourtRoomBuilder.aCourtRoom()
-                    .withRotaLocationId(100)
-                    .withOucode(OU001_2)
-                    .withCourtRoomId(roomId1.toString())
-                    .build();
+            final CourtRoom courtRoom1 = new CourtRoom()
+                    .rotaLocationId(100)
+                    .oucode(OU001_2)
+                    .courtroomId(roomId1.toString())
+                    ;
             courtRoomsMap.put(roomId1, courtRoom1);
             when(referenceDataMapperService.getCourtRoomsMap()).thenReturn(courtRoomsMap);
 
@@ -273,16 +274,16 @@ class RotaLocationPeriodHelperTest {
             final List<String> locationIds = List.of(VALUE_100);
             final UUID roomId1 = UUID.randomUUID();
             final UUID roomId2 = UUID.randomUUID();
-            final CourtRoom courtRoom1 = CourtRoom.CourtRoomBuilder.aCourtRoom()
-                    .withRotaLocationId(100)
-                    .withOucode(OU001_2)
-                    .withCourtRoomId(roomId1.toString())
-                    .build();
-            final CourtRoom courtRoom2 = CourtRoom.CourtRoomBuilder.aCourtRoom()
-                    .withRotaLocationId(100)
-                    .withOucode(OU001_2)
-                    .withCourtRoomId(roomId2.toString())
-                    .build();
+            final CourtRoom courtRoom1 = new CourtRoom()
+                    .rotaLocationId(100)
+                    .oucode(OU001_2)
+                    .courtroomId(roomId1.toString())
+                    ;
+            final CourtRoom courtRoom2 = new CourtRoom()
+                    .rotaLocationId(100)
+                    .oucode(OU001_2)
+                    .courtroomId(roomId2.toString())
+                    ;
             courtRoomsMap.put(roomId1, courtRoom1);
             courtRoomsMap.put(roomId2, courtRoom2);
             when(referenceDataMapperService.getCourtRoomsMap()).thenReturn(courtRoomsMap);
@@ -304,16 +305,16 @@ class RotaLocationPeriodHelperTest {
             final List<String> locationIds = List.of(VALUE_100);
             final UUID roomId1 = UUID.randomUUID();
             final UUID roomId2 = UUID.randomUUID();
-            final CourtRoom courtRoom1 = CourtRoom.CourtRoomBuilder.aCourtRoom()
-                    .withRotaLocationId(null)
-                    .withOucode(OU001_2)
-                    .withCourtRoomId(roomId1.toString())
-                    .build();
-            final CourtRoom courtRoom2 = CourtRoom.CourtRoomBuilder.aCourtRoom()
-                    .withRotaLocationId(100)
-                    .withOucode(OU002_2)
-                    .withCourtRoomId(roomId2.toString())
-                    .build();
+            final CourtRoom courtRoom1 = new CourtRoom()
+                    .rotaLocationId(null)
+                    .oucode(OU001_2)
+                    .courtroomId(roomId1.toString())
+                    ;
+            final CourtRoom courtRoom2 = new CourtRoom()
+                    .rotaLocationId(100)
+                    .oucode(OU002_2)
+                    .courtroomId(roomId2.toString())
+                    ;
             courtRoomsMap.put(roomId1, courtRoom1);
             courtRoomsMap.put(roomId2, courtRoom2);
             when(referenceDataMapperService.getCourtRoomsMap()).thenReturn(courtRoomsMap);
@@ -392,19 +393,18 @@ class RotaLocationPeriodHelperTest {
             final LocalDate endDate = LocalDate.parse("2024-12-31");
             final List<String> ouCodes = List.of("OU001");
             final String courtScheduleId = UUID.randomUUID().toString();
-            final uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary judiciary =
-                    uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary.judiciary()
-                            .withCourtScheduleId(courtScheduleId)
-                            .withJudiciaryId("jud-1")
-                            .build();
-            final Map<String, List<uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary>> serviceResult =
+            final CourtScheduleJudiciary judiciary =
+                    new CourtScheduleJudiciary()
+                            .courtScheduleId(courtScheduleId)
+                            .id("jud-1");
+            final Map<String, List<CourtScheduleJudiciary>> serviceResult =
                     Map.of(courtScheduleId, List.of(judiciary));
             when(courtScheduleJudiciaryService.getCourtScheduleJudiciariesForRotaPeriod(
                     eq(startDate), eq(endDate), eq(ouCodes)))
                     .thenReturn(serviceResult);
 
             // when
-            final Map<String, List<uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary>> result =
+            final Map<String, List<CourtScheduleJudiciary>> result =
                     rotaLocationPeriodHelper.getCourtScheduleJudiciariesForRotaPeriod(startDate, endDate, ouCodes);
 
             // then
@@ -425,7 +425,7 @@ class RotaLocationPeriodHelperTest {
                     .thenReturn(new HashMap<>());
 
             // when
-            final Map<String, List<uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary>> result =
+            final Map<String, List<CourtScheduleJudiciary>> result =
                     rotaLocationPeriodHelper.getCourtScheduleJudiciariesForRotaPeriod(startDate, endDate, ouCodes);
 
             // then

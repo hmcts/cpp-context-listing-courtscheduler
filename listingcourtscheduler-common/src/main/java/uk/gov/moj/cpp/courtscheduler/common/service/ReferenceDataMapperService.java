@@ -9,12 +9,11 @@ import static org.apache.commons.collections.ListUtils.synchronizedList;
 import static org.apache.commons.lang3.StringUtils.equalsIgnoreCase;
 import static uk.gov.moj.cpp.courtscheduler.common.utils.VenueNameComparator.matches;
 
-// (removed) replaced by Spring CommonPlatformQueryClient
-import uk.gov.moj.cpp.courtscheduler.domain.BusinessType;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtRoomSessionAllocation;
-import uk.gov.moj.cpp.courtscheduler.domain.Judiciary;
-import uk.gov.moj.cpp.courtscheduler.domain.Venue;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.BusinessType;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtRoom;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtRoomSessionAllocation;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.Judiciary;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.Venue;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -25,11 +24,12 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import org.springframework.stereotype.Service;
 import jakarta.inject.Inject;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+
+// (removed) replaced by Spring CommonPlatformQueryClient
 
 @Service
 public class ReferenceDataMapperService {
