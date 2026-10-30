@@ -26,6 +26,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -269,6 +270,45 @@ class ExtendMultidayHearingServiceTest {
         assertEquals(ExtendMultidayHearingException.ErrorCode.NO_AVAILABILITY, e.getErrorCode());
         assertEquals(List.of(LocalDate.of(2026, 3, 6)), e.getUnavailableDates());
         verify(allocatedListingRepository, never()).save(any());
+    }
+
+    @Test
+    void extendBooksFullTailSessionBeyondCapacity_when_overbookingNotAllowed() {
+        // SPRDT-1572: the Court Calendar journey is overbooking-exempt — a full tail session with
+        // overbooking disallowed is still booked; capacity never makes a day unavailable.
+        when(allocatedListingRepository.findByHearingIdOrderBySessionDateAsc(HEARING_ID)).thenReturn(existingAllocations);
+        when(courtScheduleRepository.getCourtSchedulesByIdList(any())).thenReturn(buildHydratedSchedules(existingAllocations));
+
+        final CourtSchedule fullDay5 = adSession(LocalDate.of(2026, 3, 5), 360).totalBooked(360).overbookingAllowed(false);
+        when(courtScheduleRepository.findAdSessionsInRange(
+                eq(OU_CODE), eq(String.valueOf(COURT_ROOM_ID)), eq(BUSINESS_TYPE),
+                eq(LocalDate.of(2026, 3, 5)), eq(LocalDate.of(2026, 3, 5)), any()))
+                .thenReturn(List.of(fullDay5));
+
+        service.extend(HEARING_ID, LocalDate.of(2026, 3, 2), LocalDate.of(2026, 3, 5), 1440);
+
+        final ArgumentCaptor<AllocatedListing> saved = ArgumentCaptor.forClass(AllocatedListing.class);
+        verify(allocatedListingRepository).save(saved.capture());
+        assertEquals(fullDay5.getCourtScheduleId(), saved.getValue().getCourtScheduleId());
+    }
+
+    @Test
+    void extendPrefersSessionWithRoom_when_tailDateHasFullAndFreeSessions() {
+        when(allocatedListingRepository.findByHearingIdOrderBySessionDateAsc(HEARING_ID)).thenReturn(existingAllocations);
+        when(courtScheduleRepository.getCourtSchedulesByIdList(any())).thenReturn(buildHydratedSchedules(existingAllocations));
+
+        final CourtSchedule full = adSession(LocalDate.of(2026, 3, 5), 360).totalBooked(360).courtScheduleId("cs-full");
+        final CourtSchedule free = adSession(LocalDate.of(2026, 3, 5), 360).courtScheduleId("cs-free");
+        when(courtScheduleRepository.findAdSessionsInRange(
+                eq(OU_CODE), eq(String.valueOf(COURT_ROOM_ID)), eq(BUSINESS_TYPE),
+                eq(LocalDate.of(2026, 3, 5)), eq(LocalDate.of(2026, 3, 5)), any()))
+                .thenReturn(List.of(full, free));
+
+        service.extend(HEARING_ID, LocalDate.of(2026, 3, 2), LocalDate.of(2026, 3, 5), 1440);
+
+        final ArgumentCaptor<AllocatedListing> saved = ArgumentCaptor.forClass(AllocatedListing.class);
+        verify(allocatedListingRepository).save(saved.capture());
+        assertEquals("cs-free", saved.getValue().getCourtScheduleId());
     }
 
     private static AllocatedListing allocation(final LocalDate sessionDate) {

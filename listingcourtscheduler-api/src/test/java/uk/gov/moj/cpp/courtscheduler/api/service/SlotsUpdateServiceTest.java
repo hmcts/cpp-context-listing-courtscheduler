@@ -1335,6 +1335,115 @@ class SlotsUpdateServiceTest {
         }
 
         @Test
+        void should_rejectNoAvailabilityAndLeaveAllocationIntact_when_multiDayMoveFindsNoRunAndFailOnNoAvailability() {
+            // SPRDT-1572: Court Calendar converts a single-day hearing to multi-day, but the room has no
+            // same-business-type session on the tail days. The opted-in caller gets NO_AVAILABILITY
+            // naming the missing days, and the prior allocation is never released.
+            final String hearingId = UUID.randomUUID().toString();
+            final String anchorId = UUID.randomUUID().toString();
+            final List<AllocatedListing> existingAllocations = List.of(existingAllocation(hearingId, CS_OLD_DAY1));
+
+            final CrownSearchAndBookRequest request = new CrownSearchAndBookRequest()
+                    .hearingId(hearingId)
+                    .courtCentreId(UUID.randomUUID().toString())
+                    .hearingDate(LocalDate.of(2026, 9, 7))
+                    .courtScheduleId(anchorId)
+                    .durationInMinutes(1080)
+                    .failOnNoAvailability(true);
+
+            when(allocatedListingRepository.findByHearingId(hearingId)).thenReturn(existingAllocations);
+            when(courtScheduleRepository.getCourtSchedulesByIdList(List.of(CS_OLD_DAY1)))
+                    .thenReturn(buildConsecutiveSessions(LocalDate.of(2026, 6, 1), 1));
+            when(courtScheduleRepository.findConsecutiveSessions(anchorId, 3))
+                    .thenReturn(buildConsecutiveSessions(LocalDate.of(2026, 9, 7), 1)); // only 1 of 3 needed
+
+            final uk.gov.moj.cpp.courtscheduler.exception.ExtendMultidayHearingException ex = Assertions.assertThrows(
+                    uk.gov.moj.cpp.courtscheduler.exception.ExtendMultidayHearingException.class,
+                    () -> service.crownSearchAndBook(request));
+
+            assertEquals(uk.gov.moj.cpp.courtscheduler.exception.ExtendMultidayHearingException.ErrorCode.NO_AVAILABILITY,
+                    ex.getErrorCode());
+            assertEquals(List.of(LocalDate.of(2026, 9, 8), LocalDate.of(2026, 9, 9)), ex.getUnavailableDates());
+            verify(courtScheduleRepository, org.mockito.Mockito.never()).releaseOldAllocatedListings(any());
+            verify(courtScheduleRepository, org.mockito.Mockito.never())
+                    .saveBookedSlots(any(), anyBoolean(), anyBoolean());
+        }
+
+        @Test
+        void should_rejectNoAvailabilityWithoutBooking_when_freshMultiDayFindsNoRunAndFailOnNoAvailability() {
+            final String hearingId = UUID.randomUUID().toString();
+            final String anchorId = UUID.randomUUID().toString();
+
+            final CrownSearchAndBookRequest request = new CrownSearchAndBookRequest()
+                    .hearingId(hearingId)
+                    .courtCentreId(UUID.randomUUID().toString())
+                    .hearingDate(LocalDate.of(2026, 9, 7))
+                    .courtScheduleId(anchorId)
+                    .durationInMinutes(1080)
+                    .failOnNoAvailability(true);
+
+            when(allocatedListingRepository.findByHearingId(hearingId)).thenReturn(List.of());
+            when(courtScheduleRepository.findConsecutiveSessions(anchorId, 3))
+                    .thenReturn(buildConsecutiveSessions(LocalDate.of(2026, 9, 7), 2)); // 2 of 3 needed
+
+            final uk.gov.moj.cpp.courtscheduler.exception.ExtendMultidayHearingException ex = Assertions.assertThrows(
+                    uk.gov.moj.cpp.courtscheduler.exception.ExtendMultidayHearingException.class,
+                    () -> service.crownSearchAndBook(request));
+
+            assertEquals(List.of(LocalDate.of(2026, 9, 9)), ex.getUnavailableDates());
+            verify(courtScheduleRepository, org.mockito.Mockito.never())
+                    .saveBookedSlots(any(), anyBoolean(), anyBoolean());
+        }
+
+        @Test
+        void should_rejectWholeWindow_when_noAnchorCentreSearchFindsNothingAndFailOnNoAvailability() {
+            final String hearingId = UUID.randomUUID().toString();
+            final String courtCentreId = UUID.randomUUID().toString();
+
+            final CrownSearchAndBookRequest request = new CrownSearchAndBookRequest()
+                    .hearingId(hearingId)
+                    .courtCentreId(courtCentreId)
+                    .hearingDate(LocalDate.of(2026, 9, 10)) // Thursday: window crosses the weekend
+                    .durationInMinutes(1080)
+                    .failOnNoAvailability(true);
+
+            when(allocatedListingRepository.findByHearingId(hearingId)).thenReturn(List.of());
+            when(courtScheduleRepository.findConsecutiveSessionsForCentre(courtCentreId, LocalDate.of(2026, 9, 10), 3))
+                    .thenReturn(List.of());
+
+            final uk.gov.moj.cpp.courtscheduler.exception.ExtendMultidayHearingException ex = Assertions.assertThrows(
+                    uk.gov.moj.cpp.courtscheduler.exception.ExtendMultidayHearingException.class,
+                    () -> service.crownSearchAndBook(request));
+
+            assertEquals(List.of(LocalDate.of(2026, 9, 10), LocalDate.of(2026, 9, 11), LocalDate.of(2026, 9, 14)),
+                    ex.getUnavailableDates());
+        }
+
+        @Test
+        void should_returnEmptySessions_when_freshMultiDayFindsNoRunAndFailOnNoAvailabilityNotSet() {
+            // Unallocation / progression callers don't opt in: a search miss stays a clean empty list.
+            final String hearingId = UUID.randomUUID().toString();
+            final String anchorId = UUID.randomUUID().toString();
+
+            final CrownSearchAndBookRequest request = new CrownSearchAndBookRequest()
+                    .hearingId(hearingId)
+                    .courtCentreId(UUID.randomUUID().toString())
+                    .hearingDate(LocalDate.of(2026, 9, 7))
+                    .courtScheduleId(anchorId)
+                    .durationInMinutes(1080);
+
+            when(allocatedListingRepository.findByHearingId(hearingId)).thenReturn(List.of());
+            when(courtScheduleRepository.findConsecutiveSessions(anchorId, 3))
+                    .thenReturn(buildConsecutiveSessions(LocalDate.of(2026, 9, 7), 1));
+
+            final CrownSearchAndBookResponse response = service.crownSearchAndBook(request);
+
+            assertTrue(response.sessions().isEmpty());
+            verify(courtScheduleRepository, org.mockito.Mockito.never())
+                    .saveBookedSlots(any(), anyBoolean(), anyBoolean());
+        }
+
+        @Test
         void should_moveHearing_when_newRunOverlapsHearingsOwnCurrentlyOccupiedDays() {
             // Realistic version of the above scenario: totalBooked is a live SUM(duration) over
             // allocated_listings, so until the OLD rows are actually released, a re-searched candidate

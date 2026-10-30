@@ -623,7 +623,8 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
                 // never-seeded centre (single-day fallback only).
                 .ouCode(getStringOrNull(payload, "ouCode"))
                 .courtCentreName(getStringOrNull(payload, "courtCentreName"))
-                .courtRoomName(getStringOrNull(payload, "courtRoomName"));
+                .courtRoomName(getStringOrNull(payload, "courtRoomName"))
+                .failOnNoAvailability(getFlag(payload, "failOnNoAvailability"));
 
         final JsonObject validationError = hearingSlotsApiValidator.crownSearchAndBookValidation(sabRequest);
         if (!validationError.isEmpty()) {
@@ -797,6 +798,10 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
 
     private static boolean getBooleanOrFalse(final JsonObject json) {
         return json.containsKey("isPolice") && !json.isNull("isPolice") && json.getBoolean("isPolice");
+    }
+
+    private static boolean getFlag(final JsonObject json, final String key) {
+        return json.containsKey(key) && !json.isNull(key) && json.getBoolean(key);
     }
 
     private static LocalDate getDateOrNull(final JsonObject json, final String key) {

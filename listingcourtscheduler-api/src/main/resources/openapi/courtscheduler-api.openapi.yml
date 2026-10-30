@@ -1869,6 +1869,9 @@ components:
         ouCode: { type: string, nullable: true }
         courtCentreName: { type: string, nullable: true }
         courtRoomName: { type: string, nullable: true }
+        # SPRDT-1572: opt-in - a multi-day MOVE / fresh-book that finds no consecutive run
+        # rejects with 422 NO_AVAILABILITY instead of returning an empty sessions list.
+        failOnNoAvailability: { type: boolean, default: false }
 
     # Single-day CROWN fallback search-and-book (SlotsUpdateService#crownFallbackSearchAndBook).
     # MAX_SINGLE_DAY_MINUTES (360) is a validation constant, not a wire field - stays a Java

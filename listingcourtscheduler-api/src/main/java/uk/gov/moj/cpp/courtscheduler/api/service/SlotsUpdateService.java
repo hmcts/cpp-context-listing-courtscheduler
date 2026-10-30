@@ -3,6 +3,7 @@ package uk.gov.moj.cpp.courtscheduler.api.service;
 import static java.lang.String.format;
 import static jakarta.json.Json.createArrayBuilder;
 import static jakarta.json.Json.createObjectBuilder;
+import static uk.gov.moj.cpp.courtscheduler.exception.ExtendMultidayHearingException.ErrorCode.NO_AVAILABILITY;
 
 import uk.gov.moj.cpp.courtscheduler.openapi.model.AllocatedSlot;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.ChangeCourtRoomForMultidayHearingRequest;
@@ -27,6 +28,7 @@ import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
 import uk.gov.moj.cpp.courtscheduler.exception.CourtScheduleIdNotMatchingException;
 import uk.gov.moj.cpp.courtscheduler.exception.CrownFallbackInvalidRequestException;
 import uk.gov.moj.cpp.courtscheduler.exception.CrownFallbackNoSessionException;
+import uk.gov.moj.cpp.courtscheduler.exception.ExtendMultidayHearingException;
 import uk.gov.moj.cpp.courtscheduler.exception.MoveHearingToPastDateNoSessionException;
 import uk.gov.moj.cpp.courtscheduler.exception.NoAllocationOnDateException;
 import uk.gov.moj.cpp.courtscheduler.exception.NoSessionAvailableException;
@@ -54,6 +56,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
@@ -404,7 +407,8 @@ public class SlotsUpdateService {
      *   <li>Existing rows AND the requested start date equals the block's FIRST (earliest) session
      *       date: a RESIZE — delegated to {@link ExtendMultidayHearingService}, which no-ops when
      *       the end date is unchanged, EXTENDs by booking only the tail days (into the requested
-     *       main courtroom when supplied, availability-checked, 422 NO_AVAILABILITY otherwise) and
+     *       main courtroom when supplied; capacity never blocks, 422 NO_AVAILABILITY only when a tail
+     *       day has no matching session) and
      *       SHRINKs by releasing only the tail rows. Untouched days keep their sessions AND their
      *       rooms, so per-day room changes made via change-court-room-for-multiday-hearing survive.</li>
      *   <li>Existing rows AND a different start date: a MOVE. Search + validate the new consecutive
@@ -462,14 +466,14 @@ public class SlotsUpdateService {
 
         final int daysNeeded = crownDaysNeeded(request);
         final int perDay = perDayDuration(request.getDurationInMinutes(), daysNeeded);
-        final List<CourtSchedule> sessions = (request.getCourtScheduleId() != null && !request.getCourtScheduleId().isBlank())
-                ? bookConsecutiveSessions(
-                        courtScheduleRepository.findConsecutiveSessions(request.getCourtScheduleId(), daysNeeded),
-                        daysNeeded, request.getHearingId(), perDay)
-                : bookConsecutiveSessions(
-                        courtScheduleRepository.findConsecutiveSessionsForCentre(
-                                request.getCourtCentreId(), request.getHearingDate(), daysNeeded),
-                        daysNeeded, request.getHearingId(), perDay);
+        final List<CourtSchedule> rawCandidates = (request.getCourtScheduleId() != null && !request.getCourtScheduleId().isBlank())
+                ? courtScheduleRepository.findConsecutiveSessions(request.getCourtScheduleId(), daysNeeded)
+                : courtScheduleRepository.findConsecutiveSessionsForCentre(
+                        request.getCourtCentreId(), request.getHearingDate(), daysNeeded);
+        final List<CourtSchedule> sessions = bookConsecutiveSessions(rawCandidates, daysNeeded, request.getHearingId(), perDay);
+        if (sessions.isEmpty()) {
+            rejectWhenNoAvailabilityRequested(request, rawCandidates, daysNeeded);
+        }
         CourtScheduleRoomSanitiser.stripCourtRoomFromDraftSessions(sessions);
         return new CrownSearchAndBookResponse(
                 request.getHearingId(), null, null, sessions,
@@ -500,6 +504,7 @@ public class SlotsUpdateService {
         if (sessions.isEmpty()) {
             LOGGER.info("[CROWN-SAB] Multiday move - hearingId: {}, no qualifying run found; existing allocation left intact",
                     Encode.forJava(request.getHearingId()));
+            rejectWhenNoAvailabilityRequested(request, rawCandidates, daysNeeded);
             return new CrownSearchAndBookResponse(
                     request.getHearingId(), null, null, Collections.emptyList(),
                     null, null, null, null, null, null, null, null);
@@ -911,6 +916,47 @@ public class SlotsUpdateService {
             return daysNeeded(request.getDurationInMinutes(), request.getHearingDate(), null);
         }
         return daysNeeded(request.getDurationInMinutes(), request.getHearingDate(), request.getEndDate());
+    }
+
+    /**
+     * SPRDT-1572: a caller that opted in ({@code failOnNoAvailability}, sent by listing for a Court
+     * Calendar allocation) gets the same 422 NO_AVAILABILITY the same-start resize already returns,
+     * instead of an empty sessions list it would silently swallow. Unavailable dates are the
+     * requested window's business days with no candidate session (anchor's room, business type and
+     * draft state); when every day had a candidate but the run was still rejected, the whole window.
+     */
+    private static void rejectWhenNoAvailabilityRequested(final CrownSearchAndBookRequest request,
+                                                          final List<CourtSchedule> rawCandidates,
+                                                          final int daysNeeded) {
+        if (!Boolean.TRUE.equals(request.getFailOnNoAvailability())) {
+            return;
+        }
+        final List<LocalDate> window = requestedBusinessDays(request.getHearingDate(), daysNeeded);
+        final Set<LocalDate> candidateDates = (rawCandidates == null ? Collections.<CourtSchedule>emptyList() : rawCandidates)
+                .stream()
+                .map(CourtSchedule::getSessionDate)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        final List<LocalDate> missing = window.stream().filter(day -> !candidateDates.contains(day)).toList();
+        final List<LocalDate> unavailable = missing.isEmpty() ? window : missing;
+        LOGGER.info("[CROWN-SAB] hearingId: {}, NO_AVAILABILITY on {} (failOnNoAvailability)",
+                Encode.forJava(request.getHearingId()), unavailable);
+        throw new ExtendMultidayHearingException(NO_AVAILABILITY,
+                format("No consecutive sessions available for hearingId %s, unavailable days: %s", request.getHearingId(), unavailable),
+                unavailable);
+    }
+
+    private static List<LocalDate> requestedBusinessDays(final LocalDate start, final int daysNeeded) {
+        final List<LocalDate> days = new ArrayList<>();
+        if (start == null) {
+            return days;
+        }
+        LocalDate cursor = start;
+        for (int i = 0; i < daysNeeded; i++) {
+            days.add(cursor);
+            cursor = SessionAvailability.getNextBusinessDay(cursor);
+        }
+        return days;
     }
 
     /**

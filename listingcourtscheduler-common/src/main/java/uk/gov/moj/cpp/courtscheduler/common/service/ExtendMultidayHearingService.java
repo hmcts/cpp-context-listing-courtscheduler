@@ -1,6 +1,7 @@
 package uk.gov.moj.cpp.courtscheduler.common.service;
 
 import static uk.gov.moj.cpp.courtscheduler.common.utils.SessionAvailability.FULL_DAY_DURATION_MINS;
+import static uk.gov.moj.cpp.courtscheduler.common.utils.SessionAvailability.getEffectiveAvailableDuration;
 import static uk.gov.moj.cpp.courtscheduler.common.utils.SessionAvailability.getNextBusinessDay;
 import static uk.gov.moj.cpp.courtscheduler.common.utils.SessionAvailability.hasSufficientAvailability;
 import static uk.gov.moj.cpp.courtscheduler.exception.ExtendMultidayHearingException.ErrorCode.INVALID_DATE_RANGE;
@@ -66,6 +67,9 @@ public class ExtendMultidayHearingService {
      * room. Either way the tail keeps the LAST session's business type (SPRDT-1475). Existing
      * allocation rows are never touched, so per-day rooms set earlier via
      * change-court-room-for-multiday-hearing survive a resize.
+     *
+     * <p>SPRDT-1572: the Court Calendar journey is overbooking-exempt — a full tail session is still
+     * booked (beyond capacity); NO_AVAILABILITY only means a tail day has no matching session.
      *
      * <p>SPRDT-1274: {@code earliestHearingTime} (ISO-8601 zoned timestamp) is the user-supplied
      * daily start time; when present each tail row's hearing_start_time carries that time-of-day on
@@ -159,6 +163,7 @@ public class ExtendMultidayHearingService {
             throw new ExtendMultidayHearingException(NO_AVAILABILITY,
                     "Tail days unavailable: " + unavailable, unavailable);
         }
+        logTailDaysBookedBeyondCapacity(hearingId, bookableByDate, perDayMinutes);
 
         final java.time.LocalTime userStartTime = parseUserStartTime(earliestHearingTime);
         for (final LocalDate day : tailDays) {
@@ -178,19 +183,53 @@ public class ExtendMultidayHearingService {
         return days;
     }
 
+    /**
+     * One session per tail date. Court-calendar always-assign rule (overbooking-exempt, same as the
+     * fresh-book / move search in SlotsUpdateService): capacity never removes a date — only a date with
+     * NO matching session is unavailable. Per date it prefers a session with room for ITS share of the
+     * requested total, then an overbooking-allowed one, then any session (booked beyond capacity).
+     */
     private static Map<LocalDate, CourtSchedule> pickBookablePerDay(final List<CourtSchedule> candidates,
                                                                     final int perDayMinutes) {
         final Map<LocalDate, CourtSchedule> chosen = new HashMap<>();
         for (final CourtSchedule cs : candidates) {
-            // The tail day only needs ITS share of the requested total — sessions in many rotas
-            // (and the IT suites) are far shorter than the 360-minute default court day.
-            if (!hasSufficientAvailability(cs, perDayMinutes)) {
+            if (cs.getSessionDate() == null) {
                 continue;
             }
             chosen.merge(cs.getSessionDate(), cs, (existing, incoming) ->
-                    Boolean.TRUE.equals(existing.getOverbookingAllowed()) ? incoming : existing);
+                    preferBookable(existing, incoming, perDayMinutes));
         }
         return chosen;
+    }
+
+    private static CourtSchedule preferBookable(final CourtSchedule existing, final CourtSchedule incoming,
+                                                final int perDayMinutes) {
+        final boolean existingFits = getEffectiveAvailableDuration(existing) >= perDayMinutes;
+        final boolean incomingFits = getEffectiveAvailableDuration(incoming) >= perDayMinutes;
+        if (existingFits != incomingFits) {
+            return existingFits ? existing : incoming;
+        }
+        final boolean existingOverbooks = Boolean.TRUE.equals(existing.getOverbookingAllowed());
+        final boolean incomingOverbooks = Boolean.TRUE.equals(incoming.getOverbookingAllowed());
+        if (existingFits) {
+            // both fit: prefer NOT-overbookingAllowed, matching slot-search's preferNonOverbooking
+            return existingOverbooks && !incomingOverbooks ? incoming : existing;
+        }
+        // neither fits: prefer the row where overbooking is explicitly allowed
+        return !existingOverbooks && incomingOverbooks ? incoming : existing;
+    }
+
+    /** Advisory only — names each tail day booked beyond its remaining capacity; never blocks. */
+    private static void logTailDaysBookedBeyondCapacity(final String hearingId,
+                                                        final Map<LocalDate, CourtSchedule> bookableByDate,
+                                                        final int perDayMinutes) {
+        bookableByDate.forEach((day, session) -> {
+            if (!hasSufficientAvailability(session, perDayMinutes)) {
+                LOGGER.info("[EXTEND-MULTIDAY] hearingId: {}, overbooking session {} on {} — {}mins available, {}mins needed (court-calendar always-assign rule)",
+                        Encode.forJava(hearingId), Encode.forJava(session.getCourtScheduleId()), day,
+                        getEffectiveAvailableDuration(session), perDayMinutes);
+            }
+        });
     }
 
     /**

@@ -43,7 +43,8 @@ import org.junit.jupiter.params.provider.ValueSource;
  * {@code hearingId}. The engine discovers consecutive weekday sessions in the same court room +
  * business type starting from the anchor's date and BOOKS them (allocated_listings rows). The
  * response returns the booked {@code sessions} (empty when no qualifying consecutive run exists —
- * the multi-day path returns 200 with an empty list, it does not 404).
+ * the multi-day path returns 200 with an empty list, it does not 404), unless the caller sends
+ * {@code failOnNoAvailability=true}, which turns that miss into a 422 NO_AVAILABILITY (SPRDT-1572).
  *
  * <p>Sister unit tests live in {@code SlotsUpdateServiceTest} / {@code CourtSchedulerApiTest};
  * these ITs cover concerns that need a real database — same-room/centre/businessType constraints,
@@ -54,6 +55,7 @@ class MultiDaySearchAndBookIT extends AbstractIT {
     private static final String BTY = "BTY";
     private static final String MOVE_2 = "MOVE";
     private static final String OU_A = "OU-A";
+    private static final int UNPROCESSABLE_ENTITY = 422;
 
 
     private static final String ACCEPT = "application/vnd.courtscheduler.crown.search.and.book+json";
@@ -415,6 +417,35 @@ class MultiDaySearchAndBookIT extends AbstractIT {
     }
 
     /**
+     * SPRDT-1572: the Court Calendar journey is overbooking-exempt. The STE scenario: a 3-day hearing
+     * is shrunk to 2 days, another hearing takes the freed day's full capacity, and extending back to 3
+     * days must still book that day (beyond capacity) rather than reject it as NO_AVAILABILITY.
+     */
+    @Test
+    void shouldExtendOntoAFullTailSessionBeyondCapacity_whenOverbookingIsNotAllowed() throws Exception {
+        final String roomId = UUID.randomUUID().toString();
+        final String hearingId = UUID.randomUUID().toString();
+        final String otherHearingId = UUID.randomUUID().toString();
+        final LocalDate day3 = ANCHOR_MONDAY.plusDays(2);
+
+        final String day1Id = seedSession(ANCHOR_MONDAY, roomId, BTX_2, CENTRE_A, OU_A, false, false, 360);
+        final String day2Id = seedSession(ANCHOR_MONDAY.plusDays(1), roomId, BTX_2, CENTRE_A, OU_A, false, false, 360);
+        final String day3Id = seedSession(day3, roomId, BTX_2, CENTRE_A, OU_A, false, false, 360);
+        databaseSeeder.insertAllocatedListing(allocatedListing(day1Id, hearingId, 360));
+        databaseSeeder.insertAllocatedListing(allocatedListing(day2Id, hearingId, 360));
+        // Another hearing consumes all of day 3, which does not allow overbooking.
+        databaseSeeder.insertAllocatedListing(allocatedListing(day3Id, otherHearingId, 360));
+
+        final Response response = callCrown(day1Id, CENTRE_A, ANCHOR_MONDAY, day3, roomId, 1080, hearingId);
+
+        assertThat(response.getStatus(), is(OK.getStatusCode()));
+        assertThat(extractCourtScheduleIds(body(response)), contains(day1Id, day2Id, day3Id));
+        assertThat("day 3 is booked beyond capacity", bookedCourtScheduleIds(hearingId),
+                containsInAnyOrder(day1Id, day2Id, day3Id));
+        assertThat("the other hearing keeps its booking", bookedCourtScheduleIds(otherHearingId), contains(day3Id));
+    }
+
+    /**
      * Idempotency holds even when sessions allow overbooking: the (court_schedule_id, hearing_id)
      * guard means repeating the same call with the same hearingId does NOT create duplicate
      * allocated_listings rows.
@@ -538,6 +569,52 @@ class MultiDaySearchAndBookIT extends AbstractIT {
         assertThat(response.getStatus(), is(OK.getStatusCode()));
         assertThat("no run crosses a business-type boundary", extractCourtScheduleIds(body(response)), is(empty()));
         assertThat("the existing block is left intact", bookedCourtScheduleIds(hearingId), containsInAnyOrder(day1Id, day2Id));
+    }
+
+    // --- SPRDT-1572: opt-in failOnNoAvailability turns a MOVE / fresh-book miss into 422 NO_AVAILABILITY ---
+
+    @Test
+    void shouldReturn422NoAvailabilityAndKeepSingleDayAllocation_whenConvertingToMultiDayWithNoSameBusinessTypeTail()
+            throws Exception {
+        final String roomId = UUID.randomUUID().toString();
+        final String hearingId = UUID.randomUUID().toString();
+        final LocalDate newMonday = ANCHOR_MONDAY.plusWeeks(1);
+
+        // The hearing is allocated to a single day; the user re-anchors it on a new day and asks for two
+        // days, but the room's next day only runs a different business type.
+        final String singleDayId = seedSession(ANCHOR_MONDAY, roomId, BTX_2, CENTRE_A, OU_A, false, false, 360);
+        databaseSeeder.insertAllocatedListing(allocatedListing(singleDayId, hearingId, 360));
+        final String newAnchorId = seedSession(newMonday, roomId, BTX_2, CENTRE_A, OU_A, false, false, 360);
+        seedSession(newMonday.plusDays(1), roomId, BTY, CENTRE_A, OU_A, false, false, 360);
+
+        final Response response = postCrown(crownPayload(newAnchorId, CENTRE_A, newMonday, 720)
+                .add("endDate", newMonday.plusDays(1).toString())
+                .add("courtRoomId", roomId)
+                .add("failOnNoAvailability", true), hearingId);
+
+        assertThat(response.getStatus(), is(UNPROCESSABLE_ENTITY));
+        final JsonObject error = createReader(new StringReader(body(response))).readObject();
+        assertThat(error.getString("errorCode"), is("NO_AVAILABILITY"));
+        assertThat(error.getJsonArray("unavailableDates").getValuesAs(jakarta.json.JsonString.class).stream()
+                .map(jakarta.json.JsonString::getString).collect(Collectors.toList()),
+                contains(newMonday.plusDays(1).toString()));
+        assertThat("the single-day allocation is left intact", bookedCourtScheduleIds(hearingId), contains(singleDayId));
+    }
+
+    @Test
+    void shouldReturn422NoAvailabilityWithoutBooking_whenFreshMultiDayFindsNoRunAndFailOnNoAvailability() throws Exception {
+        final String roomId = UUID.randomUUID().toString();
+        final String hearingId = UUID.randomUUID().toString();
+
+        final String anchorId = seedSession(ANCHOR_MONDAY, roomId, BTX_2, CENTRE_A, OU_A, false, false, 360);
+        seedSession(ANCHOR_MONDAY.plusDays(1), roomId, BTY, CENTRE_A, OU_A, false, false, 360);
+
+        final Response response = postCrown(crownPayload(anchorId, CENTRE_A, ANCHOR_MONDAY, 720)
+                .add("failOnNoAvailability", true), hearingId);
+
+        assertThat(response.getStatus(), is(UNPROCESSABLE_ENTITY));
+        assertThat(body(response), containsString("\"errorCode\":\"NO_AVAILABILITY\""));
+        assertThat("nothing is booked", bookedCourtScheduleIds(hearingId), is(empty()));
     }
 
     // --- Gap #8: required-field validation enforced at the RAML/schema layer ---
