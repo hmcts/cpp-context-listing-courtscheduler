@@ -77,7 +77,6 @@ public class RotaJudiciaryHelper {
      * Creates a map of magistrate/district judge IDs to their validated Judiciary UUIDs.
      *
      * @param records     the parsed rota file records
-     * @param requester   the requester for making reference data queries
      * @param executionId the execution ID for logging purposes
      * @return a map of magistrate/judge IDs to Judiciary UUIDs
      */
@@ -111,7 +110,6 @@ public class RotaJudiciaryHelper {
      * @param records          the parsed rota file records
      * @param judiciaryMap     the map of judiciary IDs to Judiciary UUIDs
      * @param courtScheduleMap the map of court listing profile IDs to sets of CourtSchedule UUIDs
-     * @param requester        the requester for making reference data queries
      * @param executionId      the execution ID for logging purposes
      * @return a map of judiciary IDs to lists of JudiciaryCourtScheduleData
      */
@@ -477,7 +475,6 @@ public class RotaJudiciaryHelper {
      * @param schedule       the schedule map to enrich
      * @param judiciariesMap the map of judiciary information from rota file
      * @param rotaJusticeId  the rota justice ID to look up
-     * @param requester      the requester for making reference data queries
      * @param executionId    the execution ID for logging purposes
      * @param errors         map to store errors encountered during enrichment
      */

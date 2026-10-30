@@ -1,12 +1,12 @@
 package uk.gov.moj.cpp.courtscheduler.integration;
 
+import static jakarta.ws.rs.core.Response.Status.ACCEPTED;
 import static java.lang.String.format;
 import static java.util.Date.from;
 import static java.util.Objects.isNull;
 import static java.util.Optional.of;
-import static java.util.concurrent.TimeUnit.SECONDS;
-import static jakarta.ws.rs.core.Response.Status.ACCEPTED;
 import static java.util.UUID.randomUUID;
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.awaitility.Awaitility.await;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
@@ -14,20 +14,26 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
-import static uk.gov.moj.cpp.courtscheduler.integration.utils.ReflectionUtil.setField;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.ALL_DAY;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.AM_SESSION;
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaFileFieldNames.PM_SESSION;
-import static uk.gov.moj.cpp.platform.test.data.utils.FileUtil.getPayload;
-import static uk.gov.moj.cpp.platform.test.data.utils.FileUtil.payloadToObject;
+import static uk.gov.moj.cpp.courtscheduler.integration.utils.ReflectionUtil.setField;
+import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.countChangeJudiciaryForHearingsRequests;
+import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.countChangeJudiciaryForHearingsRequestsContaining;
+import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.countSchemaShapedChangeJudiciaryForHearingsRequestsFor;
+import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.stubChangeJudiciaryForHearingsCommand;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.stubGetReferenceDataJudiciaries;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.StubUtil.stubGetReferenceDataRotaBusinessTypes;
+import static uk.gov.moj.cpp.platform.test.data.utils.FileUtil.getPayload;
+import static uk.gov.moj.cpp.platform.test.data.utils.FileUtil.payloadToObject;
 
 import uk.gov.moj.cpp.courtscheduler.common.AzureBlobClientService;
 import uk.gov.moj.cpp.courtscheduler.common.StorageApplicationParameters;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciaryKey;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedulerMigrationStatus;
 
 import java.io.ByteArrayInputStream;
@@ -39,13 +45,14 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
+import com.google.common.base.Stopwatch;
 import jakarta.json.JsonArray;
 import jakarta.json.JsonObject;
 import jakarta.json.JsonValue;
 import jakarta.ws.rs.core.Response;
-
-import com.google.common.base.Stopwatch;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.junit.jupiter.api.AfterEach;
@@ -122,6 +129,9 @@ class NewRotaFileProcessorIT extends AbstractIT {
         // Override stubs to use updated files for NewRotaFileProcessorIT
         stubGetReferenceDataJudiciaries(UPDATED_JUDICIARIES_FILE);
         stubGetReferenceDataRotaBusinessTypes(UPDATED_ROTA_BUSINESS_TYPES_FILE);
+
+        // The new flow posts listing.command.change-judiciary-for-hearings for changed schedules
+        stubChangeJudiciaryForHearingsCommand();
     }
 
     @AfterEach
@@ -178,6 +188,166 @@ class NewRotaFileProcessorIT extends AbstractIT {
         validateRunResults("Second run", expectedTotalSchedules, expectedJudiciariesSecondRun);
     }
 
+
+    @Test
+    void shouldSendChangeJudiciaryForHearingsCommandForChangedSchedulesWithAllocatedListings() throws IOException, SQLException {
+        final int expectedSchedules = 586;
+        final int expectedJudiciaries = 1284;
+
+        // First run: establish the schedules and judiciaries with the old flow
+        logger.info("Processing first rota file for change-judiciary IT: {}", BEDFORD_SHIRE_MASTER_FILE_BASE_NAME);
+        processFullRotaFile(ROTA_FILE_PROCESSOR_REQUEST_OLD, expectedSchedules, expectedJudiciaries);
+
+        // Allocate a hearing against a court schedule that has judiciaries - only allocated
+        // schedules whose judiciaries changed should produce a change-judiciary command
+        final CourtScheduleJudiciary allocatedJudiciary = databaseReader.courtScheduleJudiciaries().get(0);
+        final String allocatedCourtScheduleId = allocatedJudiciary.getId().getCourtScheduleId();
+        final String hearingId = randomUUID().toString();
+        insertAllocatedListingFor(allocatedCourtScheduleId, hearingId);
+
+        final int commandCountBeforeSecondRun = countChangeJudiciaryForHearingsRequests();
+
+        // Clean the judiciary table so the pre-assignment capture is empty and every schedule's
+        // judiciaries count as changed on the second run
+        cleanJudiciaryTable();
+
+        // Second run: reprocess with the new flow - the allocated schedule must trigger a command
+        logger.info("Processing second rota file for change-judiciary IT: {}", BEDFORD_SHIRE_MASTER_FILE_BASE_NAME);
+        processFullRotaFile(ROTA_FILE_PROCESSOR_REQUEST_NEW, expectedSchedules, expectedJudiciaries);
+
+        await().timeout(DEFAULT_POLL_TIMEOUT_FOR_ROTA_FILE_PROCESS_IN_SEC, SECONDS)
+                .until(() -> countChangeJudiciaryForHearingsRequests() > commandCountBeforeSecondRun);
+
+        assertTrue(countChangeJudiciaryForHearingsRequestsContaining(hearingId) >= 1,
+                format("Expected a change-judiciary-for-hearings command containing hearing ID %s", hearingId));
+
+        // The body must also match the shape listing's JSON schema requires - in particular
+        // judicialRoleType must be a {"judiciaryType": "..."} object, not a bare string
+        assertTrue(countSchemaShapedChangeJudiciaryForHearingsRequestsFor(hearingId) >= 1,
+                format("Expected a schema-shaped change-judiciary-for-hearings command "
+                        + "(judiciary[0].judicialRoleType.judiciaryType present) for hearing ID %s", hearingId));
+    }
+
+    @Test
+    void shouldSendChangeJudiciaryForMultiSessionHearingOnlyWhenAllSessionsHaveSameJudiciaries() throws Exception {
+        final int expectedSchedules = 586;
+        final int expectedJudiciaries = 1284;
+
+        // First run creates the schedules (old flow); second run assigns the judiciaries with the
+        // new flow, so the third run below reproduces exactly the same assignments
+        processFullRotaFile(ROTA_FILE_PROCESSOR_REQUEST_OLD, expectedSchedules, expectedJudiciaries);
+        cleanJudiciaryTable();
+        processFullRotaFile(ROTA_FILE_PROCESSOR_REQUEST_NEW, expectedSchedules, expectedJudiciaries);
+
+        // Session A is a rota session; sessions B and C are seeded outside the rota period so the
+        // rota run leaves their judiciaries untouched. B gets the same judiciaries as A, C a different one.
+        final List<CourtScheduleJudiciary> allJudiciaries = databaseReader.courtScheduleJudiciaries();
+        final String courtScheduleIdA = allJudiciaries.get(0).getId().getCourtScheduleId();
+        final List<CourtScheduleJudiciary> judiciariesA = allJudiciaries.stream()
+                .filter(judiciary -> courtScheduleIdA.equals(judiciary.getId().getCourtScheduleId()))
+                .toList();
+        final Set<String> judiciaryIdsA = judiciariesA.stream()
+                .map(judiciary -> judiciary.getId().getJudiciaryId())
+                .collect(Collectors.toSet());
+        final CourtScheduleJudiciary otherJudiciary = allJudiciaries.stream()
+                .filter(judiciary -> !judiciaryIdsA.contains(judiciary.getId().getJudiciaryId()))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("Expected a judiciary not assigned to court schedule " + courtScheduleIdA));
+
+        final String courtScheduleIdB = insertCourtScheduleOutsideRotaPeriodLike(courtScheduleIdA, LocalDate.of(2099, 1, 5));
+        final String courtScheduleIdC = insertCourtScheduleOutsideRotaPeriodLike(courtScheduleIdA, LocalDate.of(2099, 1, 6));
+        for (final CourtScheduleJudiciary judiciary : judiciariesA) {
+            databaseSeeder.saveJudiciarySchedule(copyJudiciaryTo(judiciary, courtScheduleIdB));
+        }
+        databaseSeeder.saveJudiciarySchedule(copyJudiciaryTo(otherJudiciary, courtScheduleIdC));
+
+        final String singleSessionHearingId = randomUUID().toString();
+        final String sameJudiciaryHearingId = randomUUID().toString();
+        final String differentJudiciaryHearingId = randomUUID().toString();
+        insertAllocatedListingFor(courtScheduleIdA, singleSessionHearingId);
+        insertAllocatedListingFor(courtScheduleIdA, sameJudiciaryHearingId);
+        insertAllocatedListingFor(courtScheduleIdB, sameJudiciaryHearingId);
+        insertAllocatedListingFor(courtScheduleIdA, differentJudiciaryHearingId);
+        insertAllocatedListingFor(courtScheduleIdC, differentJudiciaryHearingId);
+
+        // Remove session A's judiciaries so the third run re-assigns them and A counts as changed
+        databaseSeeder.deleteJudiciaryByCourtScheduleId(courtScheduleIdA);
+        databaseSeeder.cleanMigrationStatusTable();
+        final int expectedJudiciariesWithSeeded = expectedJudiciaries + judiciariesA.size() + 1;
+        processFullRotaFile(ROTA_FILE_PROCESSOR_REQUEST_NEW, expectedSchedules + 2, expectedJudiciariesWithSeeded);
+
+        await().timeout(DEFAULT_POLL_TIMEOUT_FOR_ROTA_FILE_PROCESS_IN_SEC, SECONDS)
+                .until(() -> countChangeJudiciaryForHearingsRequestsContaining(singleSessionHearingId) >= 1
+                        && countChangeJudiciaryForHearingsRequestsContaining(sameJudiciaryHearingId) >= 1);
+
+        // Single-session hearing and multi-session hearing with the same judiciaries: one command each
+        assertEquals(1, countChangeJudiciaryForHearingsRequestsContaining(singleSessionHearingId),
+                format("Expected one change-judiciary-for-hearings command for single-session hearing %s", singleSessionHearingId));
+        assertEquals(1, countChangeJudiciaryForHearingsRequestsContaining(sameJudiciaryHearingId),
+                format("Expected one change-judiciary-for-hearings command for multi-session hearing %s", sameJudiciaryHearingId));
+        assertEquals(1, countSchemaShapedChangeJudiciaryForHearingsRequestsFor(sameJudiciaryHearingId),
+                format("Expected a schema-shaped change-judiciary-for-hearings command for hearing %s", sameJudiciaryHearingId));
+
+        // Multi-session hearing whose sessions have different judiciaries: no command
+        await().during(5, SECONDS).atMost(10, SECONDS)
+                .until(() -> countChangeJudiciaryForHearingsRequestsContaining(differentJudiciaryHearingId) == 0);
+    }
+
+    private String insertCourtScheduleOutsideRotaPeriodLike(final String sourceCourtScheduleId, final LocalDate sessionDate) throws SQLException {
+        final CourtSchedule courtSchedule = databaseReader.courtScheduleById(sourceCourtScheduleId);
+        final String courtScheduleId = randomUUID().toString();
+        courtSchedule.setCourtScheduleId(courtScheduleId);
+        courtSchedule.setListingProfileId(randomUUID().toString());
+        courtSchedule.setSessionDate(sessionDate);
+        // Keep the default session times expected by assertDefaultStartTimeAndEndTime
+        if (PM_SESSION.equals(courtSchedule.getCourtSession())) {
+            courtSchedule.setSessionStartTime(DateUtils.combineDateAndTime(sessionDate, DateUtils.DEFAULT_AFTERNOON_START_TIME));
+            courtSchedule.setSessionEndTime(DateUtils.combineDateAndTime(sessionDate, DateUtils.DEFAULT_AFTERNOON_END_TIME));
+        } else if (ALL_DAY.equals(courtSchedule.getCourtSession())) {
+            courtSchedule.setSessionStartTime(DateUtils.combineDateAndTime(sessionDate, DateUtils.DEFAULT_ALL_DAY_START_TIME));
+            courtSchedule.setSessionEndTime(DateUtils.combineDateAndTime(sessionDate, DateUtils.DEFAULT_ALL_DAY_END_TIME));
+        } else {
+            courtSchedule.setSessionStartTime(DateUtils.combineDateAndTime(sessionDate, DateUtils.DEFAULT_MORNING_START_TIME));
+            courtSchedule.setSessionEndTime(DateUtils.combineDateAndTime(sessionDate, DateUtils.DEFAULT_MORNING_END_TIME));
+        }
+        courtSchedule.setNationalBreakTime(courtSchedule.getSessionStartTime());
+        courtSchedule.setActive(true);
+        courtSchedule.setIsDraft(false);
+        databaseSeeder.insertCourtSchedule(courtSchedule);
+        logger.info("Seeded court schedule {} on {} copied from {}", courtScheduleId, sessionDate, sourceCourtScheduleId);
+        return courtScheduleId;
+    }
+
+    private CourtScheduleJudiciary copyJudiciaryTo(final CourtScheduleJudiciary judiciary, final String courtScheduleId) {
+        return CourtScheduleJudiciary.CourtScheduleJudiciaryBuilder.courtScheduleJudiciary()
+                .withId(new CourtScheduleJudiciaryKey(courtScheduleId, judiciary.getId().getJudiciaryId()))
+                .withCourtListingProfileId(judiciary.getCourtListingProfileId())
+                .withRotaJudiciaryId(judiciary.getRotaJudiciaryId())
+                .withTitle(judiciary.getTitle())
+                .withForenames(judiciary.getForenames())
+                .withSurname(judiciary.getSurname())
+                .withEmail(judiciary.getEmail())
+                .withJudiciaryType(judiciary.getJudiciaryType())
+                .withIsBenchChairman(judiciary.getBenchChairman())
+                .withIsDeputy(judiciary.getDeputy())
+                .withPosition(judiciary.getPosition())
+                .withActive(true)
+                .build();
+    }
+
+    private void insertAllocatedListingFor(final String courtScheduleId, final String hearingId) throws SQLException {
+        final CourtSchedule courtSchedule = databaseReader.courtScheduleById(courtScheduleId);
+        final AllocatedListing allocatedListing = new AllocatedListing();
+        allocatedListing.setId(randomUUID().toString());
+        allocatedListing.setCourtScheduleId(courtScheduleId);
+        allocatedListing.setHearingId(hearingId);
+        allocatedListing.setOucode(courtSchedule.getOuCode());
+        allocatedListing.setCourtRoomId(courtSchedule.getCourtRoomNumber());
+        allocatedListing.setDuration(30);
+        allocatedListing.setHearingStartTime(courtSchedule.getSessionStartTime());
+        databaseSeeder.insertAllocatedListing(allocatedListing);
+        logger.info("Seeded allocated listing for court schedule {} with hearing {}", courtScheduleId, hearingId);
+    }
 
     private void processFullRotaFile(final String payloadFileName,
                                      final int expectedNumberOfSlots, final int expectedNumberOfJudiciaries) throws IOException, SQLException {

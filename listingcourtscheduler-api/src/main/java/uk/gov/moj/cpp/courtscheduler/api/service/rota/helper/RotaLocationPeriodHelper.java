@@ -1,8 +1,10 @@
 package uk.gov.moj.cpp.courtscheduler.api.service.rota.helper;
 
 // (removed) Requester replaced by Spring CommonPlatformQueryClient
+
 import uk.gov.moj.cpp.courtscheduler.common.service.CourtScheduleJudiciaryService;
 import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataMapperService;
+import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload;
 import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.provisionaldata.RotaPeriodDateInfoProvider;
 
@@ -12,11 +14,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.springframework.stereotype.Service;
 import jakarta.inject.Inject;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
 
 /**
  * Helper class for location, OU code, and rota period processing operations from rota file records.
@@ -37,12 +38,6 @@ public class RotaLocationPeriodHelper {
     // Location and OU Code Operations
     // ============================================================================
 
-    /**
-     * Extracts location IDs from the parsed rota file records.
-     *
-     * @param records the parsed rota file records
-     * @return list of location IDs extracted from the records
-     */
     public List<String> getLocationFromRecords(final Map<RotaPayload, Map<String, Map<String, String>>> records) {
         final Map<String, Map<String, String>> locations = records.get(RotaPayload.LOCATION);
 
@@ -59,14 +54,6 @@ public class RotaLocationPeriodHelper {
         return locationIds;
     }
 
-    /**
-     * Gets OU codes from court room mappings by location ID.
-     * Maps location IDs from the rota file to organizational unit codes using court room mappings.
-     *
-     * @param locationIds the list of location IDs from the rota file
-     * @param requester   the requester for making reference data queries
-     * @return list of OU codes corresponding to the provided location IDs
-     */
     public List<String> getOuCodesFromCourtRoomMappingsByLocationId(final List<String> locationIds) {
         if (locationIds == null || locationIds.isEmpty()) {
             logger.debug("No location IDs provided for OU code resolution");
@@ -80,12 +67,6 @@ public class RotaLocationPeriodHelper {
         return ouCodes;
     }
 
-    /**
-     * Builds a map of location IDs to OU codes from court room mappings.
-     *
-     * @param requester the requester for making reference data queries
-     * @return map of location ID (as String) to OU code
-     */
     private Map<String, String> buildLocationIdToOuCodeMap() {
         final Map<String, String> locationIdOuCodeMap = new HashMap<>();
         referenceDataMapperService.getCourtRoomsMap().values()
@@ -98,13 +79,6 @@ public class RotaLocationPeriodHelper {
         return locationIdOuCodeMap;
     }
 
-    /**
-     * Resolves OU codes for the given location IDs.
-     *
-     * @param locationIds        the list of location IDs to resolve
-     * @param locationIdOuCodeMap the map of location IDs to OU codes
-     * @return list of OU codes for the provided location IDs
-     */
     private List<String> resolveOuCodes(final List<String> locationIds, final Map<String, String> locationIdOuCodeMap) {
         final List<String> ouCodes = new ArrayList<>();
         locationIdOuCodeMap.keySet()
@@ -120,25 +94,25 @@ public class RotaLocationPeriodHelper {
     // Rota Period Operations
     // ============================================================================
 
-    /**
-     * Extracts rota period dates from the parsed rota file records.
-     *
-     * @param records the parsed rota file records
-     * @return RotaPeriodDateInfoProvider containing the rota period start and end dates
-     */
     public RotaPeriodDateInfoProvider getRotaPeriodDates(final Map<RotaPayload, Map<String, Map<String, String>>> records) {
         return new RotaPeriodDateInfoProvider(records);
     }
 
-    /**
-     * Deletes unallocated court schedule judiciaries for the given rota period and OU codes.
-     *
-     * @param rotaPeriodStartDate the start date of the rota period
-     * @param rotaPeriodEndDate   the end date of the rota period
-     * @param ouCodes             the list of OU codes to process
-     * @return the number of deleted unallocated court schedule judiciaries
-     */
-    public int deleteUnAllocatedCourtScheduleJudiciariesForRotaPeriod(
+    public Map<String, List<CourtScheduleJudiciary>> getCourtScheduleJudiciariesForRotaPeriod(
+            final LocalDate rotaPeriodStartDate,
+            final LocalDate rotaPeriodEndDate,
+            final List<String> ouCodes) {
+        final Map<String, List<CourtScheduleJudiciary>> courtScheduleJudiciaryMap =
+                courtScheduleJudiciaryService.getCourtScheduleJudiciariesForRotaPeriod(
+                        rotaPeriodStartDate, rotaPeriodEndDate, ouCodes);
+
+        logger.info("Captured {} court schedules with unallocated judiciaries for rota period {} to {}",
+                courtScheduleJudiciaryMap.size(), rotaPeriodStartDate, rotaPeriodEndDate);
+
+        return courtScheduleJudiciaryMap;
+    }
+
+    public int deleteCourtScheduleJudiciariesForRotaPeriod(
             final LocalDate rotaPeriodStartDate,
             final LocalDate rotaPeriodEndDate,
             final List<String> ouCodes) {
@@ -146,7 +120,7 @@ public class RotaLocationPeriodHelper {
                 rotaPeriodStartDate, rotaPeriodEndDate, ouCodes.size());
         
         final int deletedCount = courtScheduleJudiciaryService
-                .deleteUnAllocatedCourtScheduleJudiciariesEntriesForRotaPeriod(
+                .deleteCourtScheduleJudiciariesEntriesForRotaPeriod(
                         rotaPeriodStartDate, rotaPeriodEndDate, ouCodes);
         
         logger.info("Deleted {} unallocated court schedule judiciaries for rota period {} to {}",

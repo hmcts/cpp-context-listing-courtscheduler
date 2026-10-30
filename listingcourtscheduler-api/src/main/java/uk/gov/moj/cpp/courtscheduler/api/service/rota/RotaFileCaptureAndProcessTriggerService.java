@@ -1,28 +1,25 @@
 package uk.gov.moj.cpp.courtscheduler.api.service.rota;
 
-import org.springframework.stereotype.Service;
-
-// (removed) Requester replaced by Spring CommonPlatformQueryClient
+import uk.gov.moj.cpp.courtscheduler.api.service.rota.helper.ChangeJudiciaryForHearingsHelper;
 import uk.gov.moj.cpp.courtscheduler.common.AzureBlobClientService;
 import uk.gov.moj.cpp.courtscheduler.common.exception.AzureBlobClientException;
 import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataMapperService;
 import uk.gov.moj.cpp.courtscheduler.common.service.data.BlobContent;
 import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.RotaFileProcessorService;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.Future;
-
-
-import org.springframework.scheduling.annotation.Async;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.annotation.Propagation;
-import jakarta.inject.Inject;
 
 import com.azure.storage.blob.models.BlobItem;
+import jakarta.inject.Inject;
+import jakarta.json.JsonObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.scheduling.annotation.Async;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @org.springframework.transaction.annotation.Transactional
@@ -45,9 +42,12 @@ public class RotaFileCaptureAndProcessTriggerService {
     @Inject
     private AzureBlobClientService azureBlobClientService;
 
+    @Inject
+    private ChangeJudiciaryForHearingsHelper changeJudiciaryForHearingsHelper;
+
     @Async
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
-    public Future<String> captureRotaFilesAndProcessEach(boolean isForItTest, final String rotaProcess) {
+    public void captureRotaFilesAndProcessEach(boolean isForItTest, final String rotaProcess) {
         logger.info("RotaFileCaptureAndProcessTriggerService.captureRotaFilesAndProcessEach called with rotaProcess: {}", rotaProcess);
         final String blobPrefix = isForItTest ? IT_TEST_BLOB_PREFIX : ORIGINAL_BLOB_PREFIX;
 
@@ -81,7 +81,10 @@ public class RotaFileCaptureAndProcessTriggerService {
                         rotaFileProcessorService.downloadAndProcessForEachFile(blobContent, blobName, leaseId);
                     } else {
                         logger.info("Using new rota file processor service for blob: {}", blobName);
-                        newRotaFileProcessor.downloadAndProcessForEachFile(blobContent, blobName, leaseId);
+                        final List<String> changedIdsForBlob =
+                                newRotaFileProcessor.downloadAndProcessForEachFile(blobContent, blobName, leaseId);
+                        logger.info("Blob {} produced {} changed court schedule IDs: {}", blobName, changedIdsForBlob.size(), changedIdsForBlob);
+                        syncJudiciaryWithListing(blobName, changedIdsForBlob);
                     }
                 } catch (AzureBlobClientException ignoredException) {
                     logger.info("File {} already leased and skipping to the next file", blobName);
@@ -90,7 +93,18 @@ public class RotaFileCaptureAndProcessTriggerService {
         } while (fileAvailable);
 
         logger.info("RotaFileCaptureAndProcessTriggerService.captureRotaFilesAndProcessEach completed");
-        return java.util.concurrent.CompletableFuture.completedFuture("SUCCESS");
+    }
+
+    private void syncJudiciaryWithListing(final String blobName, final List<String> changedIdsForBlob) {
+        try {
+            final List<JsonObject> payloads =
+                    changeJudiciaryForHearingsHelper.createChangeJudiciaryForHearingsPayloads(changedIdsForBlob);
+            logger.info("Built {} change-judiciary-for-hearings payloads for blob {}", payloads.size(), blobName);
+            final int sentCommandCount = changeJudiciaryForHearingsHelper.sendChangeJudiciaryForHearingsCommands(payloads);
+            logger.info("Sent {} change-judiciary-for-hearings commands for blob {}", sentCommandCount, blobName);
+        } catch (final RuntimeException ex) {
+            logger.error("Failed to sync judiciary with listing for blob {} - court schedule IDs {}", blobName, changedIdsForBlob, ex);
+        }
     }
 
     private void loadReferenceData() {

@@ -49,6 +49,7 @@ Thumbs.db
 # Maven
 target/
 .mvn/
+docs/
 
 # Gradle
 build/

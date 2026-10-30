@@ -376,6 +376,59 @@ class RotaLocationPeriodHelperTest {
     }
 
     @Nested
+    @DisplayName("Get Unallocated Court Schedule Judiciaries Tests")
+    class GetUnallocatedCourtScheduleJudiciariesTests {
+
+        @Test
+        @DisplayName("Should return unallocated court schedule judiciaries keyed by court schedule ID")
+        void shouldReturnUnallocatedCourtScheduleJudiciariesKeyedByCourtScheduleId() {
+            // given
+            final LocalDate startDate = LocalDate.parse("2024-01-01");
+            final LocalDate endDate = LocalDate.parse("2024-12-31");
+            final List<String> ouCodes = List.of("OU001");
+            final String courtScheduleId = UUID.randomUUID().toString();
+            final uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary judiciary =
+                    uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary.judiciary()
+                            .withCourtScheduleId(courtScheduleId)
+                            .withJudiciaryId("jud-1")
+                            .build();
+            final Map<String, List<uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary>> serviceResult =
+                    Map.of(courtScheduleId, List.of(judiciary));
+            when(courtScheduleJudiciaryService.getCourtScheduleJudiciariesForRotaPeriod(
+                    eq(startDate), eq(endDate), eq(ouCodes)))
+                    .thenReturn(serviceResult);
+
+            // when
+            final Map<String, List<uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary>> result =
+                    rotaLocationPeriodHelper.getCourtScheduleJudiciariesForRotaPeriod(startDate, endDate, ouCodes);
+
+            // then
+            assertEquals(serviceResult, result);
+            verify(courtScheduleJudiciaryService).getCourtScheduleJudiciariesForRotaPeriod(
+                    eq(startDate), eq(endDate), eq(ouCodes));
+        }
+
+        @Test
+        @DisplayName("Should return empty map when no unallocated judiciaries found")
+        void shouldReturnEmptyMapWhenNoUnallocatedJudiciariesFound() {
+            // given
+            final LocalDate startDate = LocalDate.parse("2024-01-01");
+            final LocalDate endDate = LocalDate.parse("2024-12-31");
+            final List<String> ouCodes = List.of("OU001");
+            when(courtScheduleJudiciaryService.getCourtScheduleJudiciariesForRotaPeriod(
+                    eq(startDate), eq(endDate), eq(ouCodes)))
+                    .thenReturn(new HashMap<>());
+
+            // when
+            final Map<String, List<uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary>> result =
+                    rotaLocationPeriodHelper.getCourtScheduleJudiciariesForRotaPeriod(startDate, endDate, ouCodes);
+
+            // then
+            assertTrue(result.isEmpty());
+        }
+    }
+
+    @Nested
     @DisplayName("Delete Unallocated Court Schedule Judiciaries Tests")
     class DeleteUnallocatedCourtScheduleJudiciariesTests {
 
@@ -386,17 +439,17 @@ class RotaLocationPeriodHelperTest {
             final LocalDate startDate = LocalDate.parse("2024-01-01");
             final LocalDate endDate = LocalDate.parse("2024-12-31");
             final List<String> ouCodes = List.of("OU001", "OU002");
-            when(courtScheduleJudiciaryService.deleteUnAllocatedCourtScheduleJudiciariesEntriesForRotaPeriod(
+            when(courtScheduleJudiciaryService.deleteCourtScheduleJudiciariesEntriesForRotaPeriod(
                     eq(startDate), eq(endDate), eq(ouCodes)))
                     .thenReturn(5);
 
             // when
-            final int result = rotaLocationPeriodHelper.deleteUnAllocatedCourtScheduleJudiciariesForRotaPeriod(
+            final int result = rotaLocationPeriodHelper.deleteCourtScheduleJudiciariesForRotaPeriod(
                     startDate, endDate, ouCodes);
 
             // then
             assertEquals(5, result);
-            verify(courtScheduleJudiciaryService).deleteUnAllocatedCourtScheduleJudiciariesEntriesForRotaPeriod(
+            verify(courtScheduleJudiciaryService).deleteCourtScheduleJudiciariesEntriesForRotaPeriod(
                     eq(startDate), eq(endDate), eq(ouCodes));
         }
 
@@ -407,17 +460,17 @@ class RotaLocationPeriodHelperTest {
             final LocalDate startDate = LocalDate.parse("2024-01-01");
             final LocalDate endDate = LocalDate.parse("2024-12-31");
             final List<String> ouCodes = List.of("OU001");
-            when(courtScheduleJudiciaryService.deleteUnAllocatedCourtScheduleJudiciariesEntriesForRotaPeriod(
+            when(courtScheduleJudiciaryService.deleteCourtScheduleJudiciariesEntriesForRotaPeriod(
                     eq(startDate), eq(endDate), eq(ouCodes)))
                     .thenReturn(0);
 
             // when
-            final int result = rotaLocationPeriodHelper.deleteUnAllocatedCourtScheduleJudiciariesForRotaPeriod(
+            final int result = rotaLocationPeriodHelper.deleteCourtScheduleJudiciariesForRotaPeriod(
                     startDate, endDate, ouCodes);
 
             // then
             assertEquals(0, result);
-            verify(courtScheduleJudiciaryService).deleteUnAllocatedCourtScheduleJudiciariesEntriesForRotaPeriod(
+            verify(courtScheduleJudiciaryService).deleteCourtScheduleJudiciariesEntriesForRotaPeriod(
                     eq(startDate), eq(endDate), eq(ouCodes));
         }
 
@@ -428,17 +481,17 @@ class RotaLocationPeriodHelperTest {
             final LocalDate startDate = LocalDate.parse("2024-01-01");
             final LocalDate endDate = LocalDate.parse("2024-12-31");
             final List<String> ouCodes = emptyList();
-            when(courtScheduleJudiciaryService.deleteUnAllocatedCourtScheduleJudiciariesEntriesForRotaPeriod(
+            when(courtScheduleJudiciaryService.deleteCourtScheduleJudiciariesEntriesForRotaPeriod(
                     eq(startDate), eq(endDate), eq(ouCodes)))
                     .thenReturn(0);
 
             // when
-            final int result = rotaLocationPeriodHelper.deleteUnAllocatedCourtScheduleJudiciariesForRotaPeriod(
+            final int result = rotaLocationPeriodHelper.deleteCourtScheduleJudiciariesForRotaPeriod(
                     startDate, endDate, ouCodes);
 
             // then
             assertEquals(0, result);
-            verify(courtScheduleJudiciaryService).deleteUnAllocatedCourtScheduleJudiciariesEntriesForRotaPeriod(
+            verify(courtScheduleJudiciaryService).deleteCourtScheduleJudiciariesEntriesForRotaPeriod(
                     eq(startDate), eq(endDate), eq(ouCodes));
         }
 
@@ -449,17 +502,17 @@ class RotaLocationPeriodHelperTest {
             final LocalDate startDate = LocalDate.parse("2024-01-01");
             final LocalDate endDate = LocalDate.parse("2024-12-31");
             final List<String> ouCodes = List.of("OU001", "OU002", "OU003");
-            when(courtScheduleJudiciaryService.deleteUnAllocatedCourtScheduleJudiciariesEntriesForRotaPeriod(
+            when(courtScheduleJudiciaryService.deleteCourtScheduleJudiciariesEntriesForRotaPeriod(
                     eq(startDate), eq(endDate), eq(ouCodes)))
                     .thenReturn(150);
 
             // when
-            final int result = rotaLocationPeriodHelper.deleteUnAllocatedCourtScheduleJudiciariesForRotaPeriod(
+            final int result = rotaLocationPeriodHelper.deleteCourtScheduleJudiciariesForRotaPeriod(
                     startDate, endDate, ouCodes);
 
             // then
             assertEquals(150, result);
-            verify(courtScheduleJudiciaryService).deleteUnAllocatedCourtScheduleJudiciariesEntriesForRotaPeriod(
+            verify(courtScheduleJudiciaryService).deleteCourtScheduleJudiciariesEntriesForRotaPeriod(
                     eq(startDate), eq(endDate), eq(ouCodes));
         }
 
@@ -469,17 +522,17 @@ class RotaLocationPeriodHelperTest {
             // given
             final LocalDate date = LocalDate.parse("2024-06-15");
             final List<String> ouCodes = List.of("OU001");
-            when(courtScheduleJudiciaryService.deleteUnAllocatedCourtScheduleJudiciariesEntriesForRotaPeriod(
+            when(courtScheduleJudiciaryService.deleteCourtScheduleJudiciariesEntriesForRotaPeriod(
                     eq(date), eq(date), eq(ouCodes)))
                     .thenReturn(2);
 
             // when
-            final int result = rotaLocationPeriodHelper.deleteUnAllocatedCourtScheduleJudiciariesForRotaPeriod(
+            final int result = rotaLocationPeriodHelper.deleteCourtScheduleJudiciariesForRotaPeriod(
                     date, date, ouCodes);
 
             // then
             assertEquals(2, result);
-            verify(courtScheduleJudiciaryService).deleteUnAllocatedCourtScheduleJudiciariesEntriesForRotaPeriod(
+            verify(courtScheduleJudiciaryService).deleteCourtScheduleJudiciariesEntriesForRotaPeriod(
                     eq(date), eq(date), eq(ouCodes));
         }
     }

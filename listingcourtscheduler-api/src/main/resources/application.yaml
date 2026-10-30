@@ -39,11 +39,13 @@ courtscheduler:
     months-of-provisional-data-to-populate: ${ROTA_MONTHS_OF_PROVISIONAL_DATA:6}
     cycle-to-populate-length: ${ROTA_CYCLE_LENGTH_DAYS:28}
 
-# External services — both referencedata and usersgroups are served from the
-# same CPP gateway base URL.
+# External services — referencedata, usersgroups and the listing command API are
+# served from the same CPP gateway base URL.
 referencedata:
   base-url: ${CSCHED_BASE_URL:http://localhost:8080}
 usersgroups:
+  base-url: ${CSCHED_BASE_URL:http://localhost:8080}
+listing:
   base-url: ${CSCHED_BASE_URL:http://localhost:8080}
 
 # Redis cache (existing semantics)
