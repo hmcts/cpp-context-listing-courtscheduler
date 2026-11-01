@@ -1,8 +1,10 @@
 package uk.gov.moj.cpp.courtscheduler.common.service;
 
 import static uk.gov.moj.cpp.courtscheduler.common.utils.SessionAvailability.FULL_DAY_DURATION_MINS;
+import static uk.gov.moj.cpp.courtscheduler.common.utils.SessionAvailability.getEffectiveAvailableDuration;
 import static uk.gov.moj.cpp.courtscheduler.common.utils.SessionAvailability.getNextBusinessDay;
 import static uk.gov.moj.cpp.courtscheduler.common.utils.SessionAvailability.hasSufficientAvailability;
+import static uk.gov.moj.cpp.courtscheduler.common.utils.SessionAvailability.preferBookable;
 import static uk.gov.moj.cpp.courtscheduler.exception.ExtendMultidayHearingException.ErrorCode.INVALID_DATE_RANGE;
 import static uk.gov.moj.cpp.courtscheduler.exception.ExtendMultidayHearingException.ErrorCode.NO_AVAILABILITY;
 import static uk.gov.moj.cpp.courtscheduler.exception.ExtendMultidayHearingException.ErrorCode.NO_EXISTING_ALLOCATION;
@@ -66,6 +68,11 @@ public class ExtendMultidayHearingService {
      * room. Either way the tail keeps the LAST session's business type (SPRDT-1475). Existing
      * allocation rows are never touched, so per-day rooms set earlier via
      * change-court-room-for-multiday-hearing survive a resize.
+     *
+     * <p>SPRDT-1572: the tail follows the court-calendar always-assign rule of the fresh and move
+     * paths. A full tail session is still booked (beyond its capacity, logged); NO_AVAILABILITY
+     * means only that a tail day has no session of the block's business type and draft state in the
+     * room.
      *
      * <p>SPRDT-1274: {@code earliestHearingTime} (ISO-8601 zoned timestamp) is the user-supplied
      * daily start time; when present each tail row's hearing_start_time carries that time-of-day on
@@ -159,6 +166,7 @@ public class ExtendMultidayHearingService {
             throw new ExtendMultidayHearingException(NO_AVAILABILITY,
                     "Tail days unavailable: " + unavailable, unavailable);
         }
+        logTailDaysBookedBeyondCapacity(hearingId, bookableByDate, perDayMinutes);
 
         final java.time.LocalTime userStartTime = parseUserStartTime(earliestHearingTime);
         for (final LocalDate day : tailDays) {
@@ -178,19 +186,36 @@ public class ExtendMultidayHearingService {
         return days;
     }
 
+    /**
+     * One session per tail date (SPRDT-1572). Capacity never removes a date; per date the session
+     * with room for ITS share of the requested total wins (sessions in many rotas, and the IT suites,
+     * are far shorter than the 360-minute default court day), see
+     * {@link uk.gov.moj.cpp.courtscheduler.common.utils.SessionAvailability#preferBookable}.
+     */
     private static Map<LocalDate, CourtSchedule> pickBookablePerDay(final List<CourtSchedule> candidates,
                                                                     final int perDayMinutes) {
         final Map<LocalDate, CourtSchedule> chosen = new HashMap<>();
         for (final CourtSchedule cs : candidates) {
-            // The tail day only needs ITS share of the requested total — sessions in many rotas
-            // (and the IT suites) are far shorter than the 360-minute default court day.
-            if (!hasSufficientAvailability(cs, perDayMinutes)) {
+            if (cs.getSessionDate() == null) {
                 continue;
             }
             chosen.merge(cs.getSessionDate(), cs, (existing, incoming) ->
-                    Boolean.TRUE.equals(existing.getOverbookingAllowed()) ? incoming : existing);
+                    preferBookable(existing, incoming, perDayMinutes));
         }
         return chosen;
+    }
+
+    /** Advisory only: names each tail day booked beyond its remaining capacity; never blocks. */
+    private static void logTailDaysBookedBeyondCapacity(final String hearingId,
+                                                        final Map<LocalDate, CourtSchedule> bookableByDate,
+                                                        final int perDayMinutes) {
+        bookableByDate.forEach((day, session) -> {
+            if (!hasSufficientAvailability(session, perDayMinutes)) {
+                LOGGER.info("[EXTEND-MULTIDAY] hearingId: {}, overbooking session {} on {}: {} mins available, {} mins needed (court-calendar always-assign rule)",
+                        Encode.forJava(hearingId), Encode.forJava(session.getCourtScheduleId()), day,
+                        getEffectiveAvailableDuration(session), perDayMinutes);
+            }
+        });
     }
 
     /**
