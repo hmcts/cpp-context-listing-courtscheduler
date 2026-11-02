@@ -35,9 +35,6 @@ courtscheduler:
     # the @Async rota pipeline indefinitely.
     connect-timeout-seconds: ${CSCHED_HTTP_CONNECT_TIMEOUT_SECONDS:5}
     read-timeout-seconds: ${CSCHED_HTTP_READ_TIMEOUT_SECONDS:30}
-  rota:
-    months-of-provisional-data-to-populate: ${ROTA_MONTHS_OF_PROVISIONAL_DATA:6}
-    cycle-to-populate-length: ${ROTA_CYCLE_LENGTH_DAYS:28}
 
 # External services — both referencedata and usersgroups are served from the
 # same CPP gateway base URL.

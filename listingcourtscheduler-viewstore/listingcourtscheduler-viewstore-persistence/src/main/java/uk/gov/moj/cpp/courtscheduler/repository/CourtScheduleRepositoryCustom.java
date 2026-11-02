@@ -66,11 +66,7 @@ public interface CourtScheduleRepositoryCustom {
 
     List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> deleteCourtSchedule(List<String> courtScheduleIdList);
 
-    int deleteUnAllocatedCourtScheduleEntriesForRotaPeriod(LocalDate startDate, LocalDate endDate, List<String> ouCodes);
-
     int deleteUnAllocatedProvisionalEntries(List<String> ouCodes);
-
-    int deleteSlots(List<String> courtScheduleIds);
 
     void releaseAllocatedSlotsOrDurationFromCourtSchedule(List<AllocatedListing> allocatedListings);
 
