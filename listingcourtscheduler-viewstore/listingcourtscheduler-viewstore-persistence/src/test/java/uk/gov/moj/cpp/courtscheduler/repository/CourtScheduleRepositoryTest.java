@@ -349,6 +349,82 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
         assertTrue(result.stream().allMatch(cs -> TRF_2.equals(cs.getBusinessType())));
     }
 
+    // SPRDT-1572 / LPT-2608: a CROWN multiday block books duration-based AD sessions only. These pin
+    // the is_slot_based predicate on the anchored search, the extend-tail search and the centre
+    // search; the MAGS centre search stays unconstrained.
+
+    @Test
+    void consecutiveSessionsShouldNotReturnASlotBasedTailSession() {
+        final LocalDate monday  = LocalDate.of(2026, 8, 3);
+        final LocalDate tuesday = LocalDate.of(2026, 8, 4);
+        final String ouCode = "B99MC20";
+
+        final CourtSchedule anchor = courtScheduleRepository.save(
+                createCourtSchedule(ouCode, ADULT_2, monday, CR01_2, TRF_2, "AD"));
+        courtScheduleRepository.save(slotBased(createCourtSchedule(ouCode, ADULT_2, tuesday, CR01_2, TRF_2, "AD")));
+
+        final List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> result =
+                courtScheduleRepository.findConsecutiveSessions(anchor.getCourtScheduleId(), 2);
+
+        assertEquals(List.of(anchor.getCourtScheduleId()),
+                result.stream().map(uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule::getCourtScheduleId).toList());
+    }
+
+    @Test
+    void consecutiveSessionsShouldReturnNothingForASlotBasedAnchor() {
+        final LocalDate monday  = LocalDate.of(2026, 8, 10);
+        final LocalDate tuesday = LocalDate.of(2026, 8, 11);
+        final String ouCode = "B99MC21";
+
+        final CourtSchedule slotBasedAnchor = courtScheduleRepository.save(
+                slotBased(createCourtSchedule(ouCode, ADULT_2, monday, CR01_2, TRF_2, "AD")));
+        courtScheduleRepository.save(createCourtSchedule(ouCode, ADULT_2, tuesday, CR01_2, TRF_2, "AD"));
+
+        assertTrue(courtScheduleRepository.findConsecutiveSessions(slotBasedAnchor.getCourtScheduleId(), 2).isEmpty());
+    }
+
+    @Test
+    void adSessionsInRangeShouldNotReturnSlotBasedSessions() {
+        final LocalDate monday  = LocalDate.of(2026, 8, 17);
+        final LocalDate tuesday = LocalDate.of(2026, 8, 18);
+        final String ouCode = "B99MC22";
+
+        final CourtSchedule durationBased = courtScheduleRepository.save(
+                createCourtSchedule(ouCode, ADULT_2, monday, CR01_2, TRF_2, "AD"));
+        courtScheduleRepository.save(slotBased(createCourtSchedule(ouCode, ADULT_2, tuesday, CR01_2, TRF_2, "AD")));
+
+        final List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> result =
+                courtScheduleRepository.findAdSessionsInRange(ouCode, CR01_2, TRF_2, monday, tuesday, false);
+
+        assertEquals(List.of(durationBased.getCourtScheduleId()),
+                result.stream().map(uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule::getCourtScheduleId).toList());
+    }
+
+    @Test
+    void durationBasedCentreSearchShouldSkipASlotBasedRoomWhileTheMagsSearchStillReturnsIt() {
+        final LocalDate monday  = LocalDate.of(2026, 8, 24);
+        final LocalDate tuesday = LocalDate.of(2026, 8, 25);
+        final String ouCode = "B99MC23";
+        final String slotBasedRoom = "CR01";
+        final String durationBasedRoom = "CR02";
+
+        for (final LocalDate date : List.of(monday, tuesday)) {
+            courtScheduleRepository.save(slotBased(createCourtSchedule(ouCode, ADULT_2, date, slotBasedRoom, TRF_2, "AD")));
+            courtScheduleRepository.save(createCourtSchedule(ouCode, ADULT_2, date, durationBasedRoom, TRF_2, "AD"));
+        }
+
+        final List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> crownRun =
+                courtScheduleRepository.findConsecutiveDurationBasedSessionsForCentre("CH" + ouCode, monday, 2);
+        final List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> magsRun =
+                courtScheduleRepository.findConsecutiveSessionsForCentre("CH" + ouCode, monday, 2);
+
+        assertEquals(2, crownRun.size());
+        assertTrue(crownRun.stream().allMatch(cs -> durationBasedRoom.equals(cs.getCourtRoomId())));
+        assertTrue(crownRun.stream().noneMatch(uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule::getSlotBased));
+        assertEquals(2, magsRun.size());
+        assertTrue(magsRun.stream().allMatch(cs -> slotBasedRoom.equals(cs.getCourtRoomId())));
+    }
+
     @Test
     void courtSchedulesShouldKeepBusinessTypeSuppressingIsSlotBasedForMagistrates() {
         // MAGISTRATES regression guard for SPRDT-1276. The CROWN >360 carve-out must not reach
@@ -733,6 +809,11 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
         // BST, so the stored instant must be 16:00 UTC — 17:00 UTC would show as 18:00 on the calendar.
         assertEquals(sessionDate.atTime(17, 0), sessionEnd.atZone(LONDON_ZONE).toLocalDateTime());
         assertEquals(LocalTime.of(16, 0), sessionEnd.atZone(ZoneOffset.UTC).toLocalTime());
+    }
+
+    private static CourtSchedule slotBased(final CourtSchedule schedule) {
+        schedule.setSlotBased(true);
+        return schedule;
     }
 
     private CourtSchedule createCourtSchedule(final String ouCode, final String panel, final LocalDate sessionDate,

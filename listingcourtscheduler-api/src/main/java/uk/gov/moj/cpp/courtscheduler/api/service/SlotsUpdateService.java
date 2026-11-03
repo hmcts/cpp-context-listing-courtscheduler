@@ -3,6 +3,7 @@ package uk.gov.moj.cpp.courtscheduler.api.service;
 import static java.lang.String.format;
 import static jakarta.json.Json.createArrayBuilder;
 import static jakarta.json.Json.createObjectBuilder;
+import static uk.gov.moj.cpp.courtscheduler.exception.ExtendMultidayHearingException.ErrorCode.NO_AVAILABILITY;
 
 import uk.gov.moj.cpp.courtscheduler.openapi.model.AllocatedSlot;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.ChangeCourtRoomForMultidayHearingRequest;
@@ -27,6 +28,7 @@ import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
 import uk.gov.moj.cpp.courtscheduler.exception.CourtScheduleIdNotMatchingException;
 import uk.gov.moj.cpp.courtscheduler.exception.CrownFallbackInvalidRequestException;
 import uk.gov.moj.cpp.courtscheduler.exception.CrownFallbackNoSessionException;
+import uk.gov.moj.cpp.courtscheduler.exception.ExtendMultidayHearingException;
 import uk.gov.moj.cpp.courtscheduler.exception.MoveHearingToPastDateNoSessionException;
 import uk.gov.moj.cpp.courtscheduler.exception.NoAllocationOnDateException;
 import uk.gov.moj.cpp.courtscheduler.exception.NoSessionAvailableException;
@@ -54,6 +56,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
@@ -404,14 +407,16 @@ public class SlotsUpdateService {
      *   <li>Existing rows AND the requested start date equals the block's FIRST (earliest) session
      *       date: a RESIZE — delegated to {@link ExtendMultidayHearingService}, which no-ops when
      *       the end date is unchanged, EXTENDs by booking only the tail days (into the requested
-     *       main courtroom when supplied, availability-checked, 422 NO_AVAILABILITY otherwise) and
+     *       main courtroom when supplied; capacity never blocks since SPRDT-1572, 422
+     *       NO_AVAILABILITY only when a tail day has no matching session) and
      *       SHRINKs by releasing only the tail rows. Untouched days keep their sessions AND their
      *       rooms, so per-day room changes made via change-court-room-for-multiday-hearing survive.</li>
      *   <li>Existing rows AND a different start date: a MOVE. Search + validate the new consecutive
      *       run BEFORE releasing the prior allocation (mirrors moveHearingToPastDate's
      *       search-before-release ordering, so a search miss never orphans the hearing), then
      *       release via the existing payback logic and book, stamping source=MOVE directly on the
-     *       persisted rows.</li>
+     *       persisted rows. No qualifying run: 422 NO_AVAILABILITY for an allocated block edited
+     *       with a courtroom (SPRDT-1572), else an empty answer with the allocation intact.</li>
      * </ul>
      */
     private CrownSearchAndBookResponse crownMultiDaySearchAndBook(final CrownSearchAndBookRequest request) {
@@ -457,7 +462,7 @@ public class SlotsUpdateService {
                         null, null, null, null, null, null, null, null);
             }
 
-            return crownMultiDayMove(request, existingAllocations);
+            return crownMultiDayMove(request, existingAllocations, existingSessions);
         }
 
         final int daysNeeded = crownDaysNeeded(request);
@@ -467,7 +472,7 @@ public class SlotsUpdateService {
                         courtScheduleRepository.findConsecutiveSessions(request.getCourtScheduleId(), daysNeeded),
                         daysNeeded, request.getHearingId(), perDay)
                 : bookConsecutiveSessions(
-                        courtScheduleRepository.findConsecutiveSessionsForCentre(
+                        courtScheduleRepository.findConsecutiveDurationBasedSessionsForCentre(
                                 request.getCourtCentreId(), request.getHearingDate(), daysNeeded),
                         daysNeeded, request.getHearingId(), perDay);
         CourtScheduleRoomSanitiser.stripCourtRoomFromDraftSessions(sessions);
@@ -476,17 +481,26 @@ public class SlotsUpdateService {
                 null, null, null, null, null, null, null, null);
     }
 
-    /** Multi-day MOVE: search + validate first, only release/book/tag once a run is confirmed. */
+    /**
+     * Multi-day MOVE: search + validate first, only release/book/tag once a run is confirmed.
+     *
+     * <p>SPRDT-1572: when no run qualifies, an edit of an ALLOCATED block that names a courtroom is
+     * rejected with 422 NO_AVAILABILITY (the dates with no candidate session), the same answer the
+     * same-start resize gives. The empty answer is kept for a room-less request (the SPRDT-1446
+     * unallocation) and for a draft block (the unallocated-to-allocated flow).</p>
+     */
     private CrownSearchAndBookResponse crownMultiDayMove(
-            final CrownSearchAndBookRequest request, final List<AllocatedListing> existingAllocations) {
-        LOGGER.info("[CROWN-SAB] Multiday move - hearingId: {}, existing allocation(s): {}, new anchor: {}",
-                Encode.forJava(request.getHearingId()), existingAllocations.size(), Encode.forJava(request.getCourtScheduleId()));
+            final CrownSearchAndBookRequest request, final List<AllocatedListing> existingAllocations,
+            final List<CourtSchedule> existingSessions) {
+        LOGGER.info("[CROWN-SAB] Multiday move - hearingId: {}, existing allocation(s): {}, new anchor: {}, room: {}",
+                Encode.forJava(request.getHearingId()), existingAllocations.size(), Encode.forJava(request.getCourtScheduleId()),
+                Encode.forJava(request.getCourtRoomId()));
 
         final int daysNeeded = crownDaysNeeded(request);
         final int perDay = perDayDuration(request.getDurationInMinutes(), daysNeeded);
         final List<CourtSchedule> rawCandidates = (request.getCourtScheduleId() != null && !request.getCourtScheduleId().isBlank())
                 ? courtScheduleRepository.findConsecutiveSessions(request.getCourtScheduleId(), daysNeeded)
-                : courtScheduleRepository.findConsecutiveSessionsForCentre(
+                : courtScheduleRepository.findConsecutiveDurationBasedSessionsForCentre(
                         request.getCourtCentreId(), request.getHearingDate(), daysNeeded);
         // A candidate day may be one the SAME hearing already occupies (e.g. anchoring the move on a
         // continuation day of its own existing block — the STE 00b7b8bd/072b7512 scenario). totalBooked
@@ -498,6 +512,16 @@ public class SlotsUpdateService {
         final List<CourtSchedule> sessions = selectConsecutiveSessions(rawCandidates, daysNeeded, request.getHearingId(), perDay);
 
         if (sessions.isEmpty()) {
+            if (isAllocatedBlockEdit(request, existingSessions)) {
+                final List<LocalDate> unavailable =
+                        datesWithoutCandidate(request.getHearingDate(), daysNeeded, rawCandidates);
+                LOGGER.info("[CROWN-SAB] Multiday move - hearingId: {}, no qualifying run for an allocated block; existing allocation left intact, 422 NO_AVAILABILITY on {}",
+                        Encode.forJava(request.getHearingId()), unavailable);
+                throw new ExtendMultidayHearingException(NO_AVAILABILITY,
+                        format("No consecutive sessions to move hearing %s onto; unavailable dates: %s",
+                                request.getHearingId(), unavailable),
+                        unavailable);
+            }
             LOGGER.info("[CROWN-SAB] Multiday move - hearingId: {}, no qualifying run found; existing allocation left intact",
                     Encode.forJava(request.getHearingId()));
             return new CrownSearchAndBookResponse(
@@ -914,6 +938,40 @@ public class SlotsUpdateService {
     }
 
     /**
+     * SPRDT-1572: a Court Calendar edit of an ALLOCATED hearing (every booked session is FINAL) that
+     * names a courtroom. For such an edit an empty answer is harmful: listing reads it as "no
+     * sessions", writes one room-less draft day carrying the whole block's minutes and leaves this
+     * service's booking in place, so the two contexts disagree.
+     */
+    private static boolean isAllocatedBlockEdit(final CrownSearchAndBookRequest request,
+                                                final List<CourtSchedule> existingSessions) {
+        return request.getCourtRoomId() != null && !request.getCourtRoomId().isBlank()
+                && !existingSessions.isEmpty()
+                && existingSessions.stream().noneMatch(cs -> Boolean.TRUE.equals(cs.getDraft()));
+    }
+
+    /**
+     * The requested window's business days that have no candidate session (the candidates already
+     * carry the anchor's room, business type and draft state); the whole window when every day had a
+     * candidate but no run qualified.
+     */
+    private static List<LocalDate> datesWithoutCandidate(final LocalDate start, final int daysNeeded,
+                                                         final List<CourtSchedule> candidates) {
+        final List<LocalDate> window = new ArrayList<>(daysNeeded);
+        LocalDate day = start;
+        for (int i = 0; i < daysNeeded && day != null; i++) {
+            window.add(day);
+            day = SessionAvailability.getNextBusinessDay(day);
+        }
+        final Set<LocalDate> candidateDates = candidates == null ? Set.of() : candidates.stream()
+                .map(CourtSchedule::getSessionDate)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        final List<LocalDate> missing = window.stream().filter(d -> !candidateDates.contains(d)).toList();
+        return missing.isEmpty() ? window : missing;
+    }
+
+    /**
      * Per-day minutes for a resize's tail days: the requested TOTAL spread over the requested
      * window's business days. The suites (and some rotas) run sessions far smaller than the
      * 360-minute default court day, so hardcoding FULL_DAY minutes would fail availability on
@@ -1129,28 +1187,11 @@ public class SlotsUpdateService {
                 continue;
             }
             byDate.merge(cs.getSessionDate(), cs, (existing, incoming) ->
-                    preferBookable(existing, incoming, requiredPerDayMinutes));
+                    SessionAvailability.preferBookable(existing, incoming, requiredPerDayMinutes));
         }
         final List<CourtSchedule> out = new ArrayList<>(byDate.values());
         out.sort(Comparator.comparing(CourtSchedule::getSessionDate));
         return out;
-    }
-
-    private static CourtSchedule preferBookable(
-            final CourtSchedule existing,
-            final CourtSchedule incoming,
-            final int requiredPerDayMinutes) {
-        final boolean existingFits = getEffectiveAvailableDuration(existing) >= requiredPerDayMinutes;
-        final boolean incomingFits = getEffectiveAvailableDuration(incoming) >= requiredPerDayMinutes;
-        if (existingFits != incomingFits) {
-            return existingFits ? existing : incoming;
-        }
-        if (existingFits) {
-            // both fit: prefer NOT-overbookingAllowed, matching slot-search's preferNonOverbooking
-            return existing.getOverbookingAllowed() && !incoming.getOverbookingAllowed() ? incoming : existing;
-        }
-        // neither fits: prefer the row where overbooking is explicitly allowed
-        return !existing.getOverbookingAllowed() && incoming.getOverbookingAllowed() ? incoming : existing;
     }
 
    /* package */ static int getEffectiveAvailableDuration(final CourtSchedule cs) {
