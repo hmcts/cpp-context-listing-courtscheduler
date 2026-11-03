@@ -605,6 +605,7 @@ class SlotsUpdateServiceTest {
             final CourtSchedule created = buildSession(createdScheduleId, request.getHearingDate(), false, "CR");
             when(courtScheduleRepository.createCrownFallbackSession(eq(request)))
                     .thenReturn(Optional.of(new CrownFallbackSearchResult(created, false)));
+            @SuppressWarnings(UNCHECKED)
             final org.mockito.ArgumentCaptor<List<AllocatedSlot>> slotCaptor =
                     org.mockito.ArgumentCaptor.forClass(List.class);
             when(courtScheduleRepository.saveBookedSlots(slotCaptor.capture(), eq(false), eq(false)))
@@ -656,6 +657,7 @@ class SlotsUpdateServiceTest {
             session.setSessionEndTime(Instant.parse("2026-04-21T16:00:00Z").atOffset(java.time.ZoneOffset.UTC));
             when(courtScheduleRepository.searchCrownFallbackSlots(any(), any(), org.mockito.ArgumentMatchers.anyInt(), any(), any()))
                     .thenReturn(Optional.of(new CrownFallbackSearchResult(session, false)));
+            @SuppressWarnings(UNCHECKED)
             final org.mockito.ArgumentCaptor<List<AllocatedSlot>> slotCaptor =
                     org.mockito.ArgumentCaptor.forClass(List.class);
             when(courtScheduleRepository.saveBookedSlots(slotCaptor.capture(), eq(false), eq(false)))
@@ -683,6 +685,7 @@ class SlotsUpdateServiceTest {
             session.setSessionEndTime(Instant.parse("2026-04-21T16:00:00Z").atOffset(java.time.ZoneOffset.UTC));
             when(courtScheduleRepository.searchCrownFallbackSlots(any(), any(), org.mockito.ArgumentMatchers.anyInt(), any(), any()))
                     .thenReturn(Optional.of(new CrownFallbackSearchResult(session, false)));
+            @SuppressWarnings(UNCHECKED)
             final org.mockito.ArgumentCaptor<List<AllocatedSlot>> slotCaptor =
                     org.mockito.ArgumentCaptor.forClass(List.class);
             when(courtScheduleRepository.saveBookedSlots(slotCaptor.capture(), eq(false), eq(false)))
@@ -751,6 +754,7 @@ class SlotsUpdateServiceTest {
             when(courtScheduleRepository.searchCrownFallbackSlots(any(), any(), org.mockito.ArgumentMatchers.anyInt(), any(), any()))
                     .thenReturn(Optional.of(new CrownFallbackSearchResult(session, false)));
 
+            @SuppressWarnings(UNCHECKED)
             final org.mockito.ArgumentCaptor<List<AllocatedSlot>> slotCaptor =
                     org.mockito.ArgumentCaptor.forClass(List.class);
             when(courtScheduleRepository.saveBookedSlots(slotCaptor.capture(), eq(false), eq(false)))
@@ -1765,6 +1769,7 @@ class SlotsUpdateServiceTest {
 
             final MagsSearchAndBookResponse response = service.magsSearchAndBook(request);
 
+            @SuppressWarnings(UNCHECKED)
             final org.mockito.ArgumentCaptor<List<AllocatedSlot>> captor =
                     org.mockito.ArgumentCaptor.forClass(List.class);
             verify(courtScheduleRepository).searchBookHearingSlots(captor.capture());
