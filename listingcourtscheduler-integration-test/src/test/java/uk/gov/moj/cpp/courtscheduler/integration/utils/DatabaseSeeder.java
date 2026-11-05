@@ -83,6 +83,7 @@ public class DatabaseSeeder {
 
     private static final String COURT_SCHEDULE_JUDICIARY_DELETE_SQL = "TRUNCATE TABLE court_schedule_judiciary CASCADE";
     private static final String COURT_SCHEDULE_JUDICIARY_DELETE_BY_PROFILE_ID_SQL = "DELETE FROM court_schedule_judiciary where court_listing_profile_id = ?";
+    private static final String COURT_SCHEDULE_JUDICIARY_DELETE_BY_COURT_SCHEDULE_ID_SQL = "DELETE FROM court_schedule_judiciary where court_schedule_id = ?";
     private static final String MIGRATION_STATUS_DELETE_SQL = "TRUNCATE TABLE courtscheduler_migration_status CASCADE";
     private static final String ROTA_FILE_PROCESS_HISTORY_DELETE_SQL = "TRUNCATE TABLE rota_file_process_history CASCADE";
     private static final String ROTA_LOG_PROCESS_DELETE_SQL = "TRUNCATE TABLE rota_process_log CASCADE";
@@ -141,6 +142,14 @@ public class DatabaseSeeder {
         try (final Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
              final PreparedStatement preparedStatement = connection.prepareStatement(COURT_SCHEDULE_JUDICIARY_DELETE_BY_PROFILE_ID_SQL)) {
             preparedStatement.setString(1, listingProfileId);
+            preparedStatement.executeUpdate();
+        }
+    }
+
+    public void deleteJudiciaryByCourtScheduleId(final String courtScheduleId) throws SQLException {
+        try (final Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
+             final PreparedStatement preparedStatement = connection.prepareStatement(COURT_SCHEDULE_JUDICIARY_DELETE_BY_COURT_SCHEDULE_ID_SQL)) {
+            preparedStatement.setString(1, courtScheduleId);
             preparedStatement.executeUpdate();
         }
     }

@@ -168,7 +168,7 @@ class CourtScheduleJudiciaryRepositoryTest extends uk.gov.moj.cpp.courtscheduler
     @Disabled("when we remove transactional annotation, then it is causing the assertion to fail - will fix later")
     @Test
     @Transactional
-    public void shouldDeleteUnAllocatedCourtScheduleJudiciariesEntriesForRotaPeriod() {
+    public void shouldDeleteCourtScheduleJudiciariesEntriesForRotaPeriod() {
         final String courtScheduleId1 = persistRandomCourtSchedule();
         final String ouCode1 = "B53DT00";
         final CourtScheduleJudiciary courtScheduleJudiciary1 = newCourtScheduleJudiciaryWithSavedSchedule();
@@ -214,7 +214,7 @@ class CourtScheduleJudiciaryRepositoryTest extends uk.gov.moj.cpp.courtscheduler
 
         final List<CourtScheduleJudiciary> courtScheduleJudiciaries = courtScheduleJudiciaryRepository.findAll();
         assertEquals(2, courtScheduleJudiciaries.size());
-        courtScheduleJudiciaryRepository.deleteUnAllocatedCourtScheduleJudiciariesEntriesForRotaPeriod(startDate, endDate, List.of(ouCode1, ouCode2));
+        courtScheduleJudiciaryRepository.deleteCourtScheduleJudiciariesEntriesForRotaPeriod(startDate, endDate, List.of(ouCode1, ouCode2));
 
         final List<CourtScheduleJudiciary> courtSchedules = courtScheduleJudiciaryRepository.findByCourtScheduleId(courtScheduleId1);
 

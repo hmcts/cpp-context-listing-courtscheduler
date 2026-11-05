@@ -70,14 +70,41 @@ public interface CourtScheduleJudiciaryRepository
                                               @Param("courtScheduleId") String courtScheduleId,
                                               @Param("judiciaryId") String judiciaryId);
 
+    /**
+     * Finds the hearings allocated to the supplied court schedule IDs and returns the judiciaries
+     * of every active session (court schedule) each of those hearings is allocated to, including
+     * sessions outside the supplied IDs, so a multi-session hearing can be checked as a whole.
+     * Returns one row per (hearing, session, judiciary) combination:
+     * hearing_id, court_schedule_id, judiciary_id, judiciary_type, is_bench_chairman, is_deputy.
+     * The judiciary join is a LEFT JOIN so a session without active judiciaries still returns
+     * its hearing (with null judiciary columns).
+     */
+    @Query(value = "SELECT al.hearing_id, cs.id AS court_schedule_id, csj.judiciary_id, csj.judiciary_type, "
+            + "csj.is_bench_chairman, csj.is_deputy "
+            + "FROM allocated_listings al "
+            + "JOIN court_schedule cs ON cs.id = al.court_schedule_id AND cs.active = true "
+            + "LEFT JOIN court_schedule_judiciary csj ON csj.court_schedule_id = cs.id AND csj.active = true "
+            + "WHERE al.hearing_id IN ("
+            + "SELECT changed.hearing_id FROM allocated_listings changed WHERE changed.court_schedule_id IN (:courtScheduleIds))",
+            nativeQuery = true)
+    List<Object[]> findHearingSessionJudiciariesByCourtScheduleIds(@Param("courtScheduleIds") List<String> courtScheduleIds);
+
+
+    @Query(value = "SELECT csj.* FROM court_schedule_judiciary csj WHERE csj.court_schedule_id IN "
+            + " (SELECT cs.id FROM court_schedule cs WHERE cs.session_start BETWEEN :startDate AND :endDate AND cs.oucode IN (:ouCodes) AND active = true)",
+            nativeQuery = true)
+    List<CourtScheduleJudiciary> findCourtScheduleJudiciariesEntriesForRotaPeriod(@Param("startDate") LocalDate startDate,
+                                                                                  @Param("endDate") LocalDate endDate,
+                                                                                  @Param("ouCodes") List<String> ouCodes);
+
     @Modifying
     @Transactional
     @Query(value = "DELETE FROM court_schedule_judiciary csj WHERE csj.court_schedule_id IN "
             + " (SELECT cs.id FROM court_schedule cs WHERE cs.session_start BETWEEN :startDate AND :endDate AND cs.oucode IN (:ouCodes) AND active = true)",
             nativeQuery = true)
-    int deleteUnAllocatedCourtScheduleJudiciariesEntriesForRotaPeriod(@Param("startDate") LocalDate startDate,
-                                                                     @Param("endDate") LocalDate endDate,
-                                                                     @Param("ouCodes") List<String> ouCodes);
+    int deleteCourtScheduleJudiciariesEntriesForRotaPeriod(@Param("startDate") LocalDate startDate,
+                                                           @Param("endDate") LocalDate endDate,
+                                                           @Param("ouCodes") List<String> ouCodes);
 
     @Modifying
     @Transactional
