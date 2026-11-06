@@ -235,7 +235,7 @@ public class ProvisionalBookingService {
         if (rows.stream().anyMatch(ProvisionalBookingService::isReservation)) {
             return STATUS_RESERVED;
         }
-        // The confirmed row BUG-3 stamps at share time: same booking_id, no expiresAt.
+        // The confirmed row a share stamps: same booking_id, no expiresAt.
         if (!rows.isEmpty()) {
             return STATUS_SHARED;
         }

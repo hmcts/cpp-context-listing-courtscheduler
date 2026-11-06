@@ -237,10 +237,10 @@ class ProvisionalBookingIT extends AbstractIT {
     }
 
     /**
-     * BUG-3. The existing multi-slot test above confirms through {@code PUT /hearingslots}
+     * Release on list. The existing multi-slot test above confirms through {@code PUT /hearingslots}
      * ({@code update.hearing.slots}). Listing does not use that path at share: it posts
      * {@code courtscheduler.list.hearings-in-sessions}, which lands on
-     * {@code updateListHearingSlots}. Until BUG-3 that method released only by the real hearing id,
+     * {@code updateListHearingSlots}. That method used to release only by the real hearing id,
      * so the bookingId-keyed hold survived the share and the session stayed decremented twice until
      * the 01:00 purge. This is the same arithmetic as the test above, on the path production takes.
      */
@@ -275,7 +275,7 @@ class ProvisionalBookingIT extends AbstractIT {
     }
 
     /**
-     * NEW-15. A clerk who re-picks must not hold both sessions. The re-pick comes back under the
+     * A clerk who re-picks must not hold both sessions. The re-pick comes back under the
      * same bookingId, and reserveAll opens by releasing every unconfirmed row already held under
      * it, so the previous pick is given back before the new one is taken.
      */
@@ -491,7 +491,7 @@ class ProvisionalBookingIT extends AbstractIT {
     }
 
     /**
-     * Re-picks under an EXISTING bookingId (NEW-15): same single-session fixture, with
+     * Re-picks under an EXISTING bookingId: same single-session fixture, with
      * {@code bookingId} added at the top level so the server reuses the booking rather than
      * minting a new one. The fixture carries no bookingId placeholder to replace, so the id is
      * added onto the parsed JSON instead of hand-building the whole payload.

@@ -79,7 +79,7 @@ import org.springframework.transaction.annotation.Transactional;
  * a structural failure (too few session days, or non-consecutive dates). Reserving must not be
  * stricter than sharing, so the ordinary per-session capacity gate below is skipped for the days
  * a Crown multi-day run resolves to; {@link SessionsService#validateSessionAvailabilityListMode}'s
- * own separate BUG-9 refusal keeps applying, unchanged, to slot-based and single-day picks.
+ * own separate capacity refusal keeps applying, unchanged, to slot-based and single-day picks.
  */
 @Service
 public class ReservationService {
@@ -432,7 +432,7 @@ public class ReservationService {
         // a copy would drift, and isOverbookingAllowed is exactly the exemption a copy would lose.
         //
         // Skipped when this bookingId already holds a reservation on this exact session: a re-pick
-        // under the same bookingId (NEW-15) has saveBookedSlots release every one of its own rows,
+        // under the same bookingId has saveBookedSlots release every one of its own rows,
         // hearing-wide, before taking the new ones — so this session's own hold is about to be
         // given back regardless of what the shared validator would say about it right now. Calling
         // the validator anyway would count that soon-to-be-released row against the clerk's own

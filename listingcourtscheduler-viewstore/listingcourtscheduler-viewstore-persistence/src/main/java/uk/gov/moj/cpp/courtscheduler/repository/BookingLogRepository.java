@@ -53,17 +53,19 @@ public interface BookingLogRepository extends JpaRepository<BookingLog, String> 
     List<BookingLog> findLatestEvent(@Param("bookingId") String bookingId);
 
     /**
-     * Deletes history recorded before {@code cutoff}, but never a booking's latest event: the
-     * status check reads it to say why a booking has no rows, and a draft can carry a booking for
-     * longer than the retention period.
+     * Deletes rows recorded before {@code cutoff} that a later event of the same booking
+     * supersedes. Nothing reads them: every lookup takes a booking's latest event.
+     *
+     * <p>A booking's latest event is kept however old: CONFIRMED, UNLISTED and SURPLUS_RELEASED are
+     * what lets a re-share of the hearing go ahead once its listing rows are gone.
      */
     @Modifying
     @Query(value = """
             DELETE FROM booking_log b
              WHERE b.recorded_at < :cutoff
-               AND b.event_id <> (SELECT l.event_id FROM booking_log l
-                                   WHERE l.booking_id = b.booking_id
-                                   ORDER BY l.recorded_at DESC LIMIT 1)
+               AND EXISTS (SELECT 1 FROM booking_log l
+                            WHERE l.booking_id = b.booking_id
+                              AND l.recorded_at > b.recorded_at)
             """, nativeQuery = true)
-    int deleteRecordedBefore(@Param("cutoff") Instant cutoff);
+    int deleteSupersededRecordedBefore(@Param("cutoff") Instant cutoff);
 }

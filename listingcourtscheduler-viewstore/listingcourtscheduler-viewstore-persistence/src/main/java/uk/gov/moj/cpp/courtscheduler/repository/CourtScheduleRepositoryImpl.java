@@ -1357,7 +1357,7 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
 
          final List<Hearing> hearings = flattenHearingSlots(slots);
 
-        // BUG-3 Task 1: release the hold taken at slot-pick time before the loop below charges
+        // Release the hold taken at slot-pick time before the loop below charges
         // each session for the real booking. The hold is keyed on the bookingId, so the
         // hearing-wide release inside the loop (keyed on the real hearing id) does not cover it:
         // a hold lives in booking_id with hearing_id null, so only a booking-keyed release sees it.

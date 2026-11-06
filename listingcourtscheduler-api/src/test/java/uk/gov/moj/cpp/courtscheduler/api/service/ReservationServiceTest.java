@@ -73,7 +73,7 @@ class ReservationServiceTest {
     private BookingLogRepository bookingLogRepository;
 
     // -----------------------------------------------------------------------
-    // BUG9: capacity must be enforced on reserve, not only at share time
+    // capacity must be enforced on reserve, not only at share time
     // -----------------------------------------------------------------------
 
     @Test

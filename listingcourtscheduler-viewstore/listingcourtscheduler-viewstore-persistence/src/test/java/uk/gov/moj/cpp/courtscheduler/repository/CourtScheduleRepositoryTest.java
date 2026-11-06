@@ -769,7 +769,7 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
     }
 
     // -----------------------------------------------------------------------
-    // BUG-3 Task 1: release the reservation on list, not just on confirm.
+    // Release the reservation on list, not just on confirm.
     // Listing (courtscheduler.list.hearings-in-sessions -> SlotsUpdateService.listHearingSlots ->
     // updateListHearingSlots) never called releaseOldAllocatedListings on the bookingId-keyed hold,
     // so the session was decremented twice (once by the hold, once by the listed booking) until the

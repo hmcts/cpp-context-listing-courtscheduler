@@ -23,6 +23,7 @@ class BookingLogRepositoryTest extends AbstractRepositoryTest {
 
     private static final String BOOKING_A = "booking-a";
     private static final String BOOKING_B = "booking-b";
+    private static final Instant CUTOFF = Instant.now().minus(30, ChronoUnit.DAYS);
 
     @Autowired
     private BookingLogRepository bookingLogRepository;
@@ -63,39 +64,40 @@ class BookingLogRepositoryTest extends AbstractRepositoryTest {
     }
 
     @Test
-    void deleteRecordedBeforeRemovesOnlyOlderRows() {
+    void deleteSupersededRemovesOnlyOlderRowsWithALaterEvent() {
         bookingLogRepository.record(EXPIRED, List.of(hold(BOOKING_A, "cs-1")));
-        final BookingLog old = bookingLogRepository.findAll().get(0);
-        old.setRecordedAt(Instant.now().minus(100, ChronoUnit.DAYS));
-        bookingLogRepository.save(old);
+        age(bookingLogRepository.findAll(), 100);
         bookingLogRepository.record(REBOOKED, List.of(hold(BOOKING_A, "cs-1")));
         bookingLogRepository.record(EXPIRED, List.of(hold(BOOKING_B, "cs-2")));
 
-        final int deleted = bookingLogRepository.deleteRecordedBefore(Instant.now().minus(90, ChronoUnit.DAYS));
+        final int deleted = bookingLogRepository.deleteSupersededRecordedBefore(CUTOFF);
 
         assertEquals(1, deleted);
-        final List<BookingLog> left = bookingLogRepository.findAll();
-        assertEquals(2, left.size());
+        assertEquals(2, bookingLogRepository.findAll().size());
         assertEquals(REBOOKED, bookingLogRepository.findLatestEvent(BOOKING_A).get(0).getState());
     }
 
     @Test
-    void deleteRecordedBeforeKeepsEachBookingsLatestEventHoweverOld() {
+    void deleteSupersededKeepsEachBookingsLatestEventHoweverOld() {
         // the status check reads the latest event to say why a booking has no rows, and a draft
         // can carry a booking for longer than the retention period
         bookingLogRepository.record(RESERVED, List.of(hold(BOOKING_A, "cs-1")));
         bookingLogRepository.record(EXPIRED, List.of(hold(BOOKING_A, "cs-1")));
-        bookingLogRepository.findAll().forEach(row -> {
-            row.setRecordedAt(row.getRecordedAt().minus(200, ChronoUnit.DAYS));
-            bookingLogRepository.save(row);
-        });
+        age(bookingLogRepository.findAll(), 200);
 
-        final int deleted = bookingLogRepository.deleteRecordedBefore(Instant.now().minus(90, ChronoUnit.DAYS));
+        final int deleted = bookingLogRepository.deleteSupersededRecordedBefore(CUTOFF);
 
         assertEquals(1, deleted);
         final List<BookingLog> latest = bookingLogRepository.findLatestEvent(BOOKING_A);
         assertEquals(1, latest.size());
         assertEquals(EXPIRED, latest.get(0).getState());
+    }
+
+    private void age(final List<BookingLog> rows, final int days) {
+        rows.forEach(row -> {
+            row.setRecordedAt(row.getRecordedAt().minus(days, ChronoUnit.DAYS));
+            bookingLogRepository.save(row);
+        });
     }
 
     private static Set<String> eventIdsOf(final List<BookingLog> rows, final String bookingId) {

@@ -5391,7 +5391,7 @@ class CourtSchedulerIT extends AbstractIT {
     }
 
     /**
-     * BUG-1 guard. A bare {@code DELETE} used to remove an expired reservation row without ever
+     * Guards the purge restoring capacity. A bare {@code DELETE} used to remove an expired reservation row without ever
      * restoring the session's capacity, so {@code court_schedule.available_slots} stayed
      * decremented forever. Seeding rows directly with {@code databaseSeeder.insertAllocatedListing}
      * would never exercise that bug — direct seeding never decrements {@code available_slots} in
@@ -5399,7 +5399,7 @@ class CourtSchedulerIT extends AbstractIT {
      * nothing. Reservations here are therefore created through the real
      * {@code POST /unconfirmedBooking} path (mirrors {@code ProvisionalBookingIT}), so capacity is
      * genuinely taken before the purge runs. Do not "simplify" this back to direct seeding — that
-     * silently removes the guard and lets BUG-1 back in unnoticed.
+     * silently removes the guard and lets the lost capacity back in unnoticed.
      */
     @Test
     void shouldPurgeAllocatedListingsWhoseExpiresAtHasAlreadyPassed() throws Exception {
@@ -5445,11 +5445,11 @@ class CourtSchedulerIT extends AbstractIT {
         assertFalse(remainingIds.contains(expiredYesterday.getId()));
         assertTrue(remainingIds.contains(notYetExpired.getId()));
 
-        // The purged reservation's slot must come back — exactly one, not zero (BUG-1) and not
+        // The purged reservation's slot must come back — exactly one, not zero and not
         // two (the surviving reservation's slot must NOT also be released).
         assertEquals(initialAvailableSlots - 1,
                 databaseReader.slotsLeft(courtScheduleId),
-                "the purge deleted the row without restoring its slot — this is BUG-1");
+                "the purge deleted the row without restoring its slot");
     }
 
     /**
