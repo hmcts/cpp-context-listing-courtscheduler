@@ -281,8 +281,8 @@ public class DatabaseSeeder {
     }
 
     public void updateAllocatedListingExpiresAt(final String allocatedListingId, final LocalDate expiresAt) throws SQLException {
-        try (final Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
-             final PreparedStatement ps = connection.prepareStatement(UPDATE_ALLOCATED_LISTING_EXPIRES_AT_SQL)) {
+        try (Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
+             PreparedStatement ps = connection.prepareStatement(UPDATE_ALLOCATED_LISTING_EXPIRES_AT_SQL)) {
 
             ps.setDate(1, Date.valueOf(expiresAt));
             ps.setString(2, allocatedListingId);

@@ -3,6 +3,7 @@ package uk.gov.moj.cpp.courtscheduler.repository;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.Result;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.UpdateCourtSchedule;
 import static java.util.UUID.randomUUID;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -15,7 +16,6 @@ import uk.gov.moj.cpp.courtscheduler.openapi.model.HearingSlot;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.RequestedCourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.RequestedSlots;
-import uk.gov.moj.cpp.courtscheduler.openapi.model.Result;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtScheduleMatcherInfo;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.CrownFallbackRequest;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
@@ -57,6 +57,14 @@ import org.springframework.beans.factory.annotation.Autowired;
  * here persists its parent schedule first.</p>
  */
 class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
+    private static final String BK_RES = "BK-RES";
+    private static final String CS_CONFIRM = "CS-CONFIRM";
+    private static final String CS_BUG3_LIST = "CS-BUG3-LIST";
+    private static final String BK_BUG3_1 = "BK-BUG3-1";
+    private static final String CS_LOG_LIST = "CS-LOG-LIST";
+    private static final String CS_HOLD_COUNTERS = "CS-HOLD-COUNTERS";
+    private static final String CS_REPICK_1 = "CS-REPICK-1";
+
     private static final String ADULT_2 = "ADULT";
     private static final String CR01_2 = "CR01";
     private static final String CR02_2 = "CR02";
@@ -730,37 +738,36 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
     // -----------------------------------------------------------------------
 
     @Test
-    public void shouldReleaseTheReservationWhenTheBookingIsConfirmed() {
+    void shouldReleaseTheReservationWhenTheBookingIsConfirmed() {
         // Reservations are stored as an ordinary allocated_listings row whose hearing_id column
-        // holds the minted bookingId (see ReservationService) — releaseOldAllocatedListings("BK-RES")
+        // holds the minted bookingId (see ReservationService) — releaseOldAllocatedListings(BK_RES)
         // must find and release it through the full three-step release, restoring capacity.
         final LocalDate sessionDate = LocalDate.of(2026, 9, 9);
         courtScheduleRepository.saveAndFlush(slotBasedCourtSchedule("CS-RES", sessionDate));
 
         allocatedListingRepository.saveAndFlush(
-                reservationListingFor("AL-RES", "BK-RES", "CS-RES", "BK-RES", sessionDate));
+                reservationListingFor("AL-RES", BK_RES, "CS-RES", BK_RES, sessionDate));
 
-        courtScheduleRepository.releaseOldAllocatedListings("BK-RES");
+        courtScheduleRepository.releaseOldAllocatedListings(BK_RES);
 
         // @DataJpaTest runs in one rollback tx: flush pending persists/removes before
         // clearing, else clear() silently discards them (ccsph2 rig committed per call).
         em.flush();
         em.clear();
 
-        assertTrue(allocatedListingRepository.findByHearingId("BK-RES").isEmpty());
+        assertTrue(allocatedListingRepository.findByHearingId(BK_RES).isEmpty());
         assertEquals(Integer.valueOf(10), slotsLeft("CS-RES"));
     }
 
     @Test
-    public void shouldTolerateReleasingABookingWithNoReservation() {
+    void shouldTolerateReleasingABookingWithNoReservation() {
         // Legacy magistrates drafts have only a provisional_booking row and nothing in
         // allocated_listings to release. If this threw, every pre-go-live draft would fail at share.
-        courtScheduleRepository.releaseOldAllocatedListings("BK-DOES-NOT-EXIST");
-        // no exception — no-op
+        assertDoesNotThrow(() -> courtScheduleRepository.releaseOldAllocatedListings("BK-DOES-NOT-EXIST"));
     }
 
     @Test
-    public void confirmingABookedSlotReleasesItsBookingIdKeyedReservationWithoutTouchingTheRealHearingId() {
+    void confirmingABookedSlotReleasesItsBookingIdKeyedReservationWithoutTouchingTheRealHearingId() {
         // Highest-risk case for Task 7: persistHearingSlots releases slots.get(0).getBookingId()
         // (the minted bookingId from the reservation) AFTER the new allocation has already been
         // saved under the real hearingId. Since the minted bookingId and the real hearingId are
@@ -769,14 +776,14 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
         final String bookingId = randomUUID().toString();
         final LocalDate sessionDate = LocalDate.of(2026, 9, 9);
 
-        courtScheduleRepository.saveAndFlush(slotBasedCourtSchedule("CS-CONFIRM", sessionDate));
+        courtScheduleRepository.saveAndFlush(slotBasedCourtSchedule(CS_CONFIRM, sessionDate));
 
         // The hold taken at slot-pick time — keyed on bookingId, not hearingId, and carrying the
         // non-null expires_at that makes it a reservation rather than a confirmed booking.
         allocatedListingRepository.saveAndFlush(
-                reservationListingFor("AL-CONFIRM-RES", bookingId, "CS-CONFIRM", bookingId, sessionDate));
+                reservationListingFor("AL-CONFIRM-RES", bookingId, CS_CONFIRM, bookingId, sessionDate));
 
-        final AllocatedSlot slot = allocatedSlotForBooking(hearingId, "CS-CONFIRM", sessionDate);
+        final AllocatedSlot slot = allocatedSlotForBooking(hearingId, CS_CONFIRM, sessionDate);
         slot.setBookingId(bookingId);
 
         final Result result = courtScheduleRepository.saveBookedSlots(new ArrayList<>(List.of(slot)), true, false);
@@ -793,7 +800,7 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
         // ...while the confirmed booking under the real hearingId survives, untouched.
         final List<AllocatedListing> confirmed = allocatedListingRepository.findByHearingId(hearingId);
         assertEquals(1, confirmed.size());
-        assertEquals("CS-CONFIRM", confirmed.get(0).getCourtScheduleId());
+        assertEquals(CS_CONFIRM, confirmed.get(0).getCourtScheduleId());
     }
 
     /**
@@ -807,7 +814,7 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
      * and each of the three sessions decremented by exactly one.
      */
     @Test
-    public void oneMultiSlotReserveHoldsEverySessionAndDecrementsEachExactlyOnce() {
+    void oneMultiSlotReserveHoldsEverySessionAndDecrementsEachExactlyOnce() {
         final String bookingId = randomUUID().toString();
         final LocalDate day1 = LocalDate.of(2026, 10, 12);
         final LocalDate day2 = LocalDate.of(2026, 10, 13);
@@ -853,19 +860,19 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
     // -----------------------------------------------------------------------
 
     @Test
-    public void shouldReleaseTheReservationAndDecrementTheSessionExactlyOnceWhenListing() {
+    void shouldReleaseTheReservationAndDecrementTheSessionExactlyOnceWhenListing() {
         final LocalDate sessionDate = LocalDate.of(2026, 9, 11);
-        final CourtSchedule session = slotBasedCourtSchedule("CS-BUG3-LIST", sessionDate);
+        final CourtSchedule session = slotBasedCourtSchedule(CS_BUG3_LIST, sessionDate);
         session.setMaxSlots(4);
         session.setAvailableSlots(3); // the reservation already took one, off a max of 4
         courtScheduleRepository.saveAndFlush(session);
 
         // The hold taken at slot-pick time: hearing_id = bookingId, non-null expires_at.
         allocatedListingRepository.saveAndFlush(
-                reservationListingFor("AL-BUG3-RES", "BK-BUG3-1", "CS-BUG3-LIST", "BK-BUG3-1", sessionDate));
+                reservationListingFor("AL-BUG3-RES", BK_BUG3_1, CS_BUG3_LIST, BK_BUG3_1, sessionDate));
 
         courtScheduleRepository.updateListHearingSlots(
-                requestedSlotsFor("HEARING-BUG3-1", "BK-BUG3-1", "CS-BUG3-LIST"));
+                requestedSlotsFor("HEARING-BUG3-1", BK_BUG3_1, CS_BUG3_LIST));
 
         // @DataJpaTest runs in one rollback tx: flush pending persists/removes before
         // clearing, else clear() silently discards them (ccsph2 rig committed per call).
@@ -873,16 +880,16 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
         em.clear();
 
         // reserve -1, list -1, release +1 => net -1 from the original 4
-        assertEquals(Integer.valueOf(3), slotsLeft("CS-BUG3-LIST"));
-        assertTrue(allocatedListingRepository.findByHearingId("BK-BUG3-1").isEmpty());
+        assertEquals(Integer.valueOf(3), slotsLeft(CS_BUG3_LIST));
+        assertTrue(allocatedListingRepository.findByHearingId(BK_BUG3_1).isEmpty());
         final List<AllocatedListing> confirmed = allocatedListingRepository.findByHearingId("HEARING-BUG3-1");
         assertEquals(1, confirmed.size());
         assertNull(confirmed.get(0).getExpiresAt());
-        assertEquals("BK-BUG3-1", confirmed.get(0).getBookingId());
+        assertEquals(BK_BUG3_1, confirmed.get(0).getBookingId());
     }
 
     @Test
-    public void shouldListNormallyWhenNoBookingIdIsSupplied() {
+    void shouldListNormallyWhenNoBookingIdIsSupplied() {
         // Regression net: every pre-go-live caller (Crown fallback, search-and-book, rota) never
         // sends a bookingId. This must keep working unchanged.
         final LocalDate sessionDate = LocalDate.of(2026, 9, 11);
@@ -902,7 +909,7 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
     }
 
     @Test
-    public void shouldTolerateABookingIdWithNoReservation() {
+    void shouldTolerateABookingIdWithNoReservation() {
         // A pre-go-live magistrates draft: a bookingId is present but nothing was ever reserved
         // under it (only a provisional_booking row exists). Must be a no-op, not an error.
         final LocalDate sessionDate = LocalDate.of(2026, 9, 11);
@@ -927,27 +934,27 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
     // -----------------------------------------------------------------------
 
     @Test
-    public void shouldLogTheConfirmedListingWhenAShareListsAHold() {
+    void shouldLogTheConfirmedListingWhenAShareListsAHold() {
         final LocalDate sessionDate = LocalDate.of(2026, 9, 11);
-        final CourtSchedule session = slotBasedCourtSchedule("CS-LOG-LIST", sessionDate);
+        final CourtSchedule session = slotBasedCourtSchedule(CS_LOG_LIST, sessionDate);
         session.setMaxSlots(4);
         session.setAvailableSlots(3);
         courtScheduleRepository.saveAndFlush(session);
         allocatedListingRepository.saveAndFlush(
-                reservationListingFor("AL-LOG-RES", "BK-LOG-1", "CS-LOG-LIST", null, sessionDate));
+                reservationListingFor("AL-LOG-RES", "BK-LOG-1", CS_LOG_LIST, null, sessionDate));
 
-        courtScheduleRepository.updateListHearingSlots(requestedSlotsFor("HEARING-LOG-1", "BK-LOG-1", "CS-LOG-LIST"));
+        courtScheduleRepository.updateListHearingSlots(requestedSlotsFor("HEARING-LOG-1", "BK-LOG-1", CS_LOG_LIST));
         em.flush();
 
         final List<BookingLog> latest = bookingLogRepository.findLatestEvent("BK-LOG-1");
         assertEquals(1, latest.size());
         assertEquals(BookingState.CONFIRMED, latest.get(0).getState());
         assertEquals("HEARING-LOG-1", latest.get(0).getHearingId());
-        assertEquals("CS-LOG-LIST", latest.get(0).getCourtScheduleId());
+        assertEquals(CS_LOG_LIST, latest.get(0).getCourtScheduleId());
     }
 
     @Test
-    public void shouldLogEachLapsedHoldWhenThePurgeRemovesIt() {
+    void shouldLogEachLapsedHoldWhenThePurgeRemovesIt() {
         final LocalDate sessionDate = LocalDate.of(2026, 9, 11);
         final CourtSchedule session = slotBasedCourtSchedule("CS-LOG-PURGE", sessionDate);
         session.setMaxSlots(4);
@@ -972,7 +979,7 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
     // Without a record the booking is left with no rows and a latest state of CONFIRMED, and the
     // status check cannot tell it from a booking that never existed.
     @Test
-    public void shouldLogTheFreedListingWhenAHearingsSessionsAreReleased() {
+    void shouldLogTheFreedListingWhenAHearingsSessionsAreReleased() {
         final LocalDate sessionDate = LocalDate.of(2026, 9, 11);
         final CourtSchedule session = slotBasedCourtSchedule("CS-LOG-FREE", sessionDate);
         session.setMaxSlots(4);
@@ -1009,37 +1016,37 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
     // SPRDT-1406. A reserve-a-slot hold must leave them alone - none of its releases gives
     // anything back - while still taking capacity, which is counted from allocated_listings.
     @Test
-    public void aHoldTakesCapacityButNeverTouchesTheCounters() {
+    void aHoldTakesCapacityButNeverTouchesTheCounters() {
         final LocalDate sessionDate = LocalDate.of(2026, 9, 21);
-        courtScheduleRepository.saveAndFlush(slotBasedCourtSchedule("CS-HOLD-COUNTERS", sessionDate));
+        courtScheduleRepository.saveAndFlush(slotBasedCourtSchedule(CS_HOLD_COUNTERS, sessionDate));
 
         courtScheduleRepository.saveBookedSlots(
-                new ArrayList<>(List.of(reservedSlotFor(randomUUID().toString(), "CS-HOLD-COUNTERS", sessionDate))), false, false);
+                new ArrayList<>(List.of(reservedSlotFor(randomUUID().toString(), CS_HOLD_COUNTERS, sessionDate))), false, false);
         em.flush();
         em.clear();
 
-        assertEquals(Integer.valueOf(9), courtScheduleRepository.findBy("CS-HOLD-COUNTERS").getAvailableSlots(),
+        assertEquals(Integer.valueOf(9), courtScheduleRepository.findBy(CS_HOLD_COUNTERS).getAvailableSlots(),
                 "the counter is untouched by a hold");
-        assertEquals(9, slotsLeft("CS-HOLD-COUNTERS"), "the hold still takes one of the 10 slots");
+        assertEquals(9, slotsLeft(CS_HOLD_COUNTERS), "the hold still takes one of the 10 slots");
     }
 
     @Test
-    public void shouldReleaseThePreviousPickWhenReservingAgainUnderTheSameBookingId() {
+    void shouldReleaseThePreviousPickWhenReservingAgainUnderTheSameBookingId() {
         final LocalDate sessionDate = LocalDate.of(2026, 9, 20);
-        final CourtSchedule first = slotBasedCourtSchedule("CS-REPICK-1", sessionDate);
+        final CourtSchedule first = slotBasedCourtSchedule(CS_REPICK_1, sessionDate);
         final CourtSchedule second = slotBasedCourtSchedule("CS-REPICK-2", sessionDate);
         courtScheduleRepository.saveAndFlush(first);
         courtScheduleRepository.saveAndFlush(second);
         final String bookingId = randomUUID().toString();
 
         courtScheduleRepository.saveBookedSlots(
-                new ArrayList<>(List.of(reservedSlotFor(bookingId, "CS-REPICK-1", sessionDate))), false, false);
+                new ArrayList<>(List.of(reservedSlotFor(bookingId, CS_REPICK_1, sessionDate))), false, false);
 
         // @DataJpaTest runs in one rollback tx: flush pending persists/removes before
         // clearing, else clear() silently discards them (ccsph2 rig committed per call).
         em.flush();
         em.clear();
-        assertEquals(Integer.valueOf(9), slotsLeft("CS-REPICK-1"));
+        assertEquals(Integer.valueOf(9), slotsLeft(CS_REPICK_1));
 
         courtScheduleRepository.saveBookedSlots(
                 new ArrayList<>(List.of(reservedSlotFor(bookingId, "CS-REPICK-2", sessionDate))), false, false);
@@ -1047,7 +1054,7 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
         em.flush();
         em.clear();
 
-        assertEquals(Integer.valueOf(10), slotsLeft("CS-REPICK-1"),
+        assertEquals(Integer.valueOf(10), slotsLeft(CS_REPICK_1),
                 "the abandoned session must get its slot back");
         assertEquals(Integer.valueOf(9), slotsLeft("CS-REPICK-2"),
                 "the newly picked session must be held");
@@ -1149,10 +1156,6 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
                 - allocatedListingRepository.findByCourtScheduleId(courtScheduleId).size();
     }
 
-    private int minutesLeft(final String courtScheduleId) {
-        return courtScheduleRepository.findBy(courtScheduleId).getMaxDuration()
-                - allocatedListingRepository.findByCourtScheduleId(courtScheduleId).stream().mapToInt(AllocatedListing::getDuration).sum();
-    }
 
     // -----------------------------------------------------------------------
     // Fixture helpers

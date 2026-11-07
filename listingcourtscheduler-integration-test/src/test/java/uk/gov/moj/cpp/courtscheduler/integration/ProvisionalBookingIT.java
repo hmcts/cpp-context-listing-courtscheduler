@@ -39,25 +39,30 @@ import org.json.JSONObject;
 import org.junit.jupiter.api.Test;
 
 class ProvisionalBookingIT extends AbstractIT {
+    private static final String COURTSCHEDULER_CREATE_UNCONFIRMED_BOOKING_JSON = "courtscheduler.create.unconfirmed.booking.json";
+    private static final String COURTSCHEDULER_ID_PLACEHOLDER = "COURTSCHEDULER_ID";
+    private static final String APPLICATION_VND_COURTSCHEDULER_CREATE_UNCONFIRMED_BOOKING_JSON = "application/vnd.courtscheduler.create.unconfirmed.booking+json";
+    private static final String BOOKINGID = "bookingId";
+    private static final String BOOKINGIDS = "{\"bookingIds\":[\"";
 
-    private final String RELATIVE_PATH = "/unconfirmedBooking";
+    private static final String RELATIVE_PATH = "/unconfirmedBooking";
 
     @Test
     void shouldCreateProvisionalHearingSlot() throws SQLException {
-        String courtScheduleId = UUID.randomUUID().toString();
-        CourtSchedule courtSchedule = bookableCourtSchedule(courtScheduleId);
+        final String courtScheduleId = UUID.randomUUID().toString();
+        final CourtSchedule courtSchedule = bookableCourtSchedule(courtScheduleId);
         databaseSeeder.insertCourtSchedule(courtSchedule);
 
 
-        String provisionalBookingPayload = getPayload("courtscheduler.create.unconfirmed.booking.json");
-        provisionalBookingPayload = provisionalBookingPayload.replace("COURTSCHEDULER_ID", courtScheduleId);
+        String provisionalBookingPayload = getPayload(COURTSCHEDULER_CREATE_UNCONFIRMED_BOOKING_JSON);
+        provisionalBookingPayload = provisionalBookingPayload.replace(COURTSCHEDULER_ID_PLACEHOLDER, courtScheduleId);
 
-        final Response response = postCommand(RELATIVE_PATH, "application/vnd.courtscheduler.create.unconfirmed.booking+json", SYSTEM_USER_ID, provisionalBookingPayload);
+        final Response response = postCommand(RELATIVE_PATH, APPLICATION_VND_COURTSCHEDULER_CREATE_UNCONFIRMED_BOOKING_JSON, SYSTEM_USER_ID, provisionalBookingPayload);
 
         assertThat(response.getStatus(), is(OK.getStatusCode()));
         final String responseString = response.readEntity(String.class); // Ensure to read the entity as String
         final JSONObject responseJson = new JSONObject(responseString);
-        assertThat(responseJson.get("bookingId"), notNullValue());
+        assertThat(responseJson.get(BOOKINGID), notNullValue());
     }
 
     /**
@@ -71,16 +76,16 @@ class ProvisionalBookingIT extends AbstractIT {
      */
     @Test
     void shouldAcceptLegacyApplicationJsonAcceptHeader() throws SQLException {
-        String courtScheduleId = UUID.randomUUID().toString();
-        CourtSchedule courtSchedule = bookableCourtSchedule(courtScheduleId);
+        final String courtScheduleId = UUID.randomUUID().toString();
+        final CourtSchedule courtSchedule = bookableCourtSchedule(courtScheduleId);
         databaseSeeder.insertCourtSchedule(courtSchedule);
 
-        String provisionalBookingPayload = getPayload("courtscheduler.create.unconfirmed.booking.json")
-                .replace("COURTSCHEDULER_ID", courtScheduleId);
+        final String provisionalBookingPayload = getPayload(COURTSCHEDULER_CREATE_UNCONFIRMED_BOOKING_JSON)
+                .replace(COURTSCHEDULER_ID_PLACEHOLDER, courtScheduleId);
 
         final Response response = postCommandWithAccept(
                 RELATIVE_PATH,
-                "application/vnd.courtscheduler.create.unconfirmed.booking+json",
+                APPLICATION_VND_COURTSCHEDULER_CREATE_UNCONFIRMED_BOOKING_JSON,
                 "application/json",
                 SYSTEM_USER_ID,
                 provisionalBookingPayload);
@@ -99,16 +104,16 @@ class ProvisionalBookingIT extends AbstractIT {
      */
     @Test
     void shouldAcceptHearingCallerWithNoAcceptHeader() throws SQLException {
-        String courtScheduleId = UUID.randomUUID().toString();
-        CourtSchedule courtSchedule = bookableCourtSchedule(courtScheduleId);
+        final String courtScheduleId = UUID.randomUUID().toString();
+        final CourtSchedule courtSchedule = bookableCourtSchedule(courtScheduleId);
         databaseSeeder.insertCourtSchedule(courtSchedule);
 
-        String provisionalBookingPayload = getPayload("courtscheduler.create.unconfirmed.booking.json")
-                .replace("COURTSCHEDULER_ID", courtScheduleId);
+        final String provisionalBookingPayload = getPayload(COURTSCHEDULER_CREATE_UNCONFIRMED_BOOKING_JSON)
+                .replace(COURTSCHEDULER_ID_PLACEHOLDER, courtScheduleId);
 
         final Response response = postCommandWithoutAccept(
                 RELATIVE_PATH,
-                "application/vnd.courtscheduler.create.unconfirmed.booking+json",
+                APPLICATION_VND_COURTSCHEDULER_CREATE_UNCONFIRMED_BOOKING_JSON,
                 SYSTEM_USER_ID,
                 provisionalBookingPayload);
 
@@ -187,10 +192,10 @@ class ProvisionalBookingIT extends AbstractIT {
                 .replace("COURTSCHEDULER_ID_2", courtScheduleId2);
 
         final Response bookResponse = postCommand(RELATIVE_PATH,
-                "application/vnd.courtscheduler.create.unconfirmed.booking+json", SYSTEM_USER_ID, payload);
+                APPLICATION_VND_COURTSCHEDULER_CREATE_UNCONFIRMED_BOOKING_JSON, SYSTEM_USER_ID, payload);
 
         assertThat(bookResponse.getStatus(), is(OK.getStatusCode()));
-        final String bookingId = new JSONObject(bookResponse.readEntity(String.class)).getString("bookingId");
+        final String bookingId = new JSONObject(bookResponse.readEntity(String.class)).getString(BOOKINGID);
         assertThat(bookingId, notNullValue());
 
         // BOTH sessions are held — one reservation row each, both carrying the expiry that is the
@@ -345,7 +350,7 @@ class ProvisionalBookingIT extends AbstractIT {
         final String confirmedRowId = UUID.randomUUID().toString();
         databaseSeeder.insertAllocatedListing(confirmedListing(confirmedRowId, bookingId, confirmedSessionId));
 
-        final Response response = releaseBookings("{\"bookingIds\":[\"" + bookingId + "\",\"" + bookingId + "\"]}");
+        final Response response = releaseBookings(BOOKINGIDS + bookingId + "\",\"" + bookingId + "\"]}");
         assertThat("release must be accepted: " + response.readEntity(String.class),
                 response.getStatus(), is(ACCEPTED.getStatusCode()));
 
@@ -359,7 +364,7 @@ class ProvisionalBookingIT extends AbstractIT {
         assertThat("the confirmed listing must still take its slot",
                 availableSlots(confirmedSessionId), is(4));
 
-        final Response again = releaseBookings("{\"bookingIds\":[\"" + bookingId + "\",\"" + UUID.randomUUID() + "\"]}");
+        final Response again = releaseBookings(BOOKINGIDS + bookingId + "\",\"" + UUID.randomUUID() + "\"]}");
         assertThat("a repeat, with an unknown id, is a no-op", again.getStatus(), is(ACCEPTED.getStatusCode()));
         assertThat(availableSlots(heldSessionId), is(5));
         assertThat(databaseReader.allocatedListings().stream().filter(row -> confirmedRowId.equals(row.getId())).toList(),
@@ -373,7 +378,7 @@ class ProvisionalBookingIT extends AbstractIT {
         databaseSeeder.insertCourtSchedule(bookableCourtSchedule(courtScheduleId));
         final String bookingId = reserveOneSession(courtScheduleId);
 
-        final Response response = releaseBookings("{\"bookingIds\":[\"" + bookingId + "\",\" \"]}");
+        final Response response = releaseBookings(BOOKINGIDS + bookingId + "\",\" \"]}");
 
         assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
         assertThat("nothing is released when the request is refused", availableSlots(courtScheduleId), is(4));
@@ -443,7 +448,7 @@ class ProvisionalBookingIT extends AbstractIT {
         final StringBuilder entries = new StringBuilder();
         for (final CourtSchedule session : sessions) {
             if (entries.length() > 0) {
-                entries.append(",");
+                entries.append(',');
             }
             entries.append(String.format(
                     "{\"hearingId\":\"%s\",\"bookingId\":\"%s\",\"courtScheduleId\":\"%s\","
@@ -485,8 +490,8 @@ class ProvisionalBookingIT extends AbstractIT {
      * single-session fixture as-is (it already fits one session).
      */
     private String reserveOneSession(final String courtScheduleId) {
-        final String payload = getPayload("courtscheduler.create.unconfirmed.booking.json")
-                .replace("COURTSCHEDULER_ID", courtScheduleId);
+        final String payload = getPayload(COURTSCHEDULER_CREATE_UNCONFIRMED_BOOKING_JSON)
+                .replace(COURTSCHEDULER_ID_PLACEHOLDER, courtScheduleId);
         return postReserveOneSession(payload);
     }
 
@@ -497,19 +502,19 @@ class ProvisionalBookingIT extends AbstractIT {
      * added onto the parsed JSON instead of hand-building the whole payload.
      */
     private String reserveOneSession(final String courtScheduleId, final String bookingId) {
-        final String payload = new JSONObject(getPayload("courtscheduler.create.unconfirmed.booking.json")
-                .replace("COURTSCHEDULER_ID", courtScheduleId))
-                .put("bookingId", bookingId)
+        final String payload = new JSONObject(getPayload(COURTSCHEDULER_CREATE_UNCONFIRMED_BOOKING_JSON)
+                .replace(COURTSCHEDULER_ID_PLACEHOLDER, courtScheduleId))
+                .put(BOOKINGID, bookingId)
                 .toString();
         return postReserveOneSession(payload);
     }
 
     private String postReserveOneSession(final String payload) {
         final Response response = postCommand(RELATIVE_PATH,
-                "application/vnd.courtscheduler.create.unconfirmed.booking+json", SYSTEM_USER_ID, payload);
+                APPLICATION_VND_COURTSCHEDULER_CREATE_UNCONFIRMED_BOOKING_JSON, SYSTEM_USER_ID, payload);
         final String body = response.readEntity(String.class);
         assertThat("the pick must succeed: " + body, response.getStatus(), is(OK.getStatusCode()));
-        return new JSONObject(body).getString("bookingId");
+        return new JSONObject(body).getString(BOOKINGID);
     }
 
     /**
@@ -537,7 +542,7 @@ class ProvisionalBookingIT extends AbstractIT {
     private String bookingStatusOf(final String bookingId) {
         final Response response = postCommand("/unconfirmedBooking/status",
                 "application/vnd.courtscheduler.query.booking.status+json", SYSTEM_USER_ID,
-                "{\"bookingIds\":[\"" + bookingId + "\"]}");
+                BOOKINGIDS + bookingId + "\"]}");
         final String body = response.readEntity(String.class);
         assertThat("booking-status query must succeed: " + body, response.getStatus(), is(OK.getStatusCode()));
         return new JSONObject(body).getJSONArray("bookings").getJSONObject(0).getString("status");

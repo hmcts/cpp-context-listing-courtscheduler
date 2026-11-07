@@ -1,15 +1,17 @@
 package uk.gov.moj.cpp.courtscheduler.controllers;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import uk.gov.moj.cpp.courtscheduler.exception.ConfirmedBookingExistsException;
 import uk.gov.moj.cpp.courtscheduler.exception.NoCapacityException;
 import uk.gov.moj.cpp.courtscheduler.exception.NoSessionAvailableException;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpStatus;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -32,39 +34,42 @@ class ReservationErrorMappingTest {
 
     @Test
     void confirmedBookingExists_returns422_withItsOwnMessage() throws Exception {
-        mvc.perform(get("/throw/confirmed"))
-                .andExpect(status().isUnprocessableEntity())
-                .andExpect(jsonPath("$.error").value("already has a confirmed allocation"));
+        final MvcResult result = mvc.perform(get("/throw/confirmed"))
+                .andExpect(jsonPath("$.error").value("already has a confirmed allocation"))
+                .andReturn();
+        assertEquals(HttpStatus.UNPROCESSABLE_ENTITY.value(), result.getResponse().getStatus());
     }
 
     @Test
     void noSessionAvailable_returns422_withItsOwnMessage() throws Exception {
-        mvc.perform(get("/throw/no-session"))
-                .andExpect(status().isUnprocessableEntity())
-                .andExpect(jsonPath("$.error").value("No session found for sessionId abc"));
+        final MvcResult result = mvc.perform(get("/throw/no-session"))
+                .andExpect(jsonPath("$.error").value("No session found for sessionId abc"))
+                .andReturn();
+        assertEquals(HttpStatus.UNPROCESSABLE_ENTITY.value(), result.getResponse().getStatus());
     }
 
     @Test
     void noCapacity_returns422_withItsOwnMessage() throws Exception {
-        mvc.perform(get("/throw/no-capacity"))
-                .andExpect(status().isUnprocessableEntity())
-                .andExpect(jsonPath("$.error").value("no capacity"));
+        final MvcResult result = mvc.perform(get("/throw/no-capacity"))
+                .andExpect(jsonPath("$.error").value("no capacity"))
+                .andReturn();
+        assertEquals(HttpStatus.UNPROCESSABLE_ENTITY.value(), result.getResponse().getStatus());
     }
 
     @RestController
-    static class ThrowingEndpoint {
+    /* package */ static class ThrowingEndpoint {
         @GetMapping("/throw/confirmed")
-        String confirmed() {
+        /* package */ String confirmed() {
             throw new ConfirmedBookingExistsException("already has a confirmed allocation");
         }
 
         @GetMapping("/throw/no-session")
-        String noSession() {
+        /* package */ String noSession() {
             throw new NoSessionAvailableException("No session found for sessionId abc");
         }
 
         @GetMapping("/throw/no-capacity")
-        String noCapacity() {
+        /* package */ String noCapacity() {
             throw new NoCapacityException("no capacity");
         }
     }

@@ -11,7 +11,6 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -52,6 +51,25 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class ProvisionalBookingServiceTest {
+    private static final String CS_1 = "cs-1";
+    private static final String BOOKINGID = "bookingId";
+    private static final String BK_1 = "bk-1";
+    private static final String PROVISIONALSLOTS = "provisionalSlots";
+    private static final String COURTSCHEDULEID = "courtScheduleId";
+    private static final String LEGACY_BK = "legacy-bk";
+    private static final String BK_LIVE = "bk-live";
+    private static final String BOOKINGS = "bookings";
+    private static final String STATUS = "status";
+    private static final String STATUS_RESERVED = "RESERVED";
+    private static final String SAFETOSHARE = "safeToShare";
+    private static final String BK_GONE = "bk-gone";
+    private static final String STATUS_NOT_FOUND = "NOT_FOUND";
+    private static final String BK_SHARED = "bk-shared";
+    private static final String BK_BOTH = "bk-both";
+    private static final String STATUS_EXPIRED = "EXPIRED";
+    private static final String BK_FULL = "bk-full";
+    private static final String BK_RACE = "bk-race";
+    private static final String BK_NPE = "bk-npe";
 
     private static final String JUDICIARIES = "judiciaries";
 
@@ -83,38 +101,38 @@ class ProvisionalBookingServiceTest {
         // booking must go to the reservation service in ONE list.
         when(reservationService.reserveAllUnderBooking(any(), anyList())).thenReturn("bk-used");
 
-        final JsonObject response = provisionalBookingService.bookProvisionalSlots(slots("cs-1", "cs-2", "cs-3"));
+        final JsonObject response = provisionalBookingService.bookProvisionalSlots(slots(CS_1, "cs-2", "cs-3"));
 
-        assertThat(response.getString("bookingId"), is("bk-used"));
+        assertThat(response.getString(BOOKINGID), is("bk-used"));
 
         final ArgumentCaptor<List<ProvisionalSlot>> captor = ArgumentCaptor.forClass(List.class);
         verify(reservationService, times(1)).reserveAllUnderBooking(any(), captor.capture());
         assertThat(captor.getValue().size(), is(3));
         assertThat(captor.getValue().stream().map(ProvisionalSlot::getCourtScheduleId).toList(),
-                is(List.of("cs-1", "cs-2", "cs-3")));
+                is(List.of(CS_1, "cs-2", "cs-3")));
         verify(provisionalBookingRepository, never()).saveProvisionalBooking(any(), anyString(), any());
     }
 
     /** POST /unconfirmedBooking/release: the release itself belongs to the reservation service. */
     @Test
     void shouldHandTheBookingIdsToReleaseToTheReservationService() {
-        provisionalBookingService.releaseUnconfirmedBookings(List.of("bk-1", "bk-2"), null);
+        provisionalBookingService.releaseUnconfirmedBookings(List.of(BK_1, "bk-2"), null);
 
-        verify(reservationService).releaseUnconfirmedBookings(List.of("bk-1", "bk-2"), BookingState.RELEASED);
+        verify(reservationService).releaseUnconfirmedBookings(List.of(BK_1, "bk-2"), BookingState.RELEASED);
     }
 
     @Test
     void shouldRecordADroppedLineAsDraftReleased() {
-        provisionalBookingService.releaseUnconfirmedBookings(List.of("bk-1"), "DROPPED_FROM_DRAFT");
+        provisionalBookingService.releaseUnconfirmedBookings(List.of(BK_1), "DROPPED_FROM_DRAFT");
 
-        verify(reservationService).releaseUnconfirmedBookings(List.of("bk-1"), BookingState.DRAFT_RELEASED);
+        verify(reservationService).releaseUnconfirmedBookings(List.of(BK_1), BookingState.DRAFT_RELEASED);
     }
 
     @Test
     void shouldRecordASurplusHoldAsSurplusReleased() {
-        provisionalBookingService.releaseUnconfirmedBookings(List.of("bk-1"), "SURPLUS");
+        provisionalBookingService.releaseUnconfirmedBookings(List.of(BK_1), "SURPLUS");
 
-        verify(reservationService).releaseUnconfirmedBookings(List.of("bk-1"), BookingState.SURPLUS_RELEASED);
+        verify(reservationService).releaseUnconfirmedBookings(List.of(BK_1), BookingState.SURPLUS_RELEASED);
     }
 
     @Test
@@ -122,7 +140,7 @@ class ProvisionalBookingServiceTest {
         when(reservationService.reserveAllUnderBooking(any(), anyList())).thenThrow(new NoCapacityException("full"));
 
         assertThrows(NoCapacityException.class,
-                () -> provisionalBookingService.bookProvisionalSlots(slots("cs-1", "cs-2")));
+                () -> provisionalBookingService.bookProvisionalSlots(slots(CS_1, "cs-2")));
     }
 
     /**
@@ -133,12 +151,12 @@ class ProvisionalBookingServiceTest {
     @Test
     void shouldPassTheSuppliedBookingIdOnAndReturnTheOneTheReservationUsed() {
         when(reservationService.reserveAllUnderBooking(eq("existing-booking-1"), anyList())).thenReturn("fresh-booking-2");
-        final ProvisionalBookingSlots request = slots("cs-1");
+        final ProvisionalBookingSlots request = slots(CS_1);
         request.setBookingId("existing-booking-1");
 
         final JsonObject response = provisionalBookingService.bookProvisionalSlots(request);
 
-        assertThat(response.getString("bookingId"), is("fresh-booking-2"));
+        assertThat(response.getString(BOOKINGID), is("fresh-booking-2"));
         verify(reservationService).reserveAllUnderBooking(eq("existing-booking-1"), anyList());
     }
 
@@ -146,65 +164,65 @@ class ProvisionalBookingServiceTest {
     void shouldLeaveMintingToTheReservationWhenNoBookingIdIsSupplied() {
         when(reservationService.reserveAllUnderBooking(isNull(), anyList())).thenReturn("minted-1");
 
-        final JsonObject response = provisionalBookingService.bookProvisionalSlots(slots("cs-1"));
+        final JsonObject response = provisionalBookingService.bookProvisionalSlots(slots(CS_1));
 
-        assertThat(response.getString("bookingId"), is("minted-1"));
+        assertThat(response.getString(BOOKINGID), is("minted-1"));
     }
 
     @Test
     void shouldReadSlotsFromReservationRows() {
-        final CourtSchedule session = aCourtSchedule("cs-1");
+        final CourtSchedule session = aCourtSchedule(CS_1);
         final AllocatedListing reservation = new AllocatedListing();
-        reservation.setCourtScheduleId("cs-1");
-        reservation.setBookingId("bk-1");
+        reservation.setCourtScheduleId(CS_1);
+        reservation.setBookingId(BK_1);
         reservation.setExpiresAt(LocalDate.now(ZoneOffset.UTC));
-        when(allocatedListingRepository.findByBookingId("bk-1")).thenReturn(List.of(reservation));
-        when(courtScheduleRepository.findBy("cs-1")).thenReturn(session);
+        when(allocatedListingRepository.findByBookingId(BK_1)).thenReturn(List.of(reservation));
+        when(courtScheduleRepository.findBy(CS_1)).thenReturn(session);
 
-        final JsonObject response = provisionalBookingService.fetchProvisionalSlots("bk-1");
+        final JsonObject response = provisionalBookingService.fetchProvisionalSlots(BK_1);
 
-        final JsonArray slots = response.getJsonArray("provisionalSlots");
+        final JsonArray slots = response.getJsonArray(PROVISIONALSLOTS);
         assertThat(slots.size(), is(1));
-        assertThat(slots.getJsonObject(0).getString("courtScheduleId"), is("cs-1"));
-        assertThat(slots.getJsonObject(0).getString("bookingId"), is("bk-1"));
+        assertThat(slots.getJsonObject(0).getString(COURTSCHEDULEID), is(CS_1));
+        assertThat(slots.getJsonObject(0).getString(BOOKINGID), is(BK_1));
     }
 
     @Test
     void shouldFallBackToLegacyProvisionalBookingWhenNoReservationExists() {
-        when(allocatedListingRepository.findByBookingId("legacy-bk")).thenReturn(List.of());
-        when(provisionalBookingRepository.findByBookingIdIn(List.of("legacy-bk")))
-                .thenReturn(List.of(aLegacyProvisionalBooking("legacy-bk", "cs-9")));
+        when(allocatedListingRepository.findByBookingId(LEGACY_BK)).thenReturn(List.of());
+        when(provisionalBookingRepository.findByBookingIdIn(List.of(LEGACY_BK)))
+                .thenReturn(List.of(aLegacyProvisionalBooking(LEGACY_BK, "cs-9")));
 
-        final JsonObject response = provisionalBookingService.fetchProvisionalSlots("legacy-bk");
+        final JsonObject response = provisionalBookingService.fetchProvisionalSlots(LEGACY_BK);
 
-        assertThat(response.getJsonArray("provisionalSlots").size(), is(1));
-        assertThat(response.getJsonArray("provisionalSlots").getJsonObject(0).getString("courtScheduleId"), is("cs-9"));
+        assertThat(response.getJsonArray(PROVISIONALSLOTS).size(), is(1));
+        assertThat(response.getJsonArray(PROVISIONALSLOTS).getJsonObject(0).getString(COURTSCHEDULEID), is("cs-9"));
     }
 
     @Test
     void shouldReportABookingWithAReservationAsReserved() {
         final AllocatedListing reservation = new AllocatedListing();
-        reservation.setCourtScheduleId("cs-1");
-        reservation.setBookingId("bk-live");
+        reservation.setCourtScheduleId(CS_1);
+        reservation.setBookingId(BK_LIVE);
         reservation.setExpiresAt(LocalDate.now(ZoneOffset.UTC));
-        when(allocatedListingRepository.findByBookingId("bk-live")).thenReturn(List.of(reservation));
+        when(allocatedListingRepository.findByBookingId(BK_LIVE)).thenReturn(List.of(reservation));
 
-        final JsonObject booking = provisionalBookingService.getBookingStatus(List.of("bk-live"), false)
-                .getJsonArray("bookings").getJsonObject(0);
+        final JsonObject booking = provisionalBookingService.getBookingStatus(List.of(BK_LIVE), false)
+                .getJsonArray(BOOKINGS).getJsonObject(0);
 
-        assertThat(booking.getString("status"), is("RESERVED"));
-        assertThat(booking.getBoolean("safeToShare"), is(true));
+        assertThat(booking.getString(STATUS), is(STATUS_RESERVED));
+        assertThat(booking.getBoolean(SAFETOSHARE), is(true));
     }
 
     @Test
     void shouldReportAPurgedBookingAsNotFound() {
-        when(allocatedListingRepository.findByBookingId("bk-gone")).thenReturn(List.of());
+        when(allocatedListingRepository.findByBookingId(BK_GONE)).thenReturn(List.of());
 
-        final JsonObject booking = provisionalBookingService.getBookingStatus(List.of("bk-gone"), false)
-                .getJsonArray("bookings").getJsonObject(0);
+        final JsonObject booking = provisionalBookingService.getBookingStatus(List.of(BK_GONE), false)
+                .getJsonArray(BOOKINGS).getJsonObject(0);
 
-        assertThat(booking.getString("status"), is("NOT_FOUND"));
-        assertThat(booking.getBoolean("safeToShare"), is(false));
+        assertThat(booking.getString(STATUS), is(STATUS_NOT_FOUND));
+        assertThat(booking.getBoolean(SAFETOSHARE), is(false));
     }
 
     /**
@@ -221,46 +239,46 @@ class ProvisionalBookingServiceTest {
      */
     @Test
     void shouldReportABookingWithOnlyALegacyRowAsNotFound() {
-        when(allocatedListingRepository.findByBookingId("legacy-bk")).thenReturn(List.of());
+        when(allocatedListingRepository.findByBookingId(LEGACY_BK)).thenReturn(List.of());
 
-        final JsonObject booking = provisionalBookingService.getBookingStatus(List.of("legacy-bk"), false)
-                .getJsonArray("bookings").getJsonObject(0);
+        final JsonObject booking = provisionalBookingService.getBookingStatus(List.of(LEGACY_BK), false)
+                .getJsonArray(BOOKINGS).getJsonObject(0);
 
-        assertThat(booking.getString("status"), is("NOT_FOUND"));
-        assertThat(booking.getBoolean("safeToShare"), is(false));
+        assertThat(booking.getString(STATUS), is(STATUS_NOT_FOUND));
+        assertThat(booking.getBoolean(SAFETOSHARE), is(false));
     }
 
     @Test
     void shouldReportAnAlreadySharedBookingAsSharedAndSafeToShare() {
-        when(allocatedListingRepository.findByBookingId("bk-shared"))
-                .thenReturn(List.of(aConfirmedRowFor("bk-shared", "real-hearing-1")));
+        when(allocatedListingRepository.findByBookingId(BK_SHARED))
+                .thenReturn(List.of(aConfirmedRowFor(BK_SHARED, "real-hearing-1")));
 
-        final JsonObject booking = provisionalBookingService.getBookingStatus(List.of("bk-shared"), false)
-                .getJsonArray("bookings").getJsonObject(0);
+        final JsonObject booking = provisionalBookingService.getBookingStatus(List.of(BK_SHARED), false)
+                .getJsonArray(BOOKINGS).getJsonObject(0);
 
-        assertThat(booking.getString("status"), is("SHARED"));
-        assertThat(booking.getBoolean("safeToShare"), is(true));
+        assertThat(booking.getString(STATUS), is("SHARED"));
+        assertThat(booking.getBoolean(SAFETOSHARE), is(true));
     }
 
     @Test
     void shouldPreferTheReservationWhenABookingSomehowHasBoth() {
         final AllocatedListing reservation = new AllocatedListing();
-        reservation.setCourtScheduleId("cs-1");
-        reservation.setBookingId("bk-both");
+        reservation.setCourtScheduleId(CS_1);
+        reservation.setBookingId(BK_BOTH);
         reservation.setExpiresAt(LocalDate.now(ZoneOffset.UTC));
         // Both rows share one booking_id now - the confirmed listing from the first share, and a
         // fresh hold from a re-pick during the amendment - so a single lookup returns both and
         // expiresAt is the only thing that separates them.
-        when(allocatedListingRepository.findByBookingId("bk-both"))
-                .thenReturn(List.of(aConfirmedRowFor("bk-both", "real-hearing-2"), reservation));
+        when(allocatedListingRepository.findByBookingId(BK_BOTH))
+                .thenReturn(List.of(aConfirmedRowFor(BK_BOTH, "real-hearing-2"), reservation));
 
-        final JsonObject booking = provisionalBookingService.getBookingStatus(List.of("bk-both"), false)
-                .getJsonArray("bookings").getJsonObject(0);
+        final JsonObject booking = provisionalBookingService.getBookingStatus(List.of(BK_BOTH), false)
+                .getJsonArray(BOOKINGS).getJsonObject(0);
 
         // RESERVED wins even though the confirmed row is listed first: while the clerk holds
         // capacity, reporting SHARED would wave a second share through against a live hold.
-        assertThat(booking.getString("status"), is("RESERVED"));
-        assertThat(booking.getBoolean("safeToShare"), is(true));
+        assertThat(booking.getString(STATUS), is(STATUS_RESERVED));
+        assertThat(booking.getBoolean(SAFETOSHARE), is(true));
     }
 
     // -----------------------------------------------------------------------
@@ -269,48 +287,48 @@ class ProvisionalBookingServiceTest {
 
     @Test
     void withoutTheFlagAPurgedBookingStaysNotFoundAndIsNeverRebooked() {
-        when(allocatedListingRepository.findByBookingId("bk-gone")).thenReturn(List.of());
+        when(allocatedListingRepository.findByBookingId(BK_GONE)).thenReturn(List.of());
 
-        final JsonObject booking = statusOf("bk-gone", false);
+        final JsonObject booking = statusOf(BK_GONE, false);
 
-        assertThat(booking.getString("status"), is("NOT_FOUND"));
+        assertThat(booking.getString(STATUS), is(STATUS_NOT_FOUND));
         verify(reservationService, never()).rebookExpired(anyString());
     }
 
     @Test
     void withTheFlagARebookedBookingIsReportedRebookedAndSafeToShare() {
-        when(allocatedListingRepository.findByBookingId("bk-gone")).thenReturn(List.of());
-        loggedAs("bk-gone", BookingState.EXPIRED);
-        when(reservationService.rebookExpired("bk-gone")).thenReturn(true);
+        when(allocatedListingRepository.findByBookingId(BK_GONE)).thenReturn(List.of());
+        loggedAs(BK_GONE, BookingState.EXPIRED);
+        when(reservationService.rebookExpired(BK_GONE)).thenReturn(true);
 
-        final JsonObject booking = statusOf("bk-gone", true);
+        final JsonObject booking = statusOf(BK_GONE, true);
 
-        assertThat(booking.getString("status"), is("REBOOKED"));
-        assertThat(booking.getBoolean("safeToShare"), is(true));
+        assertThat(booking.getString(STATUS), is("REBOOKED"));
+        assertThat(booking.getBoolean(SAFETOSHARE), is(true));
     }
 
     @Test
     void withTheFlagABookingThatCannotBeRebookedStaysExpired() {
-        when(allocatedListingRepository.findByBookingId("bk-gone")).thenReturn(List.of());
-        loggedAs("bk-gone", BookingState.EXPIRED);
-        when(reservationService.rebookExpired("bk-gone")).thenReturn(false);
+        when(allocatedListingRepository.findByBookingId(BK_GONE)).thenReturn(List.of());
+        loggedAs(BK_GONE, BookingState.EXPIRED);
+        when(reservationService.rebookExpired(BK_GONE)).thenReturn(false);
 
-        final JsonObject booking = statusOf("bk-gone", true);
+        final JsonObject booking = statusOf(BK_GONE, true);
 
-        assertThat(booking.getString("status"), is("EXPIRED"));
-        assertThat(booking.getBoolean("safeToShare"), is(false));
+        assertThat(booking.getString(STATUS), is(STATUS_EXPIRED));
+        assertThat(booking.getBoolean(SAFETOSHARE), is(false));
     }
 
     @Test
     void withTheFlagARefusedRebookStaysExpired() {
-        when(allocatedListingRepository.findByBookingId("bk-full")).thenReturn(List.of());
-        loggedAs("bk-full", BookingState.EXPIRED);
-        when(reservationService.rebookExpired("bk-full")).thenThrow(new NoCapacityException("full"));
+        when(allocatedListingRepository.findByBookingId(BK_FULL)).thenReturn(List.of());
+        loggedAs(BK_FULL, BookingState.EXPIRED);
+        when(reservationService.rebookExpired(BK_FULL)).thenThrow(new NoCapacityException("full"));
 
-        final JsonObject booking = statusOf("bk-full", true);
+        final JsonObject booking = statusOf(BK_FULL, true);
 
-        assertThat(booking.getString("status"), is("EXPIRED"));
-        assertThat(booking.getBoolean("safeToShare"), is(false));
+        assertThat(booking.getString(STATUS), is(STATUS_EXPIRED));
+        assertThat(booking.getBoolean(SAFETOSHARE), is(false));
     }
 
     // A double click: the other request re-booked it first, so this one's insert hits the unique
@@ -318,37 +336,37 @@ class ProvisionalBookingServiceTest {
     @Test
     void withTheFlagARebookThatLosesARaceReportsTheBookingAsItNowIs() {
         final AllocatedListing reservation = new AllocatedListing();
-        reservation.setCourtScheduleId("cs-1");
-        reservation.setBookingId("bk-race");
+        reservation.setCourtScheduleId(CS_1);
+        reservation.setBookingId(BK_RACE);
         reservation.setExpiresAt(LocalDate.now(ZoneOffset.UTC));
-        when(allocatedListingRepository.findByBookingId("bk-race")).thenReturn(List.of(), List.of(reservation));
-        loggedAs("bk-race", BookingState.EXPIRED);
-        when(reservationService.rebookExpired("bk-race"))
+        when(allocatedListingRepository.findByBookingId(BK_RACE)).thenReturn(List.of(), List.of(reservation));
+        loggedAs(BK_RACE, BookingState.EXPIRED);
+        when(reservationService.rebookExpired(BK_RACE))
                 .thenThrow(new org.springframework.dao.DataIntegrityViolationException("allocated_listings_reservation_idx"));
 
-        final JsonObject booking = statusOf("bk-race", true);
+        final JsonObject booking = statusOf(BK_RACE, true);
 
-        assertThat(booking.getString("status"), is("RESERVED"));
-        assertThat(booking.getBoolean("safeToShare"), is(true));
+        assertThat(booking.getString(STATUS), is(STATUS_RESERVED));
+        assertThat(booking.getBoolean(SAFETOSHARE), is(true));
     }
 
     // An unexpected failure re-booking one booking must not fail the whole call: listing would
     // then answer UNKNOWN (safe to share) for every booking, including one that is really gone.
     @Test
     void withTheFlagAnUnexpectedRebookFailureStillAnswersThatBookingsRealStatus() {
-        when(allocatedListingRepository.findByBookingId("bk-npe")).thenReturn(List.of());
-        when(allocatedListingRepository.findByBookingId("bk-gone")).thenReturn(List.of());
-        loggedAs("bk-npe", BookingState.EXPIRED);
-        loggedAs("bk-gone", BookingState.EXPIRED);
-        when(reservationService.rebookExpired("bk-npe")).thenThrow(new IllegalStateException("max_slot is null"));
-        when(reservationService.rebookExpired("bk-gone")).thenReturn(false);
+        when(allocatedListingRepository.findByBookingId(BK_NPE)).thenReturn(List.of());
+        when(allocatedListingRepository.findByBookingId(BK_GONE)).thenReturn(List.of());
+        loggedAs(BK_NPE, BookingState.EXPIRED);
+        loggedAs(BK_GONE, BookingState.EXPIRED);
+        when(reservationService.rebookExpired(BK_NPE)).thenThrow(new IllegalStateException("max_slot is null"));
+        when(reservationService.rebookExpired(BK_GONE)).thenReturn(false);
 
-        final JsonArray bookings = provisionalBookingService.getBookingStatus(List.of("bk-npe", "bk-gone"), true)
-                .getJsonArray("bookings");
+        final JsonArray bookings = provisionalBookingService.getBookingStatus(List.of(BK_NPE, BK_GONE), true)
+                .getJsonArray(BOOKINGS);
 
-        assertThat(bookings.getJsonObject(0).getString("status"), is("EXPIRED"));
-        assertThat(bookings.getJsonObject(1).getString("status"), is("EXPIRED"));
-        assertThat(bookings.getJsonObject(1).getBoolean("safeToShare"), is(false));
+        assertThat(bookings.getJsonObject(0).getString(STATUS), is(STATUS_EXPIRED));
+        assertThat(bookings.getJsonObject(1).getString(STATUS), is(STATUS_EXPIRED));
+        assertThat(bookings.getJsonObject(1).getBoolean(SAFETOSHARE), is(false));
     }
 
     // The other click's re-book committed between this request's two reads: it no longer qualifies
@@ -356,16 +374,16 @@ class ProvisionalBookingServiceTest {
     @Test
     void withTheFlagABookingAnotherRequestJustRebookedIsReportedAsItNowIs() {
         final AllocatedListing reservation = new AllocatedListing();
-        reservation.setCourtScheduleId("cs-1");
-        reservation.setBookingId("bk-race");
+        reservation.setCourtScheduleId(CS_1);
+        reservation.setBookingId(BK_RACE);
         reservation.setExpiresAt(LocalDate.now(ZoneOffset.UTC));
-        when(allocatedListingRepository.findByBookingId("bk-race")).thenReturn(List.of(), List.of(reservation));
-        loggedAs("bk-race", BookingState.EXPIRED);
-        when(reservationService.rebookExpired("bk-race")).thenReturn(false);
+        when(allocatedListingRepository.findByBookingId(BK_RACE)).thenReturn(List.of(), List.of(reservation));
+        loggedAs(BK_RACE, BookingState.EXPIRED);
+        when(reservationService.rebookExpired(BK_RACE)).thenReturn(false);
 
-        final JsonObject booking = statusOf("bk-race", true);
+        final JsonObject booking = statusOf(BK_RACE, true);
 
-        assertThat(booking.getString("status"), is("RESERVED"));
+        assertThat(booking.getString(STATUS), is(STATUS_RESERVED));
     }
 
     // -----------------------------------------------------------------------
@@ -382,8 +400,8 @@ class ProvisionalBookingServiceTest {
 
         final JsonObject booking = statusOf("4b778972", true);
 
-        assertThat(booking.getString("status"), is("SURPLUS"));
-        assertThat(booking.getBoolean("safeToShare"), is(true));
+        assertThat(booking.getString(STATUS), is("SURPLUS"));
+        assertThat(booking.getBoolean(SAFETOSHARE), is(true));
         verify(reservationService, never()).rebookExpired(anyString());
     }
 
@@ -394,8 +412,8 @@ class ProvisionalBookingServiceTest {
 
         final JsonObject booking = statusOf("bk-unlisted", true);
 
-        assertThat(booking.getString("status"), is("UNLISTED"));
-        assertThat(booking.getBoolean("safeToShare"), is(true));
+        assertThat(booking.getString(STATUS), is("UNLISTED"));
+        assertThat(booking.getBoolean(SAFETOSHARE), is(true));
     }
 
     // Freed before UNLISTED was recorded: the log's last word is still CONFIRMED.
@@ -406,8 +424,8 @@ class ProvisionalBookingServiceTest {
 
         final JsonObject booking = statusOf("bk-old", false);
 
-        assertThat(booking.getString("status"), is("UNLISTED"));
-        assertThat(booking.getBoolean("safeToShare"), is(true));
+        assertThat(booking.getString(STATUS), is("UNLISTED"));
+        assertThat(booking.getBoolean(SAFETOSHARE), is(true));
     }
 
     @Test
@@ -417,8 +435,8 @@ class ProvisionalBookingServiceTest {
 
         final JsonObject booking = statusOf("bk-lapsed", false);
 
-        assertThat(booking.getString("status"), is("EXPIRED"));
-        assertThat(booking.getBoolean("safeToShare"), is(false));
+        assertThat(booking.getString(STATUS), is(STATUS_EXPIRED));
+        assertThat(booking.getBoolean(SAFETOSHARE), is(false));
         verify(reservationService, never()).rebookExpired(anyString());
     }
 
@@ -431,8 +449,8 @@ class ProvisionalBookingServiceTest {
 
             final JsonObject booking = statusOf(bookingId, true);
 
-            assertThat(released.name(), booking.getString("status"), is("RELEASED"));
-            assertThat(released.name(), booking.getBoolean("safeToShare"), is(false));
+            assertThat(released.name(), booking.getString(STATUS), is("RELEASED"));
+            assertThat(released.name(), booking.getBoolean(SAFETOSHARE), is(false));
         }
         verify(reservationService, never()).rebookExpired(anyString());
     }
@@ -446,15 +464,15 @@ class ProvisionalBookingServiceTest {
 
         final JsonObject booking = statusOf("bk-vanished", true);
 
-        assertThat(booking.getString("status"), is("NOT_FOUND"));
-        assertThat(booking.getBoolean("safeToShare"), is(false));
+        assertThat(booking.getString(STATUS), is(STATUS_NOT_FOUND));
+        assertThat(booking.getBoolean(SAFETOSHARE), is(false));
         verify(reservationService, never()).rebookExpired(anyString());
     }
 
     private void loggedAs(final String bookingId, final BookingState state) {
         final AllocatedListing row = new AllocatedListing();
         row.setBookingId(bookingId);
-        row.setCourtScheduleId("cs-1");
+        row.setCourtScheduleId(CS_1);
         when(bookingLogRepository.findLatestEvent(bookingId))
                 .thenReturn(List.of(BookingLog.fromHold(randomUUID().toString(), state, row, Instant.now())));
     }
@@ -462,24 +480,24 @@ class ProvisionalBookingServiceTest {
     @Test
     void withTheFlagAReservedOrSharedBookingIsNeverRebooked() {
         final AllocatedListing reservation = new AllocatedListing();
-        reservation.setCourtScheduleId("cs-1");
-        reservation.setBookingId("bk-live");
+        reservation.setCourtScheduleId(CS_1);
+        reservation.setBookingId(BK_LIVE);
         reservation.setExpiresAt(LocalDate.now(ZoneOffset.UTC));
-        when(allocatedListingRepository.findByBookingId("bk-live")).thenReturn(List.of(reservation));
-        when(allocatedListingRepository.findByBookingId("bk-shared"))
-                .thenReturn(List.of(aConfirmedRowFor("bk-shared", "real-hearing-1")));
+        when(allocatedListingRepository.findByBookingId(BK_LIVE)).thenReturn(List.of(reservation));
+        when(allocatedListingRepository.findByBookingId(BK_SHARED))
+                .thenReturn(List.of(aConfirmedRowFor(BK_SHARED, "real-hearing-1")));
 
-        final JsonArray bookings = provisionalBookingService.getBookingStatus(List.of("bk-live", "bk-shared"), true)
-                .getJsonArray("bookings");
+        final JsonArray bookings = provisionalBookingService.getBookingStatus(List.of(BK_LIVE, BK_SHARED), true)
+                .getJsonArray(BOOKINGS);
 
-        assertThat(bookings.getJsonObject(0).getString("status"), is("RESERVED"));
-        assertThat(bookings.getJsonObject(1).getString("status"), is("SHARED"));
+        assertThat(bookings.getJsonObject(0).getString(STATUS), is(STATUS_RESERVED));
+        assertThat(bookings.getJsonObject(1).getString(STATUS), is("SHARED"));
         verify(reservationService, never()).rebookExpired(anyString());
     }
 
     private JsonObject statusOf(final String bookingId, final boolean reserveIfExpired) {
         return provisionalBookingService.getBookingStatus(List.of(bookingId), reserveIfExpired)
-                .getJsonArray("bookings").getJsonObject(0);
+                .getJsonArray(BOOKINGS).getJsonObject(0);
     }
 
     private CourtSchedule aCourtSchedule(final String courtScheduleId) {
@@ -490,7 +508,7 @@ class ProvisionalBookingServiceTest {
 
     private AllocatedListing aConfirmedRowFor(final String bookingId, final String realHearingId) {
         final AllocatedListing confirmed = new AllocatedListing();
-        confirmed.setCourtScheduleId("cs-1");
+        confirmed.setCourtScheduleId(CS_1);
         confirmed.setHearingId(realHearingId);
         confirmed.setBookingId(bookingId);
         confirmed.setExpiresAt(null);
@@ -518,9 +536,9 @@ class ProvisionalBookingServiceTest {
         final String bookingId2 = randomUUID().toString();
         final String courtScheduleId = randomUUID().toString();
         final String bookedSlots = bookingId1+","+bookingId2;
-        ProvisionalBooking provisionalBooking1 = prepareProvisionalBooking(bookingId1, courtScheduleId);
-        ProvisionalBooking provisionalBooking2 = prepareProvisionalBooking(bookingId2, courtScheduleId);
-        List<ProvisionalBooking> provisionalBookingList = new ArrayList<>();
+        final ProvisionalBooking provisionalBooking1 = prepareProvisionalBooking(bookingId1, courtScheduleId);
+        final ProvisionalBooking provisionalBooking2 = prepareProvisionalBooking(bookingId2, courtScheduleId);
+        final List<ProvisionalBooking> provisionalBookingList = new ArrayList<>();
         provisionalBookingList.add(provisionalBooking1);
         provisionalBookingList.add(provisionalBooking2);
 
@@ -528,21 +546,21 @@ class ProvisionalBookingServiceTest {
 
         final JsonObject actualProvisionalSlots = provisionalBookingService.fetchProvisionalSlots(bookedSlots);
 
-        assertThat(actualProvisionalSlots.getJsonArray("provisionalSlots"), notNullValue());
-        assertThat(actualProvisionalSlots.getJsonArray("provisionalSlots").size(), is(2));
+        assertThat(actualProvisionalSlots.getJsonArray(PROVISIONALSLOTS), notNullValue());
+        assertThat(actualProvisionalSlots.getJsonArray(PROVISIONALSLOTS).size(), is(2));
 
-        final JsonValue provisionalSlot1 = actualProvisionalSlots.getJsonArray("provisionalSlots").get(0);
+        final JsonValue provisionalSlot1 = actualProvisionalSlots.getJsonArray(PROVISIONALSLOTS).get(0);
 
         assertThat(provisionalSlot1, notNullValue());
-        assertThat(provisionalSlot1.asJsonObject().getString("bookingId"), is(bookingId1));
-        assertThat(provisionalSlot1.asJsonObject().getString("courtScheduleId"), is(courtScheduleId));
+        assertThat(provisionalSlot1.asJsonObject().getString(BOOKINGID), is(bookingId1));
+        assertThat(provisionalSlot1.asJsonObject().getString(COURTSCHEDULEID), is(courtScheduleId));
         assertThat(provisionalSlot1.asJsonObject().get(JUDICIARIES).asJsonArray().size(), is(0));
 
-        final JsonValue provisionalSlot2 = actualProvisionalSlots.getJsonArray("provisionalSlots").get(1);
+        final JsonValue provisionalSlot2 = actualProvisionalSlots.getJsonArray(PROVISIONALSLOTS).get(1);
 
         assertThat(provisionalSlot2, notNullValue());
-        assertThat(provisionalSlot2.asJsonObject().getString("bookingId"), is(bookingId2));
-        assertThat(provisionalSlot2.asJsonObject().getString("courtScheduleId"), is(courtScheduleId));
+        assertThat(provisionalSlot2.asJsonObject().getString(BOOKINGID), is(bookingId2));
+        assertThat(provisionalSlot2.asJsonObject().getString(COURTSCHEDULEID), is(courtScheduleId));
         assertThat(provisionalSlot2.asJsonObject().get(JUDICIARIES).asJsonArray().size(), is(0));
     }
 
@@ -550,20 +568,20 @@ class ProvisionalBookingServiceTest {
      void shouldFetchProvisionalSlots() {
         final String bookingId = randomUUID().toString();
         final String courtScheduleId = randomUUID().toString();
-        ProvisionalBooking provisionalBooking = prepareProvisionalBooking(bookingId, courtScheduleId);
-        List<ProvisionalBooking> provisionalBookingList = new ArrayList<>();
+        final ProvisionalBooking provisionalBooking = prepareProvisionalBooking(bookingId, courtScheduleId);
+        final List<ProvisionalBooking> provisionalBookingList = new ArrayList<>();
         provisionalBookingList.add(provisionalBooking);
 
         doReturn(provisionalBookingList).when(provisionalBookingRepository).findByBookingIdIn(anyList());
 
         final JsonObject actualProvisionalSlots = provisionalBookingService.fetchProvisionalSlots(bookingId);
 
-        final JsonValue provisionalSlot = actualProvisionalSlots.getJsonArray("provisionalSlots").get(0);
+        final JsonValue provisionalSlot = actualProvisionalSlots.getJsonArray(PROVISIONALSLOTS).get(0);
 
-        assertThat(actualProvisionalSlots.getJsonArray("provisionalSlots"), notNullValue());
+        assertThat(actualProvisionalSlots.getJsonArray(PROVISIONALSLOTS), notNullValue());
         assertThat(provisionalSlot, notNullValue());
-        assertThat(provisionalSlot.asJsonObject().getString("bookingId"), is(bookingId));
-        assertThat(provisionalSlot.asJsonObject().getString("courtScheduleId"), is(courtScheduleId));
+        assertThat(provisionalSlot.asJsonObject().getString(BOOKINGID), is(bookingId));
+        assertThat(provisionalSlot.asJsonObject().getString(COURTSCHEDULEID), is(courtScheduleId));
     }
 
     @Test
@@ -574,21 +592,21 @@ class ProvisionalBookingServiceTest {
         final String judiciaryId = randomUUID().toString();
         final String expectedEmail = "judge@example.com";
 
-        ProvisionalBooking provisionalBooking =
+        final ProvisionalBooking provisionalBooking =
                 prepareProvisionalBookingWithListingProfile(bookingId, courtScheduleId, listingProfileId);
-        CourtScheduleJudiciary judiciaryEntity =
+        final CourtScheduleJudiciary judiciaryEntity =
                 judiciaryEntity(courtScheduleId, judiciaryId, listingProfileId, expectedEmail);
 
         doReturn(List.of(provisionalBooking)).when(provisionalBookingRepository).findByBookingIdIn(anyList());
         doReturn(List.of(judiciaryEntity)).when(courtScheduleRepository)
                 .getCourtScheduleJudiciariesForProvisionalBooking(anyList());
 
-        JsonObject actual = provisionalBookingService.fetchProvisionalSlots(bookingId);
+        final JsonObject actual = provisionalBookingService.fetchProvisionalSlots(bookingId);
 
         verify(courtScheduleRepository).getCourtScheduleJudiciariesForProvisionalBooking(anyList());
-        assertThat(actual.getJsonArray("provisionalSlots").size(), is(1));
-        JsonObject slot = actual.getJsonArray("provisionalSlots").get(0).asJsonObject();
-        assertThat(slot.getString("bookingId"), is(bookingId));
+        assertThat(actual.getJsonArray(PROVISIONALSLOTS).size(), is(1));
+        final JsonObject slot = actual.getJsonArray(PROVISIONALSLOTS).get(0).asJsonObject();
+        assertThat(slot.getString(BOOKINGID), is(bookingId));
         assertThat(slot.getJsonArray(JUDICIARIES).size(), is(1));
         assertThat(slot.getJsonArray(JUDICIARIES).get(0).asJsonObject().getString("emailAddress"), is(expectedEmail));
     }
@@ -599,20 +617,20 @@ class ProvisionalBookingServiceTest {
         final String courtScheduleId = randomUUID().toString();
         final String listingProfileId = randomUUID().toString();
 
-        ProvisionalBooking provisionalBooking =
+        final ProvisionalBooking provisionalBooking =
                 prepareProvisionalBookingWithListingProfile(bookingId, courtScheduleId, listingProfileId);
-        CourtScheduleJudiciary first =
+        final CourtScheduleJudiciary first =
                 judiciaryEntity(courtScheduleId, randomUUID().toString(), listingProfileId, "first@example.com");
-        CourtScheduleJudiciary second =
+        final CourtScheduleJudiciary second =
                 judiciaryEntity(courtScheduleId, randomUUID().toString(), listingProfileId, "second@example.com");
 
         doReturn(List.of(provisionalBooking)).when(provisionalBookingRepository).findByBookingIdIn(anyList());
         doReturn(List.of(first, second)).when(courtScheduleRepository)
                 .getCourtScheduleJudiciariesForProvisionalBooking(anyList());
 
-        JsonObject actual = provisionalBookingService.fetchProvisionalSlots(bookingId);
+        final JsonObject actual = provisionalBookingService.fetchProvisionalSlots(bookingId);
 
-        JsonObject slot = actual.getJsonArray("provisionalSlots").get(0).asJsonObject();
+        final JsonObject slot = actual.getJsonArray(PROVISIONALSLOTS).get(0).asJsonObject();
         assertThat(slot.getJsonArray(JUDICIARIES).size(), is(2));
     }
 
@@ -621,7 +639,7 @@ class ProvisionalBookingServiceTest {
             final String judiciaryId,
             final String listingProfileId,
             final String email) {
-        CourtScheduleJudiciary entity = new CourtScheduleJudiciary();
+        final CourtScheduleJudiciary entity = new CourtScheduleJudiciary();
         entity.setId(new CourtScheduleJudiciaryKey(courtScheduleId, judiciaryId));
         entity.setCourtListingProfileId(listingProfileId);
         entity.setEmail(email);
@@ -638,23 +656,23 @@ class ProvisionalBookingServiceTest {
     }
 
     private ProvisionalBooking prepareProvisionalBookingWithListingProfile(
-            String bookingId, String courtScheduleId, String listingProfileId) {
-        ProvisionalBooking provisionalBooking = new ProvisionalBooking();
-        CourtSchedule courtSchedule = new CourtSchedule();
+            final String bookingId, final String courtScheduleId, final String listingProfileId) {
+        final ProvisionalBooking provisionalBooking = new ProvisionalBooking();
+        final CourtSchedule courtSchedule = new CourtSchedule();
         courtSchedule.setCourtScheduleId(courtScheduleId);
         courtSchedule.setListingProfileId(listingProfileId);
-        ProvisionalBookingKey provisionalBookingKey = new ProvisionalBookingKey();
+        final ProvisionalBookingKey provisionalBookingKey = new ProvisionalBookingKey();
         provisionalBookingKey.setBookingId(bookingId);
         provisionalBookingKey.setCourtSchedule(courtSchedule);
         provisionalBooking.setProvisionalBookingKey(provisionalBookingKey);
         return provisionalBooking;
     }
 
-    private ProvisionalBooking prepareProvisionalBooking(String bookingId, String courtScheduleId) {
-        ProvisionalBooking provisionalBooking = new ProvisionalBooking();
-        CourtSchedule courtSchedule = new CourtSchedule();
+    private ProvisionalBooking prepareProvisionalBooking(final String bookingId, final String courtScheduleId) {
+        final ProvisionalBooking provisionalBooking = new ProvisionalBooking();
+        final CourtSchedule courtSchedule = new CourtSchedule();
         courtSchedule.setCourtScheduleId(courtScheduleId);
-        ProvisionalBookingKey provisionalBookingKey = new ProvisionalBookingKey();
+        final ProvisionalBookingKey provisionalBookingKey = new ProvisionalBookingKey();
         provisionalBookingKey.setBookingId(bookingId);
         provisionalBookingKey.setCourtSchedule(courtSchedule);
         provisionalBooking.setProvisionalBookingKey(provisionalBookingKey);

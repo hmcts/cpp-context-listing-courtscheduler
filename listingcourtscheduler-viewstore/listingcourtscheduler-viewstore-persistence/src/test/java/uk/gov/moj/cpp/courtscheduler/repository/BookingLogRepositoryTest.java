@@ -20,6 +20,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
 class BookingLogRepositoryTest extends AbstractRepositoryTest {
+    private static final String CS_1 = "cs-1";
+    private static final String CS_2 = "cs-2";
 
     private static final String BOOKING_A = "booking-a";
     private static final String BOOKING_B = "booking-b";
@@ -35,7 +37,7 @@ class BookingLogRepositoryTest extends AbstractRepositoryTest {
 
     @Test
     void recordsOneEventPerBooking() {
-        bookingLogRepository.record(EXPIRED, List.of(hold(BOOKING_A, "cs-1"), hold(BOOKING_A, "cs-2"), hold(BOOKING_B, "cs-3")));
+        bookingLogRepository.record(EXPIRED, List.of(hold(BOOKING_A, CS_1), hold(BOOKING_A, CS_2), hold(BOOKING_B, "cs-3")));
 
         final List<BookingLog> all = bookingLogRepository.findAll();
         assertEquals(3, all.size());
@@ -49,8 +51,8 @@ class BookingLogRepositoryTest extends AbstractRepositoryTest {
 
     @Test
     void latestEventReturnsOnlyTheNewestEventsRows() {
-        bookingLogRepository.record(EXPIRED, List.of(hold(BOOKING_A, "cs-1"), hold(BOOKING_A, "cs-2")));
-        bookingLogRepository.record(REBOOKED, List.of(hold(BOOKING_A, "cs-1"), hold(BOOKING_A, "cs-2")));
+        bookingLogRepository.record(EXPIRED, List.of(hold(BOOKING_A, CS_1), hold(BOOKING_A, CS_2)));
+        bookingLogRepository.record(REBOOKED, List.of(hold(BOOKING_A, CS_1), hold(BOOKING_A, CS_2)));
 
         final List<BookingLog> latest = bookingLogRepository.findLatestEvent(BOOKING_A);
 
@@ -65,10 +67,10 @@ class BookingLogRepositoryTest extends AbstractRepositoryTest {
 
     @Test
     void deleteSupersededRemovesOnlyOlderRowsWithALaterEvent() {
-        bookingLogRepository.record(EXPIRED, List.of(hold(BOOKING_A, "cs-1")));
+        bookingLogRepository.record(EXPIRED, List.of(hold(BOOKING_A, CS_1)));
         age(bookingLogRepository.findAll(), 100);
-        bookingLogRepository.record(REBOOKED, List.of(hold(BOOKING_A, "cs-1")));
-        bookingLogRepository.record(EXPIRED, List.of(hold(BOOKING_B, "cs-2")));
+        bookingLogRepository.record(REBOOKED, List.of(hold(BOOKING_A, CS_1)));
+        bookingLogRepository.record(EXPIRED, List.of(hold(BOOKING_B, CS_2)));
 
         final int deleted = bookingLogRepository.deleteSupersededRecordedBefore(CUTOFF);
 
@@ -81,8 +83,8 @@ class BookingLogRepositoryTest extends AbstractRepositoryTest {
     void deleteSupersededKeepsEachBookingsLatestEventHoweverOld() {
         // the status check reads the latest event to say why a booking has no rows, and a draft
         // can carry a booking for longer than the retention period
-        bookingLogRepository.record(RESERVED, List.of(hold(BOOKING_A, "cs-1")));
-        bookingLogRepository.record(EXPIRED, List.of(hold(BOOKING_A, "cs-1")));
+        bookingLogRepository.record(RESERVED, List.of(hold(BOOKING_A, CS_1)));
+        bookingLogRepository.record(EXPIRED, List.of(hold(BOOKING_A, CS_1)));
         age(bookingLogRepository.findAll(), 200);
 
         final int deleted = bookingLogRepository.deleteSupersededRecordedBefore(CUTOFF);

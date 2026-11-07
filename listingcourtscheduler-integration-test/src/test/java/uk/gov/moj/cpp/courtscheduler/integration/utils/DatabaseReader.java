@@ -388,8 +388,7 @@ public class DatabaseReader {
         allocatedListing.setBookingId(resultSet.getString("booking_id"));
         allocatedListing.setCreatedOn(resultSet.getTimestamp("created_on").toInstant());
         allocatedListing.setUpdatedOn(resultSet.getTimestamp("updated_on").toInstant());
-        final java.sql.Date expiresAt = resultSet.getDate("expires_at");
-        allocatedListing.setExpiresAt(expiresAt == null ? null : expiresAt.toLocalDate());
+        allocatedListing.setExpiresAt(resultSet.getObject("expires_at", java.time.LocalDate.class));
 
         return allocatedListing;
     }

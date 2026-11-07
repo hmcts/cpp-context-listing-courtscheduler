@@ -20,7 +20,6 @@ import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static uk.gov.moj.cpp.courtscheduler.integration.utils.RestPoller.poll;
 import static uk.gov.moj.cpp.courtscheduler.common.Jurisdiction.CROWN;
@@ -5425,12 +5424,12 @@ class CourtSchedulerIT extends AbstractIT {
         final AllocatedListing expiredYesterday = allocatedListingForBookingId(expiringBookingId);
         final AllocatedListing notYetExpired = allocatedListingForBookingId(survivingBookingId);
 
-        databaseSeeder.updateAllocatedListingExpiresAt(expiredYesterday.getId(), LocalDate.now().minusDays(1));
+        databaseSeeder.updateAllocatedListingExpiresAt(expiredYesterday.getId(), now().minusDays(1));
 
         // The purge cutoff is today's date, not "start of today" as an instant — a today-dated
         // expiry isn't purged until the day rolls over, so "not yet expired" must be set in the
         // FUTURE (tomorrow) to actually exercise the not-purged branch.
-        databaseSeeder.updateAllocatedListingExpiresAt(notYetExpired.getId(), LocalDate.now().plusDays(1));
+        databaseSeeder.updateAllocatedListingExpiresAt(notYetExpired.getId(), now().plusDays(1));
 
         final Response response = postCommand(SEARCH_BY_ID_URL,
                 PURGE_EXPIRED_RESERVED_SESSIONS_CONTENT_TYPE,
@@ -5464,7 +5463,7 @@ class CourtSchedulerIT extends AbstractIT {
         final CourtSchedule courtSchedule = createTestCourtSchedule();
         courtSchedule.setActive(true);
         courtSchedule.setSlotBased(true);
-        courtSchedule.setSessionDate(LocalDate.now().plusDays(30));
+        courtSchedule.setSessionDate(now().plusDays(30));
         courtSchedule.setMaxSlots(5);
         courtSchedule.setAvailableSlots(5);
         return courtSchedule;
@@ -5487,7 +5486,7 @@ class CourtSchedulerIT extends AbstractIT {
         final String body = response.readEntity(String.class);
         assertThat("the reservation must succeed: " + body, response.getStatus(), is(OK.getStatusCode()));
 
-        try (final JsonReader jsonReader = Json.createReader(new StringReader(body))) {
+        try (JsonReader jsonReader = Json.createReader(new StringReader(body))) {
             return jsonReader.readObject().getString("bookingId");
         }
     }

@@ -34,6 +34,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 // Deliberate: MockMvc andExpect(...) performs the assertions, which PMD does not recognise
 @SuppressWarnings("PMD.UnitTestShouldIncludeAssert")
 class BookingStatusApiTest {
+    private static final String BK_1 = "bk-1";
 
     private static final String PATH = "/unconfirmedBooking/status";
     private static final String STATUS_MT = "application/vnd.courtscheduler.query.booking.status+json";
@@ -47,9 +48,9 @@ class BookingStatusApiTest {
 
     @Test
     void theFlagIsPassedThroughAndTheStatusesComeBack() throws Exception {
-        when(provisionalBookingService.getBookingStatus(List.of("bk-1"), true)).thenReturn(Json.createObjectBuilder()
+        when(provisionalBookingService.getBookingStatus(List.of(BK_1), true)).thenReturn(Json.createObjectBuilder()
                 .add("bookings", Json.createArrayBuilder().add(Json.createObjectBuilder()
-                        .add("bookingId", "bk-1").add("safeToShare", true).add("status", "REBOOKED")))
+                        .add("bookingId", BK_1).add("safeToShare", true).add("status", "REBOOKED")))
                 .build());
 
         ask("{\"bookingIds\":[\"bk-1\"],\"reserveIfExpired\":true}")
@@ -60,13 +61,13 @@ class BookingStatusApiTest {
 
     @Test
     void withoutTheFlagItOnlyReads() throws Exception {
-        when(provisionalBookingService.getBookingStatus(List.of("bk-1", "bk-2"), false)).thenReturn(Json.createObjectBuilder()
+        when(provisionalBookingService.getBookingStatus(List.of(BK_1, "bk-2"), false)).thenReturn(Json.createObjectBuilder()
                 .add("bookings", Json.createArrayBuilder()).build());
 
         ask("{\"bookingIds\":[\"bk-1\",\"bk-2\"]}")
                 .andExpect(status().isOk());
 
-        verify(provisionalBookingService).getBookingStatus(List.of("bk-1", "bk-2"), false);
+        verify(provisionalBookingService).getBookingStatus(List.of(BK_1, "bk-2"), false);
     }
 
     // The POST is the only booking-status endpoint: the GET it replaced was never released, and its
@@ -74,7 +75,7 @@ class BookingStatusApiTest {
     @Test
     void theGetFormIsGone() throws Exception {
         mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(PATH)
-                        .param("bookingIds", "bk-1")
+                        .param("bookingIds", BK_1)
                         .header("CJSCPPUID", "11111111-1111-1111-1111-111111111111"))
                 // GlobalExceptionHandler answers an unsupported method with its generic error
                 // status, so what is pinned is that the GET is not served.

@@ -28,7 +28,7 @@ import org.junit.jupiter.api.Test;
  * today: declared in RAML, implemented correctly, no access-control rule, 403 for everyone,
  * approved twice in review because nothing machine-checked the RAML/DRL correspondence.
  */
-public class CourtSchedulerAccessControlConfigTest {
+class CourtSchedulerAccessControlConfigTest {
 
     private static final String PATH_TO_RAML = "src/raml/courtscheduler-api.raml";
     private static final String PATH_TO_DRL =
@@ -106,7 +106,7 @@ public class CourtSchedulerAccessControlConfigTest {
      * reasons, and a test that fails on arrival gets disabled rather than fixed.
      */
     @Test
-    public void everyRamlActionHasAnAccessControlRule() throws Exception {
+    void everyRamlActionHasAnAccessControlRule() throws Exception {
         final Set<String> ramlActions = ramlActionNames();
         final Set<String> ruleActions = drlActionNames();
 
@@ -128,7 +128,7 @@ public class CourtSchedulerAccessControlConfigTest {
      * that the allowlist no longer matches reality.
      */
     @Test
-    public void allowlistedActionsAreStillWithoutARuleAndStillDeclaredInRaml() throws Exception {
+    void allowlistedActionsAreStillWithoutARuleAndStillDeclaredInRaml() throws Exception {
         final Set<String> ramlActions = ramlActionNames();
         final Set<String> ruleActions = drlActionNames();
 

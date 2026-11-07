@@ -117,7 +117,7 @@ class ReleaseUnconfirmedBookingsApiTest {
      * straight through. The controller must refuse a bad body on its own in that case rather
      * than hand a blank id to the release.
      */
-    @Nested
+    /* package */ @Nested
     class WithoutTheSchemaFilter {
 
         private final MockMvc bareMvc = MockMvcBuilders.standaloneSetup(api())

@@ -706,7 +706,7 @@ class AllocatedHearingsQueryBuilderTest extends uk.gov.moj.cpp.courtscheduler.re
     @Test
     void shouldExcludeReservationsFromAllocatedHearings() {
         // Given
-        HearingSlotRequestParam requestParam = new HearingSlotRequestParam(
+        final HearingSlotRequestParam requestParam = new HearingSlotRequestParam(
                 "MAGISTRATES", // panel
                 "2026-10-01", // sessionStartDate
                 "2026-10-31", // sessionEndDate

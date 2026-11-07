@@ -15,14 +15,16 @@ import org.junit.jupiter.api.Test;
 
 /** A log row is the allocated_listings row as it was, expiry included. No database needed. */
 class BookingLogTest {
+    private static final String BK_1 = "bk-1";
+    private static final String EVENT_1 = "event-1";
 
     @Test
     void aHoldsExpiryIsRecorded() {
         final AllocatedListing hold = new AllocatedListing();
-        hold.setBookingId("bk-1");
+        hold.setBookingId(BK_1);
         hold.setExpiresAt(LocalDate.of(2026, 10, 24));
 
-        final BookingLog log = BookingLog.fromHold("event-1", BookingState.RESERVED, hold, Instant.now());
+        final BookingLog log = BookingLog.fromHold(EVENT_1, BookingState.RESERVED, hold, Instant.now());
 
         assertEquals(LocalDate.of(2026, 10, 24), log.getExpiresAt());
     }
@@ -30,10 +32,10 @@ class BookingLogTest {
     @Test
     void aConfirmedListingHasNoExpiry() {
         final AllocatedListing listed = new AllocatedListing();
-        listed.setBookingId("bk-1");
+        listed.setBookingId(BK_1);
         listed.setHearingId("hearing-1");
 
-        final BookingLog log = BookingLog.fromHold("event-1", BookingState.CONFIRMED, listed, Instant.now());
+        final BookingLog log = BookingLog.fromHold(EVENT_1, BookingState.CONFIRMED, listed, Instant.now());
 
         assertNull(log.getExpiresAt());
     }
@@ -42,10 +44,10 @@ class BookingLogTest {
     void eachRowHasItsOwnRandomUuid() {
         final AllocatedListing hold = new AllocatedListing();
         hold.setId("al-1");
-        hold.setBookingId("bk-1");
+        hold.setBookingId(BK_1);
 
-        final BookingLog first = BookingLog.fromHold("event-1", BookingState.RESERVED, hold, Instant.now());
-        final BookingLog second = BookingLog.fromHold("event-1", BookingState.RESERVED, hold, Instant.now());
+        final BookingLog first = BookingLog.fromHold(EVENT_1, BookingState.RESERVED, hold, Instant.now());
+        final BookingLog second = BookingLog.fromHold(EVENT_1, BookingState.RESERVED, hold, Instant.now());
 
         assertDoesNotThrow(() -> UUID.fromString(first.getId()));
         assertNotEquals(first.getId(), second.getId());
@@ -54,10 +56,10 @@ class BookingLogTest {
     @Test
     void theRecordedTimeIsWhenTheRowWasAppended() {
         final AllocatedListing hold = new AllocatedListing();
-        hold.setBookingId("bk-1");
+        hold.setBookingId(BK_1);
         final Instant at = Instant.parse("2026-10-25T10:15:30.123456Z");
 
-        assertEquals(at, BookingLog.fromHold("event-1", BookingState.EXPIRED, hold, at).getRecordedAt());
+        assertEquals(at, BookingLog.fromHold(EVENT_1, BookingState.EXPIRED, hold, at).getRecordedAt());
     }
 
     // The latest state is the row with the latest recorded_at, so two events written in the same

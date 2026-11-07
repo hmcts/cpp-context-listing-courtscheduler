@@ -473,7 +473,7 @@ class AllocatedListingRepositoryTest extends AbstractRepositoryTest {
     // -----------------------------------------------------------------------
 
     @Test
-    public void shouldReleaseExpiredReservationAndRestoreCapacity() {
+    void shouldReleaseExpiredReservationAndRestoreCapacity() {
         final LocalDate today = LocalDate.now(java.time.ZoneOffset.UTC);
         final CourtSchedule session = random(CourtSchedule.class);
         session.setSlotBased(true);
@@ -494,7 +494,7 @@ class AllocatedListingRepositoryTest extends AbstractRepositoryTest {
     }
 
     @Test
-    public void shouldNotReleaseReservationsExpiringToday() {
+    void shouldNotReleaseReservationsExpiringToday() {
         final LocalDate today = LocalDate.now(java.time.ZoneOffset.UTC);
         final String courtScheduleId = persistRandomCourtSchedule();
         final AllocatedListing expiringToday = createAllocateListing(
@@ -507,7 +507,7 @@ class AllocatedListingRepositoryTest extends AbstractRepositoryTest {
     }
 
     @Test
-    public void shouldNotReleaseConfirmedBookings() {
+    void shouldNotReleaseConfirmedBookings() {
         final LocalDate today = LocalDate.now(java.time.ZoneOffset.UTC);
         final String courtScheduleId = persistRandomCourtSchedule();
         final AllocatedListing confirmed = createAllocateListing(
@@ -520,7 +520,7 @@ class AllocatedListingRepositoryTest extends AbstractRepositoryTest {
     }
 
     @Test
-    public void shouldReleaseBacklogOfExpiredReservationsInOnePassAndRestoreCapacity() {
+    void shouldReleaseBacklogOfExpiredReservationsInOnePassAndRestoreCapacity() {
         // A missed daily run can leave both a yesterday-expiry and a two-days-ago-expiry row
         // outstanding at once. The cutoff isn't scoped to exactly "yesterday", so one pass clears
         // the whole backlog and restores capacity for every released session — proving the purge
@@ -567,7 +567,7 @@ class AllocatedListingRepositoryTest extends AbstractRepositoryTest {
     // -----------------------------------------------------------------------
 
     @Test
-    public void shouldReleaseTheUnconfirmedHoldsOfEveryBookingInOneCallAndRestoreCapacity() {
+    void shouldReleaseTheUnconfirmedHoldsOfEveryBookingInOneCallAndRestoreCapacity() {
         final LocalDate expiry = LocalDate.now(java.time.ZoneOffset.UTC).plusDays(1);
         // booking A holds two sessions (a multi-day pick), booking B one; one hold per session each
         final CourtSchedule sessionA1 = persistSlotBasedSession(4, 3);
@@ -591,7 +591,7 @@ class AllocatedListingRepositoryTest extends AbstractRepositoryTest {
     }
 
     @Test
-    public void shouldKeepTheConfirmedListingOfABookingWhileReleasingItsHold() {
+    void shouldKeepTheConfirmedListingOfABookingWhileReleasingItsHold() {
         final LocalDate expiry = LocalDate.now(java.time.ZoneOffset.UTC).plusDays(1);
         final CourtSchedule session = persistSlotBasedSession(4, 2);
         final String booking = randomUUID().toString();
@@ -609,7 +609,7 @@ class AllocatedListingRepositoryTest extends AbstractRepositoryTest {
     }
 
     @Test
-    public void shouldReleaseNothingForUnknownOrNoBookingIds() {
+    void shouldReleaseNothingForUnknownOrNoBookingIds() {
         final CourtSchedule session = persistSlotBasedSession(4, 3);
         persistHold("AL-OTHER", randomUUID().toString(), session.getCourtScheduleId(),
                 LocalDate.now(java.time.ZoneOffset.UTC).plusDays(1));
@@ -620,7 +620,7 @@ class AllocatedListingRepositoryTest extends AbstractRepositoryTest {
     }
 
     @Test
-    public void shouldGiveADurationBasedSessionBackTheMinutesItsHoldsTook() {
+    void shouldGiveADurationBasedSessionBackTheMinutesItsHoldsTook() {
         final CourtSchedule session = random(CourtSchedule.class);
         session.setSlotBased(false);
         session.setMaxDuration(360);
