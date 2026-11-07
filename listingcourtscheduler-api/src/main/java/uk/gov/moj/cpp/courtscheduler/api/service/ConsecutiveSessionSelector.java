@@ -104,26 +104,11 @@ public final class ConsecutiveSessionSelector {
                 continue;
             }
             byDate.merge(cs.getSessionDate(), cs, (existing, incoming) ->
-                    preferBookable(existing, incoming, requiredPerDayMinutes));
+                    SessionAvailability.preferBookable(existing, incoming, requiredPerDayMinutes));
         }
         final List<CourtSchedule> out = new ArrayList<>(byDate.values());
         out.sort(java.util.Comparator.comparing(CourtSchedule::getSessionDate));
         return out;
-    }
-
-    private static CourtSchedule preferBookable(
-            final CourtSchedule existing, final CourtSchedule incoming, final int requiredPerDayMinutes) {
-        final boolean existingFits = getEffectiveAvailableDuration(existing) >= requiredPerDayMinutes;
-        final boolean incomingFits = getEffectiveAvailableDuration(incoming) >= requiredPerDayMinutes;
-        if (existingFits != incomingFits) {
-            return existingFits ? existing : incoming;
-        }
-        if (existingFits) {
-            // both fit: prefer NOT-overbookingAllowed, matching slot-search's preferNonOverbooking
-            return existing.getOverbookingAllowed() && !incoming.getOverbookingAllowed() ? incoming : existing;
-        }
-        // neither fits: prefer the row where overbooking is explicitly allowed
-        return !existing.getOverbookingAllowed() && incoming.getOverbookingAllowed() ? incoming : existing;
     }
 
     /* package */ static int getEffectiveAvailableDuration(final CourtSchedule cs) {

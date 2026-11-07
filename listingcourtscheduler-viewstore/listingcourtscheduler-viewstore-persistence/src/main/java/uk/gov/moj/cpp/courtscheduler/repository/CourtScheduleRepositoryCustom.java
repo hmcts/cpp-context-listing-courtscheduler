@@ -74,11 +74,18 @@ public interface CourtScheduleRepositoryCustom {
                                                                  String courtRoomId,
                                                                  String earliestHearingTime);
 
-    /** Consecutive AD weekday sessions sharing the anchor's room/businessType/draft state (SPRDT-1089). */
+    /**
+     * Consecutive AD weekday sessions sharing the anchor's room/businessType/draft state (SPRDT-1089).
+     * Duration-based sessions only (SPRDT-1572): a slot-based anchor returns an empty list.
+     */
     List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> findConsecutiveSessions(String anchorCourtScheduleId,
                                                                                      int daysNeeded);
 
-    /** CROWN no-anchor consecutive search across a court centre's rooms (SPRDT-1089, AC3). */
+    /**
+     * No-anchor consecutive AD search across a court centre's rooms (SPRDT-1089, AC3), slot-based
+     * sessions included. Used by MAGS multiday; CROWN uses
+     * {@link #findConsecutiveDurationBasedSessionsForCentre(String, LocalDate, int)}.
+     */
     List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> findConsecutiveSessionsForCentre(String courtCentreId,
                                                                                               LocalDate fromDate,
                                                                                               int daysNeeded);
@@ -95,6 +102,15 @@ public interface CourtScheduleRepositoryCustom {
                                                                                               String courtRoomId);
 
     /**
+     * CROWN no-anchor consecutive search (SPRDT-1089, AC3): as
+     * {@link #findConsecutiveSessionsForCentre(String, LocalDate, int)}, but duration-based AD
+     * sessions only (SPRDT-1572 / LPT-2608) in both the room discovery and the run.
+     */
+    List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> findConsecutiveDurationBasedSessionsForCentre(String courtCentreId,
+                                                                                                           LocalDate fromDate,
+                                                                                                           int daysNeeded);
+
+    /**
      * MAGISTRATES move-hearing-to-past-date session lookup, restored from main (SPRDT-1447; lost in
      * the 8de19ce main merge): exact date + jurisdiction at the centre, optionally scoped to a room,
      * optionally range-containing {@code sessionStartTime} - any court_session (AM/PM/AD), any day of
@@ -107,7 +123,8 @@ public interface CourtScheduleRepositoryCustom {
                                                          String jurisdiction);
 
     /**
-     * AD weekday sessions for a room in a date range. businessType and isDraft are optional
+     * Duration-based AD weekday sessions for a room in a date range (slot-based sessions are
+     * excluded, SPRDT-1572). businessType and isDraft are optional
      * filters (null = unconstrained). The extend path (SPRDT-1273) passes the block's own draft
      * state so an allocated hearing's tail days only ever book FINAL sessions — a draft tail
      * session would strip every day's courtroom downstream (ADR-005).
