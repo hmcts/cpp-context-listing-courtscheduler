@@ -182,11 +182,11 @@ public class RotaFilePartialProcessor {
         newSlotScheduleIds.removeAll(existingSlotScheduleIds);
         slotScheduleIdsToDelete.removeAll(incomingSlotScheduleIds);
 
-        final List<String> confirmedSlotIdsToDelete = confirmSlotsToDelete(existingSlotList, slotScheduleIdsToDelete);
         Map<String, Integer> allocatedListings = new HashMap<>();
         if (isNotEmpty(existingSlotScheduleIds)) {
             allocatedListings = allocatedListingService.getAllocatedListingsByCourtScheduleId(existingSlotScheduleIds);
         }
+        final List<String> confirmedSlotIdsToDelete = confirmSlotsToDelete(existingSlotList, slotScheduleIdsToDelete, allocatedListings);
 
         final Collection<CourtSchedule> slotsToUpdate = calculateAvailableValues(
                 slots.values().stream().filter(s -> existingNonMigratedSlotScheduleIds.contains(s.getCourtScheduleId()))
@@ -286,14 +286,19 @@ public class RotaFilePartialProcessor {
         return existingSlotsNewRecords;
     }
 
-    @SuppressWarnings({"squid:S1067"})
-    private List<String> confirmSlotsToDelete(final List<CourtSchedule> existingSlotList, final List<String> slotIdsToDelete) {
+    /**
+     * The sessions the rota no longer contains that may go: those of a non-migrated court with
+     * nothing booked on them. "Booked" is any allocated_listings row - a listing or a hold - not
+     * court_schedule's available_slot / available_duration_mins counters, which bookings no longer
+     * keep up to date.
+     */
+    /* package */ List<String> confirmSlotsToDelete(final List<CourtSchedule> existingSlotList, final List<String> slotIdsToDelete,
+                                                  final Map<String, Integer> allocatedListings) {
         return existingSlotList
                 .stream()
                 .filter(existingSlot -> FALSE.equals(migratedMap.get(existingSlot.getOuCode())))
-                .filter(existingSlot ->
-                        (TRUE.equals(existingSlot.getSlotBased()) && slotIdsToDelete.contains(existingSlot.getCourtScheduleId()) && existingSlot.getMaxSlots().equals(existingSlot.getAvailableSlots()))
-                                || (!TRUE.equals(existingSlot.getSlotBased()) && slotIdsToDelete.contains(existingSlot.getCourtScheduleId()) && existingSlot.getMaxDuration().equals(existingSlot.getAvailableDuration())))
+                .filter(existingSlot -> slotIdsToDelete.contains(existingSlot.getCourtScheduleId()))
+                .filter(existingSlot -> getTotalListedAmountForCourtSchedule(allocatedListings, existingSlot.getCourtScheduleId()) == 0)
                 .map(CourtSchedule::getCourtScheduleId)
                 .toList();
     }

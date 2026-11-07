@@ -242,19 +242,41 @@ rule "API - Action - courtscheduler.list.hearings-in-sessions"
     $outcome.setSuccess(true);
 end
 
-rule "API - Action - courtscheduler.create.provisional.booking"
+rule "API - Action - courtscheduler.create.unconfirmed.booking"
   when
     $outcome: Outcome();
-    $action: Action(name == "courtscheduler.create.provisional.booking");
+    $action: Action(name == "courtscheduler.create.unconfirmed.booking");
         eval(userAndGroupProvider.isMemberOfAnyOfTheSuppliedGroups($action, SecurityGroupConstants.systemUserRoles()));
   then
     $outcome.setSuccess(true);
 end
 
-rule "API - Action - courtscheduler.get.provisional.booking"
+rule "API - Action - courtscheduler.get.unconfirmed.booking"
   when
     $outcome: Outcome();
-    $action: Action(name == "courtscheduler.get.provisional.booking");
+    $action: Action(name == "courtscheduler.get.unconfirmed.booking");
+        eval(userAndGroupProvider.isMemberOfAnyOfTheSuppliedGroups($action, SecurityGroupConstants.systemUserRoles()));
+  then
+    $outcome.setSuccess(true);
+end
+
+// The pre-share booking-status check (POST: with reserveIfExpired it can re-book an expired
+// booking, LPT-2611). Listing calls it as the system user.
+rule "API - Action - courtscheduler.query.booking.status"
+  when
+    $outcome: Outcome();
+    $action: Action(name == "courtscheduler.query.booking.status");
+        eval(userAndGroupProvider.isMemberOfAnyOfTheSuppliedGroups($action, SecurityGroupConstants.systemUserRoles()));
+  then
+    $outcome.setSuccess(true);
+end
+
+// Same callers as courtscheduler.create.unconfirmed.booking (hearing, and later progression,
+// calling as the system user): whoever may take a hold may give it back.
+rule "API - Action - courtscheduler.release.unconfirmed.bookings"
+  when
+    $outcome: Outcome();
+    $action: Action(name == "courtscheduler.release.unconfirmed.bookings");
         eval(userAndGroupProvider.isMemberOfAnyOfTheSuppliedGroups($action, SecurityGroupConstants.systemUserRoles()));
   then
     $outcome.setSuccess(true);
@@ -300,6 +322,15 @@ rule "API - Action - courtscheduler.rotasl.clean_redundant_rota_data"
   when
     $outcome: Outcome();
     $action: Action(name == "courtscheduler.rotasl.clean_redundant_rota_data");
+        eval(userAndGroupProvider.isMemberOfAnyOfTheSuppliedGroups($action, SecurityGroupConstants.systemUserRoles()));
+  then
+    $outcome.setSuccess(true);
+end
+
+rule "API - Action - courtscheduler.purge-expired-reserved-sessions"
+  when
+    $outcome: Outcome();
+    $action: Action(name == "courtscheduler.purge-expired-reserved-sessions");
         eval(userAndGroupProvider.isMemberOfAnyOfTheSuppliedGroups($action, SecurityGroupConstants.systemUserRoles()));
   then
     $outcome.setSuccess(true);

@@ -214,6 +214,18 @@ public class CourtSchedule implements Serializable {
     private Integer maxSlots;
     @Column(name = MAX_DURATION_MINS, nullable = false)
     private Integer maxDuration;
+    // DO NOT READ THESE TWO FOR AVAILABILITY. They are stale bookkeeping, kept only because the
+    // columns are still NOT NULL, and they are scheduled for deletion. Nothing recomputes them as
+    // bookings come and go, so they drift - on STE02 they have gone negative on sessions that are
+    // in fact mostly free.
+    //
+    // What callers actually get is computed per request, in
+    // AllocatedListingRepositoryImpl.getAllocatedListingsByCourtScheduleId: it counts
+    // allocated_listings rows for the session (COUNT(*) when the session is slot based,
+    // SUM(duration) when it is duration based) into the @Transient totalBooked below, and
+    // CourtSchedulerConverter then returns max - totalBooked. That query has no expires_at
+    // filter, so a reservation consumes capacity exactly like a confirmed listing - which is the
+    // point of a hold, and also why a hold that outlives its share quietly costs a slot.
     @Column(name = AVAILABLE_SLOT, nullable = false)
     private Integer availableSlots;
     @Column(name = AVAILABLE_DURATION_MINS, nullable = false)

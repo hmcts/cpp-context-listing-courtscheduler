@@ -46,12 +46,18 @@ public class AllocatedHearingsQueryBuilder {
     }
 
     private void generateAllocatedHearingsQuery() {
+        // ccsph2's single chained append, with the two reserve-a-slot guards re-applied:
+        // a reservation (expires_at set) holds capacity but has no hearing behind it - its
+        // hearing_id is a bookingId. Counting one would inflate both the per-hearing day count
+        // and the paged total that listing passes straight through to the court calendar, so
+        // pages render short.
         final StringBuilder queryStrBuilder = new StringBuilder(QUERY_INITIAL_CAPACITY)
                 .append("select al.hearing_id, al.court_schedule_id, cast(al.hearing_start_time as date), "
-                        + "(select count(1) from allocated_listings al2 where al2.hearing_id =al.hearing_id) as hearing_day_count, "
+                        + "(select count(1) from allocated_listings al2 where al2.hearing_id =al.hearing_id and al2.expires_at is null) as hearing_day_count, "
                         + "DENSE_RANK() OVER (  PARTITION BY al.hearing_id ORDER BY cast(al.hearing_start_time as date)) AS hearing_day_position, "
                         + " count(*) over() as totalCount from allocated_listings al, court_schedule cs "
                         + "where al.court_schedule_id = cs.id and cs.active = true "
+                        + "and al.expires_at is null "
                         + "and cs.panel in (:panel) "
                         + "and cs.session_start >= :sessionStartDate "
                         + "and cs.session_start <= :sessionEndDate ");
