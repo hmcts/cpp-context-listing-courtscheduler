@@ -22,6 +22,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Stream;
 
+import org.owasp.encoder.Encode;
 import org.springframework.stereotype.Service;
 import jakarta.inject.Inject;
 import jakarta.json.Json;
@@ -205,7 +206,7 @@ public class ProvisionalBookingService {
         } catch (final RuntimeException refused) {
             // No room, session gone, another request re-booked it first (the unique reservation
             // index), or something unexpected. Its transaction rolled back.
-            LOGGER.warn("Booking {} could not be re-booked: {}", bookingId, refused.getMessage());
+            LOGGER.warn("Booking {} could not be re-booked: {}", Encode.forJava(bookingId), Encode.forJava(refused.getMessage()));
         }
         // Whatever the booking is now is the answer - including a hold another request (a double
         // click) re-booked between the two reads, which no longer qualifies but is held.

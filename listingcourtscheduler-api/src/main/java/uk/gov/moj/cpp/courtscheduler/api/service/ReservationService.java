@@ -34,6 +34,7 @@ import jakarta.inject.Inject;
 import jakarta.json.Json;
 
 import org.apache.commons.lang3.StringUtils;
+import org.owasp.encoder.Encode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -131,10 +132,10 @@ public class ReservationService {
                 ? requestedBookingId
                 : UUID.randomUUID().toString();
         if (bookingId.equals(requestedBookingId)) {
-            LOGGER.info("Re-pick keeps booking {}: it is still an unconfirmed hold", bookingId);
+            LOGGER.info("Re-pick keeps booking {}: it is still an unconfirmed hold", Encode.forJava(bookingId));
         } else if (StringUtils.isNotBlank(requestedBookingId)) {
             LOGGER.info("Booking {} is confirmed or no longer held, so this pick is booked as {}",
-                    requestedBookingId, bookingId);
+                    Encode.forJava(requestedBookingId), Encode.forJava(bookingId));
         }
         reserveAll(bookingId, requestedSlots);
         return bookingId;
@@ -248,7 +249,7 @@ public class ReservationService {
         final LocalDate today = LocalDate.now(ZoneOffset.UTC);
         if (expired.stream().anyMatch(row -> row.getHearingStartTime() == null
                 || LocalDate.ofInstant(row.getHearingStartTime(), ZoneOffset.UTC).isBefore(today))) {
-            LOGGER.info("Booking {} expired on a session that has already happened; not re-booked", bookingId);
+            LOGGER.info("Booking {} expired on a session that has already happened; not re-booked", Encode.forJava(bookingId));
             return false;
         }
 
@@ -259,7 +260,7 @@ public class ReservationService {
                         .duration(row.getDuration()))
                 .toList());
         bookingLogRepository.record(BookingState.REBOOKED, allocatedListingRepository.findUnconfirmedByBookingIds(List.of(bookingId)));
-        LOGGER.info("Re-booked expired booking {} onto {} session row(s)", bookingId, expired.size());
+        LOGGER.info("Re-booked expired booking {} onto {} session row(s)", Encode.forJava(bookingId), expired.size());
         return true;
     }
 

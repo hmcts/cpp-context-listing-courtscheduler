@@ -930,7 +930,7 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
 
     @Override
     public ResponseEntity<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerCreateProvisionalBookingResponse> postCreateProvisionalBooking(final ProvisionalBookingSlots body) {
-        LOG.info("courtscheduler.create.unconfirmed.booking: {}", body);
+        LOG.info("courtscheduler.create.unconfirmed.booking: {}", Encode.forJava(String.valueOf(body)));
         final ProvisionalBookingSlots slots = provisionalSlotConverter.convert(toJson(body));
         final JsonObject validate = provisionalBookingApiValidator.createProvisionalBookingValidation(slots);
         if (!validate.isEmpty()) {
@@ -946,7 +946,7 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
 
     @Override
     public ResponseEntity<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerGetProvisionalBooking> getProvisionalBooking(final String bookingIds) {
-        LOG.info("courtscheduler.get.unconfirmed.booking bookingIds={}", bookingIds);
+        LOG.info("courtscheduler.get.unconfirmed.booking bookingIds={}", Encode.forJava(bookingIds));
         final JsonObject validate = provisionalBookingApiValidator.getProvisionalBookingValidation(bookingIds);
         if (!validate.isEmpty()) {
             throw new ValidationException(validate);
