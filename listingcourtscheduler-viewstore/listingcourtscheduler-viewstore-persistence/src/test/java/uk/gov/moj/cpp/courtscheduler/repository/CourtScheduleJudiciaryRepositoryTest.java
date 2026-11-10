@@ -232,7 +232,7 @@ class CourtScheduleJudiciaryRepositoryTest extends uk.gov.moj.cpp.courtscheduler
 
         final List<CourtScheduleJudiciary> courtScheduleJudiciaries = courtScheduleJudiciaryRepository.findAll();
         assertEquals(2, courtScheduleJudiciaries.size());
-        courtScheduleJudiciaryRepository.deleteUnAllocatedCourtScheduleJudiciariesEntriesForRotaPeriod(startDate, endDate, List.of(ouCode1, ouCode2));
+        courtScheduleJudiciaryRepository.deleteCourtScheduleJudiciariesEntriesForRotaPeriod(startDate, endDate, List.of(ouCode1, ouCode2));
 
         final List<CourtScheduleJudiciary> courtSchedules = courtScheduleJudiciaryRepository.findByCourtScheduleId(courtScheduleId1);
 
