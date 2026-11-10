@@ -432,6 +432,7 @@ class RotaLocationPeriodHelperTest {
         }
     }
 
+    /* default */
     @Nested
     @DisplayName("Delete Unallocated Court Schedule Judiciaries Tests")
     class DeleteUnallocatedCourtScheduleJudiciariesTests {

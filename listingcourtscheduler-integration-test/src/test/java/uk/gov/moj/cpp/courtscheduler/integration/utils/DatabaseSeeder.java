@@ -154,8 +154,8 @@ public class DatabaseSeeder {
     }
 
     public void deleteJudiciaryByCourtScheduleId(final String courtScheduleId) throws SQLException {
-        try (final Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
-             final PreparedStatement preparedStatement = connection.prepareStatement(COURT_SCHEDULE_JUDICIARY_DELETE_BY_COURT_SCHEDULE_ID_SQL)) {
+        try (Connection connection = connectionProvider.getNewConnection(USERNAME, PASSWORD, DATABASE);
+             PreparedStatement preparedStatement = connection.prepareStatement(COURT_SCHEDULE_JUDICIARY_DELETE_BY_COURT_SCHEDULE_ID_SQL)) {
             preparedStatement.setString(1, courtScheduleId);
             preparedStatement.executeUpdate();
         }

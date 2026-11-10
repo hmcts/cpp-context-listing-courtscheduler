@@ -34,6 +34,7 @@ class ListingCommandClientTest {
     private HttpServer server;
     private final AtomicReference<String> receivedPath = new AtomicReference<>();
     private final AtomicReference<String> receivedMethod = new AtomicReference<>();
+    @SuppressWarnings("PMD.LooseCoupling")
     private final AtomicReference<Headers> receivedHeaders = new AtomicReference<>();
     private final AtomicReference<String> receivedBody = new AtomicReference<>();
     private int responseStatus = 202;
