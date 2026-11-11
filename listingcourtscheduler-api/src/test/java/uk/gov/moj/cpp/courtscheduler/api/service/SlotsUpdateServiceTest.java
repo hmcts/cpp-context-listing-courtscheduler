@@ -95,6 +95,10 @@ class SlotsUpdateServiceTest {
     private static final String CS_HELD_2 = "cs-held-2";
     private static final String CS_TARGET = "cs-target";
     private static final String ROOM_A = "11111111-1111-1111-1111-111111111111";
+    private static final String DATE_2026_09_01 = "2026-09-01";
+    private static final String SOURCE_AUTO_CREATE_SAB = "AUTO_CREATE_SAB";
+    private static final String SOURCE_EXEMPT_SAB = "EXEMPT_SAB";
+    private static final String SOURCE_NONPOLICE = "NONPOLICE";
 
 
     @Mock
@@ -625,8 +629,8 @@ class SlotsUpdateServiceTest {
             // build the session from the request's own metadata (ouCode/centre/room names).
             verify(courtScheduleRepository).createCrownFallbackSession(eq(request));
             // Allocation via on-the-fly session creation is stamped AUTO_CREATE_SAB on the DB row.
-            assertEquals("AUTO_CREATE_SAB", slotCaptor.getValue().get(0).getSource());
-            verify(allocatedListingRepository).updateSourceByHearingId(hearingId, "AUTO_CREATE_SAB");
+            assertEquals(SOURCE_AUTO_CREATE_SAB, slotCaptor.getValue().get(0).getSource());
+            verify(allocatedListingRepository).updateSourceByHearingId(hearingId, SOURCE_AUTO_CREATE_SAB);
         }
 
         @Test
@@ -769,8 +773,8 @@ class SlotsUpdateServiceTest {
 
             final List<AllocatedSlot> persisted = slotCaptor.getValue();
             assertEquals(1, persisted.size());
-            assertEquals("EXEMPT_SAB", persisted.get(0).getSource());
-            verify(allocatedListingRepository).updateSourceByHearingId(hearingId, "EXEMPT_SAB");
+            assertEquals(SOURCE_EXEMPT_SAB, persisted.get(0).getSource());
+            verify(allocatedListingRepository).updateSourceByHearingId(hearingId, SOURCE_EXEMPT_SAB);
             // response still echoes the caller's label
             assertEquals("CROWN_FB_ADJOURN", response.source());
         }
@@ -858,7 +862,7 @@ class SlotsUpdateServiceTest {
             assertEquals(CROWN_FB_LIST_2, response.source());
             // flat fallback fields surfaced for single-day (SPRDT-1089)
             assertEquals(VALUE_731816, response.courtRoomId());
-            assertEquals("2026-09-01", response.sessionDate());
+            assertEquals(DATE_2026_09_01, response.sessionDate());
             assertEquals(Boolean.FALSE, response.isDraft());
             assertEquals(Boolean.FALSE, response.overbooked());
             verify(courtScheduleRepository).saveBookedSlots(any(), eq(false), eq(false));
@@ -876,7 +880,7 @@ class SlotsUpdateServiceTest {
             final CrownSearchAndBookRequest request = singleDayRequest(hearingId, date, ROOM_A, 120);
 
             when(allocatedListingRepository.findByHearingId(hearingId))
-                    .thenReturn(List.of(heldRow(hearingId, CS_HELD, 120, "EXEMPT_SAB")));
+                    .thenReturn(List.of(heldRow(hearingId, CS_HELD, 120, SOURCE_EXEMPT_SAB)));
             when(courtScheduleRepository.getCourtSchedulesByIdList(List.of(CS_HELD))).thenReturn(List.of(held));
 
             final CrownSearchAndBookResponse response = service.crownSearchAndBook(request);
@@ -884,13 +888,13 @@ class SlotsUpdateServiceTest {
             assertEquals(hearingId, response.hearingId());
             assertEquals(CS_HELD, response.courtScheduleId());
             assertEquals(ROOM_A, response.courtRoomId());
-            assertEquals("2026-09-01", response.sessionDate());
+            assertEquals(DATE_2026_09_01, response.sessionDate());
             assertNotNull(response.sessionStartTime());
             assertNotNull(response.sessionEndTime());
             assertEquals(120, response.durationInMinutes());
             assertEquals(Boolean.FALSE, response.isDraft());
             assertEquals("CR", response.businessType());
-            assertEquals("EXEMPT_SAB", response.source());
+            assertEquals(SOURCE_EXEMPT_SAB, response.source());
             assertEquals(Boolean.FALSE, response.overbooked());
             verifyNoWrites(hearingId);
             verify(courtScheduleRepository, org.mockito.Mockito.never())
@@ -905,7 +909,7 @@ class SlotsUpdateServiceTest {
             final CrownSearchAndBookRequest request = singleDayRequest(hearingId, date, null, 60);
 
             when(allocatedListingRepository.findByHearingId(hearingId))
-                    .thenReturn(List.of(heldRow(hearingId, CS_HELD, 60, "AUTO_CREATE_SAB")));
+                    .thenReturn(List.of(heldRow(hearingId, CS_HELD, 60, SOURCE_AUTO_CREATE_SAB)));
             when(courtScheduleRepository.getCourtSchedulesByIdList(List.of(CS_HELD)))
                     .thenReturn(List.of(heldSession(CS_HELD, date, ROOM_A, true)));
 
@@ -914,8 +918,8 @@ class SlotsUpdateServiceTest {
             assertEquals(CS_HELD, response.courtScheduleId());
             assertEquals(null, response.courtRoomId());
             assertEquals(Boolean.TRUE, response.isDraft());
-            assertEquals("2026-09-01", response.sessionDate());
-            assertEquals("AUTO_CREATE_SAB", response.source());
+            assertEquals(DATE_2026_09_01, response.sessionDate());
+            assertEquals(SOURCE_AUTO_CREATE_SAB, response.source());
             verifyNoWrites(hearingId);
         }
 
@@ -927,7 +931,7 @@ class SlotsUpdateServiceTest {
             final CourtSchedule target = heldSession(CS_TARGET, newDate, ROOM_A, false);
 
             when(allocatedListingRepository.findByHearingId(hearingId))
-                    .thenReturn(List.of(heldRow(hearingId, CS_HELD, 120, "EXEMPT_SAB")));
+                    .thenReturn(List.of(heldRow(hearingId, CS_HELD, 120, SOURCE_EXEMPT_SAB)));
             when(courtScheduleRepository.getCourtSchedulesByIdList(List.of(CS_HELD)))
                     .thenReturn(List.of(heldSession(CS_HELD, LocalDate.of(2026, 9, 1), ROOM_A, false)));
             when(courtScheduleRepository.searchCrownFallbackSlots(
@@ -972,7 +976,7 @@ class SlotsUpdateServiceTest {
             final CourtSchedule finalSession = heldSession(CS_TARGET, date, ROOM_A, false);
 
             when(allocatedListingRepository.findByHearingId(hearingId))
-                    .thenReturn(List.of(heldRow(hearingId, CS_HELD, 120, "AUTO_CREATE_SAB")));
+                    .thenReturn(List.of(heldRow(hearingId, CS_HELD, 120, SOURCE_AUTO_CREATE_SAB)));
             when(courtScheduleRepository.getCourtSchedulesByIdList(List.of(CS_HELD)))
                     .thenReturn(List.of(heldSession(CS_HELD, date, ROOM_A, true)));
             when(courtScheduleRepository.searchCrownFallbackSlots(
@@ -1008,7 +1012,7 @@ class SlotsUpdateServiceTest {
             final CourtSchedule sameDraftFromSearch = heldSession(CS_HELD, date, ROOM_A, true);
 
             when(allocatedListingRepository.findByHearingId(hearingId))
-                    .thenReturn(List.of(heldRow(hearingId, CS_HELD, 360, "AUTO_CREATE_SAB")));
+                    .thenReturn(List.of(heldRow(hearingId, CS_HELD, 360, SOURCE_AUTO_CREATE_SAB)));
             when(courtScheduleRepository.getCourtSchedulesByIdList(List.of(CS_HELD))).thenReturn(List.of(heldDraft));
             when(courtScheduleRepository.searchCrownFallbackSlots(any(), any(), org.mockito.ArgumentMatchers.anyInt(), any(), any()))
                     .thenReturn(Optional.of(new CrownFallbackSearchResult(sameDraftFromSearch, true)));
@@ -1038,7 +1042,7 @@ class SlotsUpdateServiceTest {
             final CourtSchedule held2 = heldSession(CS_HELD_2, day1.plusDays(1), ROOM_A, false);
 
             when(allocatedListingRepository.findByHearingId(hearingId)).thenReturn(List.of(
-                    heldRow(hearingId, CS_HELD, 360, "NONPOLICE"), heldRow(hearingId, CS_HELD_2, 360, "NONPOLICE")));
+                    heldRow(hearingId, CS_HELD, 360, SOURCE_NONPOLICE), heldRow(hearingId, CS_HELD_2, 360, SOURCE_NONPOLICE)));
             when(courtScheduleRepository.getCourtSchedulesByIdList(List.of(CS_HELD, CS_HELD_2)))
                     .thenReturn(List.of(held2, held1));
             final org.mockito.ArgumentCaptor<List<AllocatedSlot>> slotCaptor = slotCaptor();
@@ -1069,7 +1073,7 @@ class SlotsUpdateServiceTest {
             final CourtSchedule created = heldSession(CS_TARGET, date, ROOM_A, false);
 
             when(allocatedListingRepository.findByHearingId(hearingId))
-                    .thenReturn(List.of(heldRow(hearingId, CS_HELD, 90, "EXEMPT_SAB")));
+                    .thenReturn(List.of(heldRow(hearingId, CS_HELD, 90, SOURCE_EXEMPT_SAB)));
             when(courtScheduleRepository.getCourtSchedulesByIdList(List.of(CS_HELD)))
                     .thenReturn(List.of(heldSession(CS_HELD, LocalDate.of(2026, 9, 1), ROOM_A, false)));
             when(courtScheduleRepository.searchCrownFallbackSlots(any(), any(), org.mockito.ArgumentMatchers.anyInt(), any(), any()))
@@ -1095,7 +1099,7 @@ class SlotsUpdateServiceTest {
             final CrownSearchAndBookRequest request = singleDayRequest(hearingId, date, ROOM_A, 90);
 
             when(allocatedListingRepository.findByHearingId(hearingId))
-                    .thenReturn(List.of(heldRow(hearingId, CS_HELD, 90, "EXEMPT_SAB")));
+                    .thenReturn(List.of(heldRow(hearingId, CS_HELD, 90, SOURCE_EXEMPT_SAB)));
             when(courtScheduleRepository.getCourtSchedulesByIdList(List.of(CS_HELD)))
                     .thenReturn(List.of(heldSession(CS_HELD, LocalDate.of(2026, 9, 1), ROOM_A, false)));
             when(courtScheduleRepository.searchCrownFallbackSlots(any(), any(), org.mockito.ArgumentMatchers.anyInt(), any(), any()))
@@ -1116,7 +1120,7 @@ class SlotsUpdateServiceTest {
             final CrownSearchAndBookRequest request = singleDayRequest(hearingId, LocalDate.of(2026, 9, 2), ROOM_A, 0);
 
             when(allocatedListingRepository.findByHearingId(hearingId))
-                    .thenReturn(List.of(heldRow(hearingId, CS_HELD, 90, "EXEMPT_SAB")));
+                    .thenReturn(List.of(heldRow(hearingId, CS_HELD, 90, SOURCE_EXEMPT_SAB)));
             when(courtScheduleRepository.getCourtSchedulesByIdList(List.of(CS_HELD)))
                     .thenReturn(List.of(heldSession(CS_HELD, LocalDate.of(2026, 9, 1), ROOM_A, false)));
 
@@ -1142,9 +1146,9 @@ class SlotsUpdateServiceTest {
 
             assertEquals(CS_TARGET, response.courtScheduleId());
             assertEquals(CROWN_FB_UPDATE_2, response.source());
-            assertEquals("2026-09-01", response.sessionDate());
+            assertEquals(DATE_2026_09_01, response.sessionDate());
             verify(courtScheduleRepository).saveBookedSlots(any(), eq(false), eq(false));
-            verify(allocatedListingRepository).updateSourceByHearingId(hearingId, "EXEMPT_SAB");
+            verify(allocatedListingRepository).updateSourceByHearingId(hearingId, SOURCE_EXEMPT_SAB);
             verify(courtScheduleRepository, org.mockito.Mockito.never()).releaseOldAllocatedListings(any());
             verify(courtScheduleRepository, org.mockito.Mockito.never()).getCourtSchedulesByIdList(any());
         }
@@ -2127,7 +2131,7 @@ class SlotsUpdateServiceTest {
             final AllocatedListing allocation = new AllocatedListing();
             allocation.setHearingId(hearingId);
             allocation.setCourtScheduleId(courtScheduleId);
-            allocation.setSource("NONPOLICE");
+            allocation.setSource(SOURCE_NONPOLICE);
             return allocation;
         }
 
@@ -2551,7 +2555,7 @@ class SlotsUpdateServiceTest {
             final AllocatedListing allocation = new AllocatedListing();
             allocation.setHearingId(hearingId);
             allocation.setCourtScheduleId(courtScheduleId);
-            allocation.setSource("NONPOLICE");
+            allocation.setSource(SOURCE_NONPOLICE);
             return allocation;
         }
     }

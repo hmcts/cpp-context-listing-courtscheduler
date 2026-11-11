@@ -756,10 +756,7 @@ class MultiDaySearchAndBookIT extends AbstractIT {
                                                   final String courtCentreId,
                                                   final LocalDate hearingDate,
                                                   final int durationInMinutes) {
-        return Json.createObjectBuilder()
-                .add("courtCentreId", courtCentreId)
-                .add("hearingDate", hearingDate.toString())
-                .add("durationInMinutes", durationInMinutes)
+        return basePayload(courtCentreId, hearingDate, durationInMinutes)
                 .add("courtScheduleId", anchorCourtScheduleId);
     }
 
@@ -767,11 +764,16 @@ class MultiDaySearchAndBookIT extends AbstractIT {
     private static JsonObjectBuilder noAnchorPayload(final String courtCentreId, final LocalDate hearingDate,
                                                      final LocalDate endDate, final String courtRoomId,
                                                      final int durationInMinutes) {
+        return basePayload(courtCentreId, hearingDate, durationInMinutes)
+                .add("endDate", endDate.toString())
+                .add("courtRoomId", courtRoomId);
+    }
+
+    private static JsonObjectBuilder basePayload(final String courtCentreId, final LocalDate hearingDate,
+                                                 final int durationInMinutes) {
         return Json.createObjectBuilder()
                 .add("courtCentreId", courtCentreId)
                 .add("hearingDate", hearingDate.toString())
-                .add("endDate", endDate.toString())
-                .add("courtRoomId", courtRoomId)
                 .add("durationInMinutes", durationInMinutes);
     }
 
