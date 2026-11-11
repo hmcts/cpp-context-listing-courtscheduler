@@ -125,4 +125,3 @@ subprojects {
 // composeDown). So a single `./gradlew clean build` builds every module, produces
 // the bootJar, builds the IT docker image, stands the stack up, runs all ITs, and
 // tears it back down — mirroring cp-court-list-publishing-service.
-
