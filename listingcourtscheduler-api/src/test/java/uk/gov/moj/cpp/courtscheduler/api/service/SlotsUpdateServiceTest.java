@@ -90,6 +90,11 @@ class SlotsUpdateServiceTest {
     private static final String TEST_HEARING = "test-hearing";
     private static final String UNCHECKED = "unchecked";
     private static final String MOVE_TO_PAST_DATE_SOURCE = "MOVE_TO_PAST_DATE";
+    private static final String CROWN_FB_UPDATE_2 = "CROWN_FB_UPDATE";
+    private static final String CS_HELD = "cs-held";
+    private static final String CS_HELD_2 = "cs-held-2";
+    private static final String CS_TARGET = "cs-target";
+    private static final String ROOM_A = "11111111-1111-1111-1111-111111111111";
 
 
     @Mock
@@ -859,29 +864,332 @@ class SlotsUpdateServiceTest {
             verify(courtScheduleRepository).saveBookedSlots(any(), eq(false), eq(false));
         }
 
+        // ─── SPRDT-1539 (H23): single-day request for a hearing that already holds allocated_listings rows ───
+
         @Test
-        void should_returnExistingAllocation_when_crownHearingIdAlreadyBooked() {
-            // AC1 — idempotency: hearingId already allocated => existing allocation returned, no new booking
+        void should_answerIdempotentlyWithFullFields_when_oneHeldFinalRowMatchesRequest() {
+            // Replaces the old null-field idempotent hit: the held FINAL session is on the requested
+            // date in the requested room, so nothing is written and EVERY response field is filled.
             final String hearingId = UUID.randomUUID().toString();
-            final CrownSearchAndBookRequest request = new CrownSearchAndBookRequest()
-                    .hearingId(hearingId)
-                    .courtCentreId(UUID.randomUUID().toString())
-                    .hearingDate(LocalDate.of(2026, 9, 1))
-                    .durationInMinutes(180);
+            final LocalDate date = LocalDate.of(2026, 9, 1);
+            final CourtSchedule held = heldSession(CS_HELD, date, ROOM_A, false);
+            final CrownSearchAndBookRequest request = singleDayRequest(hearingId, date, ROOM_A, 120);
 
-            final AllocatedListing existing = new AllocatedListing();
-            existing.setHearingId(hearingId);
-            existing.setCourtScheduleId("cs-existing");
-
-            when(courtScheduleRepository.findAllocatedListingByHearingId(hearingId))
-                    .thenReturn(Optional.of(existing));
+            when(allocatedListingRepository.findByHearingId(hearingId))
+                    .thenReturn(List.of(heldRow(hearingId, CS_HELD, 120, "EXEMPT_SAB")));
+            when(courtScheduleRepository.getCourtSchedulesByIdList(List.of(CS_HELD))).thenReturn(List.of(held));
 
             final CrownSearchAndBookResponse response = service.crownSearchAndBook(request);
-            assertEquals("cs-existing", response.courtScheduleId());
 
-            // Idempotency contract: no new save when existing allocation found
+            assertEquals(hearingId, response.hearingId());
+            assertEquals(CS_HELD, response.courtScheduleId());
+            assertEquals(ROOM_A, response.courtRoomId());
+            assertEquals("2026-09-01", response.sessionDate());
+            assertNotNull(response.sessionStartTime());
+            assertNotNull(response.sessionEndTime());
+            assertEquals(120, response.durationInMinutes());
+            assertEquals(Boolean.FALSE, response.isDraft());
+            assertEquals("CR", response.businessType());
+            assertEquals("EXEMPT_SAB", response.source());
+            assertEquals(Boolean.FALSE, response.overbooked());
+            verifyNoWrites(hearingId);
             verify(courtScheduleRepository, org.mockito.Mockito.never())
-                    .saveBookedSlots(any(), anyBoolean(), anyBoolean());
+                    .searchCrownFallbackSlots(any(), any(), org.mockito.ArgumentMatchers.anyInt(), any(), any());
+        }
+
+        @Test
+        void should_answerIdempotentlyWithoutRoom_when_heldDraftRowOnRequestedDateAndNoRoomRequested() {
+            // ADR-005: a DRAFT session carries no room in the answer, but its other fields are filled.
+            final String hearingId = UUID.randomUUID().toString();
+            final LocalDate date = LocalDate.of(2026, 9, 1);
+            final CrownSearchAndBookRequest request = singleDayRequest(hearingId, date, null, 60);
+
+            when(allocatedListingRepository.findByHearingId(hearingId))
+                    .thenReturn(List.of(heldRow(hearingId, CS_HELD, 60, "AUTO_CREATE_SAB")));
+            when(courtScheduleRepository.getCourtSchedulesByIdList(List.of(CS_HELD)))
+                    .thenReturn(List.of(heldSession(CS_HELD, date, ROOM_A, true)));
+
+            final CrownSearchAndBookResponse response = service.crownSearchAndBook(request);
+
+            assertEquals(CS_HELD, response.courtScheduleId());
+            assertEquals(null, response.courtRoomId());
+            assertEquals(Boolean.TRUE, response.isDraft());
+            assertEquals("2026-09-01", response.sessionDate());
+            assertEquals("AUTO_CREATE_SAB", response.source());
+            verifyNoWrites(hearingId);
+        }
+
+        @Test
+        void should_releaseAndBookOneMoveRow_when_heldRowIsOnAnotherDate() {
+            final String hearingId = UUID.randomUUID().toString();
+            final LocalDate newDate = LocalDate.of(2026, 9, 2);
+            final CrownSearchAndBookRequest request = singleDayRequest(hearingId, newDate, ROOM_A, 90);
+            final CourtSchedule target = heldSession(CS_TARGET, newDate, ROOM_A, false);
+
+            when(allocatedListingRepository.findByHearingId(hearingId))
+                    .thenReturn(List.of(heldRow(hearingId, CS_HELD, 120, "EXEMPT_SAB")));
+            when(courtScheduleRepository.getCourtSchedulesByIdList(List.of(CS_HELD)))
+                    .thenReturn(List.of(heldSession(CS_HELD, LocalDate.of(2026, 9, 1), ROOM_A, false)));
+            when(courtScheduleRepository.searchCrownFallbackSlots(
+                    eq(request.getCourtCentreId()), eq(newDate), eq(90), eq(ROOM_A), isNull()))
+                    .thenReturn(Optional.of(new CrownFallbackSearchResult(target, false)));
+            final org.mockito.ArgumentCaptor<List<AllocatedSlot>> slotCaptor = slotCaptor();
+            when(courtScheduleRepository.saveBookedSlots(slotCaptor.capture(), eq(false), eq(false), eq(false)))
+                    .thenReturn(new Result().msg("").success(true));
+
+            final CrownSearchAndBookResponse response = service.crownSearchAndBook(request);
+
+            assertEquals(CS_TARGET, response.courtScheduleId());
+            assertEquals(MOVE_2, response.source());
+            assertEquals(ROOM_A, response.courtRoomId());
+            assertEquals("2026-09-02", response.sessionDate());
+            assertEquals(90, response.durationInMinutes());
+            assertEquals(Boolean.FALSE, response.isDraft());
+            assertEquals(Boolean.FALSE, response.overbooked());
+            assertEquals(Collections.emptyList(), response.sessions());
+
+            // release the old row(s) FIRST (search already done), then ONE no-release save
+            final org.mockito.InOrder order = org.mockito.Mockito.inOrder(courtScheduleRepository);
+            order.verify(courtScheduleRepository).searchCrownFallbackSlots(any(), any(), org.mockito.ArgumentMatchers.anyInt(), any(), any());
+            order.verify(courtScheduleRepository).releaseOldAllocatedListings(hearingId);
+            order.verify(courtScheduleRepository).saveBookedSlots(any(), eq(false), eq(false), eq(false));
+            final List<AllocatedSlot> persisted = slotCaptor.getValue();
+            assertEquals(1, persisted.size());
+            assertEquals(CS_TARGET, persisted.get(0).getCourtScheduleId());
+            assertEquals(MOVE_2, persisted.get(0).getSource());
+            assertEquals(90, persisted.get(0).getDuration());
+            verify(courtScheduleRepository, org.mockito.Mockito.never()).saveBookedSlots(any(), anyBoolean(), anyBoolean());
+            verify(allocatedListingRepository, org.mockito.Mockito.never()).updateSourceByHearingId(any(), any());
+        }
+
+        @Test
+        void should_moveOntoFinalSession_when_heldRowIsDraftAndRequestNamesRoomOnSameDate() {
+            // unallocated -> allocated: a DRAFT session cannot satisfy a room request, so the search
+            // runs and the hearing moves onto the FINAL session in that room.
+            final String hearingId = UUID.randomUUID().toString();
+            final LocalDate date = LocalDate.of(2026, 9, 1);
+            final CrownSearchAndBookRequest request = singleDayRequest(hearingId, date, ROOM_A, 120);
+            final CourtSchedule finalSession = heldSession(CS_TARGET, date, ROOM_A, false);
+
+            when(allocatedListingRepository.findByHearingId(hearingId))
+                    .thenReturn(List.of(heldRow(hearingId, CS_HELD, 120, "AUTO_CREATE_SAB")));
+            when(courtScheduleRepository.getCourtSchedulesByIdList(List.of(CS_HELD)))
+                    .thenReturn(List.of(heldSession(CS_HELD, date, ROOM_A, true)));
+            when(courtScheduleRepository.searchCrownFallbackSlots(
+                    eq(request.getCourtCentreId()), eq(date), eq(120), eq(ROOM_A), isNull()))
+                    .thenReturn(Optional.of(new CrownFallbackSearchResult(finalSession, false)));
+            final org.mockito.ArgumentCaptor<List<AllocatedSlot>> slotCaptor = slotCaptor();
+            when(courtScheduleRepository.saveBookedSlots(slotCaptor.capture(), eq(false), eq(false), eq(false)))
+                    .thenReturn(new Result().msg("").success(true));
+
+            final CrownSearchAndBookResponse response = service.crownSearchAndBook(request);
+
+            assertEquals(CS_TARGET, response.courtScheduleId());
+            assertEquals(Boolean.FALSE, response.isDraft());
+            assertEquals(ROOM_A, response.courtRoomId());
+            assertEquals(MOVE_2, response.source());
+            verify(courtScheduleRepository).releaseOldAllocatedListings(hearingId);
+            assertEquals(CS_TARGET, slotCaptor.getValue().get(0).getCourtScheduleId());
+            assertEquals(MOVE_2, slotCaptor.getValue().get(0).getSource());
+        }
+
+        @Test
+        void should_notFlagOverbooked_when_searchReturnsTheHearingsOwnDraftSession() {
+            // No FINAL session exists in the room, so the fresh-path search falls back to a DRAFT at
+            // the room - here the very session the hearing holds. The repository computed
+            // overbooked=true from an availability that still counts the hearing's own 360 minutes;
+            // the move gives them back, so the answer says false.
+            final String hearingId = UUID.randomUUID().toString();
+            final LocalDate date = LocalDate.of(2026, 9, 1);
+            final CrownSearchAndBookRequest request = singleDayRequest(hearingId, date, ROOM_A, 360);
+            final CourtSchedule heldDraft = heldSession(CS_HELD, date, ROOM_A, true);
+            heldDraft.setMaxDuration(360);
+            heldDraft.setTotalBooked(360);
+            final CourtSchedule sameDraftFromSearch = heldSession(CS_HELD, date, ROOM_A, true);
+
+            when(allocatedListingRepository.findByHearingId(hearingId))
+                    .thenReturn(List.of(heldRow(hearingId, CS_HELD, 360, "AUTO_CREATE_SAB")));
+            when(courtScheduleRepository.getCourtSchedulesByIdList(List.of(CS_HELD))).thenReturn(List.of(heldDraft));
+            when(courtScheduleRepository.searchCrownFallbackSlots(any(), any(), org.mockito.ArgumentMatchers.anyInt(), any(), any()))
+                    .thenReturn(Optional.of(new CrownFallbackSearchResult(sameDraftFromSearch, true)));
+            when(courtScheduleRepository.saveBookedSlots(any(), eq(false), eq(false), eq(false)))
+                    .thenReturn(new Result().msg("").success(true));
+
+            final CrownSearchAndBookResponse response = service.crownSearchAndBook(request);
+
+            assertEquals(Boolean.FALSE, response.overbooked());
+            assertEquals(CS_HELD, response.courtScheduleId());
+            assertEquals(Boolean.TRUE, response.isDraft());
+            assertEquals(null, response.courtRoomId());
+            assertEquals(MOVE_2, response.source());
+            verify(courtScheduleRepository).releaseOldAllocatedListings(hearingId);
+        }
+
+        @Test
+        void should_releaseAllAndBookMatchingSessionWithoutSearch_when_twoHeldRowsAndRequestMatchesOne() {
+            // An old multi-day block shrinks to one day: both rows are released, the held session
+            // that matches the request is booked again, and no search runs.
+            final String hearingId = UUID.randomUUID().toString();
+            final LocalDate day1 = LocalDate.of(2026, 9, 1);
+            final CrownSearchAndBookRequest request = singleDayRequest(hearingId, day1, ROOM_A, 200);
+            final CourtSchedule held1 = heldSession(CS_HELD, day1, ROOM_A, false);
+            held1.setMaxDuration(360);
+            held1.setTotalBooked(360);
+            final CourtSchedule held2 = heldSession(CS_HELD_2, day1.plusDays(1), ROOM_A, false);
+
+            when(allocatedListingRepository.findByHearingId(hearingId)).thenReturn(List.of(
+                    heldRow(hearingId, CS_HELD, 360, "NONPOLICE"), heldRow(hearingId, CS_HELD_2, 360, "NONPOLICE")));
+            when(courtScheduleRepository.getCourtSchedulesByIdList(List.of(CS_HELD, CS_HELD_2)))
+                    .thenReturn(List.of(held2, held1));
+            final org.mockito.ArgumentCaptor<List<AllocatedSlot>> slotCaptor = slotCaptor();
+            when(courtScheduleRepository.saveBookedSlots(slotCaptor.capture(), eq(false), eq(false), eq(false)))
+                    .thenReturn(new Result().msg("").success(true));
+
+            final CrownSearchAndBookResponse response = service.crownSearchAndBook(request);
+
+            assertEquals(CS_HELD, response.courtScheduleId());
+            assertEquals(MOVE_2, response.source());
+            assertEquals(200, response.durationInMinutes());
+            // the session's own 360 booked minutes are given back, so 200 fits: not overbooked
+            assertEquals(Boolean.FALSE, response.overbooked());
+            verify(courtScheduleRepository, org.mockito.Mockito.never())
+                    .searchCrownFallbackSlots(any(), any(), org.mockito.ArgumentMatchers.anyInt(), any(), any());
+            verify(courtScheduleRepository).releaseOldAllocatedListings(hearingId);
+            assertEquals(1, slotCaptor.getValue().size());
+            assertEquals(CS_HELD, slotCaptor.getValue().get(0).getCourtScheduleId());
+            assertEquals(MOVE_2, slotCaptor.getValue().get(0).getSource());
+            assertEquals(200, slotCaptor.getValue().get(0).getDuration());
+        }
+
+        @Test
+        void should_autoCreateSessionAndMove_when_searchFindsNothing() {
+            final String hearingId = UUID.randomUUID().toString();
+            final LocalDate date = LocalDate.of(2026, 9, 2);
+            final CrownSearchAndBookRequest request = singleDayRequest(hearingId, date, ROOM_A, 90);
+            final CourtSchedule created = heldSession(CS_TARGET, date, ROOM_A, false);
+
+            when(allocatedListingRepository.findByHearingId(hearingId))
+                    .thenReturn(List.of(heldRow(hearingId, CS_HELD, 90, "EXEMPT_SAB")));
+            when(courtScheduleRepository.getCourtSchedulesByIdList(List.of(CS_HELD)))
+                    .thenReturn(List.of(heldSession(CS_HELD, LocalDate.of(2026, 9, 1), ROOM_A, false)));
+            when(courtScheduleRepository.searchCrownFallbackSlots(any(), any(), org.mockito.ArgumentMatchers.anyInt(), any(), any()))
+                    .thenReturn(Optional.empty());
+            when(courtScheduleRepository.createCrownFallbackSession(any()))
+                    .thenReturn(Optional.of(new CrownFallbackSearchResult(created, false)));
+            when(courtScheduleRepository.saveBookedSlots(any(), eq(false), eq(false), eq(false)))
+                    .thenReturn(new Result().msg("").success(true));
+
+            final CrownSearchAndBookResponse response = service.crownSearchAndBook(request);
+
+            assertEquals(CS_TARGET, response.courtScheduleId());
+            assertEquals(MOVE_2, response.source());
+            verify(courtScheduleRepository).releaseOldAllocatedListings(hearingId);
+        }
+
+        @Test
+        void should_throwNoAvailabilityAndWriteNothing_when_nothingFoundAndAutoCreateImpossible() {
+            // Auto-create is impossible (no template session, no ouCode): 422 NO_AVAILABILITY [date],
+            // the existing allocation stays untouched - nothing released, nothing saved.
+            final String hearingId = UUID.randomUUID().toString();
+            final LocalDate date = LocalDate.of(2026, 9, 2);
+            final CrownSearchAndBookRequest request = singleDayRequest(hearingId, date, ROOM_A, 90);
+
+            when(allocatedListingRepository.findByHearingId(hearingId))
+                    .thenReturn(List.of(heldRow(hearingId, CS_HELD, 90, "EXEMPT_SAB")));
+            when(courtScheduleRepository.getCourtSchedulesByIdList(List.of(CS_HELD)))
+                    .thenReturn(List.of(heldSession(CS_HELD, LocalDate.of(2026, 9, 1), ROOM_A, false)));
+            when(courtScheduleRepository.searchCrownFallbackSlots(any(), any(), org.mockito.ArgumentMatchers.anyInt(), any(), any()))
+                    .thenReturn(Optional.empty());
+            when(courtScheduleRepository.createCrownFallbackSession(any())).thenReturn(Optional.empty());
+
+            final ExtendMultidayHearingException thrown = Assertions.assertThrows(
+                    ExtendMultidayHearingException.class, () -> service.crownSearchAndBook(request));
+
+            assertEquals(ExtendMultidayHearingException.ErrorCode.NO_AVAILABILITY, thrown.getErrorCode());
+            assertEquals(List.of(date), thrown.getUnavailableDates());
+            verifyNoWrites(hearingId);
+        }
+
+        @Test
+        void should_rejectMoveBeforeAnyWrite_when_heldHearingRequestHasNoDuration() {
+            final String hearingId = UUID.randomUUID().toString();
+            final CrownSearchAndBookRequest request = singleDayRequest(hearingId, LocalDate.of(2026, 9, 2), ROOM_A, 0);
+
+            when(allocatedListingRepository.findByHearingId(hearingId))
+                    .thenReturn(List.of(heldRow(hearingId, CS_HELD, 90, "EXEMPT_SAB")));
+            when(courtScheduleRepository.getCourtSchedulesByIdList(List.of(CS_HELD)))
+                    .thenReturn(List.of(heldSession(CS_HELD, LocalDate.of(2026, 9, 1), ROOM_A, false)));
+
+            Assertions.assertThrows(CrownFallbackInvalidRequestException.class, () -> service.crownSearchAndBook(request));
+            verifyNoWrites(hearingId);
+        }
+
+        @Test
+        void should_takeFreshPathUnchanged_when_noRowHeld() {
+            final String hearingId = UUID.randomUUID().toString();
+            final LocalDate date = LocalDate.of(2026, 9, 1);
+            final CrownSearchAndBookRequest request = singleDayRequest(hearingId, date, ROOM_A, 120);
+            final CourtSchedule session = heldSession(CS_TARGET, date, ROOM_A, false);
+
+            when(allocatedListingRepository.findByHearingId(hearingId)).thenReturn(List.of());
+            when(courtScheduleRepository.findAllocatedListingByHearingId(hearingId)).thenReturn(Optional.empty());
+            when(courtScheduleRepository.searchCrownFallbackSlots(any(), any(), org.mockito.ArgumentMatchers.anyInt(), any(), any()))
+                    .thenReturn(Optional.of(new CrownFallbackSearchResult(session, false)));
+            when(courtScheduleRepository.saveBookedSlots(any(), eq(false), eq(false)))
+                    .thenReturn(new Result().msg("").success(true));
+
+            final CrownSearchAndBookResponse response = service.crownSearchAndBook(request);
+
+            assertEquals(CS_TARGET, response.courtScheduleId());
+            assertEquals(CROWN_FB_UPDATE_2, response.source());
+            assertEquals("2026-09-01", response.sessionDate());
+            verify(courtScheduleRepository).saveBookedSlots(any(), eq(false), eq(false));
+            verify(allocatedListingRepository).updateSourceByHearingId(hearingId, "EXEMPT_SAB");
+            verify(courtScheduleRepository, org.mockito.Mockito.never()).releaseOldAllocatedListings(any());
+            verify(courtScheduleRepository, org.mockito.Mockito.never()).getCourtSchedulesByIdList(any());
+        }
+
+        private void verifyNoWrites(final String hearingId) {
+            verify(courtScheduleRepository, org.mockito.Mockito.never()).releaseOldAllocatedListings(hearingId);
+            verify(courtScheduleRepository, org.mockito.Mockito.never()).saveBookedSlots(any(), anyBoolean(), anyBoolean());
+            verify(courtScheduleRepository, org.mockito.Mockito.never()).saveBookedSlots(any(), anyBoolean(), anyBoolean(), anyBoolean());
+        }
+
+        @SuppressWarnings(UNCHECKED)
+        private org.mockito.ArgumentCaptor<List<AllocatedSlot>> slotCaptor() {
+            return org.mockito.ArgumentCaptor.forClass(List.class);
+        }
+
+        private CrownSearchAndBookRequest singleDayRequest(final String hearingId, final LocalDate date,
+                                                           final String courtRoomId, final int durationInMinutes) {
+            return new CrownSearchAndBookRequest()
+                    .hearingId(hearingId)
+                    .courtCentreId(UUID.randomUUID().toString())
+                    .hearingDate(date)
+                    .courtRoomId(courtRoomId)
+                    .durationInMinutes(durationInMinutes)
+                    .source(CROWN_FB_UPDATE_2);
+        }
+
+        private AllocatedListing heldRow(final String hearingId, final String courtScheduleId,
+                                         final int duration, final String source) {
+            final AllocatedListing row = new AllocatedListing();
+            row.setHearingId(hearingId);
+            row.setCourtScheduleId(courtScheduleId);
+            row.setDuration(duration);
+            row.setSource(source);
+            return row;
+        }
+
+        /** A full-fields session as {@code getCourtSchedulesByIdList} returns it (room UUID, draft flag, times). */
+        private CourtSchedule heldSession(final String id, final LocalDate date, final String roomId, final boolean draft) {
+            final CourtSchedule session = buildSessionOn(date, 360, 0, false, id);
+            session.setCourtRoomId(roomId);
+            session.setDraft(draft);
+            session.setBusinessType("CR");
+            session.setSessionStartTime(java.time.OffsetDateTime.parse(date + "T10:00:00Z"));
+            session.setSessionEndTime(java.time.OffsetDateTime.parse(date + "T16:00:00Z"));
+            return session;
         }
 
         @Test
