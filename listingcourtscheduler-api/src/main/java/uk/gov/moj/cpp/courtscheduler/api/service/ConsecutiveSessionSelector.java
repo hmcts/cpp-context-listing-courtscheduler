@@ -15,16 +15,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Selects a valid consecutive run of {@link CourtSchedule} sessions out of a set of raw
- * candidates (dedupe by date preferring a bookable row, length check, consecutive-business-day
- * check). Extracted out of {@link SlotsUpdateService} (SPRDT reserve-a-slot Crown multi-day hold)
- * so both the share-time booking path ({@code SlotsUpdateService}) and the pick-time reservation
- * path ({@link ReservationService}) resolve the SAME run for the SAME anchor — a divergence
- * between the two would mean the reservation holds days the share never uses, and the days the
- * share actually uses were never held, which defeats the point of reserving ahead of share.
- *
- * <p>Purely a selector: it does not book or persist anything. Callers persist separately so a
- * release-then-book (or reserve) sequence can be ordered safely.
+ * Nothing new: moved unchanged out of {@link SlotsUpdateService} so the reservation
+ * ({@link ReservationService}) and the share pick the same consecutive Crown days.
  */
 public final class ConsecutiveSessionSelector {
 
