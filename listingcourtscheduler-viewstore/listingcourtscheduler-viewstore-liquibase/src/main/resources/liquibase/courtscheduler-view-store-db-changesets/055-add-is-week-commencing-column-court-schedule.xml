@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.3.xsd">
+    <changeSet id="055-add-is-week-commencing-column-court-schedule" author="raja.kunchala"
+               logicalFilePath="055-add-is-week-commencing-column-court-schedule.xml">
+        <sql>
+            ALTER TABLE court_schedule ADD COLUMN IF NOT EXISTS is_week_commencing BOOLEAN NOT NULL DEFAULT false;
+        </sql>
+        <rollback>
+            <sql>
+                ALTER TABLE court_schedule DROP COLUMN IF EXISTS is_week_commencing;
+            </sql>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>
