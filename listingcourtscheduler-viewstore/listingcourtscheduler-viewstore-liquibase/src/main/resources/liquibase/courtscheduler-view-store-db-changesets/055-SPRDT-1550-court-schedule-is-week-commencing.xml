@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.3.xsd">
+
+    <!--
+      SPRDT-1550 / SPRDT-1624: week commencing sessions. A week commencing session is a draft Crown
+      capacity bucket stored as an all-day court_schedule row on a Monday, flagged is_week_commencing.
+      Existing rows default to false (ordinary sessions). With a constant default, Postgres 11+ adds
+      the column without rewriting the table.
+
+      The AM/PM unique indexes (last changed in 051) gain is_week_commencing, so a week commencing
+      row and an ordinary session can share the same court centre, room, business type, date and
+      session. Duplicate week commencing sessions are prevented in the application, under an
+      advisory lock.
+    -->
+    <changeSet id="055-SPRDT-1550-court-schedule-is-week-commencing" author="raja.kunchala"
+               logicalFilePath="055-SPRDT-1550-court-schedule-is-week-commencing.xml">
+        <sql>
+            ALTER TABLE court_schedule ADD COLUMN IF NOT EXISTS is_week_commencing BOOLEAN NOT NULL DEFAULT false;
+
+            DROP INDEX IF EXISTS court_act_business_date_session_idx_am;
+            DROP INDEX IF EXISTS court_act_business_date_session_idx_pm;
+
+            CREATE UNIQUE INDEX IF NOT EXISTS court_act_business_date_session_idx_am ON
+            court_schedule(oucode, court_room_id, rota_business_type,
+            session_start, (REPLACE(court_session,'AD'::text,'AM'::text))
+            text_ops, is_draft, is_week_commencing) where active is TRUE;
+
+            CREATE UNIQUE INDEX IF NOT EXISTS court_act_business_date_session_idx_pm ON
+            court_schedule(oucode, court_room_id, rota_business_type,
+            session_start, (REPLACE(court_session,'AD'::text,'PM'::text))
+            text_ops, is_draft, is_week_commencing) where active is TRUE;
+        </sql>
+        <rollback>
+            <!-- Restores the 051 indexes. Fails if week commencing rows clash with ordinary sessions;
+                 delete or deactivate those rows first. -->
+            <sql>
+                DROP INDEX IF EXISTS court_act_business_date_session_idx_am;
+                DROP INDEX IF EXISTS court_act_business_date_session_idx_pm;
+
+                CREATE UNIQUE INDEX IF NOT EXISTS court_act_business_date_session_idx_am ON
+                court_schedule(oucode, court_room_id, rota_business_type,
+                session_start, (REPLACE(court_session,'AD'::text,'AM'::text))
+                text_ops, is_draft) where active is TRUE;
+
+                CREATE UNIQUE INDEX IF NOT EXISTS court_act_business_date_session_idx_pm ON
+                court_schedule(oucode, court_room_id, rota_business_type,
+                session_start, (REPLACE(court_session,'AD'::text,'PM'::text))
+                text_ops, is_draft) where active is TRUE;
+
+                ALTER TABLE court_schedule DROP COLUMN IF EXISTS is_week_commencing;
+            </sql>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>
