@@ -672,13 +672,32 @@ public class SlotsUpdateService {
                         courtScheduleRepository.findConsecutiveSessions(request.getCourtScheduleId(), daysNeeded),
                         daysNeeded, request.getHearingId(), perDay)
                 : bookConsecutiveSessions(
-                        courtScheduleRepository.findConsecutiveDurationBasedSessionsForCentre(
-                                request.getCourtCentreId(), request.getHearingDate(), daysNeeded),
+                        findNoAnchorCrownRun(request, daysNeeded, false),
                         daysNeeded, request.getHearingId(), perDay);
         CourtScheduleRoomSanitiser.stripCourtRoomFromDraftSessions(sessions);
         return new CrownSearchAndBookResponse(
                 request.getHearingId(), null, null, sessions,
                 null, null, null, null, null, null, null, null);
+    }
+
+    /**
+     * SPRDT-1539: the consecutive-session candidates for a multi-day CROWN request without an anchor.
+     * A request that names a courtroom is searched in that courtroom only ({@code finalSessionsOnly}
+     * keeps an allocated block on FINAL sessions); without one, the whole centre is searched, as
+     * before. The centre-wide search ignored the courtroom, so a no-anchor move could book the block
+     * into any room of the centre, draft sessions included, with no error.
+     */
+    private List<CourtSchedule> findNoAnchorCrownRun(final CrownSearchAndBookRequest request, final int daysNeeded,
+                                                     final boolean finalSessionsOnly) {
+        if (request.getCourtRoomId() != null && !request.getCourtRoomId().isBlank()) {
+            LOGGER.info("[CROWN-SAB] No-anchor search kept to courtroom {} - hearingId: {}, from {}, {} day(s), finalOnly: {}",
+                    Encode.forJava(request.getCourtRoomId()), Encode.forJava(request.getHearingId()),
+                    request.getHearingDate(), daysNeeded, finalSessionsOnly);
+            return courtScheduleRepository.findConsecutiveDurationBasedSessionsInCourtRoom(
+                    request.getCourtCentreId(), request.getHearingDate(), daysNeeded, request.getCourtRoomId(), finalSessionsOnly);
+        }
+        return courtScheduleRepository.findConsecutiveDurationBasedSessionsForCentre(
+                request.getCourtCentreId(), request.getHearingDate(), daysNeeded);
     }
 
     /**
@@ -698,10 +717,11 @@ public class SlotsUpdateService {
 
         final int daysNeeded = crownDaysNeeded(request);
         final int perDay = perDayDuration(request.getDurationInMinutes(), daysNeeded);
+        // No anchor and a named courtroom: the run stays in that courtroom, and an allocated block
+        // only moves onto FINAL sessions, so a move never lands in another room or unallocates.
         final List<CourtSchedule> rawCandidates = (request.getCourtScheduleId() != null && !request.getCourtScheduleId().isBlank())
                 ? courtScheduleRepository.findConsecutiveSessions(request.getCourtScheduleId(), daysNeeded)
-                : courtScheduleRepository.findConsecutiveDurationBasedSessionsForCentre(
-                        request.getCourtCentreId(), request.getHearingDate(), daysNeeded);
+                : findNoAnchorCrownRun(request, daysNeeded, isAllocatedBlockEdit(request, existingSessions));
         // A candidate day may be one the SAME hearing already occupies (e.g. anchoring the move on a
         // continuation day of its own existing block — the STE 00b7b8bd/072b7512 scenario). totalBooked
         // is a live SUM(al.duration) over allocated_listings, so until the old rows are released (below)

@@ -576,6 +576,75 @@ class MultiDaySearchAndBookIT extends AbstractIT {
         assertThat("the existing block is left intact", bookedCourtScheduleIds(hearingId), containsInAnyOrder(day1Id, day2Id));
     }
 
+    // --- SPRDT-1539: a request without an anchor that names a courtroom stays in that courtroom ---
+
+    @Test
+    void shouldBookTheNamedCourtRoomWhenARequestWithoutAnAnchorNamesOne() throws Exception {
+        final String centre = "centre-" + UUID.randomUUID();
+        final List<String> rooms = sortedRoomIds(2);
+        final String otherRoom = rooms.get(0);   // the centre-wide search takes the first room by id
+        final String namedRoom = rooms.get(1);
+        final String hearingId = UUID.randomUUID().toString();
+        seedSession(ANCHOR_MONDAY, otherRoom, BTX_2, centre, OU_A, false, false, 360);
+        seedSession(ANCHOR_MONDAY.plusDays(1), otherRoom, BTX_2, centre, OU_A, false, false, 360);
+        final String namedDay1 = seedSession(ANCHOR_MONDAY, namedRoom, BTX_2, centre, OU_A, false, false, 360);
+        final String namedDay2 = seedSession(ANCHOR_MONDAY.plusDays(1), namedRoom, BTX_2, centre, OU_A, false, false, 360);
+
+        final Response response = postCrown(noAnchorPayload(centre, ANCHOR_MONDAY, ANCHOR_MONDAY.plusDays(1), namedRoom, 720), hearingId);
+
+        assertThat(response.getStatus(), is(OK.getStatusCode()));
+        assertThat(extractCourtScheduleIds(body(response)), contains(namedDay1, namedDay2));
+        assertThat(bookedCourtScheduleIds(hearingId), containsInAnyOrder(namedDay1, namedDay2));
+    }
+
+    @Test
+    void shouldMoveAnAllocatedBlockIntoTheNamedCourtRoomWhenARequestWithoutAnAnchorChangesItsStart() throws Exception {
+        final String centre = "centre-" + UUID.randomUUID();
+        final List<String> rooms = sortedRoomIds(3);
+        final String otherRoom = rooms.get(0);
+        final String namedRoom = rooms.get(1);
+        final String heldRoom = rooms.get(2);
+        final String hearingId = UUID.randomUUID().toString();
+        final LocalDate newMonday = ANCHOR_MONDAY.plusWeeks(1);
+        final String heldDay1 = seedSession(ANCHOR_MONDAY, heldRoom, BTX_2, centre, OU_A, false, false, 360);
+        final String heldDay2 = seedSession(ANCHOR_MONDAY.plusDays(1), heldRoom, BTX_2, centre, OU_A, false, false, 360);
+        databaseSeeder.insertAllocatedListing(allocatedListing(heldDay1, hearingId, 360));
+        databaseSeeder.insertAllocatedListing(allocatedListing(heldDay2, hearingId, 360));
+        seedSession(newMonday, otherRoom, BTX_2, centre, OU_A, false, false, 360);
+        seedSession(newMonday.plusDays(1), otherRoom, BTX_2, centre, OU_A, false, false, 360);
+        final String namedDay1 = seedSession(newMonday, namedRoom, BTX_2, centre, OU_A, false, false, 360);
+        final String namedDay2 = seedSession(newMonday.plusDays(1), namedRoom, BTX_2, centre, OU_A, false, false, 360);
+
+        final Response response = postCrown(noAnchorPayload(centre, newMonday, newMonday.plusDays(1), namedRoom, 720), hearingId);
+
+        assertThat(response.getStatus(), is(OK.getStatusCode()));
+        assertThat(bookedCourtScheduleIds(hearingId), containsInAnyOrder(namedDay1, namedDay2));
+    }
+
+    @Test
+    void shouldReject422AndKeepTheBlockWhenTheNamedCourtRoomHasOnlyDraftSessionsForAMoveWithoutAnAnchor() throws Exception {
+        final String centre = "centre-" + UUID.randomUUID();
+        final List<String> rooms = sortedRoomIds(3);
+        final String otherRoom = rooms.get(0);
+        final String namedRoom = rooms.get(1);
+        final String heldRoom = rooms.get(2);
+        final String hearingId = UUID.randomUUID().toString();
+        final LocalDate newMonday = ANCHOR_MONDAY.plusWeeks(1);
+        final String heldDay1 = seedSession(ANCHOR_MONDAY, heldRoom, BTX_2, centre, OU_A, false, false, 360);
+        final String heldDay2 = seedSession(ANCHOR_MONDAY.plusDays(1), heldRoom, BTX_2, centre, OU_A, false, false, 360);
+        databaseSeeder.insertAllocatedListing(allocatedListing(heldDay1, hearingId, 360));
+        databaseSeeder.insertAllocatedListing(allocatedListing(heldDay2, hearingId, 360));
+        seedSession(newMonday, otherRoom, BTX_2, centre, OU_A, false, false, 360);
+        seedSession(newMonday.plusDays(1), otherRoom, BTX_2, centre, OU_A, false, false, 360);
+        seedSession(newMonday, namedRoom, BTX_2, centre, OU_A, true, false, 360);
+        seedSession(newMonday.plusDays(1), namedRoom, BTX_2, centre, OU_A, true, false, 360);
+
+        final Response response = postCrown(noAnchorPayload(centre, newMonday, newMonday.plusDays(1), namedRoom, 720), hearingId);
+
+        assertNoAvailabilityOn(response, newMonday, newMonday.plusDays(1));
+        assertThat("the allocated block is left intact", bookedCourtScheduleIds(hearingId), containsInAnyOrder(heldDay1, heldDay2));
+    }
+
     // --- SPRDT-1572 issue 2 (Option B, pending business approval): the extend tail follows the
     // court-calendar always-assign rule; a full tail session is booked beyond its capacity. ---
 
@@ -692,6 +761,23 @@ class MultiDaySearchAndBookIT extends AbstractIT {
                 .add("hearingDate", hearingDate.toString())
                 .add("durationInMinutes", durationInMinutes)
                 .add("courtScheduleId", anchorCourtScheduleId);
+    }
+
+    /** The update-hearing-for-listing shape without an anchor: window, total minutes and the main courtroom. */
+    private static JsonObjectBuilder noAnchorPayload(final String courtCentreId, final LocalDate hearingDate,
+                                                     final LocalDate endDate, final String courtRoomId,
+                                                     final int durationInMinutes) {
+        return Json.createObjectBuilder()
+                .add("courtCentreId", courtCentreId)
+                .add("hearingDate", hearingDate.toString())
+                .add("endDate", endDate.toString())
+                .add("courtRoomId", courtRoomId)
+                .add("durationInMinutes", durationInMinutes);
+    }
+
+    /** Random room ids in ascending order, so a test controls which room the centre-wide search would pick. */
+    private static List<String> sortedRoomIds(final int count) {
+        return java.util.stream.Stream.generate(() -> UUID.randomUUID().toString()).limit(count).sorted().collect(Collectors.toList());
     }
 
     private Response postCrown(final JsonObjectBuilder payload, final String hearingId) {

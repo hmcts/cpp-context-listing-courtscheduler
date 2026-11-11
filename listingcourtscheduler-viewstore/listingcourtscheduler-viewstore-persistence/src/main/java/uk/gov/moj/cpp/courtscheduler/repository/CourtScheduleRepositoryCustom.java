@@ -109,6 +109,18 @@ public interface CourtScheduleRepositoryCustom {
                                                                                                            int daysNeeded);
 
     /**
+     * SPRDT-1539: the CROWN no-anchor consecutive search kept to ONE courtroom. As
+     * {@link #findConsecutiveDurationBasedSessionsForCentre(String, LocalDate, int)}, but only runs in
+     * {@code courtRoomId}, and, when {@code finalSessionsOnly}, FINAL (non-draft) sessions only — a
+     * request that names a courtroom is never booked into another room of the centre.
+     */
+    List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> findConsecutiveDurationBasedSessionsInCourtRoom(String courtCentreId,
+                                                                                                             LocalDate fromDate,
+                                                                                                             int daysNeeded,
+                                                                                                             String courtRoomId,
+                                                                                                             boolean finalSessionsOnly);
+
+    /**
      * MAGISTRATES move-hearing-to-past-date session lookup, restored from main (SPRDT-1447; lost in
      * the 8de19ce main merge): exact date + jurisdiction at the centre, optionally scoped to a room,
      * optionally range-containing {@code sessionStartTime} - any court_session (AM/PM/AD), any day of

@@ -1200,9 +1200,24 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
         return findConsecutiveAdSessionsForCentre(courtCentreId, fromDate, daysNeeded, null, true);
     }
 
+    @Override
+    public List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> findConsecutiveDurationBasedSessionsInCourtRoom(
+            final String courtCentreId, final LocalDate fromDate, final int daysNeeded, final String courtRoomId,
+            final boolean finalSessionsOnly) {
+        return findConsecutiveAdSessionsForCentre(courtCentreId, fromDate, daysNeeded, courtRoomId, true,
+                finalSessionsOnly ? Boolean.FALSE : null);
+    }
+
     private List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> findConsecutiveAdSessionsForCentre(
             final String courtCentreId, final LocalDate fromDate, final int daysNeeded, final String courtRoomId,
             final boolean durationBasedOnly) {
+        return findConsecutiveAdSessionsForCentre(courtCentreId, fromDate, daysNeeded, courtRoomId, durationBasedOnly, null);
+    }
+
+    /** @param isDraft {@code null} for any draft state, else only sessions with that {@code is_draft}. */
+    private List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> findConsecutiveAdSessionsForCentre(
+            final String courtCentreId, final LocalDate fromDate, final int daysNeeded, final String courtRoomId,
+            final boolean durationBasedOnly, final Boolean isDraft) {
         final StringBuilder roomQuery = new StringBuilder(512).append("""
                 SELECT s.court_room_id, s.rota_business_type
                 FROM court_schedule s
@@ -1218,6 +1233,9 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
         if (durationBasedOnly) {
             roomQuery.append(DURATION_BASED_ONLY_PREDICATE);
         }
+        if (isDraft != null) {
+            roomQuery.append("  AND s.is_draft = :isDraft\n");
+        }
         roomQuery.append("""
                 GROUP BY s.court_room_id, s.rota_business_type
                 ORDER BY s.court_room_id, s.rota_business_type
@@ -1227,6 +1245,9 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
         roomJpaQuery.setParameter("fromDate", java.sql.Date.valueOf(fromDate));
         if (courtRoomId != null) {
             roomJpaQuery.setParameter("courtRoomId", courtRoomId);
+        }
+        if (isDraft != null) {
+            roomJpaQuery.setParameter(IS_DRAFT, isDraft);
         }
 
         @SuppressWarnings(UNCHECKED_WARNING)
@@ -1243,7 +1264,7 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
             final String candidateRoomId = (String) room[0];
             final String businessType = (String) room[1];
             final List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> run = queryAdWeekdaySessionsInCentre(
-                    courtCentreId, candidateRoomId, businessType, fromDate, toInclusive, durationBasedOnly);
+                    courtCentreId, candidateRoomId, businessType, fromDate, toInclusive, durationBasedOnly, isDraft);
             if (run.size() >= daysNeeded) {
                 return run;
             }
@@ -1253,7 +1274,8 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
 
     private List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> queryAdWeekdaySessionsInCentre(
             final String courtCentreId, final String courtRoomId, final String businessType,
-            final LocalDate fromInclusive, final LocalDate toInclusive, final boolean durationBasedOnly) {
+            final LocalDate fromInclusive, final LocalDate toInclusive, final boolean durationBasedOnly,
+            final Boolean isDraft) {
         final StringBuilder queryStr = new StringBuilder(512).append("""
                 SELECT s.id
                 FROM court_schedule s
@@ -1269,6 +1291,9 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
         if (durationBasedOnly) {
             queryStr.append(DURATION_BASED_ONLY_PREDICATE);
         }
+        if (isDraft != null) {
+            queryStr.append("  AND s.is_draft = :isDraft\n");
+        }
         queryStr.append("ORDER BY s.session_start");
         final jakarta.persistence.Query query = entityManager.createNativeQuery(queryStr.toString());
         query.setParameter(COURT_CENTRE_ID, courtCentreId);
@@ -1276,6 +1301,9 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
         query.setParameter(BUSINESS_TYPE, businessType);
         query.setParameter(START_DATE, java.sql.Date.valueOf(fromInclusive));
         query.setParameter(END_DATE, java.sql.Date.valueOf(toInclusive));
+        if (isDraft != null) {
+            query.setParameter(IS_DRAFT, isDraft);
+        }
 
         @SuppressWarnings(UNCHECKED_WARNING)
         final List<String> ids = query.getResultList();

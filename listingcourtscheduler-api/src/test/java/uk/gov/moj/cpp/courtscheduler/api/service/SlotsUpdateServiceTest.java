@@ -1683,13 +1683,14 @@ class SlotsUpdateServiceTest {
 
         @Test
         void should_reject422ForTheWholeWindow_when_allocatedHearingRescheduledToANewStartWithoutAnyRun() {
-            // MOVE by a changed start date (no anchor): the centre search finds no run at all.
+            // MOVE by a changed start date (no anchor): the courtroom search finds no FINAL run at all.
             final String hearingId = UUID.randomUUID().toString();
             final String courtCentreId = UUID.randomUUID().toString();
+            final String courtRoomId = UUID.randomUUID().toString();
             final CrownSearchAndBookRequest request = new CrownSearchAndBookRequest()
                     .hearingId(hearingId)
                     .courtCentreId(courtCentreId)
-                    .courtRoomId(UUID.randomUUID().toString())
+                    .courtRoomId(courtRoomId)
                     .hearingDate(LocalDate.of(2026, 9, 11)) // Friday: the window skips the weekend
                     .durationInMinutes(720);
 
@@ -1697,7 +1698,8 @@ class SlotsUpdateServiceTest {
                     existingAllocation(hearingId, CS_OLD_DAY1), existingAllocation(hearingId, CS_OLD_DAY2)));
             when(courtScheduleRepository.getCourtSchedulesByIdList(List.of(CS_OLD_DAY1, CS_OLD_DAY2)))
                     .thenReturn(buildConsecutiveSessions(LocalDate.of(2026, 6, 1), 2));
-            when(courtScheduleRepository.findConsecutiveDurationBasedSessionsForCentre(courtCentreId, LocalDate.of(2026, 9, 11), 2))
+            when(courtScheduleRepository.findConsecutiveDurationBasedSessionsInCourtRoom(
+                    courtCentreId, LocalDate.of(2026, 9, 11), 2, courtRoomId, true))
                     .thenReturn(List.of());
 
             final ExtendMultidayHearingException thrown = Assertions.assertThrows(
@@ -1705,6 +1707,97 @@ class SlotsUpdateServiceTest {
 
             assertEquals(List.of(LocalDate.of(2026, 9, 11), LocalDate.of(2026, 9, 14)), thrown.getUnavailableDates());
             verify(courtScheduleRepository, org.mockito.Mockito.never()).releaseOldAllocatedListings(any());
+        }
+
+        @Test
+        void should_searchOnlyTheRequestedCourtRoom_when_freshCrownMultiDayRequestHasNoAnchor() {
+            // SPRDT-1539: a no-anchor request that names a courtroom books a run in that courtroom,
+            // never a run the centre-wide search finds in another room.
+            final String hearingId = UUID.randomUUID().toString();
+            final String courtCentreId = UUID.randomUUID().toString();
+            final String courtRoomId = UUID.randomUUID().toString();
+            final CrownSearchAndBookRequest request = new CrownSearchAndBookRequest()
+                    .hearingId(hearingId)
+                    .courtCentreId(courtCentreId)
+                    .courtRoomId(courtRoomId)
+                    .hearingDate(LocalDate.of(2026, 9, 7))
+                    .durationInMinutes(720);
+
+            when(courtScheduleRepository.findConsecutiveDurationBasedSessionsInCourtRoom(
+                    courtCentreId, LocalDate.of(2026, 9, 7), 2, courtRoomId, false))
+                    .thenReturn(buildConsecutiveSessions(LocalDate.of(2026, 9, 7), 2));
+            when(courtScheduleRepository.saveBookedSlots(any(), eq(false), eq(false)))
+                    .thenReturn(new Result().msg("").success(true));
+
+            final CrownSearchAndBookResponse response = service.crownSearchAndBook(request);
+
+            assertEquals(2, response.sessions().size());
+            verify(courtScheduleRepository, org.mockito.Mockito.never())
+                    .findConsecutiveDurationBasedSessionsForCentre(any(), any(), org.mockito.ArgumentMatchers.anyInt());
+        }
+
+        @Test
+        void should_moveAnAllocatedBlockOnlyOntoFinalSessionsOfTheRequestedCourtRoom_when_noAnchor() {
+            // SPRDT-1539: the no-anchor MOVE of an allocated block (a changed start date, or a
+            // stale first day on listing's side) stays in the named courtroom and on FINAL sessions.
+            final String hearingId = UUID.randomUUID().toString();
+            final String courtCentreId = UUID.randomUUID().toString();
+            final String courtRoomId = UUID.randomUUID().toString();
+            final CrownSearchAndBookRequest request = new CrownSearchAndBookRequest()
+                    .hearingId(hearingId)
+                    .courtCentreId(courtCentreId)
+                    .courtRoomId(courtRoomId)
+                    .hearingDate(LocalDate.of(2026, 9, 7))
+                    .durationInMinutes(720);
+
+            when(allocatedListingRepository.findByHearingId(hearingId)).thenReturn(List.of(
+                    existingAllocation(hearingId, CS_OLD_DAY1), existingAllocation(hearingId, CS_OLD_DAY2)));
+            when(courtScheduleRepository.getCourtSchedulesByIdList(List.of(CS_OLD_DAY1, CS_OLD_DAY2)))
+                    .thenReturn(buildConsecutiveSessions(LocalDate.of(2026, 6, 1), 2));
+            when(courtScheduleRepository.findConsecutiveDurationBasedSessionsInCourtRoom(
+                    courtCentreId, LocalDate.of(2026, 9, 7), 2, courtRoomId, true))
+                    .thenReturn(buildConsecutiveSessions(LocalDate.of(2026, 9, 7), 2));
+            when(courtScheduleRepository.saveBookedSlots(any(), eq(false), eq(false)))
+                    .thenReturn(new Result().msg("").success(true));
+
+            final CrownSearchAndBookResponse response = service.crownSearchAndBook(request);
+
+            assertEquals(MOVE_2, response.source());
+            assertEquals(2, response.sessions().size());
+            verify(courtScheduleRepository).releaseOldAllocatedListings(hearingId);
+            verify(courtScheduleRepository, org.mockito.Mockito.never())
+                    .findConsecutiveDurationBasedSessionsForCentre(any(), any(), org.mockito.ArgumentMatchers.anyInt());
+        }
+
+        @Test
+        void should_moveADraftBlockWithinTheRequestedCourtRoomInAnyDraftState_when_noAnchor() {
+            // A draft (unallocated) block is not held to FINAL sessions: allocating it is the point.
+            final String hearingId = UUID.randomUUID().toString();
+            final String courtCentreId = UUID.randomUUID().toString();
+            final String courtRoomId = UUID.randomUUID().toString();
+            final CrownSearchAndBookRequest request = new CrownSearchAndBookRequest()
+                    .hearingId(hearingId)
+                    .courtCentreId(courtCentreId)
+                    .courtRoomId(courtRoomId)
+                    .hearingDate(LocalDate.of(2026, 9, 7))
+                    .durationInMinutes(720);
+            final CourtSchedule draftDay = buildSessionWithId(LocalDate.of(2026, 6, 1), CS_OLD_DAY1);
+            draftDay.setDraft(true);
+
+            when(allocatedListingRepository.findByHearingId(hearingId))
+                    .thenReturn(List.of(existingAllocation(hearingId, CS_OLD_DAY1)));
+            when(courtScheduleRepository.getCourtSchedulesByIdList(List.of(CS_OLD_DAY1))).thenReturn(List.of(draftDay));
+            when(courtScheduleRepository.findConsecutiveDurationBasedSessionsInCourtRoom(
+                    courtCentreId, LocalDate.of(2026, 9, 7), 2, courtRoomId, false))
+                    .thenReturn(buildConsecutiveSessions(LocalDate.of(2026, 9, 7), 2));
+            when(courtScheduleRepository.saveBookedSlots(any(), eq(false), eq(false)))
+                    .thenReturn(new Result().msg("").success(true));
+
+            final CrownSearchAndBookResponse response = service.crownSearchAndBook(request);
+
+            assertEquals(2, response.sessions().size());
+            verify(courtScheduleRepository, org.mockito.Mockito.never())
+                    .findConsecutiveDurationBasedSessionsForCentre(any(), any(), org.mockito.ArgumentMatchers.anyInt());
         }
 
         @Test
