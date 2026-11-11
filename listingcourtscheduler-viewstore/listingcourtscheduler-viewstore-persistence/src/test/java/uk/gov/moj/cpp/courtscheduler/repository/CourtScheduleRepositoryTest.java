@@ -5,6 +5,7 @@ import uk.gov.moj.cpp.courtscheduler.openapi.model.UpdateCourtSchedule;
 import static java.util.UUID.randomUUID;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -92,6 +93,8 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
     private jakarta.persistence.EntityManager em;
 
     // Same output as the former SimpleDateFormat: literal 'Z' suffix, formatted in the JVM default zone.
+    private static final String WC_OU_CODE = "C06MC00";
+    private static final String WC_COURT_HOUSE_ID = "CH" + WC_OU_CODE;
     private static final DateTimeFormatter SIMPLE_DATE_FORMAT =
             DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.ROOT).withZone(ZoneId.systemDefault());
 
@@ -164,6 +167,87 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
                 draftMatches.stream().map(CourtSchedule::getCourtScheduleId).toList());
         assertEquals(List.of(finalSession.getCourtScheduleId()),
                 finalMatches.stream().map(CourtSchedule::getCourtScheduleId).toList());
+    }
+
+    /**
+     * SPRDT-1550: is_week_commencing is part of the same unique indexes, so an ordinary draft session
+     * and a week commencing session for the same room, business type and Monday do not clash, and the
+     * ordinary duplicate check must not see week commencing rows.
+     */
+    @Test
+    void similarSessionsShouldIgnoreWeekCommencingSessions() {
+        final LocalDate monday = LocalDate.of(2027, 1, 4);
+        final CourtSchedule ordinary = createCourtSchedule(WC_OU_CODE, ADULT_2, monday, CR01_2, TRF_2, "AD");
+        ordinary.setIsDraft(true);
+        final CourtSchedule weekCommencing = weekCommencingSession(WC_OU_CODE, CR01_2, TRF_2, monday);
+        courtScheduleRepository.save(ordinary);
+        courtScheduleRepository.save(weekCommencing);
+        em.flush();
+        em.clear();
+
+        final List<CourtSchedule> matches = courtScheduleRepository.getSimilarSessions(
+                WC_COURT_HOUSE_ID, CR01_2, TRF_2, monday, monday, CROWN_2, true);
+
+        assertEquals(List.of(ordinary.getCourtScheduleId()),
+                matches.stream().map(CourtSchedule::getCourtScheduleId).toList());
+    }
+
+    /**
+     * SPRDT-1550: the one-per-Monday rule is per court centre and business type in any courtroom, and
+     * only counts active draft week commencing rows inside the date range.
+     */
+    @Test
+    void findActiveDraftWeekCommencingSessionsShouldMatchOnlyActiveDraftWeekCommencingRowsOfTheCentreAndBusinessType() {
+        final LocalDate monday = LocalDate.of(2027, 1, 11);
+        final CourtSchedule match = weekCommencingSession(WC_OU_CODE, "room-2", TRF_2, monday);
+        final CourtSchedule otherBusinessType = weekCommencingSession(WC_OU_CODE, CR01_2, "PTPH", monday);
+        final CourtSchedule otherCentre = weekCommencingSession("C07MC00", CR01_2, TRF_2, monday);
+        final CourtSchedule outOfRange = weekCommencingSession(WC_OU_CODE, CR01_2, TRF_2, monday.plusWeeks(1));
+        final CourtSchedule inactive = weekCommencingSession(WC_OU_CODE, "room-3", TRF_2, monday);
+        inactive.setActive(false);
+        final CourtSchedule ordinaryDraft = createCourtSchedule(WC_OU_CODE, ADULT_2, monday, CR01_2, TRF_2, "AD");
+        ordinaryDraft.setIsDraft(true);
+        List.of(match, otherBusinessType, otherCentre, outOfRange, inactive, ordinaryDraft).forEach(courtScheduleRepository::save);
+        em.flush();
+        em.clear();
+
+        final List<CourtSchedule> found = courtScheduleRepository.findActiveDraftWeekCommencingSessions(
+                WC_COURT_HOUSE_ID, TRF_2, monday.minusDays(3), monday.plusDays(3));
+
+        assertEquals(List.of(match.getCourtScheduleId()), found.stream().map(CourtSchedule::getCourtScheduleId).toList());
+    }
+
+    /**
+     * SPRDT-1550: the edit path loads a session through a native-query constructor that does not read
+     * is_week_commencing and then merges it; the column is not updatable, so the flag must survive.
+     */
+    @Test
+    void updateOfANativeQueryLoadedSessionShouldNotResetTheWeekCommencingFlag() {
+        final CourtSchedule saved = courtScheduleRepository.save(weekCommencingSession("B99MC04", CR01_2, TRF_2, LocalDate.of(2027, 1, 18)));
+        em.flush();
+        em.clear();
+        final CourtSchedule loaded = courtScheduleRepository.retrieveCourtScheduleWithListingById(saved.getCourtScheduleId());
+        assertFalse(loaded.isWeekCommencing(), "precondition: the native-query constructor does not read the column");
+        final UpdateCourtSchedule update = new UpdateCourtSchedule()
+                .courtScheduleId(saved.getCourtScheduleId())
+                .courtRoomId(CR01_2)
+                .courtSession("AD")
+                .businessType(TRF_2)
+                .panel(ADULT_2)
+                .maxSlots(0)
+                .availableSlots(0)
+                .maxDuration(720)
+                .availableDuration(720)
+                .isOverbookingAllowed(false)
+                .jurisdiction(CROWN_2);
+
+        courtScheduleRepository.update(loaded, update, Optional.empty());
+        em.flush();
+        em.clear();
+
+        final CourtSchedule reloaded = em.find(CourtSchedule.class, saved.getCourtScheduleId());
+        assertEquals(720, reloaded.getMaxDuration());
+        assertTrue(reloaded.isWeekCommencing());
     }
 
     @Test
@@ -1215,6 +1299,15 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
 
     private static CourtSchedule slotBased(final CourtSchedule schedule) {
         schedule.setSlotBased(true);
+        return schedule;
+    }
+
+    private CourtSchedule weekCommencingSession(final String ouCode, final String courtRoomId,
+                                                final String businessType, final LocalDate monday) {
+        final CourtSchedule schedule = createCourtSchedule(ouCode, ADULT_2, monday, courtRoomId, businessType, "AD");
+        schedule.setIsDraft(true);
+        schedule.setWeekCommencing(true);
+        schedule.setJurisdiction(CROWN_2);
         return schedule;
     }
 

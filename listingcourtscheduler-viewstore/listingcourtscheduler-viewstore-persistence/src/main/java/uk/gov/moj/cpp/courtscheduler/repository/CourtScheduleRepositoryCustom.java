@@ -34,6 +34,14 @@ public interface CourtScheduleRepositoryCustom {
 
     void saveCourtSchedules(List<CourtSchedule> courtSchedules);
 
+    /**
+     * SPRDT-1550: serialises week commencing creation for one court centre and business type. Takes a
+     * Postgres transaction-scoped advisory lock, held until the caller's transaction ends, so the
+     * one-per-Monday duplicate check and the insert cannot interleave with a concurrent request.
+     * Must be called inside a transaction.
+     */
+    void lockWeekCommencingCreation(String courtCentreId, String businessType);
+
     CourtSchedule update(CourtSchedule courtSchedule, boolean isForRotaFile);
 
     Result update(CourtSchedule persistedCourtSchedule,

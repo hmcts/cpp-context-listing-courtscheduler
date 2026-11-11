@@ -28,6 +28,9 @@ public class ErrorMessages {
     public static final String SESSION_START_TIME_CANNOT_BE_CHANGED_TO_AFTER_HEARING_TIME = MIN_HEARING_TIME_AFTER_SESSION_START_TIME;
     public static final String SESSION_END_TIME_CANNOT_BE_CHANGED_TO_BEFORE_HEARING_TIME = "Session End Time can not be updated to a time that is before than the maximum hearing time";
     public static final String SESSION_IN_PAST_CANNOT_BE_EDITED = "Cannot edit a session that is in the past";
+    public static final String WEEK_COMMENCING_SLOT_BASED_NOT_ALLOWED = "Week commencing sessions can only be created for duration-based business types";
+    public static final String WEEK_COMMENCING_NO_COURTROOM = "No courtroom found for court centre ";
+    public static final String WEEK_COMMENCING_NO_MONDAY = "There is no Monday between the start date and the end date";
 
     private ErrorMessages() {
     }

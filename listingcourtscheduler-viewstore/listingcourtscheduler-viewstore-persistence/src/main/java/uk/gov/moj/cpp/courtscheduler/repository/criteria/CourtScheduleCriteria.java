@@ -133,6 +133,13 @@ public class CourtScheduleCriteria {
             final Predicate draftPredicate = criteriaBuilder.equal(root.get(CourtSchedule_.DRAFT), courtSchedule.isDraft());
             predicateList.add(draftPredicate);
         }
+        // SPRDT-1550: a week commencing row and an ordinary session can share room, business type and
+        // Monday (is_week_commencing is part of the unique indexes); the upsert must only ever match
+        // its own kind, or re-submitting one would overwrite the other's capacity.
+        if (nonNull(courtSchedule.isWeekCommencing())) {
+            final Predicate weekCommencingPredicate = criteriaBuilder.equal(root.get(CourtSchedule_.WEEK_COMMENCING), courtSchedule.isWeekCommencing());
+            predicateList.add(weekCommencingPredicate);
+        }
         criteriaQuery.where(criteriaBuilder.and(predicateList.toArray(new Predicate[]{})));
     }
 }

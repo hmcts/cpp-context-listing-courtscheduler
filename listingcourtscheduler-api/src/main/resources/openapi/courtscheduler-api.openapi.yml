@@ -140,6 +140,29 @@ paths:
         '202':
           description: Accepted
 
+  /session/weekCommencing:
+    post:
+      tags: [session]
+      operationId: postCreateWeekCommencingSession
+      summary: >-
+        Create a CROWN draft week commencing session (one all-day row on each Monday of the date
+        range, in the court centre's default courtroom) - SPRDT-1550
+      requestBody:
+        required: true
+        content:
+          application/vnd.courtscheduler.week-commencing.create+json:
+            schema:
+              $ref: '#/components/schemas/WeekCommencingCreateRequest'
+      responses:
+        '202':
+          description: Accepted
+        '400':
+          description: Bad Request — schema violation, validation failure or duplicate week commencing session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /sessions/judiciaries:
     post:
       tags: [session]
@@ -884,6 +907,23 @@ components:
         isDraft: { type: boolean, nullable: true }
         jurisdiction: { type: string, nullable: true }
         index: { type: integer, nullable: true }
+        # Set only by the week commencing endpoint (SPRDT-1550); the generic create path clears it
+        # (CourtSchedulerApi#applyLegacyCreateDefaults) so week commencing rows are only ever
+        # created through POST /session/weekCommencing and its duplicate rule.
+        isWeekCommencing: { type: boolean, nullable: true }
+
+    # SPRDT-1550 - request body of POST /session/weekCommencing. Validated against
+    # src/raml/json/schema/courtscheduler.week-commencing.create.json; dates stay plain strings
+    # for the same reason as RepeatPattern below. capacity is in minutes (1 day = 360).
+    WeekCommencingCreateRequest:
+      type: object
+      properties:
+        courtCentreId: { type: string }
+        businessType: { type: string }
+        startDate: { type: string }
+        endDate: { type: string }
+        capacity: { type: integer }
+        isOverbookingAllowed: { type: boolean, nullable: true }
 
     # startDate/endDate deliberately plain strings (no format:date) — preserves the legacy
     # END_DATE-placeholder-as-null quirk and custom bad-format error messages, which automatic

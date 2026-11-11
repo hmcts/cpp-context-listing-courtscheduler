@@ -98,6 +98,7 @@ The **Court Scheduler** is the Common Platform service that manages **court sitt
 | **Overbooking** | Booking beyond a session's capacity. Only allowed when the session's `is_overbooking_allowed` flag is set. |
 | **Provisional booking** | A tentative hold on one or more sessions, identified by a `bookingId`. |
 | **Draft session** | A Crown session that has no confirmed courtroom yet. A courtroom is assigned later via `assign.courtroom`. |
+| **Week commencing session** | A Crown draft capacity bucket for a court centre and business type, stored as one all-day draft row (`is_week_commencing = true`) on each Monday of a range. At most one per Monday per court centre and business type. |
 | **Jurisdiction** | `MAGISTRATES` (the default) or `CROWN`. |
 | **OU code** | Organisation Unit code that identifies a court/location in reference data. |
 | **Court centre / court house** | A court building. A court centre contains courtrooms. |
@@ -897,6 +898,7 @@ Configuration comes from environment variables and an optional Kubernetes secret
 | `POST /courtschedule/delete` | `vnd.courtscheduler.delete+json` → `.delete.response+json` | 200 | Delete sessions without bookings |
 | `POST /courtschedule/assign.courtroom` | `vnd.courtscheduler.assign.courtroom+json` → `.response+json` | 200 | Assign a courtroom to Crown draft sessions |
 | `GET /courtschedule/search.court-schedules-by-id` | → `vnd.courtscheduler.search.court-schedules-by-id+json` | 200 | Fetch sessions by IDs |
+| `POST /session/weekCommencing` | `vnd.courtscheduler.week-commencing.create+json` | 202 | Create a Crown week commencing session: a draft all-day row on each Monday of the range, in the centre's first listed courtroom. `capacity` is in minutes (1–7200, 360 = 1 day). 400 for a duplicate Monday (same centre and business type), a slot-based business type or a range with no Monday |
 
 **Judiciary on sessions**
 
@@ -1109,6 +1111,7 @@ erDiagram
         time national_break_time
         boolean is_overbooking_allowed
         boolean is_draft
+        boolean is_week_commencing
         varchar jurisdiction
         boolean active
     }

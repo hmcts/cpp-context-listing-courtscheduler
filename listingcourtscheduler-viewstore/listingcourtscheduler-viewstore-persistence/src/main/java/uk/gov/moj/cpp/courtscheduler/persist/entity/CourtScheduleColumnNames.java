@@ -29,6 +29,7 @@ public final class CourtScheduleColumnNames {
     public static final String CREATED_ON = "created_on";
     public static final String UPDATED_ON = "updated_on";
     public static final String IS_DRAFT = "is_draft";
+    public static final String IS_WEEK_COMMENCING = "is_week_commencing";
     public static final String JURISDICTION = "jurisdiction";
 
     private CourtScheduleColumnNames() {

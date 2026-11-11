@@ -344,6 +344,7 @@ public class DatabaseReader {
 
         courtSchedule.setIsOverbookingAllowed(resultSet.getBoolean("is_overbooking_allowed"));
         courtSchedule.setIsDraft(resultSet.getBoolean("is_draft"));
+        courtSchedule.setWeekCommencing(resultSet.getBoolean("is_week_commencing"));
         courtSchedule.setJurisdiction(resultSet.getString("jurisdiction"));
 
         return courtSchedule;

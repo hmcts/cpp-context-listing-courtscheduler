@@ -54,8 +54,10 @@ public interface CourtScheduleRepository
 
     // isDraft is primitive on purpose: a null would compare as "cs.draft = null", match nothing and
     // silently switch the duplicate check off. Draft and final sessions never clash with each other,
-    // the same as the is_draft column in the unique indexes of changeset 051.
-    @Query("SELECT cs FROM CourtSchedule cs WHERE cs.courtHouseId = :courtCentreId AND cs.courtRoomId = :courtRoomId AND cs.active = true AND cs.businessType = :businessType AND cs.sessionDate BETWEEN :startDate AND :endDate AND cs.jurisdiction = :jurisdiction AND cs.draft = :isDraft")
+    // the same as the is_draft column in the unique indexes of changeset 051. Week commencing rows
+    // (SPRDT-1550) never clash with ordinary sessions either - is_week_commencing is part of the same
+    // unique indexes - and have their own duplicate rule (findActiveDraftWeekCommencingSessions).
+    @Query("SELECT cs FROM CourtSchedule cs WHERE cs.courtHouseId = :courtCentreId AND cs.courtRoomId = :courtRoomId AND cs.active = true AND cs.businessType = :businessType AND cs.sessionDate BETWEEN :startDate AND :endDate AND cs.jurisdiction = :jurisdiction AND cs.draft = :isDraft AND cs.weekCommencing = false")
     List<CourtSchedule> getSimilarSessions(@Param("courtCentreId") String courtCentreId,
                                            @Param("courtRoomId") String courtRoomId,
                                            @Param(BUSINESS_TYPE) String businessType,
@@ -63,6 +65,16 @@ public interface CourtScheduleRepository
                                            @Param(END_DATE) LocalDate endDate,
                                            @Param("jurisdiction") String jurisdiction,
                                            @Param("isDraft") boolean isDraft);
+
+    /**
+     * SPRDT-1550: active draft week commencing sessions for a court centre and business type in a
+     * date range, in any courtroom. Only one is allowed per Monday, whichever room it was put in.
+     */
+    @Query("SELECT cs FROM CourtSchedule cs WHERE cs.courtHouseId = :courtCentreId AND cs.businessType = :businessType AND cs.active = true AND cs.draft = true AND cs.weekCommencing = true AND cs.sessionDate BETWEEN :startDate AND :endDate")
+    List<CourtSchedule> findActiveDraftWeekCommencingSessions(@Param("courtCentreId") String courtCentreId,
+                                                              @Param(BUSINESS_TYPE) String businessType,
+                                                              @Param(START_DATE) LocalDate startDate,
+                                                              @Param(END_DATE) LocalDate endDate);
 
     @Modifying
     @Transactional
