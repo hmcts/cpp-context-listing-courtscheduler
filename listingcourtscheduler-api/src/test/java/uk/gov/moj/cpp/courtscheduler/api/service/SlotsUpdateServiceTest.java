@@ -2165,8 +2165,6 @@ class SlotsUpdateServiceTest {
                     .durationInMinutes(180)
                     .isPolice(true);
 
-            lenient().when(courtScheduleRepository.findAllocatedListingByHearingId(hearingId))
-                    .thenReturn(Optional.empty());
             when(courtScheduleRepository.searchBookHearingSlots(any())).thenAnswer(inv -> {
                 final List<AllocatedSlot> slots = inv.getArgument(0);
                 slots.get(0).setCourtScheduleId("cs-single");
@@ -2243,6 +2241,27 @@ class SlotsUpdateServiceTest {
             verifyNoMultiDayMagsBooking();
         }
 
+        @Test
+        void should_searchAgain_when_magsHearingAlreadyHoldsABooking() {
+            // Main's behaviour: no idempotent short-cut. A hearing that already holds a booking goes through
+            // the matcher again, which releases its rows first; the response is the session booked now.
+            final MagsSearchAndBookRequest request = magsRequest(MAGS_DAY)
+                    .durationInMinutes(180)
+                    .isPolice(false);
+            final AllocatedListing held = new AllocatedListing();
+            held.setHearingId(request.getHearingId());
+            held.setCourtScheduleId(MAGS_SESSION_ID);
+            // lenient: only the removed guard read it; the stub keeps this test red against that guard
+            lenient().when(courtScheduleRepository.findAllocatedListingByHearingId(request.getHearingId()))
+                    .thenReturn(Optional.of(held));
+            stubMagsMatcherBooks(MAGS_SESSION_ID);
+
+            final MagsSearchAndBookResponse response = service.magsSearchAndBook(request);
+
+            singleSlotSentToMagsMatcher();
+            assertEquals(List.of(MAGS_SESSION_ID), sessionIds(response));
+        }
+
         private MagsSearchAndBookRequest magsRequest(final LocalDate hearingDate) {
             return new MagsSearchAndBookRequest()
                     .hearingId(UUID.randomUUID().toString())
@@ -2279,7 +2298,7 @@ class SlotsUpdateServiceTest {
 
         private List<String> sessionIds(final MagsSearchAndBookResponse response) {
             return response.sessions().stream()
-                    .map(uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule::getCourtScheduleId)
+                    .map(CourtSchedule::getCourtScheduleId)
                     .toList();
         }
     }

@@ -1288,6 +1288,61 @@ class HearingSlotIT extends AbstractIT {
     }
 
     @Test
+    void shouldReleaseAndBookAgainWhenTheSameMagsRequestIsRepeated() throws Exception {
+        // Main's behaviour (SPRDT-1539): no idempotent short-cut. A repeat request releases the hearing's
+        // booking and books it again: the same session, one row, and the minutes charged once in net.
+        final LocalDate monday = nextFutureMonday();
+        final String centreId = randomUUID().toString();
+        final String roomR = randomUUID().toString();
+        final String hearingId = randomUUID().toString();
+        final String mondayInR = seedMagsSession(randomUUID().toString(), roomR,
+                centreId, "OU-R", NCFL_2, "AD", monday, 360);
+        final String payload = buildMagsPayload(centreId, roomR, monday.toString(),
+                monday.plusDays(14).toString(), monday + T10_00_00_000_Z, "180");
+
+        final JsonArray first = postMagsSearchAndBook(hearingId, payload);
+        final JsonArray second = postMagsSearchAndBook(hearingId, payload);
+
+        assertThat("first request books R's Monday", first.getJsonObject(0).getString(COURT_SCHEDULE_ID_2), is(mondayInR));
+        assertThat("the repeat books it again rather than answering []", second.size(), is(1));
+        assertThat(second.getJsonObject(0).getString(COURT_SCHEDULE_ID_2), is(mondayInR));
+        assertThat("still one allocated_listings row", allocatedListingsFor(hearingId).size(), is(1));
+        assertThat("minutes charged once in net",
+                databaseReader.courtScheduleById(mondayInR).getAvailableDuration(), is(180));
+    }
+
+    @Test
+    void shouldLeaveTheHearingUnbookedWhenARepeatedMagsRequestNoLongerMatches() throws Exception {
+        // Main's behaviour (SPRDT-1539): the matcher releases the hearing's booking before it searches, and
+        // the release is not undone when nothing matches. Room Q has no session that day.
+        final LocalDate monday = nextFutureMonday();
+        final String centreId = randomUUID().toString();
+        final String roomR = randomUUID().toString();
+        final String roomQ = randomUUID().toString();
+        final String hearingId = randomUUID().toString();
+        final String mondayInR = seedMagsSession(randomUUID().toString(), roomR,
+                centreId, "OU-R", NCFL_2, "AD", monday, 360);
+
+        final JsonArray booked = postMagsSearchAndBook(hearingId, buildMagsPayload(centreId, roomR,
+                monday.toString(), monday.plusDays(14).toString(), monday + T10_00_00_000_Z, "180"));
+        assertThat(booked.getJsonObject(0).getString(COURT_SCHEDULE_ID_2), is(mondayInR));
+
+        final JsonArray rebooked = postMagsSearchAndBook(hearingId, buildMagsPayload(centreId, roomQ,
+                monday.toString(), monday.plusDays(14).toString(), monday + T10_00_00_000_Z, "180"));
+
+        assertThat("nothing matches in room Q", rebooked.size(), is(0));
+        assertThat("the earlier booking stays released", allocatedListingsFor(hearingId).size(), is(0));
+        assertThat("R's Monday minutes are paid back",
+                databaseReader.courtScheduleById(mondayInR).getAvailableDuration(), is(360));
+    }
+
+    private JsonArray postMagsSearchAndBook(final String hearingId, final String payload) {
+        final Response response = postCommand(HEARINGS + hearingId, MAGS_ACCEPT, SYSTEM_USER_ID, payload);
+        assertThat(response.getStatus(), is(OK.getStatusCode()));
+        return stringToJsonObjectConverter.convert(response.readEntity(String.class)).getJsonArray(SESSIONS);
+    }
+
+    @Test
     void shouldRetrieveHearingSlotForAllDayWithSplitSupport() throws Exception {
         final LocalDate sessionDate = getRandomFutureDateWithinNextYear();
         final String courtScheduleId = randomUUID().toString();

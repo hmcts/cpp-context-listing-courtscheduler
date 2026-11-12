@@ -769,21 +769,15 @@ public class SlotsUpdateService {
 
     /**
      * MAGS search-and-book, as on main (SPRDT-1539): one session per request through main's single-day
-     * matcher, with {@code isPolice} overbooking. No anchor. {@code durationInMinutes} is booked whole on
-     * that session and {@code endDate} is accepted and ignored. This reverses the multi-day consecutive
-     * booking of SPRDT-1089 AC4/AC5.
+     * matcher, with {@code isPolice} overbooking. No anchor. The matcher releases the hearing's existing
+     * bookings first, so a repeat request books again (there is no idempotent short-cut).
+     * {@code durationInMinutes} is booked whole on that session and {@code endDate} is accepted and
+     * ignored. This reverses the multi-day consecutive booking of SPRDT-1089 AC4/AC5.
      */
     public MagsSearchAndBookResponse magsSearchAndBook(final MagsSearchAndBookRequest request) {
         LOGGER.info("[MAGS-SAB] hearingId: {}, centre: {}, date: {}, endDate: {}, durationMins: {}, isPolice: {}",
                 Encode.forJava(request.getHearingId()), Encode.forJava(request.getCourtCentreId()), request.getHearingDate(), request.getEndDate(),
                 request.getDurationInMinutes(), request.getIsPolice());
-
-        final Optional<AllocatedListing> existing =
-                courtScheduleRepository.findAllocatedListingByHearingId(request.getHearingId());
-        if (existing.isPresent()) {
-            LOGGER.info("[MAGS-SAB] Idempotent hit - hearingId: {}", Encode.forJava(request.getHearingId()));
-            return new MagsSearchAndBookResponse(request.getHearingId(), Collections.emptyList());
-        }
 
         return new MagsSearchAndBookResponse(request.getHearingId(), magsSingleDaySearchAndBook(request));
     }
