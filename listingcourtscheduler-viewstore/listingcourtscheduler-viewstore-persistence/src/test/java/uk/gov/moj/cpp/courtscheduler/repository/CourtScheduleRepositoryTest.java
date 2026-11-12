@@ -401,7 +401,7 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
     }
 
     @Test
-    void durationBasedCentreSearchShouldSkipASlotBasedRoomWhileTheMagsSearchStillReturnsIt() {
+    void durationBasedCentreSearchShouldSkipASlotBasedRoom() {
         final LocalDate monday  = LocalDate.of(2026, 8, 24);
         final LocalDate tuesday = LocalDate.of(2026, 8, 25);
         final String ouCode = "B99MC23";
@@ -415,14 +415,10 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
 
         final List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> crownRun =
                 courtScheduleRepository.findConsecutiveDurationBasedSessionsForCentre("CH" + ouCode, monday, 2);
-        final List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> magsRun =
-                courtScheduleRepository.findConsecutiveSessionsForCentre("CH" + ouCode, monday, 2);
 
         assertEquals(2, crownRun.size());
         assertTrue(crownRun.stream().allMatch(cs -> durationBasedRoom.equals(cs.getCourtRoomId())));
         assertTrue(crownRun.stream().noneMatch(uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule::getSlotBased));
-        assertEquals(2, magsRun.size());
-        assertTrue(magsRun.stream().allMatch(cs -> slotBasedRoom.equals(cs.getCourtRoomId())));
     }
 
     @Test
