@@ -80,29 +80,10 @@ public interface CourtScheduleRepositoryCustom {
                                                                                      int daysNeeded);
 
     /**
-     * No-anchor consecutive AD search across a court centre's rooms (SPRDT-1089, AC3), slot-based
-     * sessions included. Used by MAGS multiday; CROWN uses
-     * {@link #findConsecutiveDurationBasedSessionsForCentre(String, LocalDate, int)}.
-     */
-    List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> findConsecutiveSessionsForCentre(String courtCentreId,
-                                                                                              LocalDate fromDate,
-                                                                                              int daysNeeded);
-
-    /**
-     * Same as {@link #findConsecutiveSessionsForCentre(String, LocalDate, int)}, additionally
-     * scoped to a single room when {@code courtRoomId} is supplied (main-contract alignment for
-     * {@code move-hearing-to-past-date} — the caller now supplies the room to search within);
-     * {@code null} behaves exactly like the 3-arg overload (unconstrained).
-     */
-    List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> findConsecutiveSessionsForCentre(String courtCentreId,
-                                                                                              LocalDate fromDate,
-                                                                                              int daysNeeded,
-                                                                                              String courtRoomId);
-
-    /**
-     * CROWN no-anchor consecutive search (SPRDT-1089, AC3): as
-     * {@link #findConsecutiveSessionsForCentre(String, LocalDate, int)}, but duration-based AD
-     * sessions only (SPRDT-1572 / LPT-2608) in both the room discovery and the run.
+     * CROWN no-anchor consecutive search (SPRDT-1089, AC3): one room in the court centre
+     * ({@code court_house_id}) with {@code daysNeeded} consecutive AD weekday sessions of one business
+     * type from {@code fromDate}, weekends skipped. Duration-based AD sessions only (SPRDT-1572 /
+     * LPT-2608), in both the room discovery and the run.
      */
     List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> findConsecutiveDurationBasedSessionsForCentre(String courtCentreId,
                                                                                                            LocalDate fromDate,

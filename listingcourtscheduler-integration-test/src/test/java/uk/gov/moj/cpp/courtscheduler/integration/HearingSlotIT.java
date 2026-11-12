@@ -1251,63 +1251,40 @@ class HearingSlotIT extends AbstractIT {
     }
 
     @Test
-    void shouldSearchAndBookHearingSlotDurationBasedForNonPolice() throws Exception {
-        // Duration drives the number of days: durationInMinutes > 360 selects the multi-day consecutive
-        // path. 720 minutes => 2 days, so the engine books one AD session per consecutive weekday within a
-        // single (court room, business type) and returns them in date order.
-        final LocalDate day1 = nextFutureMonday();
-        final LocalDate day2 = day1.plusDays(1);
-        final String centreId = UUID_785339C1;
-        final String roomId = UUID_5771A96B;
+    void shouldBookOneSessionWithTheWholeDurationForNonPoliceOver360Minutes() throws Exception {
+        // Main's behaviour (SPRDT-1539): one session per request. Room R has a duration-based NCFL AD
+        // session every weekday and room Q one on the Monday; 720 minutes for R on the Monday book R's
+        // Monday session only, with the whole 720 minutes, and nothing else in the week or in Q.
+        final LocalDate monday = nextFutureMonday();
+        final String centreId = randomUUID().toString();
+        final String roomR = randomUUID().toString();
+        final String roomQ = randomUUID().toString();
         final String hearingId = randomUUID().toString();
 
-        final String day1Id = seedMagsSession(UUID_1771A96B, roomId,
-                centreId, "OU-DAY1", NCFL_2, "AD", day1, 360);
-        final String day2Id = seedMagsSession(UUID_2771A96B, roomId,
-                centreId, "OU-DAY2", NCFL_2, "AD", day2, 360);
+        final List<String> roomRWeek = new java.util.ArrayList<>();
+        for (int day = 0; day < 5; day++) {
+            roomRWeek.add(seedMagsSession(randomUUID().toString(), roomR,
+                    centreId, "OU-R" + day, NCFL_2, "AD", monday.plusDays(day), 360));
+        }
+        seedMagsSession(randomUUID().toString(), roomQ, centreId, "OU-Q", NCFL_2, "AD", monday, 360);
+        final String mondayInR = roomRWeek.get(0);
 
-        final String payload = buildMagsPayload(centreId, roomId,
-                day1.toString(), day1.plusDays(14).toString(),
-                day1 + T10_00_00_000_Z, "720");
-
-        final Response response = postCommand(HEARINGS + hearingId, MAGS_ACCEPT, SYSTEM_USER_ID, payload);
-
-        assertThat(response.getStatus(), is(OK.getStatusCode()));
-        final JsonObject jsonObject = stringToJsonObjectConverter.convert(response.readEntity(String.class));
-        final JsonArray sessions = jsonObject.getJsonArray(SESSIONS);
-        assertThat(sessions.size(), is(2));
-        assertThat(sessions.getJsonObject(0).getString(COURT_SCHEDULE_ID_2), is(day1Id));
-        assertThat(sessions.getJsonObject(1).getString(COURT_SCHEDULE_ID_2), is(day2Id));
-    }
-
-    @Test
-    void shouldNotBookMultidayWhenNoSingleBusinessTypeRunExists() throws Exception {
-        // Multi-day search-and-book is CONSECUTIVE-only and binds to a single (court room, business type):
-        // the engine needs `daysNeeded` AD weekday sessions of the SAME business type in one room. Here the
-        // two consecutive days carry DIFFERENT business types (REM then NGAP), so no single business-type
-        // run of length 2 exists and nothing is booked — an empty response. (The old AD-sparse engine booked
-        // across business types; that behaviour has been removed.)
-        final LocalDate day1 = nextFutureMonday();
-        final LocalDate day2 = day1.plusDays(1);
-        final String centreId = UUID_785339C1;
-        final String roomId = UUID_5771A96B;
-        final String hearingId = randomUUID().toString();
-
-        seedMagsSession(UUID_1771A96B, roomId,
-                centreId, "OU-DAY1", REM_2, "AD", day1, 360);
-        seedMagsSession(UUID_2771A96B, roomId,
-                centreId, "OU-DAY2", "NGAP", "AD", day2, 360);
-
-        final String payload = buildMagsPayload(centreId, roomId,
-                day1.toString(), day1.plusDays(14).toString(),
-                day1 + T10_00_00_000_Z, "720");
-
-        final Response response = postCommand(HEARINGS + hearingId, MAGS_ACCEPT, SYSTEM_USER_ID, payload);
+        final Response response = postCommand(HEARINGS + hearingId, MAGS_ACCEPT, SYSTEM_USER_ID,
+                buildMagsPayload(centreId, roomR, monday.toString(), monday.plusDays(14).toString(),
+                        monday + T10_00_00_000_Z, "720"));
 
         assertThat(response.getStatus(), is(OK.getStatusCode()));
-        final JsonObject jsonObject = stringToJsonObjectConverter.convert(response.readEntity(String.class));
-        final JsonArray sessions = jsonObject.getJsonArray(SESSIONS);
-        assertThat(sessions.size(), is(0));
+        final JsonArray sessions = stringToJsonObjectConverter.convert(response.readEntity(String.class))
+                .getJsonArray(SESSIONS);
+        assertThat("one session per request", sessions.size(), is(1));
+        assertThat(sessions.getJsonObject(0).getString(COURT_SCHEDULE_ID_2), is(mondayInR));
+
+        final List<AllocatedListing> rows = allocatedListingsFor(hearingId);
+        assertThat("exactly one allocated_listings row", rows.size(), is(1));
+        assertThat(rows.get(0).getCourtScheduleId(), is(mondayInR));
+        assertThat("the whole duration is booked on the one session", rows.get(0).getDuration(), is(720));
+        assertThat("R's Monday is charged the whole 720 minutes, as on main",
+                databaseReader.courtScheduleById(mondayInR).getAvailableDuration(), is(360 - 720));
     }
 
     @Test
@@ -2500,13 +2477,15 @@ class HearingSlotIT extends AbstractIT {
         return schedule;
     }
 
+    private List<AllocatedListing> allocatedListingsFor(final String hearingId) {
+        return databaseReader.allocatedListings().stream()
+                .filter(al -> hearingId.equals(al.getHearingId()))
+                .toList();
+    }
+
     /**
-     * A Monday safely in the future. The MAGS search-and-book engine
-     * ({@code SlotsUpdateService.magsSearchAndBook}: single-day {@code searchBookHearingSlots} cascade,
-     * multi-day {@code findConsecutiveSessionsForCentre}) only matches sessions whose {@code session_start}
-     * is a weekday on or after the requested {@code hearingDate}, so seeded sessions must fall on a future
-     * weekday. Anchoring on a Monday keeps multi-day spans (Mon, Tue, ...) clear of the weekend exclusion
-     * regardless of which day the suite runs.
+     * A Monday safely in the future, so seeded MAGS sessions (and any Mon..Fri run seeded around them)
+     * fall on future weekdays regardless of which day the suite runs.
      */
     private static LocalDate nextFutureMonday() {
         final int dow = LocalDate.now().getDayOfWeek().getValue(); // 1=Mon..7=Sun
@@ -2514,12 +2493,11 @@ class HearingSlotIT extends AbstractIT {
     }
 
     /**
-     * Seed an all-day court schedule for the MAGS search-and-book engine. The engine matches on
-     * {@code court_house_id} (= the request's {@code courtCentreId} UUID), {@code court_session = 'AD'}, a
-     * weekday {@code session_start} within the search window, and — for non-police only —
-     * {@code available_duration_mins >= 360}; {@code ouCode} is independent of {@code court_house_id} and is
-     * not used by the search/booking. Pass {@code courtSession}/{@code availableDuration} that deliberately
-     * miss those filters to seed excluded "noise" rows.
+     * Seed an all-day court schedule for the MAGS search-and-book engine. The non-police matcher filters
+     * on {@code court_house_id} (= the request's {@code courtCentreId} UUID), business type NCFL, the
+     * {@code session_start} date, the requested courtroom and, when given, a start time inside the
+     * session window; it does not filter on available minutes. {@code ouCode} is independent of
+     * {@code court_house_id} and is not used by the search/booking.
      */
     private String seedMagsSession(final String courtScheduleId, final String courtRoomId,
                                    final String courtHouseId, final String ouCode,

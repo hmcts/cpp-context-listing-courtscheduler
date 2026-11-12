@@ -2143,11 +2143,14 @@ class SlotsUpdateServiceTest {
         }
     }
 
-    // ─── AC4 + AC5: MAGS single-day and multi-day sparse ─────────────────────
+    // ─── MAGS search-and-book: one session per request, as on main (SPRDT-1539) ──
 
     /* default */
     @Nested
     class MagsSearchAndBook {
+
+        private static final LocalDate MAGS_DAY = LocalDate.of(2026, 9, 1);
+        private static final String MAGS_SESSION_ID = "cs-mags";
 
         @Test
         void should_bookSingleDayViaCascade_when_magsSingleDay() {
@@ -2185,84 +2188,99 @@ class SlotsUpdateServiceTest {
         }
 
         @Test
-        void should_bookMultiDayConsecutive_when_magsDurationOver360() {
-            // MAGS multi-day: durationInMinutes > 360 -> CONSECUTIVE business days (no sparse), via
-            // findConsecutiveSessionsForCentre, booked by courtScheduleId.
-            final String hearingId = UUID.randomUUID().toString();
-            final String courtCentreId = UUID.randomUUID().toString();
-            final List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> consecutive = List.of(
-                    buildSession(LocalDate.of(2026, 9, 1)),
-                    buildSession(LocalDate.of(2026, 9, 2)));
-
-            final MagsSearchAndBookRequest request = new MagsSearchAndBookRequest()
-                    .hearingId(hearingId)
-                    .courtCentreId(courtCentreId)
-                    .hearingDate(LocalDate.of(2026, 9, 1))
+        void should_bookOneSessionWithTheWholeDuration_when_magsDurationOver360() {
+            // Main's behaviour (SPRDT-1539): one session per request through the single-day matcher.
+            // 720 minutes go whole onto that session; there is no multi-day run.
+            final String courtRoomId = UUID.randomUUID().toString();
+            final MagsSearchAndBookRequest request = magsRequest(MAGS_DAY)
+                    .courtRoomId(courtRoomId)
                     .durationInMinutes(720)
                     .isPolice(false);
-
-            lenient().when(courtScheduleRepository.findAllocatedListingByHearingId(hearingId))
-                    .thenReturn(Optional.empty());
-            lenient().when(courtScheduleRepository.findConsecutiveSessionsForCentre(courtCentreId, LocalDate.of(2026, 9, 1), 2))
-                    .thenReturn(consecutive);
-            lenient().when(courtScheduleRepository.saveBookedSlots(any(), eq(false), eq(false)))
-                    .thenReturn(new Result().msg("").success(true));
+            stubMagsMatcherBooks(MAGS_SESSION_ID);
 
             final MagsSearchAndBookResponse response = service.magsSearchAndBook(request);
-            verify(courtScheduleRepository).findConsecutiveSessionsForCentre(courtCentreId, LocalDate.of(2026, 9, 1), 2);
-            assertEquals(2, response.sessions().size());
+
+            final AllocatedSlot sent = singleSlotSentToMagsMatcher();
+            assertEquals(720, sent.getDuration());
+            assertEquals(courtRoomId, sent.getCourtRoomUUId());
+            assertEquals(Boolean.FALSE, sent.getPolice());
+            verifyNoMultiDayMagsBooking();
+            assertEquals(List.of(MAGS_SESSION_ID), sessionIds(response));
         }
 
         @Test
-        void should_bookMultiDayConsecutive_when_magsEndDateAfterStartDate() {
-            // MAGS multi-day via date-range (endDate > hearingDate): daysNeeded from the inclusive range
-            // (1..3 Sep = 3 days) drives the CONSECUTIVE centre search.
-            final String hearingId = UUID.randomUUID().toString();
-            final String courtCentreId = UUID.randomUUID().toString();
-            final MagsSearchAndBookRequest request = new MagsSearchAndBookRequest()
-                    .hearingId(hearingId)
-                    .courtCentreId(courtCentreId)
-                    .hearingDate(LocalDate.of(2026, 9, 1))
-                    .endDate(LocalDate.of(2026, 9, 3))
-                    .isPolice(true);
+        void should_ignoreEndDate_when_magsEndDateAfterHearingDate() {
+            // endDate is accepted by the contract and ignored, as on main: the hearing date alone is searched.
+            final MagsSearchAndBookRequest request = magsRequest(MAGS_DAY)
+                    .endDate(MAGS_DAY.plusDays(2))
+                    .durationInMinutes(180)
+                    .isPolice(false);
+            stubMagsMatcherBooks(MAGS_SESSION_ID);
 
-            lenient().when(courtScheduleRepository.findAllocatedListingByHearingId(hearingId))
-                    .thenReturn(Optional.empty());
+            final MagsSearchAndBookResponse response = service.magsSearchAndBook(request);
 
-            service.magsSearchAndBook(request);
-            verify(courtScheduleRepository).findConsecutiveSessionsForCentre(
-                    eq(courtCentreId), eq(LocalDate.of(2026, 9, 1)), eq(3));
+            final AllocatedSlot sent = singleSlotSentToMagsMatcher();
+            assertEquals(MAGS_DAY.toString(), sent.getSessionDate());
+            assertEquals(180, sent.getDuration());
+            verifyNoMultiDayMagsBooking();
+            assertEquals(List.of(MAGS_SESSION_ID), sessionIds(response));
         }
 
         @Test
-        void should_bookByCourtScheduleId_notReSearch_when_magsMultiDayIsPolice() {
-            // Regression guard (STE bug): a police multi-day must book by courtScheduleId via the consecutive
-            // path, NOT route isPolice into the court_house_id=ouCode re-search. saveBookedSlots' isSearchUpdate
-            // flag must be false, never isPolice.
-            final String hearingId = UUID.randomUUID().toString();
-            final String courtCentreId = UUID.randomUUID().toString();
-            final List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> consecutive = List.of(
-                    buildSession(LocalDate.of(2026, 9, 1)),
-                    buildSession(LocalDate.of(2026, 9, 2)));
-
-            final MagsSearchAndBookRequest request = new MagsSearchAndBookRequest()
-                    .hearingId(hearingId)
-                    .courtCentreId(courtCentreId)
-                    .hearingDate(LocalDate.of(2026, 9, 1))
+        void should_takeThePoliceCascade_when_magsPoliceDurationOver360() {
+            // A police request over 360 minutes takes main's single-day police cascade (isPolice=true on the
+            // slot); it is never booked by courtScheduleId through saveBookedSlots.
+            final MagsSearchAndBookRequest request = magsRequest(MAGS_DAY)
                     .durationInMinutes(720)
                     .isPolice(true);
-
-            lenient().when(courtScheduleRepository.findAllocatedListingByHearingId(hearingId))
-                    .thenReturn(Optional.empty());
-            lenient().when(courtScheduleRepository.findConsecutiveSessionsForCentre(courtCentreId, LocalDate.of(2026, 9, 1), 2))
-                    .thenReturn(consecutive);
-            lenient().when(courtScheduleRepository.saveBookedSlots(any(), eq(false), eq(false)))
-                    .thenReturn(new Result().msg("").success(true));
+            stubMagsMatcherBooks(MAGS_SESSION_ID);
 
             service.magsSearchAndBook(request);
 
-            verify(courtScheduleRepository).saveBookedSlots(any(), eq(false), eq(false));
-            verify(courtScheduleRepository, org.mockito.Mockito.never()).saveBookedSlots(any(), eq(false), eq(true));
+            final AllocatedSlot sent = singleSlotSentToMagsMatcher();
+            assertEquals(Boolean.TRUE, sent.getPolice());
+            assertEquals(720, sent.getDuration());
+            verifyNoMultiDayMagsBooking();
+        }
+
+        private MagsSearchAndBookRequest magsRequest(final LocalDate hearingDate) {
+            return new MagsSearchAndBookRequest()
+                    .hearingId(UUID.randomUUID().toString())
+                    .courtCentreId(UUID.randomUUID().toString())
+                    .hearingDate(hearingDate);
+        }
+
+        /** The matcher books the first slot on {@code courtScheduleId}; the re-read returns that session. */
+        private void stubMagsMatcherBooks(final String courtScheduleId) {
+            when(courtScheduleRepository.searchBookHearingSlots(any())).thenAnswer(inv -> {
+                final List<AllocatedSlot> slots = inv.getArgument(0);
+                slots.get(0).setCourtScheduleId(courtScheduleId);
+                return true;
+            });
+            when(courtScheduleRepository.getCourtSchedulesByIdList(List.of(courtScheduleId)))
+                    .thenReturn(List.of(buildSessionWithId(MAGS_DAY, courtScheduleId)));
+        }
+
+        private AllocatedSlot singleSlotSentToMagsMatcher() {
+            @SuppressWarnings(UNCHECKED)
+            final org.mockito.ArgumentCaptor<List<AllocatedSlot>> captor =
+                    org.mockito.ArgumentCaptor.forClass(List.class);
+            verify(courtScheduleRepository).searchBookHearingSlots(captor.capture());
+            assertEquals(1, captor.getValue().size());
+            return captor.getValue().get(0);
+        }
+
+        private void verifyNoMultiDayMagsBooking() {
+            verify(courtScheduleRepository, org.mockito.Mockito.never())
+                    .saveBookedSlots(any(), anyBoolean(), anyBoolean());
+            verify(courtScheduleRepository, org.mockito.Mockito.never())
+                    .findConsecutiveDurationBasedSessionsForCentre(any(), any(), org.mockito.ArgumentMatchers.anyInt());
+        }
+
+        private List<String> sessionIds(final MagsSearchAndBookResponse response) {
+            return response.sessions().stream()
+                    .map(uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule::getCourtScheduleId)
+                    .toList();
         }
     }
 

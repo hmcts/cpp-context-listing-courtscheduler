@@ -33,11 +33,8 @@ import org.junit.jupiter.api.Test;
  * {@code POST /hearings/{hearingId}} with media type
  * {@code application/vnd.courtscheduler.move-hearing-to-past-date+json}.
  *
- * <p>These are the first ITs to exercise the no-anchor centre search
- * {@code CourtScheduleRepository.findConsecutiveSessionsForCentre} against a real PostgreSQL — the
- * high-risk native SQL (weekend exclusion, {@code court_house_id} centre mapping, generous window).
- * Both jurisdictions book CONSECUTIVE weekday sessions (one room + business type); CROWN reaches the
- * same centre search when no {@code courtScheduleId} anchor is supplied. Dates are in the past to
+ * <p>They exercise the per-day session lookup
+ * {@code CourtScheduleRepository.findSessionForMoveToPastDate} against a real PostgreSQL. Dates are in the past to
  * mirror the "move to past date" intent — the past-only rule itself is owned by the caller (listing),
  * so courtscheduler books whatever consecutive sessions it finds.
  *

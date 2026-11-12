@@ -768,8 +768,10 @@ public class SlotsUpdateService {
     }
 
     /**
-     * MAGS search-and-book (SPRDT-1089, AC4/AC5). No anchor. Multi-day books CONSECUTIVE weekday
-     * sessions (one room + business type); single-day honours {@code isPolice} overbooking.
+     * MAGS search-and-book, as on main (SPRDT-1539): one session per request through main's single-day
+     * matcher, with {@code isPolice} overbooking. No anchor. {@code durationInMinutes} is booked whole on
+     * that session and {@code endDate} is accepted and ignored. This reverses the multi-day consecutive
+     * booking of SPRDT-1089 AC4/AC5.
      */
     public MagsSearchAndBookResponse magsSearchAndBook(final MagsSearchAndBookRequest request) {
         LOGGER.info("[MAGS-SAB] hearingId: {}, centre: {}, date: {}, endDate: {}, durationMins: {}, isPolice: {}",
@@ -783,11 +785,7 @@ public class SlotsUpdateService {
             return new MagsSearchAndBookResponse(request.getHearingId(), Collections.emptyList());
         }
 
-        final int daysNeeded = daysNeeded(request.getDurationInMinutes(), request.getHearingDate(), request.getEndDate());
-        final List<CourtSchedule> sessions = daysNeeded <= 1
-                ? magsSingleDaySearchAndBook(request)
-                : magsMultidayConsecutiveSearchAndBook(request, daysNeeded);
-        return new MagsSearchAndBookResponse(request.getHearingId(), sessions);
+        return new MagsSearchAndBookResponse(request.getHearingId(), magsSingleDaySearchAndBook(request));
     }
 
     /**
@@ -820,28 +818,6 @@ public class SlotsUpdateService {
                 .filter(Objects::nonNull)
                 .toList();
         return courtScheduleRepository.getCourtSchedulesByIdList(bookedScheduleIds);
-    }
-
-    /**
-     * MAGS multiday search-and-book — CONSECUTIVE business days only (no sparse). Finds one room +
-     * business type in the centre with {@code daysNeeded} consecutive AD weekday sessions (keyed on the
-     * courtCentreId UUID), then books each by its courtScheduleId (isSearchUpdate=false). Returns empty
-     * if a consecutive run of the required length is not available.
-     * <p>NB: reuses the AD-weekday consecutive search; if MAGS multiday must match non-AD/slot-based
-     * sessions, this method is the single point to adjust.
-     */
-    private List<CourtSchedule> magsMultidayConsecutiveSearchAndBook(final MagsSearchAndBookRequest request,
-                                                                     final int daysNeeded) {
-        final List<CourtSchedule> sessions = courtScheduleRepository.findConsecutiveSessionsForCentre(
-                request.getCourtCentreId(), request.getHearingDate(), daysNeeded);
-        if (sessions.size() < daysNeeded) {
-            LOGGER.info("[MAGS-SAB] multiday: found {} consecutive session(s) of {} needed for hearingId {}",
-                    sessions.size(), daysNeeded, Encode.forJava(request.getHearingId()));
-            return Collections.emptyList();
-        }
-        persistSessions(sessions, request.getHearingId(), false,
-                perDayDuration(request.getDurationInMinutes(), daysNeeded), SOURCE_NONPOLICE);
-        return sessions;
     }
 
     /**

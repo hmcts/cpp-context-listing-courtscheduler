@@ -1174,26 +1174,14 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
     /**
      * CROWN no-anchor consecutive search (SPRDT-1089, AC3). Finds a single room in the court centre
      * (filtered on {@code court_house_id}, the canonical court-centre id — same mapping as
-     * {@link #findCrownFallbackCandidate}) that has {@code daysNeeded} consecutive AD weekday sessions
-     * of one business type starting from {@code fromDate}, skipping weekends. Returns the run for the
-     * first qualifying (room, business type), or empty if none qualifies.
+     * {@link #findCrownFallbackCandidate}) that has {@code daysNeeded} consecutive duration-based AD
+     * weekday sessions of one business type starting from {@code fromDate}, skipping weekends. Returns
+     * the run for the first qualifying (room, business type), or empty if none qualifies.
      *
      * <p>Mirrors {@link #queryAdWeekdaySessions}: {@code active = true}, {@code court_session = 'AD'},
      * {@code EXTRACT(DOW) NOT IN (0,6)}. Consecutiveness across weekends is asserted by the caller
      * ({@code areConsecutiveBusinessDays}); here we provide a generous window and let the caller trim.</p>
      */
-    @Override
-    public List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> findConsecutiveSessionsForCentre(
-            final String courtCentreId, final LocalDate fromDate, final int daysNeeded) {
-        return findConsecutiveSessionsForCentre(courtCentreId, fromDate, daysNeeded, null);
-    }
-
-    @Override
-    public List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> findConsecutiveSessionsForCentre(
-            final String courtCentreId, final LocalDate fromDate, final int daysNeeded, final String courtRoomId) {
-        return findConsecutiveAdSessionsForCentre(courtCentreId, fromDate, daysNeeded, courtRoomId, false);
-    }
-
     @Override
     public List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> findConsecutiveDurationBasedSessionsForCentre(
             final String courtCentreId, final LocalDate fromDate, final int daysNeeded) {
