@@ -72,7 +72,6 @@ public class ReferenceDataCache {
     public static final String ROTA_BUSINESS_TYPE_CACHE_PREFIX = "RotaBusinessType_";
     public static final String ROTA_COURTROOM_CACHE_PREFIX = "RotaCourtRoom_";
     public static final String CP_COURTROOMS_BY_ID_CACHE_PREFIX = "CpCourtRoomsById_";
-    public static final String CP_COURTROOMS_BY_COURT_CENTRE_CACHE_PREFIX = "CpCourtRoomsByCourtCentre_";
     public static final String ROTA_COURTROOM_BY_VENUE_CACHE_PREFIX = "RotaCourtRoomByVenue_%d_%s";
     public static final String ROTA_BUSINESS_TYPES_CACHE_KEY = "RotaBusinessTypes";
     public static final String ROTA_JUDICIARIES_CACHE_KEY = "RotaJudiciaries_";
@@ -163,46 +162,13 @@ public class ReferenceDataCache {
         }
     }
 
-    /**
-     * SPRDT-1550: the CP courtrooms of one court centre (organisation unit), in the order the
-     * ou-courtrooms reference data lists them. Empty if the centre has none or is unknown.
-     */
     public List<CourtRoom> getCpCourtRoomsByCourtCentreId(final String courtCentreId) {
         if (isNull(courtCentreId)) {
             return emptyList();
         }
-        if (parseBoolean(redisCommonCacheEnabled)) {
-            return getCpCourtRoomsByCourtCentreIdFromTheCache(courtCentreId);
-        }
-        return cpCourtRoomsOfCourtCentre(courtCentreId);
-    }
-
-    private List<CourtRoom> cpCourtRoomsOfCourtCentre(final String courtCentreId) {
         return referenceDataService.getCpCourtRooms().stream()
                 .filter(c -> courtCentreId.equals(c.getOucodeUUID()))
                 .toList();
-    }
-
-    private List<CourtRoom> getCpCourtRoomsByCourtCentreIdFromTheCache(final String courtCentreId) {
-        final String cacheKey = CP_COURTROOMS_BY_COURT_CENTRE_CACHE_PREFIX + courtCentreId;
-        final String cacheResult = cacheService.get(cacheKey);
-        if (nonNull(cacheResult)) {
-            try {
-                return objectMapper.readValue(cacheResult, new TypeReference<>() {
-                });
-            } catch (final JsonProcessingException jsonProcessingException) {
-                LOGGER.error("exception whilst reading cacheResult and converting to List<CourtRoom> for courtCentreId: {} with exception: {}", Encode.forJava(courtCentreId), Encode.forJava(jsonProcessingException.getMessage()), jsonProcessingException);
-            }
-        }
-        final List<CourtRoom> courtRooms = cpCourtRoomsOfCourtCentre(courtCentreId);
-        if (isNotEmpty(courtRooms)) {
-            try {
-                cacheService.add(cacheKey, objectMapper.writeValueAsString(courtRooms), redisCommonCacheKey5MinsTTLSeconds());
-            } catch (final JsonProcessingException jsonProcessingException) {
-                LOGGER.error("exception whilst adding into the cache for courtCentreId: {} with exception: {}", Encode.forJava(courtCentreId), Encode.forJava(jsonProcessingException.getMessage()), jsonProcessingException);
-            }
-        }
-        return courtRooms;
     }
 
     public Optional<CourtRoom> getCpCourtRoomByCourtRoomIdAndCourtCentreId(final String courtRoomId, final String courtCentreId) {

@@ -95,7 +95,6 @@ import org.owasp.encoder.Encode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -459,8 +458,6 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
     private static final int AUTO_SESSION_HALF_DAY_MINS = 180;
     private static final String AUTO_SESSION_JURISDICTION = "CROWN";
     private static final LocalTime AUTO_SESSION_BREAK_TIME = LocalTime.of(13, 0);
-    /** Advisory-lock namespace (first key) for week commencing creation, so it cannot clash with other advisory locks. */
-    private static final int WEEK_COMMENCING_LOCK_NAMESPACE = 1550;
 
     @PersistenceContext
     /* package */ EntityManager entityManager;
@@ -518,16 +515,6 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
             return entity;
         }
         return entityManager.merge(entity);
-    }
-
-    @Override
-    @Transactional(propagation = Propagation.MANDATORY)
-    public void lockWeekCommencingCreation(final String courtCentreId, final String businessType) {
-        // pg_advisory_xact_lock returns void; selecting a constant from it keeps the result mappable.
-        entityManager.createNativeQuery("SELECT 1 FROM pg_advisory_xact_lock(:namespace, hashtext(:lockKey))")
-                .setParameter("namespace", WEEK_COMMENCING_LOCK_NAMESPACE)
-                .setParameter("lockKey", courtCentreId + "|" + businessType)
-                .getSingleResult();
     }
 
     @Override

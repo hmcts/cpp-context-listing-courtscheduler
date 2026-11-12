@@ -12,11 +12,12 @@ import static java.time.temporal.TemporalAdjusters.next;
 import static java.time.temporal.TemporalAdjusters.nextOrSame;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.everyItem;
+import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.oneOf;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.DUPLICATE_SESSIONS;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.WEEK_COMMENCING_NO_COURTROOM;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.WEEK_COMMENCING_NO_MONDAY;
@@ -38,19 +39,10 @@ import jakarta.json.JsonObjectBuilder;
 import jakarta.ws.rs.core.Response;
 import org.junit.jupiter.api.Test;
 
-/**
- * SPRDT-1550: POST /session/weekCommencing creates one CROWN draft all-day row per Monday in the
- * range, in the court centre's default courtroom, and rejects a second week commencing session for
- * the same court centre, business type and Monday.
- *
- * <p>Uses the C01CR00 Crown court centre of referencedata.get.ou-courtrooms.json; the default room is
- * the first one listed (Courtroom 01). It has no organisation-unit stub, so sessions start at the
- * hardcoded all-day default.</p>
- */
 class WeekCommencingSessionIT extends AbstractIT {
 
     private static final String URL = "/session/weekCommencing";
-    private static final String CONTENT_TYPE = "application/vnd.courtscheduler.week-commencing.create+json";
+    private static final String CONTENT_TYPE = "application/vnd.courtscheduler.create-week-commencing.sessions+json";
     private static final String COURT_CENTRE_ID = "785339c1-af71-3322-a55b-ba255e0db1c2";
     private static final String FIRST_LISTED_COURT_ROOM_ID = "3fc02c0f-f92e-31da-9686-d626ac8ccdc3";
     private static final String DURATION_BASED_BUSINESS_TYPE = "TRL";
@@ -167,12 +159,13 @@ class WeekCommencingSessionIT extends AbstractIT {
     }
 
     /**
-     * Two identical requests at the same time (e.g. a double click): whichever order they run in, the
-     * advisory lock makes exactly one succeed and the other get the duplicate error, and only one row
-     * is stored per Monday.
+     * Two identical requests at the same time (e.g. a double click). There is no lock, as for ordinary
+     * session create: the second either sees the first one's rows and gets the duplicate error, or
+     * passes the check and its insert hits the unique index, so the batch save falls back to
+     * updating the same rows. Either way only one row is stored per Monday.
      */
     @Test
-    void shouldCreateOnlyOneOfTwoConcurrentIdenticalRequests() throws Exception {
+    void shouldStoreOneRowPerMondayForTwoConcurrentIdenticalRequests() throws Exception {
         final String body = request(DURATION_BASED_BUSINESS_TYPE, startDate, endDate).build().toString();
         final CountDownLatch go = new CountDownLatch(1);
         try (ExecutorService pool = Executors.newFixedThreadPool(2)) {
@@ -186,8 +179,9 @@ class WeekCommencingSessionIT extends AbstractIT {
             final Future<Integer> second = pool.submit(post);
             go.countDown();
 
-            assertThat(List.of(first.get(60, SECONDS), second.get(60, SECONDS)),
-                    containsInAnyOrder(ACCEPTED.getStatusCode(), BAD_REQUEST.getStatusCode()));
+            final List<Integer> statuses = List.of(first.get(60, SECONDS), second.get(60, SECONDS));
+            assertThat(statuses, everyItem(oneOf(ACCEPTED.getStatusCode(), BAD_REQUEST.getStatusCode())));
+            assertThat(statuses, hasItem(ACCEPTED.getStatusCode()));
             assertThat(databaseReader.courtSchedules().stream().map(CourtSchedule::getSessionDate).toList(),
                     is(mondaysBetween(startDate, endDate)));
         }

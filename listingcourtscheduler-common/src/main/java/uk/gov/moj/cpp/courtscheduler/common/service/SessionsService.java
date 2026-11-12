@@ -754,10 +754,6 @@ public class SessionsService {
         return (date.getDayOfMonth() - firstOccurrence.getDayOfMonth()) / 7 + 1;
     }
 
-    /**
-     * The persisted form of one generated session. isWeekCommencing (SPRDT-1550) lives only on the
-     * entity - it is not part of the CourtSchedule response model - so it is set here, after mapping.
-     */
     private uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule buildCourtScheduleEntity(final Session session, final LocalDate sessionDateCandidate) {
         final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule entity = CourtScheduleMapper.toEntity(
                 buildCourtSchedule(session, sessionDateCandidate, session.getSessionStartTime(), session.getSessionEndTime()));
@@ -900,32 +896,6 @@ public class SessionsService {
                 .orElseThrow(() -> new RuntimeException(COURTROOM_NOT_FOUND + courtRoomId + " in court centre " + courtCentreId));
     }
 
-    /**
-     * SPRDT-1550: creates a week commencing session unless one of its Mondays already has one. The
-     * duplicate check and the insert run under a per court centre and business type advisory lock in
-     * one transaction, so two concurrent identical requests cannot both pass the check: the second
-     * waits, then sees the first one's rows and gets the duplicate error.
-     *
-     * @return the duplicate-session error, or an empty object when the session was created
-     */
-    @Transactional
-    public JsonObject createWeekCommencing(final CreateSessionRequestParam createSessionRequestParam,
-                                           final String courtCentreId, final String businessType,
-                                           final LocalDate startDate, final LocalDate endDate) {
-        courtScheduleRepository.lockWeekCommencingCreation(courtCentreId, businessType);
-        final JsonObject duplicate = validateWeekCommencingIntegrity(courtCentreId, businessType, startDate, endDate);
-        if (!duplicate.isEmpty()) {
-            return duplicate;
-        }
-        create(createSessionRequestParam);
-        return JsonValue.EMPTY_JSON_OBJECT;
-    }
-
-    /**
-     * SPRDT-1550: only one draft week commencing session is allowed per Monday for a court centre and
-     * business type, whichever courtroom it is in. Returns the existing duplicate-session error when
-     * any Monday in [startDate, endDate] already has one, otherwise an empty object.
-     */
     public JsonObject validateWeekCommencingIntegrity(final String courtCentreId, final String businessType,
                                                       final LocalDate startDate, final LocalDate endDate) {
         final List<uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule> existing = courtScheduleRepository

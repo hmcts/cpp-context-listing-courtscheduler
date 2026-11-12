@@ -26,6 +26,7 @@ import uk.gov.moj.cpp.courtscheduler.domain.utils.TimezoneUtils;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciaryKey;
+import uk.gov.moj.cpp.courtscheduler.service.CourtScheduleRetryService;
 
 import java.sql.Timestamp;
 import java.time.Instant;
@@ -42,6 +43,8 @@ import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Repository tests for the ccsph2-era additions to {@link CourtScheduleRepository}
@@ -89,12 +92,18 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
     @Autowired
     private BookingLogRepository bookingLogRepository;
 
+    @Autowired
+    private CourtScheduleRetryService courtScheduleRetryService;
+
     @jakarta.persistence.PersistenceContext
     private jakarta.persistence.EntityManager em;
 
     // Same output as the former SimpleDateFormat: literal 'Z' suffix, formatted in the JVM default zone.
     private static final String WC_OU_CODE = "C06MC00";
     private static final String WC_COURT_HOUSE_ID = "CH" + WC_OU_CODE;
+    private static final String WC_UPSERT_OU_CODE = "C55WC00";
+    private static final int ORDINARY_CAPACITY = 360;
+    private static final int WEEK_COMMENCING_CAPACITY = 1800;
     private static final DateTimeFormatter SIMPLE_DATE_FORMAT =
             DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.ROOT).withZone(ZoneId.systemDefault());
 
@@ -169,11 +178,6 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
                 finalMatches.stream().map(CourtSchedule::getCourtScheduleId).toList());
     }
 
-    /**
-     * SPRDT-1550: is_week_commencing is part of the same unique indexes, so an ordinary draft session
-     * and a week commencing session for the same room, business type and Monday do not clash, and the
-     * ordinary duplicate check must not see week commencing rows.
-     */
     @Test
     void similarSessionsShouldIgnoreWeekCommencingSessions() {
         final LocalDate monday = LocalDate.of(2027, 1, 4);
@@ -192,10 +196,6 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
                 matches.stream().map(CourtSchedule::getCourtScheduleId).toList());
     }
 
-    /**
-     * SPRDT-1550: the one-per-Monday rule is per court centre and business type in any courtroom, and
-     * only counts active draft week commencing rows inside the date range.
-     */
     @Test
     void findActiveDraftWeekCommencingSessionsShouldMatchOnlyActiveDraftWeekCommencingRowsOfTheCentreAndBusinessType() {
         final LocalDate monday = LocalDate.of(2027, 1, 11);
@@ -217,10 +217,6 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
         assertEquals(List.of(match.getCourtScheduleId()), found.stream().map(CourtSchedule::getCourtScheduleId).toList());
     }
 
-    /**
-     * SPRDT-1550: the edit path loads a session through a native-query constructor that does not read
-     * is_week_commencing and then merges it; the column is not updatable, so the flag must survive.
-     */
     @Test
     void updateOfANativeQueryLoadedSessionShouldNotResetTheWeekCommencingFlag() {
         final CourtSchedule saved = courtScheduleRepository.save(weekCommencingSession("B99MC04", CR01_2, TRF_2, LocalDate.of(2027, 1, 18)));
@@ -248,6 +244,36 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
         final CourtSchedule reloaded = em.find(CourtSchedule.class, saved.getCourtScheduleId());
         assertEquals(720, reloaded.getMaxDuration());
         assertTrue(reloaded.isWeekCommencing());
+    }
+
+    @Test
+    void persistedScheduleLookupShouldOnlyReturnRowsOfTheIncomingKind() {
+        final String courtRoomId = randomUUID().toString();
+        final LocalDate monday = LocalDate.of(2099, 1, 5);
+        final CourtSchedule ordinary = courtScheduleRepository.save(upsertSession(courtRoomId, monday, false, ORDINARY_CAPACITY));
+        final CourtSchedule weekCommencing = courtScheduleRepository.save(upsertSession(courtRoomId, monday, true, WEEK_COMMENCING_CAPACITY));
+
+        assertEquals(List.of(ordinary.getCourtScheduleId()),
+                courtScheduleRetryService.findPersistedSchedules(upsertSession(courtRoomId, monday, false, 1))
+                        .stream().map(CourtSchedule::getCourtScheduleId).toList());
+        assertEquals(List.of(weekCommencing.getCourtScheduleId()),
+                courtScheduleRetryService.findPersistedSchedules(upsertSession(courtRoomId, monday, true, 1))
+                        .stream().map(CourtSchedule::getCourtScheduleId).toList());
+    }
+
+    @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    void resubmittingAnOrdinarySessionShouldUpdateItAndLeaveTheWeekCommencingRowAlone() {
+        final String courtRoomId = randomUUID().toString();
+        final LocalDate monday = LocalDate.of(2099, 1, 12);
+        final CourtSchedule ordinary = courtScheduleRepository.save(upsertSession(courtRoomId, monday, false, ORDINARY_CAPACITY));
+        final CourtSchedule weekCommencing = courtScheduleRepository.save(upsertSession(courtRoomId, monday, true, WEEK_COMMENCING_CAPACITY));
+
+        courtScheduleRepository.saveCourtSchedules(List.of(upsertSession(courtRoomId, monday, false, 420)));
+
+        assertEquals(420, courtScheduleRepository.findById(ordinary.getCourtScheduleId()).orElseThrow().getMaxDuration());
+        assertEquals(WEEK_COMMENCING_CAPACITY,
+                courtScheduleRepository.findById(weekCommencing.getCourtScheduleId()).orElseThrow().getMaxDuration());
     }
 
     @Test
@@ -1300,6 +1326,37 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
     private static CourtSchedule slotBased(final CourtSchedule schedule) {
         schedule.setSlotBased(true);
         return schedule;
+    }
+
+    /** A draft CROWN all-day session for the upsert tests, ordinary or week commencing. */
+    private CourtSchedule upsertSession(final String courtRoomId, final LocalDate monday, final boolean weekCommencing,
+                                        final int capacity) {
+        final CourtSchedule cs = random(CourtSchedule.class);
+        cs.setCourtScheduleId(randomUUID().toString());
+        cs.setOuCode(WC_UPSERT_OU_CODE);
+        cs.setCourtHouseId("CH" + WC_UPSERT_OU_CODE);
+        cs.setCourtRoomId(courtRoomId);
+        cs.setBusinessType(TRF_2);
+        cs.setSessionDate(monday);
+        cs.setCourtSession("AD");
+        cs.setPanel(ADULT_2);
+        cs.setJurisdiction(CROWN_2);
+        cs.setActive(true);
+        cs.setSlotBased(false);
+        cs.setIsDraft(true);
+        cs.setWeekCommencing(weekCommencing);
+        cs.setMaxSlots(0);
+        cs.setAvailableSlots(0);
+        cs.setMaxDuration(capacity);
+        cs.setAvailableDuration(capacity);
+        cs.setMaxAdMorningDuration(0);
+        cs.setMaxAdAfternoonDuration(0);
+        cs.setSupportAdSplit(false);
+        cs.setIsOverbookingAllowed(false);
+        cs.setSessionStartTime(Instant.now());
+        cs.setSessionEndTime(Instant.now());
+        cs.setNationalBreakTime(Instant.now());
+        return cs;
     }
 
     private CourtSchedule weekCommencingSession(final String ouCode, final String courtRoomId,

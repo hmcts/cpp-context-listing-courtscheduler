@@ -16,11 +16,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
-/**
- * SPRDT-1550: the request schema RequestSchemaValidationFilter applies to
- * application/vnd.courtscheduler.week-commencing.create+json - capacity is 1 to 7200 minutes
- * (20 days of 360 minutes) and no other properties are accepted.
- */
 class WeekCommencingCreateSchemaTest {
 
     private static final String VALID = """
@@ -32,7 +27,7 @@ class WeekCommencingCreateSchemaTest {
     @BeforeAll
     static void loadSchema() throws IOException {
         try (InputStream in = Thread.currentThread().getContextClassLoader()
-                .getResourceAsStream("request-schemas/courtscheduler.week-commencing.create.json")) {
+                .getResourceAsStream("request-schemas/courtscheduler.create-week-commencing.sessions.json")) {
             schema = SchemaLoader.load(new JSONObject(new JSONTokener(in)));
         }
     }

@@ -9,8 +9,6 @@ import static org.hamcrest.Matchers.nullValue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.inOrder;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -35,15 +33,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
-import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-/**
- * SPRDT-1550: the week commencing parts of {@link SessionsService} - the flag reaching the entity
- * through the standard create path, and the one-per-Monday duplicate rule.
- */
 @ExtendWith(MockitoExtension.class)
 class SessionsServiceWeekCommencingTest {
 
@@ -93,39 +86,6 @@ class SessionsServiceWeekCommencingTest {
 
         verify(courtScheduleRepository).saveCourtSchedules(savedCaptor.capture());
         assertThat(savedCaptor.getValue().stream().map(CourtSchedule::isWeekCommencing).toList(), contains(false));
-    }
-
-    @Test
-    void createWeekCommencingShouldLockThenCheckThenInsert() {
-        givenDurationBasedBusinessTypeAndCrownCourtRoom();
-        final LocalDate monday = LocalDate.of(2027, 1, 4);
-        when(courtScheduleRepository.findActiveDraftWeekCommencingSessions(COURT_CENTRE_ID, BUSINESS_TYPE, monday, monday))
-                .thenReturn(List.of());
-
-        final JsonObject result = sessionsService.createWeekCommencing(
-                weekCommencingRequest(true, FIRST_MONDAY, FIRST_MONDAY), COURT_CENTRE_ID, BUSINESS_TYPE, monday, monday);
-
-        assertThat(result.isEmpty(), is(true));
-        final InOrder inOrder = inOrder(courtScheduleRepository);
-        inOrder.verify(courtScheduleRepository).lockWeekCommencingCreation(COURT_CENTRE_ID, BUSINESS_TYPE);
-        inOrder.verify(courtScheduleRepository).findActiveDraftWeekCommencingSessions(COURT_CENTRE_ID, BUSINESS_TYPE, monday, monday);
-        inOrder.verify(courtScheduleRepository).saveCourtSchedules(any());
-    }
-
-    @Test
-    void createWeekCommencingShouldNotInsertWhenAMondayAlreadyHasOne() {
-        final LocalDate monday = LocalDate.of(2027, 1, 4);
-        final CourtSchedule existing = new CourtSchedule();
-        existing.setSessionDate(monday);
-        when(courtScheduleRepository.findActiveDraftWeekCommencingSessions(COURT_CENTRE_ID, BUSINESS_TYPE, monday, monday))
-                .thenReturn(List.of(existing));
-
-        final JsonObject result = sessionsService.createWeekCommencing(
-                weekCommencingRequest(true, FIRST_MONDAY, FIRST_MONDAY), COURT_CENTRE_ID, BUSINESS_TYPE, monday, monday);
-
-        assertThat(result.getString("errorMessage"), is(ErrorMessages.DUPLICATE_SESSIONS));
-        verify(courtScheduleRepository).lockWeekCommencingCreation(COURT_CENTRE_ID, BUSINESS_TYPE);
-        verify(courtScheduleRepository, never()).saveCourtSchedules(any());
     }
 
     @Test

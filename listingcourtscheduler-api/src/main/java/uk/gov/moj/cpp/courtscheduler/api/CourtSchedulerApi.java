@@ -50,6 +50,7 @@ import uk.gov.moj.cpp.courtscheduler.api.validator.JudiciariesApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.ProvisionalBookingApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.SessionsApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.ValidationException;
+import uk.gov.moj.cpp.courtscheduler.api.validator.WeekCommencingApiValidator;
 import uk.gov.moj.cpp.courtscheduler.common.service.AllocatedListingService;
 import uk.gov.moj.cpp.courtscheduler.common.service.BookingLogPurgeService;
 import uk.gov.moj.cpp.courtscheduler.common.service.JudiciaryAssignmentService;
@@ -187,6 +188,7 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
     private final ProvisionalSlotConverter provisionalSlotConverter;
     private final BookingLogPurgeService bookingLogPurgeService;
     private final WeekCommencingSessionService weekCommencingSessionService;
+    private final WeekCommencingApiValidator weekCommencingApiValidator;
 
     public CourtSchedulerApi(final ObjectMapper objectMapper,
                              final HttpServletRequest request,
@@ -209,7 +211,8 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
                              final ProvisionalBookingApiValidator provisionalBookingApiValidator,
                              final ProvisionalSlotConverter provisionalSlotConverter,
                              final BookingLogPurgeService bookingLogPurgeService,
-                             final WeekCommencingSessionService weekCommencingSessionService) {
+                             final WeekCommencingSessionService weekCommencingSessionService,
+                             final WeekCommencingApiValidator weekCommencingApiValidator) {
         this.objectMapper = objectMapper;
         this.lenientObjectMapper = objectMapper.copy()
                 .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
@@ -234,6 +237,7 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
         this.provisionalSlotConverter = provisionalSlotConverter;
         this.bookingLogPurgeService = bookingLogPurgeService;
         this.weekCommencingSessionService = weekCommencingSessionService;
+        this.weekCommencingApiValidator = weekCommencingApiValidator;
     }
 
     /* ============================================================
@@ -273,16 +277,18 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
         return ResponseEntity.status(HttpStatus.ACCEPTED).build();
     }
 
-    /**
-     * SPRDT-1550: POST /session/weekCommencing ({@code courtscheduler.week-commencing.create}).
-     * The body has already passed courtscheduler.week-commencing.create.json; 202 with no body.
-     */
     @Override
     public ResponseEntity<Void> postCreateWeekCommencingSession(final WeekCommencingCreateRequest body) {
-        LOG.info("courtscheduler.week-commencing.create requested: courtCentreId={}, businessType={}, startDate={}, endDate={}",
-                Encode.forJava(body.getCourtCentreId()), Encode.forJava(body.getBusinessType()),
-                Encode.forJava(body.getStartDate()), Encode.forJava(body.getEndDate()));
-        weekCommencingSessionService.create(body);
+        LOG.info("courtscheduler.create-week-commencing.sessions requested: courtCentreId={}, businessType={}, startDate={}, endDate={}",
+                body.getCourtCentreId(), body.getBusinessType(), body.getStartDate(), body.getEndDate());
+        final CreateSessionRequestParam createRequest = weekCommencingSessionService.toCreateSessionRequest(body);
+
+        final JsonObject validate = weekCommencingApiValidator.getWeekCommencingCreateValidation(body, createRequest);
+        if (!validate.isEmpty()) {
+            throw new ValidationException(validate);
+        }
+
+        sessionsService.create(createRequest);
         return ResponseEntity.status(HttpStatus.ACCEPTED).build();
     }
 

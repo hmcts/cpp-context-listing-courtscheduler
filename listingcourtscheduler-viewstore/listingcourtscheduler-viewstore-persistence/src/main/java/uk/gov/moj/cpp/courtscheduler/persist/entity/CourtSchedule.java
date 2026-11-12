@@ -253,11 +253,6 @@ public class CourtSchedule implements Serializable {
     @Column(name = IS_DRAFT, nullable = false)
     private Boolean draft;
 
-    /**
-     * SPRDT-1550: a Crown week commencing capacity bucket (one row per Monday). Set once on insert
-     * and never updated: the native-query constructors used by the edit/booking paths do not read
-     * this column, so a merge of one of those instances must not be able to reset it to false.
-     */
     @Column(name = IS_WEEK_COMMENCING, nullable = false, updatable = false)
     private Boolean weekCommencing = false;
 

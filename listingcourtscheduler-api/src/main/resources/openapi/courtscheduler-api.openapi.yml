@@ -146,11 +146,11 @@ paths:
       operationId: postCreateWeekCommencingSession
       summary: >-
         Create a CROWN draft week commencing session (one all-day row on each Monday of the date
-        range, in the court centre's default courtroom) - SPRDT-1550
+        range, in the court centre's default courtroom)
       requestBody:
         required: true
         content:
-          application/vnd.courtscheduler.week-commencing.create+json:
+          application/vnd.courtscheduler.create-week-commencing.sessions+json:
             schema:
               $ref: '#/components/schemas/WeekCommencingCreateRequest'
       responses:
@@ -907,14 +907,8 @@ components:
         isDraft: { type: boolean, nullable: true }
         jurisdiction: { type: string, nullable: true }
         index: { type: integer, nullable: true }
-        # Set only by the week commencing endpoint (SPRDT-1550); the generic create path clears it
-        # (CourtSchedulerApi#applyLegacyCreateDefaults) so week commencing rows are only ever
-        # created through POST /session/weekCommencing and its duplicate rule.
         isWeekCommencing: { type: boolean, nullable: true }
 
-    # SPRDT-1550 - request body of POST /session/weekCommencing. Validated against
-    # src/raml/json/schema/courtscheduler.week-commencing.create.json; dates stay plain strings
-    # for the same reason as RepeatPattern below. capacity is in minutes (1 day = 360).
     WeekCommencingCreateRequest:
       type: object
       properties:

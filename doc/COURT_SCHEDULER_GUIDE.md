@@ -898,7 +898,7 @@ Configuration comes from environment variables and an optional Kubernetes secret
 | `POST /courtschedule/delete` | `vnd.courtscheduler.delete+json` → `.delete.response+json` | 200 | Delete sessions without bookings |
 | `POST /courtschedule/assign.courtroom` | `vnd.courtscheduler.assign.courtroom+json` → `.response+json` | 200 | Assign a courtroom to Crown draft sessions |
 | `GET /courtschedule/search.court-schedules-by-id` | → `vnd.courtscheduler.search.court-schedules-by-id+json` | 200 | Fetch sessions by IDs |
-| `POST /session/weekCommencing` | `vnd.courtscheduler.week-commencing.create+json` | 202 | Create a Crown week commencing session: a draft all-day row on each Monday of the range, in the centre's first listed courtroom. `capacity` is in minutes (1–7200, 360 = 1 day). 400 for a duplicate Monday (same centre and business type), a slot-based business type or a range with no Monday |
+| `POST /session/weekCommencing` | `vnd.courtscheduler.create-week-commencing.sessions+json` | 202 | Create a Crown week commencing session: a draft all-day row on each Monday of the range, in the centre's first listed courtroom. `capacity` is in minutes (1–7200, 360 = 1 day). 400 for a duplicate Monday (same centre and business type), a slot-based business type or a range with no Monday |
 
 **Judiciary on sessions**
 
