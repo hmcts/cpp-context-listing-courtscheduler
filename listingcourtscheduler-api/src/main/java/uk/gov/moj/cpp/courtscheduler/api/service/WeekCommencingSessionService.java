@@ -45,7 +45,7 @@ public class WeekCommencingSessionService {
                 .courtRoomId(defaultCourtRoomId(request.getCourtCentreId()))
                 .sessionType(ALL_DAY)
                 .businessType(request.getBusinessType())
-                .duration(request.getCapacity())
+                .duration(request.getCapacityInMinutes())
                 .allDaySplit(false)
                 .maxDurationForMorning(0)
                 .maxDurationForAfternoon(0)

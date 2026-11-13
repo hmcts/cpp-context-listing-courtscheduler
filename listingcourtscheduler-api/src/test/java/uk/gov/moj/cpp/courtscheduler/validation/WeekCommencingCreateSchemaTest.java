@@ -20,7 +20,7 @@ class WeekCommencingCreateSchemaTest {
 
     private static final String VALID = """
             {"courtCentreId":"f8254db1-1683-483e-afb3-b87fde5a0a26","businessType":"TRL",
-             "startDate":"2027-01-04","endDate":"2027-02-01","capacity":%s}""";
+             "startDate":"2027-01-04","endDate":"2027-02-01","capacityInMinutes":%s}""";
 
     private static Schema schema;
 
@@ -33,22 +33,23 @@ class WeekCommencingCreateSchemaTest {
     }
 
     @ParameterizedTest
-    @ValueSource(ints = {1, 360, 7200})
-    void shouldAcceptCapacityWithinOneMinuteToTwentyDays(final int capacity) {
+    @ValueSource(ints = {1, 360, 359_640})
+    void shouldAcceptCapacityWithinOneMinuteToNineHundredAndNinetyNineDays(final int capacity) {
         assertDoesNotThrow(() -> schema.validate(new JSONObject(VALID.formatted(capacity))));
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"0", "-1", "7201", "1.5", "\"360\""})
+    @ValueSource(strings = {"0", "-1", "359641", "1.5", "\"360\""})
     void shouldRejectCapacityOutsideTheRangeOrNotAnInteger(final String capacity) {
         assertThrows(ValidationException.class, () -> schema.validate(new JSONObject(VALID.formatted(capacity))));
     }
 
-    @Test
-    void shouldRejectTheOldCapacityDaysName() {
+    @ParameterizedTest
+    @ValueSource(strings = {"capacity", "capacityDays"})
+    void shouldRejectTheOldCapacityNames(final String oldName) {
         final JSONObject body = new JSONObject(VALID.formatted(360));
-        body.remove("capacity");
-        body.put("capacityDays", 1);
+        body.remove("capacityInMinutes");
+        body.put(oldName, 360);
         assertThrows(ValidationException.class, () -> schema.validate(body));
     }
 

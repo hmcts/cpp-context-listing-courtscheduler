@@ -916,7 +916,7 @@ components:
         businessType: { type: string }
         startDate: { type: string }
         endDate: { type: string }
-        capacity: { type: integer }
+        capacityInMinutes: { type: integer }
         isOverbookingAllowed: { type: boolean, nullable: true }
 
     # startDate/endDate deliberately plain strings (no format:date) — preserves the legacy

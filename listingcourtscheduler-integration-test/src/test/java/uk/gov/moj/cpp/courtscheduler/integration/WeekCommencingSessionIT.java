@@ -49,6 +49,8 @@ class WeekCommencingSessionIT extends AbstractIT {
     private static final String OTHER_DURATION_BASED_BUSINESS_TYPE = "LGT";
     private static final String SLOT_BASED_BUSINESS_TYPE = "DVLA";
     private static final int CAPACITY_FIVE_DAYS = 1800;
+    private static final int MINUTES_PER_DAY = 6 * 60;
+    private static final int MAX_CAPACITY_IN_MINUTES = 999 * MINUTES_PER_DAY;
 
     private final LocalDate startDate = now().with(next(WEDNESDAY));
     private final LocalDate endDate = startDate.plusDays(20);
@@ -106,8 +108,21 @@ class WeekCommencingSessionIT extends AbstractIT {
     }
 
     @Test
-    void shouldRejectCapacityAboveTwentyDays() {
-        try (Response response = create(request(DURATION_BASED_BUSINESS_TYPE, startDate, endDate).add("capacity", 7201))) {
+    void shouldStoreTheMaximumCapacityOfNineHundredAndNinetyNineDaysOnEveryMondayOfAThreeYearRange() {
+        final LocalDate threeYearsLater = startDate.plusYears(3);
+        try (Response response = create(request(DURATION_BASED_BUSINESS_TYPE, startDate, threeYearsLater)
+                .add("capacityInMinutes", MAX_CAPACITY_IN_MINUTES))) {
+            assertThat(response.readEntity(String.class), response.getStatus(), is(ACCEPTED.getStatusCode()));
+            final List<CourtSchedule> rows = databaseReader.courtSchedules();
+            assertThat(rows.stream().map(CourtSchedule::getSessionDate).toList(), is(mondaysBetween(startDate, threeYearsLater)));
+            assertThat(rows.stream().map(CourtSchedule::getMaxDuration).toList(), everyItem(is(359_640)));
+            assertThat(rows.stream().map(CourtSchedule::getAvailableDuration).toList(), everyItem(is(359_640)));
+        }
+    }
+
+    @Test
+    void shouldRejectCapacityAboveNineHundredAndNinetyNineDays() {
+        try (Response response = create(request(DURATION_BASED_BUSINESS_TYPE, startDate, endDate).add("capacityInMinutes", MAX_CAPACITY_IN_MINUTES + 1))) {
             assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
             assertThat(databaseReader.courtSchedules(), hasSize(0));
         }
@@ -203,7 +218,7 @@ class WeekCommencingSessionIT extends AbstractIT {
                 .add("businessType", businessType)
                 .add("startDate", start.toString())
                 .add("endDate", end.toString())
-                .add("capacity", CAPACITY_FIVE_DAYS)
+                .add("capacityInMinutes", CAPACITY_FIVE_DAYS)
                 .add("isOverbookingAllowed", true);
     }
 

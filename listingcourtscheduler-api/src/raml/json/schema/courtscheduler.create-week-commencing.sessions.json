@@ -6,15 +6,15 @@
     "businessType": {"type": "string", "minLength": 1},
     "startDate": {"type": "string", "format": "date"},
     "endDate": {"type": "string", "format": "date"},
-    "capacity": {
-      "description": "Capacity in minutes (1 day = 360 minutes), at most 20 days",
+    "capacityInMinutes": {
+      "description": "Capacity in minutes (1 day = 360 minutes), at most 999 days",
       "type": "integer",
       "minimum": 1,
-      "maximum": 7200
+      "maximum": 359640
     },
     "isOverbookingAllowed": {"type": "boolean"}
   },
-  "required": ["courtCentreId", "businessType", "startDate", "endDate", "capacity"],
+  "required": ["courtCentreId", "businessType", "startDate", "endDate", "capacityInMinutes"],
   "additionalProperties": false,
   "definitions": {
     "uuid": {

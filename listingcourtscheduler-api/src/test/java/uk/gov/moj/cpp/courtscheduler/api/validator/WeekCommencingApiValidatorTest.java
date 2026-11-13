@@ -146,6 +146,6 @@ class WeekCommencingApiValidatorTest {
                 .businessType(BUSINESS_TYPE)
                 .startDate("2027-01-06")
                 .endDate("2027-02-01")
-                .capacity(1800);
+                .capacityInMinutes(1800);
     }
 }

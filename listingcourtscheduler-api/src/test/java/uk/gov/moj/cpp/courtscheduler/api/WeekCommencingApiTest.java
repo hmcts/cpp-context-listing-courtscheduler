@@ -54,7 +54,7 @@ class WeekCommencingApiTest {
 
     @Test
     void shouldValidateTheConvertedRequestThenCreateItAndReturn202() {
-        final WeekCommencingCreateRequest body = new WeekCommencingCreateRequest().businessType(BUSINESS_TYPE).capacity(360);
+        final WeekCommencingCreateRequest body = new WeekCommencingCreateRequest().businessType(BUSINESS_TYPE).capacityInMinutes(360);
         final CreateSessionRequestParam createRequest = new CreateSessionRequestParam();
         when(weekCommencingSessionService.toCreateSessionRequest(body)).thenReturn(createRequest);
         when(weekCommencingApiValidator.getWeekCommencingCreateValidation(body, createRequest)).thenReturn(EMPTY_JSON_OBJECT);
@@ -68,7 +68,7 @@ class WeekCommencingApiTest {
 
     @Test
     void shouldReturnTheValidationErrorAndNotCreate() {
-        final WeekCommencingCreateRequest body = new WeekCommencingCreateRequest().businessType(BUSINESS_TYPE).capacity(360);
+        final WeekCommencingCreateRequest body = new WeekCommencingCreateRequest().businessType(BUSINESS_TYPE).capacityInMinutes(360);
         final CreateSessionRequestParam createRequest = new CreateSessionRequestParam();
         when(weekCommencingSessionService.toCreateSessionRequest(body)).thenReturn(createRequest);
         when(weekCommencingApiValidator.getWeekCommencingCreateValidation(body, createRequest))
