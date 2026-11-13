@@ -56,6 +56,7 @@ public final class CourtSchedulerConverter {
                 .sessionEndTime(toOffsetDateTime(courtScheduleEntity.getSessionEndTime()))
                 .overbookingAllowed(Boolean.TRUE.equals(courtScheduleEntity.isOverbookingAllowed()))
                 .draft(Boolean.TRUE.equals(courtScheduleEntity.isDraft()))
+                .isWeekCommencing(Boolean.TRUE.equals(courtScheduleEntity.isWeekCommencing()))
                 .minHearingTime(sessionTimeFormatter(courtScheduleEntity.getSessionStartTime()))
                 .maxHearingTime(sessionTimeFormatter(courtScheduleEntity.getSessionEndTime()));
         if (Boolean.TRUE.equals(isAllDaySplit)) {
@@ -121,6 +122,7 @@ public final class CourtSchedulerConverter {
                 .sessionEndTime(toOffsetDateTime(courtScheduleEntity.getSessionEndTime()))
                 .overbookingAllowed(Boolean.TRUE.equals(courtScheduleEntity.isOverbookingAllowed()))
                 .draft(Boolean.TRUE.equals(courtScheduleEntity.isDraft()))
+                .isWeekCommencing(Boolean.TRUE.equals(courtScheduleEntity.isWeekCommencing()))
                 .minHearingTime(sessionTimeFormatter(courtScheduleEntity.getSessionStartTime()))
                 .maxHearingTime(sessionTimeFormatter(courtScheduleEntity.getSessionEndTime()))
                 .jurisdiction(courtScheduleEntity.getJurisdiction());

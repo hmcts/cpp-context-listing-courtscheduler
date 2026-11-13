@@ -3,6 +3,7 @@ package uk.gov.moj.cpp.courtscheduler.repository;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.Result;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.UpdateCourtSchedule;
 import static java.util.UUID.randomUUID;
+import static java.util.stream.Collectors.toMap;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -12,6 +13,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.TimezoneUtils.LONDON_ZONE;
 
 import uk.gov.moj.cpp.courtscheduler.openapi.model.AllocatedSlot;
+import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.CrownFallbackSearchResult;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.HearingSlot;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
@@ -39,6 +41,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
@@ -223,7 +226,9 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
         em.flush();
         em.clear();
         final CourtSchedule loaded = courtScheduleRepository.retrieveCourtScheduleWithListingById(saved.getCourtScheduleId());
-        assertFalse(loaded.isWeekCommencing(), "precondition: the native-query constructor does not read the column");
+        assertTrue(loaded.isWeekCommencing(), "the edit path's native query reads the flag");
+        // a copy that has lost the flag must still not reset it: the column is updatable = false
+        loaded.setWeekCommencing(false);
         final UpdateCourtSchedule update = new UpdateCourtSchedule()
                 .courtScheduleId(saved.getCourtScheduleId())
                 .courtRoomId(CR01_2)
@@ -259,6 +264,24 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
         assertEquals(List.of(weekCommencing.getCourtScheduleId()),
                 courtScheduleRetryService.findPersistedSchedules(upsertSession(courtRoomId, monday, true, 1))
                         .stream().map(CourtSchedule::getCourtScheduleId).toList());
+    }
+
+    @Test
+    void courtSchedulesByShouldReturnWeekCommencingSessionsWithTheFlag() {
+        final String courtRoomId = randomUUID().toString();
+        final LocalDate monday = LocalDate.of(2099, 1, 19);
+        final CourtSchedule ordinary = courtScheduleRepository.save(upsertSession(courtRoomId, monday, false, ORDINARY_CAPACITY));
+        final CourtSchedule weekCommencing = courtScheduleRepository.save(upsertSession(courtRoomId, monday, true, WEEK_COMMENCING_CAPACITY));
+        em.flush();
+
+        final Map<String, Boolean> flagById = courtScheduleRepository.getCourtSchedulesBy(new CourtScheduleRequestParam(
+                        "CH" + WC_UPSERT_OU_CODE, courtRoomId, null, monday.toString(), monday.toString(), null, "10", "1"))
+                .stream().collect(toMap(uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule::getCourtScheduleId,
+                        uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule::getIsWeekCommencing));
+
+        assertEquals(Map.of(ordinary.getCourtScheduleId(), false, weekCommencing.getCourtScheduleId(), true), flagById);
+        assertTrue(courtScheduleRepository.retrieveCourtScheduleWithListingById(weekCommencing.getCourtScheduleId()).isWeekCommencing());
+        assertFalse(courtScheduleRepository.retrieveCourtScheduleWithListingById(ordinary.getCourtScheduleId()).isWeekCommencing());
     }
 
     @Test

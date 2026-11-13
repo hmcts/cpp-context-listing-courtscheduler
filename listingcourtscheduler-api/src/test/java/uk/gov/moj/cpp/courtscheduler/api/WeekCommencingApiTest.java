@@ -15,16 +15,23 @@ import static org.mockito.Mockito.when;
 import static uk.gov.moj.cpp.courtscheduler.common.CommonUtils.buildErrorResponse;
 
 import uk.gov.moj.cpp.courtscheduler.api.service.WeekCommencingSessionService;
+import uk.gov.moj.cpp.courtscheduler.api.validator.CourtScheduleApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.SessionsApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.ValidationException;
 import uk.gov.moj.cpp.courtscheduler.api.validator.WeekCommencingApiValidator;
 import uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages;
 import uk.gov.moj.cpp.courtscheduler.common.service.SessionsService;
+import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleRequestParam;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtScheduleGroupedSession;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtschedulerGetCourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.CreateSessionRequestParam;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.RepeatPattern;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.Session;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.WeekCommencingCreateRequest;
 
+import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -48,6 +55,8 @@ class WeekCommencingApiTest {
     private SessionsService sessionsService;
     @Mock
     private SessionsApiValidator sessionsApiValidator;
+    @Mock
+    private CourtScheduleApiValidator courtScheduleApiValidator;
     @Mock
     private WeekCommencingSessionService weekCommencingSessionService;
     @Mock
@@ -118,10 +127,30 @@ class WeekCommencingApiTest {
         assertThat(createCaptor.getValue().getSessionToBeAdded().getIsWeekCommencing(), is(nullValue()));
     }
 
+    @Test
+    void courtScheduleQueryShouldReturnTheWeekCommencingFlagOnEachSession() {
+        when(courtScheduleApiValidator.getCourtSchedulesValidation(any(CourtScheduleRequestParam.class))).thenReturn(EMPTY_JSON_OBJECT);
+        final String courtRoomId = "room-1";
+        when(sessionsService.getCourtSchedules(any(CourtScheduleRequestParam.class))).thenReturn(new ArrayList<>(List.of(
+                new CourtSchedule().courtScheduleId("wc").courtRoomId(courtRoomId).sessionDate(LocalDate.of(2027, 1, 4))
+                        .draft(true).isWeekCommencing(true),
+                new CourtSchedule().courtScheduleId("ordinary").courtRoomId(courtRoomId).sessionDate(LocalDate.of(2027, 1, 5))
+                        .draft(true).isWeekCommencing(false))));
+
+        final CourtschedulerGetCourtSchedule body = api()
+                .getCourtschedule("centre", "2027-01-04", "2027-01-10", "10", "1", null, null, null).getBody();
+
+        final List<CourtScheduleGroupedSession> sessions = body.getCourtSchedules().getFirst().getSessions();
+        assertThat(sessions.stream().map(CourtScheduleGroupedSession::getCourtScheduleId).toList(), is(List.of("wc", "ordinary")));
+        assertThat(sessions.stream().map(CourtScheduleGroupedSession::getIsWeekCommencing).toList(), is(List.of(true, false)));
+        assertThat(sessions.stream().map(CourtScheduleGroupedSession::getIsDraft).toList(), is(List.of(true, true)));
+    }
+
     private CourtSchedulerApi api() {
-        // positional: sessionsService 3rd, sessionsApiValidator 5th, the week commencing service and validator last
-        return new CourtSchedulerApi(new ObjectMapper(), mock(HttpServletRequest.class), sessionsService, null,
-                sessionsApiValidator, null, null, null, null, null, null, null, null, null, null, null, null,
+        // positional: sessionsService 3rd, sessionsApiValidator 5th, courtScheduleApiValidator 6th,
+        // the week commencing service and validator last
+        return new CourtSchedulerApi(new ObjectMapper().findAndRegisterModules(), mock(HttpServletRequest.class), sessionsService, null,
+                sessionsApiValidator, courtScheduleApiValidator, null, null, null, null, null, null, null, null, null, null, null,
                 null, null, null, null, weekCommencingSessionService, weekCommencingApiValidator);
     }
 }
