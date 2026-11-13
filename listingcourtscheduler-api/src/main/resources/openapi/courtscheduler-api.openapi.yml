@@ -323,8 +323,8 @@ paths:
       summary: |
         Search-and-book for a hearing, selected by media-type action: crown.search.and.book
         (CROWN; single or multi-day; optional courtScheduleId anchor; relaxed fallback on the
-        single-day path); mags.search.and.book (MAGISTRATES SPI; single or multi-day CONSECUTIVE;
-        isPolice overbooking; never anchors); move-hearing-to-past-date (both jurisdictions via a
+        single-day path); mags.search.and.book (MAGISTRATES SPI; one session per request, main's
+        matcher; isPolice overbooking; never anchors); move-hearing-to-past-date (both jurisdictions via a
         jurisdiction field; past-only); change-court-room-for-multiday-hearing (re-allocates ONLY
         the submitted day(s) of an existing multi-day hearing onto new sessions; days not
         submitted are untouched). The hearing is identified by the hearingId path parameter.
