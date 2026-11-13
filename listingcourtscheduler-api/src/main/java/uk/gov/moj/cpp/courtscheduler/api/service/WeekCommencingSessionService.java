@@ -38,7 +38,7 @@ public class WeekCommencingSessionService {
      * Monday of the range, in the court centre's default courtroom. The courtroom is null when the
      * court centre has none; WeekCommencingApiValidator rejects that.
      */
-    public CreateSessionRequestParam toCreateSessionRequest(final WeekCommencingCreateRequest request) {
+    public CreateSessionRequestParam enrichCreateSessionRequest(final WeekCommencingCreateRequest request) {
         final Session session = new Session()
                 .courtCentreId(request.getCourtCentreId())
                 .jurisdiction(CROWN.getJurisdiction())

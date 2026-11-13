@@ -279,9 +279,14 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
 
     @Override
     public ResponseEntity<Void> postCreateWeekCommencingSession(final WeekCommencingCreateRequest body) {
-        LOG.info("courtscheduler.create-week-commencing.sessions requested: courtCentreId={}, businessType={}, startDate={}, endDate={}",
-                body.getCourtCentreId(), body.getBusinessType(), body.getStartDate(), body.getEndDate());
-        final CreateSessionRequestParam createRequest = weekCommencingSessionService.toCreateSessionRequest(body);
+        LOG.info("courtscheduler.create-week-commencing.sessions requested: {}", body);
+
+        final JsonObject duplicate = weekCommencingApiValidator.getWeekCommencingDuplicateValidation(body);
+        if (!duplicate.isEmpty()) {
+            throw new ValidationException(duplicate);
+        }
+
+        final CreateSessionRequestParam createRequest = weekCommencingSessionService.enrichCreateSessionRequest(body);
 
         final JsonObject validate = weekCommencingApiValidator.getWeekCommencingCreateValidation(body, createRequest);
         if (!validate.isEmpty()) {

@@ -44,7 +44,7 @@ class WeekCommencingSessionServiceTest {
     void shouldConvertToACrownDraftAllDayMondaySessionInTheFirstListedCourtRoom() {
         givenCourtRooms(room(ROOM_1, 1001), room(ROOM_2, 1), room(ROOM_3, 3));
 
-        final CreateSessionRequestParam created = service.toCreateSessionRequest(request(true));
+        final CreateSessionRequestParam created = service.enrichCreateSessionRequest(request(true));
 
         assertThat(created.getSessions().size(), is(1));
         final Session session = created.getSessions().getFirst();
@@ -70,7 +70,7 @@ class WeekCommencingSessionServiceTest {
     void shouldDefaultOverbookingToFalseWhenNotSupplied() {
         givenCourtRooms(room(ROOM_1, 1));
 
-        final CreateSessionRequestParam created = service.toCreateSessionRequest(request(null));
+        final CreateSessionRequestParam created = service.enrichCreateSessionRequest(request(null));
 
         assertThat(created.getSessions().getFirst().getIsOverbookingAllowed(), is(false));
     }
@@ -79,7 +79,7 @@ class WeekCommencingSessionServiceTest {
     void shouldLeaveTheCourtRoomEmptyWhenTheCourtCentreHasNone() {
         givenCourtRooms();
 
-        final CreateSessionRequestParam created = service.toCreateSessionRequest(request(false));
+        final CreateSessionRequestParam created = service.enrichCreateSessionRequest(request(false));
 
         assertThat(created.getSessions().getFirst().getCourtRoomId(), is(nullValue()));
     }

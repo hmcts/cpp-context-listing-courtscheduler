@@ -5,8 +5,6 @@ import static java.util.UUID.randomUUID;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static uk.gov.moj.cpp.courtscheduler.common.CommonUtils.buildErrorResponse;
@@ -56,12 +54,11 @@ class WeekCommencingApiValidatorTest {
     @Test
     void shouldPassAValidRequest() {
         givenValidAndDurationBased();
-        when(sessionsService.validateWeekCommencingIntegrity(COURT_CENTRE_ID, BUSINESS_TYPE,
-                LocalDate.of(2027, 1, 6), LocalDate.of(2027, 2, 1))).thenReturn(EMPTY_JSON_OBJECT);
 
         final JsonObject result = validator.getWeekCommencingCreateValidation(request(), converted(COURT_ROOM_ID));
 
         assertThat(result.isEmpty(), is(true));
+        verifyNoInteractions(sessionsService);
     }
 
     @Test
@@ -103,15 +100,11 @@ class WeekCommencingApiValidatorTest {
         final JsonObject result = validator.getWeekCommencingCreateValidation(noMonday, converted(COURT_ROOM_ID));
 
         assertThat(result.getString(ERROR_MESSAGE), is(ErrorMessages.WEEK_COMMENCING_NO_MONDAY));
-        verify(sessionsService, never()).validateWeekCommencingIntegrity(any(), any(), any(), any());
     }
 
     @Test
     void shouldAcceptARangeOfASingleMonday() {
         givenValidAndDurationBased();
-        final LocalDate monday = LocalDate.of(2027, 1, 4);
-        when(sessionsService.validateWeekCommencingIntegrity(COURT_CENTRE_ID, BUSINESS_TYPE, monday, monday))
-                .thenReturn(EMPTY_JSON_OBJECT);
 
         final JsonObject result = validator.getWeekCommencingCreateValidation(
                 request().startDate("2027-01-04").endDate("2027-01-04"), converted(COURT_ROOM_ID));
@@ -120,14 +113,31 @@ class WeekCommencingApiValidatorTest {
     }
 
     @Test
-    void shouldRejectADuplicateWeekCommencingSession() {
-        givenValidAndDurationBased();
-        when(sessionsService.validateWeekCommencingIntegrity(any(), any(), any(), any()))
+    void duplicateValidationShouldRejectADuplicateWeekCommencingSession() {
+        when(sessionsService.validateWeekCommencingIntegrity(COURT_CENTRE_ID, BUSINESS_TYPE,
+                LocalDate.of(2027, 1, 6), LocalDate.of(2027, 2, 1)))
                 .thenReturn(buildErrorResponse(ErrorMessages.DUPLICATE_SESSIONS));
 
-        final JsonObject result = validator.getWeekCommencingCreateValidation(request(), converted(COURT_ROOM_ID));
+        final JsonObject result = validator.getWeekCommencingDuplicateValidation(request());
 
         assertThat(result.getString(ERROR_MESSAGE), is(ErrorMessages.DUPLICATE_SESSIONS));
+        verifyNoInteractions(sessionsApiValidator, referenceDataCache);
+    }
+
+    @Test
+    void duplicateValidationShouldPassWhenNoMondayHasASession() {
+        when(sessionsService.validateWeekCommencingIntegrity(COURT_CENTRE_ID, BUSINESS_TYPE,
+                LocalDate.of(2027, 1, 6), LocalDate.of(2027, 2, 1))).thenReturn(EMPTY_JSON_OBJECT);
+
+        assertThat(validator.getWeekCommencingDuplicateValidation(request()).isEmpty(), is(true));
+    }
+
+    @Test
+    void duplicateValidationShouldLeaveAnUnparseableDateToTheStandardCreateValidation() {
+        final JsonObject result = validator.getWeekCommencingDuplicateValidation(request().startDate("2027-13-45"));
+
+        assertThat(result.isEmpty(), is(true));
+        verifyNoInteractions(sessionsService);
     }
 
     private void givenValidAndDurationBased() {

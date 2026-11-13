@@ -94,7 +94,7 @@ class SessionsServiceWeekCommencingTest {
         final LocalDate end = LocalDate.of(2027, 1, 25);
         final CourtSchedule existing = new CourtSchedule();
         existing.setSessionDate(LocalDate.of(2027, 1, 18));
-        when(courtScheduleRepository.findActiveDraftWeekCommencingSessions(COURT_CENTRE_ID, BUSINESS_TYPE, start, end))
+        when(courtScheduleRepository.findActiveWeekCommencingSessions(COURT_CENTRE_ID, BUSINESS_TYPE, start, end))
                 .thenReturn(List.of(existing));
 
         final JsonObject result = sessionsService.validateWeekCommencingIntegrity(COURT_CENTRE_ID, BUSINESS_TYPE, start, end);
@@ -104,7 +104,7 @@ class SessionsServiceWeekCommencingTest {
 
     @Test
     void shouldPassWhenNoMondayHasAWeekCommencingSession() {
-        when(courtScheduleRepository.findActiveDraftWeekCommencingSessions(anyString(), anyString(), any(), any()))
+        when(courtScheduleRepository.findActiveWeekCommencingSessions(anyString(), anyString(), any(), any()))
                 .thenReturn(List.of());
 
         final JsonObject result = sessionsService.validateWeekCommencingIntegrity(

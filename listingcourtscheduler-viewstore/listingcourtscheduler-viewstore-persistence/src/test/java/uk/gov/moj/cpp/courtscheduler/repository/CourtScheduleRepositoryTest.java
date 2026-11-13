@@ -197,7 +197,7 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
     }
 
     @Test
-    void findActiveDraftWeekCommencingSessionsShouldMatchOnlyActiveDraftWeekCommencingRowsOfTheCentreAndBusinessType() {
+    void findActiveWeekCommencingSessionsShouldMatchOnlyActiveWeekCommencingRowsOfTheCentreAndBusinessType() {
         final LocalDate monday = LocalDate.of(2027, 1, 11);
         final CourtSchedule match = weekCommencingSession(WC_OU_CODE, "room-2", TRF_2, monday);
         final CourtSchedule otherBusinessType = weekCommencingSession(WC_OU_CODE, CR01_2, "PTPH", monday);
@@ -211,7 +211,7 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
         em.flush();
         em.clear();
 
-        final List<CourtSchedule> found = courtScheduleRepository.findActiveDraftWeekCommencingSessions(
+        final List<CourtSchedule> found = courtScheduleRepository.findActiveWeekCommencingSessions(
                 WC_COURT_HOUSE_ID, TRF_2, monday.minusDays(3), monday.plusDays(3));
 
         assertEquals(List.of(match.getCourtScheduleId()), found.stream().map(CourtSchedule::getCourtScheduleId).toList());

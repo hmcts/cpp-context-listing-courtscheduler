@@ -65,10 +65,10 @@ public interface CourtScheduleRepository
                                            @Param("isDraft") boolean isDraft);
 
     @Query("SELECT cs FROM CourtSchedule cs WHERE cs.courtHouseId = :courtCentreId AND cs.businessType = :businessType AND cs.active = true AND cs.draft = true AND cs.weekCommencing = true AND cs.sessionDate BETWEEN :startDate AND :endDate")
-    List<CourtSchedule> findActiveDraftWeekCommencingSessions(@Param("courtCentreId") String courtCentreId,
-                                                              @Param(BUSINESS_TYPE) String businessType,
-                                                              @Param(START_DATE) LocalDate startDate,
-                                                              @Param(END_DATE) LocalDate endDate);
+    List<CourtSchedule> findActiveWeekCommencingSessions(@Param("courtCentreId") String courtCentreId,
+                                                         @Param(BUSINESS_TYPE) String businessType,
+                                                         @Param(START_DATE) LocalDate startDate,
+                                                         @Param(END_DATE) LocalDate endDate);
 
     @Modifying
     @Transactional

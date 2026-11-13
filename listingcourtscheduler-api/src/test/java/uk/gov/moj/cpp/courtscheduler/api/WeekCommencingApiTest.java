@@ -6,9 +6,11 @@ import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.nullValue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static uk.gov.moj.cpp.courtscheduler.common.CommonUtils.buildErrorResponse;
 
@@ -31,6 +33,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
@@ -53,31 +56,50 @@ class WeekCommencingApiTest {
     private ArgumentCaptor<CreateSessionRequestParam> createCaptor;
 
     @Test
-    void shouldValidateTheConvertedRequestThenCreateItAndReturn202() {
+    void shouldCheckForDuplicatesThenEnrichValidateAndCreateAndReturn202() {
         final WeekCommencingCreateRequest body = new WeekCommencingCreateRequest().businessType(BUSINESS_TYPE).capacityInMinutes(360);
         final CreateSessionRequestParam createRequest = new CreateSessionRequestParam();
-        when(weekCommencingSessionService.toCreateSessionRequest(body)).thenReturn(createRequest);
+        when(weekCommencingApiValidator.getWeekCommencingDuplicateValidation(body)).thenReturn(EMPTY_JSON_OBJECT);
+        when(weekCommencingSessionService.enrichCreateSessionRequest(body)).thenReturn(createRequest);
         when(weekCommencingApiValidator.getWeekCommencingCreateValidation(body, createRequest)).thenReturn(EMPTY_JSON_OBJECT);
 
         final ResponseEntity<Void> response = api().postCreateWeekCommencingSession(body);
 
         assertThat(response.getStatusCode(), is(HttpStatus.ACCEPTED));
         assertThat(response.getBody(), is(nullValue()));
-        verify(sessionsService).create(createRequest);
+        final InOrder inOrder = inOrder(weekCommencingApiValidator, weekCommencingSessionService, sessionsService);
+        inOrder.verify(weekCommencingApiValidator).getWeekCommencingDuplicateValidation(body);
+        inOrder.verify(weekCommencingSessionService).enrichCreateSessionRequest(body);
+        inOrder.verify(weekCommencingApiValidator).getWeekCommencingCreateValidation(body, createRequest);
+        inOrder.verify(sessionsService).create(createRequest);
     }
 
     @Test
-    void shouldReturnTheValidationErrorAndNotCreate() {
+    void shouldRejectADuplicateBeforeEnrichingTheRequest() {
         final WeekCommencingCreateRequest body = new WeekCommencingCreateRequest().businessType(BUSINESS_TYPE).capacityInMinutes(360);
-        final CreateSessionRequestParam createRequest = new CreateSessionRequestParam();
-        when(weekCommencingSessionService.toCreateSessionRequest(body)).thenReturn(createRequest);
-        when(weekCommencingApiValidator.getWeekCommencingCreateValidation(body, createRequest))
+        when(weekCommencingApiValidator.getWeekCommencingDuplicateValidation(body))
                 .thenReturn(buildErrorResponse(ErrorMessages.DUPLICATE_SESSIONS));
 
         final CourtSchedulerApi api = api();
         final ValidationException exception = assertThrows(ValidationException.class, () -> api.postCreateWeekCommencingSession(body));
 
         assertThat(exception.getErrors().getString("errorMessage"), is(ErrorMessages.DUPLICATE_SESSIONS));
+        verifyNoInteractions(weekCommencingSessionService, sessionsService);
+    }
+
+    @Test
+    void shouldReturnTheValidationErrorAndNotCreate() {
+        final WeekCommencingCreateRequest body = new WeekCommencingCreateRequest().businessType(BUSINESS_TYPE).capacityInMinutes(360);
+        final CreateSessionRequestParam createRequest = new CreateSessionRequestParam();
+        when(weekCommencingApiValidator.getWeekCommencingDuplicateValidation(body)).thenReturn(EMPTY_JSON_OBJECT);
+        when(weekCommencingSessionService.enrichCreateSessionRequest(body)).thenReturn(createRequest);
+        when(weekCommencingApiValidator.getWeekCommencingCreateValidation(body, createRequest))
+                .thenReturn(buildErrorResponse(ErrorMessages.WEEK_COMMENCING_SLOT_BASED_NOT_ALLOWED));
+
+        final CourtSchedulerApi api = api();
+        final ValidationException exception = assertThrows(ValidationException.class, () -> api.postCreateWeekCommencingSession(body));
+
+        assertThat(exception.getErrors().getString("errorMessage"), is(ErrorMessages.WEEK_COMMENCING_SLOT_BASED_NOT_ALLOWED));
         verify(sessionsService, never()).create(any());
     }
 

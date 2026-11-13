@@ -1,5 +1,6 @@
 package uk.gov.moj.cpp.courtscheduler.api.validator;
 
+import static jakarta.json.JsonValue.EMPTY_JSON_OBJECT;
 import static java.lang.Boolean.TRUE;
 import static java.util.Objects.isNull;
 import static uk.gov.moj.cpp.courtscheduler.common.CommonUtils.buildErrorResponse;
@@ -16,7 +17,9 @@ import uk.gov.moj.cpp.courtscheduler.openapi.model.WeekCommencingCreateRequest;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.time.temporal.TemporalAdjusters;
+import java.util.Optional;
 
 import jakarta.json.JsonObject;
 
@@ -38,7 +41,22 @@ public class WeekCommencingApiValidator {
     }
 
     /**
-     * Validates a week commencing request and the create payload it was converted into. Returns the
+     * Runs before the request is enriched: rejects a range in which a Monday already has a week
+     * commencing session for the same court centre and business type.
+     */
+    public JsonObject getWeekCommencingDuplicateValidation(final WeekCommencingCreateRequest request) {
+        final Optional<LocalDate> startDate = parseDate(request.getStartDate());
+        final Optional<LocalDate> endDate = parseDate(request.getEndDate());
+        if (startDate.isEmpty() || endDate.isEmpty()) {
+            // reported by the standard create validation
+            return EMPTY_JSON_OBJECT;
+        }
+        return sessionsService.validateWeekCommencingIntegrity(
+                request.getCourtCentreId(), request.getBusinessType(), startDate.get(), endDate.get());
+    }
+
+    /**
+     * Validates a week commencing request and the create payload it was enriched into. Returns the
      * first error found, or an empty object when the request is valid.
      */
     public JsonObject getWeekCommencingCreateValidation(final WeekCommencingCreateRequest request,
@@ -63,8 +81,18 @@ public class WeekCommencingApiValidator {
             return buildErrorResponse(WEEK_COMMENCING_NO_MONDAY);
         }
 
-        return sessionsService.validateWeekCommencingIntegrity(
-                request.getCourtCentreId(), request.getBusinessType(), startDate, endDate);
+        return EMPTY_JSON_OBJECT;
+    }
+
+    private static Optional<LocalDate> parseDate(final String date) {
+        if (isNull(date)) {
+            return Optional.empty();
+        }
+        try {
+            return Optional.of(DateUtils.parseRepeatPatternDate(date));
+        } catch (final DateTimeParseException e) {
+            return Optional.empty();
+        }
     }
 
     private boolean isSlotBased(final String businessTypeCode) {

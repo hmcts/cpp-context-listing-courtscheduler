@@ -899,7 +899,7 @@ public class SessionsService {
     public JsonObject validateWeekCommencingIntegrity(final String courtCentreId, final String businessType,
                                                       final LocalDate startDate, final LocalDate endDate) {
         final List<uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule> existing = courtScheduleRepository
-                .findActiveDraftWeekCommencingSessions(courtCentreId, businessType, startDate, endDate);
+                .findActiveWeekCommencingSessions(courtCentreId, businessType, startDate, endDate);
         if (existing.isEmpty()) {
             return JsonValue.EMPTY_JSON_OBJECT;
         }
