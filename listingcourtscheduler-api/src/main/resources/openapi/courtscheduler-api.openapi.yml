@@ -140,6 +140,29 @@ paths:
         '202':
           description: Accepted
 
+  /session/weekCommencing:
+    post:
+      tags: [session]
+      operationId: postCreateWeekCommencingSession
+      summary: >-
+        Create a CROWN draft week commencing session (one all-day row on each Monday of the date
+        range, in the court centre's default courtroom)
+      requestBody:
+        required: true
+        content:
+          application/vnd.courtscheduler.create-week-commencing.sessions+json:
+            schema:
+              $ref: '#/components/schemas/WeekCommencingCreateRequest'
+      responses:
+        '202':
+          description: Accepted
+        '400':
+          description: Bad Request — schema violation, validation failure or duplicate week commencing session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /sessions/judiciaries:
     post:
       tags: [session]
@@ -884,6 +907,17 @@ components:
         isDraft: { type: boolean, nullable: true }
         jurisdiction: { type: string, nullable: true }
         index: { type: integer, nullable: true }
+        isWeekCommencing: { type: boolean, nullable: true }
+
+    WeekCommencingCreateRequest:
+      type: object
+      properties:
+        courtCentreId: { type: string }
+        businessType: { type: string }
+        startDate: { type: string }
+        endDate: { type: string }
+        capacityInMinutes: { type: integer }
+        isOverbookingAllowed: { type: boolean, nullable: true }
 
     # startDate/endDate deliberately plain strings (no format:date) — preserves the legacy
     # END_DATE-placeholder-as-null quirk and custom bad-format error messages, which automatic

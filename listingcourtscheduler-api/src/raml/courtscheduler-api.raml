@@ -120,6 +120,28 @@ protocols: [ HTTP, HTTPS ]
             schema: !include json/schema/courtscheduler.delete.response.json
             example: !include json/courtscheduler.delete.response.json
 
+/session/weekCommencing:
+  description: |
+    Create a CROWN draft week commencing session
+  post:
+    description: |
+      One all-day draft session is created on each Monday of the date range, in the court centre's
+      default courtroom. capacity is in minutes (1 day = 360), at most 20 days.
+      ...
+      (mapping):
+          requestType: application/vnd.courtscheduler.create-week-commencing.sessions+json
+          name: courtscheduler.create-week-commencing.sessions
+      ...
+    body:
+      application/vnd.courtscheduler.create-week-commencing.sessions+json:
+        schema: !include json/schema/courtscheduler.create-week-commencing.sessions.json
+        example: !include json/courtscheduler.create-week-commencing.sessions.json
+    responses:
+      202:
+        description: OK
+      400:
+        description: Schema violation, validation failure or duplicate week commencing session
+
 /sessions:
   description: |
     Court sessions (court schedules). Phase 1 introduces the backend slice: read-by-ids (05),

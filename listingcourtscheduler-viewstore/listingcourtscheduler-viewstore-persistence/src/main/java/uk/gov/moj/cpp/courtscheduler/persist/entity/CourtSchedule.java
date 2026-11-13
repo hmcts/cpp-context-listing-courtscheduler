@@ -14,6 +14,7 @@ import static uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleColumnNa
 import static uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleColumnNames.IS_DRAFT;
 import static uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleColumnNames.IS_OVERBOOKING_ALLOWED;
 import static uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleColumnNames.IS_SLOT_BASED;
+import static uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleColumnNames.IS_WEEK_COMMENCING;
 import static uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleColumnNames.JURISDICTION;
 import static uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleColumnNames.MAX_AD_AFTERNOON_DURATION;
 import static uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleColumnNames.MAX_AD_MORNING_DURATION;
@@ -251,6 +252,9 @@ public class CourtSchedule implements Serializable {
 
     @Column(name = IS_DRAFT, nullable = false)
     private Boolean draft;
+
+    @Column(name = IS_WEEK_COMMENCING, nullable = false, updatable = false)
+    private Boolean weekCommencing = false;
 
     @Column(name = JURISDICTION, nullable = false)
     private String jurisdiction;
@@ -747,6 +751,14 @@ public class CourtSchedule implements Serializable {
         this.draft = isDraft;
     }
 
+    public Boolean isWeekCommencing() {
+        return weekCommencing;
+    }
+
+    public void setWeekCommencing(final Boolean weekCommencing) {
+        this.weekCommencing = weekCommencing;
+    }
+
     public String getJurisdiction() {
         return jurisdiction;
     }
@@ -844,6 +856,7 @@ public class CourtSchedule implements Serializable {
                 ", totalBooked=" + totalBooked +
                 ", nationalBreakTime=" + nationalBreakTime +
                 ", isDraft=" + draft +
+                ", isWeekCommencing=" + weekCommencing +
                 ", jurisdiction='" + jurisdiction + '\'' +
                 '}';
     }

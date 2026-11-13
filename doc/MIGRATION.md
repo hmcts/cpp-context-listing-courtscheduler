@@ -81,6 +81,7 @@ System user UUID is read from `courtscheduler.system-user-id` (env: `COURTSCHEDU
 | `POST /courtschedule/delete` | `CourtScheduleController` | `SessionsService.deleteCourtScheduleSessions` |
 | `POST /courtschedule/assign.courtroom` | `CourtScheduleController` | `SessionsService.assignCourtroom` |
 | `GET /courtschedule/search.court-schedules-by-id` | `CourtScheduleController` | `SessionsService.getCourtSchedulesById` |
+| `POST /session/weekCommencing` | `CourtSchedulerApi` | `WeekCommencingApiValidator` (duplicate check) → `WeekCommencingSessionService.enrichCreateSessionRequest` → `WeekCommencingApiValidator` → `SessionsService.create` |
 | `PUT /hearingslots` | [`HearingSlotsController`](src/main/java/uk/gov/moj/cpp/courtscheduler/controllers/HearingSlotsController.java) | `SlotsUpdateService.update` |
 | `GET /hearingslots` | `HearingSlotsController` | `SlotsSearchService.search` |
 | `DELETE /hearingslots/{hearingId}` | `HearingSlotsController` | `SlotsRemoveService.remove` |

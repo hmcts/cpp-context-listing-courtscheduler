@@ -100,6 +100,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
+import org.owasp.encoder.Encode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -127,7 +128,7 @@ public class SessionsService {
 
     @Transactional
     public void create(final CreateSessionRequestParam createSessionRequestParam) {
-        final List<CourtSchedule> courtScheduleList = new ArrayList<>();
+        final List<uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule> courtScheduleList = new ArrayList<>();
         final List<Session> sessionList = createSessionRequestParam.getSessions();
         final RepeatPattern repeatPattern = createSessionRequestParam.getRepeatPattern();
         final LocalDate startDate = DateUtils.parseRepeatPatternDate(repeatPattern.getStartDate());
@@ -671,17 +672,16 @@ public class SessionsService {
                 : DayOfWeekConverter.convert(String.join(",", session.getRepeatDays()));
     }
 
-    private void processOnceFrequency(final List<Session> sessionList, final LocalDate startDate, final List<CourtSchedule> courtScheduleList) {
+    private void processOnceFrequency(final List<Session> sessionList, final LocalDate startDate, final List<uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule> courtScheduleList) {
         for (final Session session : sessionList) {
             for (final DayOfWeek dayOfWeek : repeatDaysOf(session)) {
                 final LocalDate sessionDateCandidate = startDate.with(TemporalAdjusters.nextOrSame(dayOfWeek));
-                final CourtSchedule courtSchedule = buildCourtSchedule(session, sessionDateCandidate, session.getSessionStartTime(), session.getSessionEndTime());
-                courtScheduleList.add(courtSchedule);
+                courtScheduleList.add(buildCourtScheduleEntity(session, sessionDateCandidate));
             }
         }
     }
 
-    private void processWeeklyFrequency(final List<Session> sessionList, final LocalDate startDate, final LocalDate endDate, final int repeatFor, final List<CourtSchedule> courtScheduleList) {
+    private void processWeeklyFrequency(final List<Session> sessionList, final LocalDate startDate, final LocalDate endDate, final int repeatFor, final List<uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule> courtScheduleList) {
         final long weeksBetween = ChronoUnit.WEEKS.between(startDate, endDate);
         for (long weekNumber = 0; weekNumber <= weeksBetween; weekNumber += repeatFor) {
             for (final Session session : sessionList) {
@@ -690,14 +690,13 @@ public class SessionsService {
                     if (sessionDateCandidate.isAfter(endDate)) {
                         continue;
                     }
-                    final CourtSchedule courtSchedule = buildCourtSchedule(session, sessionDateCandidate, session.getSessionStartTime(), session.getSessionEndTime());
-                    courtScheduleList.add(courtSchedule);
+                    courtScheduleList.add(buildCourtScheduleEntity(session, sessionDateCandidate));
                 }
             }
         }
     }
 
-    private void processMonthlyFrequency(final List<Session> sessionList, final LocalDate startDate, final LocalDate endDate, final int repeatFor, final List<CourtSchedule> courtScheduleList) {
+    private void processMonthlyFrequency(final List<Session> sessionList, final LocalDate startDate, final LocalDate endDate, final int repeatFor, final List<uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule> courtScheduleList) {
         LocalDate currentDate = startDate;
 
         while (!currentDate.isAfter(endDate)) {
@@ -708,7 +707,7 @@ public class SessionsService {
         }
     }
 
-    private void populateCourtScheduleListForMonth(final Session session, final LocalDate monthStart, final LocalDate endDate, final List<CourtSchedule> courtScheduleList) {
+    private void populateCourtScheduleListForMonth(final Session session, final LocalDate monthStart, final LocalDate endDate, final List<uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule> courtScheduleList) {
         LocalDate monthEnd = monthStart.withDayOfMonth(monthStart.lengthOfMonth());
         if (monthEnd.isAfter(endDate)) {
             monthEnd = endDate;
@@ -721,8 +720,7 @@ public class SessionsService {
                     !sessionDateCandidate.isAfter(monthEnd) &&
                     !sessionDateCandidate.isBefore(monthStart)) {
 
-                final CourtSchedule courtSchedule = buildCourtSchedule(session, sessionDateCandidate, session.getSessionStartTime(), session.getSessionEndTime());
-                courtScheduleList.add(courtSchedule);
+                courtScheduleList.add(buildCourtScheduleEntity(session, sessionDateCandidate));
             }
         }
     }
@@ -754,6 +752,13 @@ public class SessionsService {
         final LocalDate firstDayOfMonth = date.withDayOfMonth(1);
         final LocalDate firstOccurrence = firstDayOfMonth.with(TemporalAdjusters.nextOrSame(date.getDayOfWeek()));
         return (date.getDayOfMonth() - firstOccurrence.getDayOfMonth()) / 7 + 1;
+    }
+
+    private uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule buildCourtScheduleEntity(final Session session, final LocalDate sessionDateCandidate) {
+        final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule entity = CourtScheduleMapper.toEntity(
+                buildCourtSchedule(session, sessionDateCandidate, session.getSessionStartTime(), session.getSessionEndTime()));
+        entity.setWeekCommencing(TRUE.equals(session.getIsWeekCommencing()));
+        return entity;
     }
 
     private CourtSchedule buildCourtSchedule(final Session session, final LocalDate sessionDateCandidate, final String sessionStartTime, final String sessionEndTime) {
@@ -833,10 +838,7 @@ public class SessionsService {
         return normalisedStartTime;
     }
 
-    private void saveCourtSchedules(final List<CourtSchedule> courtScheduleList) {
-        final List<uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule> courtScheduleEntities = courtScheduleList.stream()
-                .map(CourtScheduleMapper::toEntity)
-                .toList();
+    private void saveCourtSchedules(final List<uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule> courtScheduleEntities) {
         courtScheduleRepository.saveCourtSchedules(courtScheduleEntities);
     }
 
@@ -892,6 +894,18 @@ public class SessionsService {
         }
         return referenceDataCache.getCpCourtRoomByCourtRoomIdAndCourtCentreId(courtRoomId, courtCentreId)
                 .orElseThrow(() -> new RuntimeException(COURTROOM_NOT_FOUND + courtRoomId + " in court centre " + courtCentreId));
+    }
+
+    public JsonObject validateWeekCommencingIntegrity(final String courtCentreId, final String businessType,
+                                                      final LocalDate startDate, final LocalDate endDate) {
+        final List<uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule> existing = courtScheduleRepository
+                .findActiveWeekCommencingSessions(courtCentreId, businessType, startDate, endDate);
+        if (existing.isEmpty()) {
+            return JsonValue.EMPTY_JSON_OBJECT;
+        }
+        logger.info("Week commencing session already exists for courtCentreId {} businessType {} on {}",
+                courtCentreId, Encode.forJava(businessType), existing.getFirst().getSessionDate());
+        return buildErrorResponse(ErrorMessages.DUPLICATE_SESSIONS);
     }
 
     public JsonObject validateSessionIntegrity(final Session session, final LocalDate startDate, final LocalDate endDate, final Integer repeatFor) {

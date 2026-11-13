@@ -133,6 +133,10 @@ public class CourtScheduleCriteria {
             final Predicate draftPredicate = criteriaBuilder.equal(root.get(CourtSchedule_.DRAFT), courtSchedule.isDraft());
             predicateList.add(draftPredicate);
         }
+        if (nonNull(courtSchedule.isWeekCommencing())) {
+            final Predicate weekCommencingPredicate = criteriaBuilder.equal(root.get(CourtSchedule_.WEEK_COMMENCING), courtSchedule.isWeekCommencing());
+            predicateList.add(weekCommencingPredicate);
+        }
         criteriaQuery.where(criteriaBuilder.and(predicateList.toArray(new Predicate[]{})));
     }
 }

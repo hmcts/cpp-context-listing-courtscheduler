@@ -42,6 +42,7 @@ import uk.gov.moj.cpp.courtscheduler.api.service.MiService;
 import uk.gov.moj.cpp.courtscheduler.api.service.ProvisionalBookingService;
 import uk.gov.moj.cpp.courtscheduler.api.service.SlotsRemoveService;
 import uk.gov.moj.cpp.courtscheduler.api.service.SlotsUpdateService;
+import uk.gov.moj.cpp.courtscheduler.api.service.WeekCommencingSessionService;
 import uk.gov.moj.cpp.courtscheduler.api.validator.AssignJudiciariesApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.CourtScheduleApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.HearingSlotsApiValidator;
@@ -49,6 +50,7 @@ import uk.gov.moj.cpp.courtscheduler.api.validator.JudiciariesApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.ProvisionalBookingApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.SessionsApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.ValidationException;
+import uk.gov.moj.cpp.courtscheduler.api.validator.WeekCommencingApiValidator;
 import uk.gov.moj.cpp.courtscheduler.common.service.AllocatedListingService;
 import uk.gov.moj.cpp.courtscheduler.common.service.BookingLogPurgeService;
 import uk.gov.moj.cpp.courtscheduler.common.service.JudiciaryAssignmentService;
@@ -85,6 +87,7 @@ import uk.gov.moj.cpp.courtscheduler.openapi.model.ProvisionalBookingSlots;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.RequestedSlots;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.Result;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.UpdateCourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.WeekCommencingCreateRequest;
 import uk.gov.moj.cpp.courtscheduler.exception.CrownFallbackInvalidRequestException;
 import uk.gov.moj.cpp.courtscheduler.exception.CrownFallbackNoSessionException;
 import uk.gov.moj.cpp.courtscheduler.exception.ExtendMultidayHearingException;
@@ -184,6 +187,8 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
     private final ProvisionalBookingApiValidator provisionalBookingApiValidator;
     private final ProvisionalSlotConverter provisionalSlotConverter;
     private final BookingLogPurgeService bookingLogPurgeService;
+    private final WeekCommencingSessionService weekCommencingSessionService;
+    private final WeekCommencingApiValidator weekCommencingApiValidator;
 
     public CourtSchedulerApi(final ObjectMapper objectMapper,
                              final HttpServletRequest request,
@@ -205,7 +210,9 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
                              final ProvisionalBookingService provisionalBookingService,
                              final ProvisionalBookingApiValidator provisionalBookingApiValidator,
                              final ProvisionalSlotConverter provisionalSlotConverter,
-                             final BookingLogPurgeService bookingLogPurgeService) {
+                             final BookingLogPurgeService bookingLogPurgeService,
+                             final WeekCommencingSessionService weekCommencingSessionService,
+                             final WeekCommencingApiValidator weekCommencingApiValidator) {
         this.objectMapper = objectMapper;
         this.lenientObjectMapper = objectMapper.copy()
                 .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
@@ -229,6 +236,8 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
         this.provisionalBookingApiValidator = provisionalBookingApiValidator;
         this.provisionalSlotConverter = provisionalSlotConverter;
         this.bookingLogPurgeService = bookingLogPurgeService;
+        this.weekCommencingSessionService = weekCommencingSessionService;
+        this.weekCommencingApiValidator = weekCommencingApiValidator;
     }
 
     /* ============================================================
@@ -268,12 +277,33 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
         return ResponseEntity.status(HttpStatus.ACCEPTED).build();
     }
 
+    @Override
+    public ResponseEntity<Void> postCreateWeekCommencingSession(final WeekCommencingCreateRequest body) {
+        LOG.info("courtscheduler.create-week-commencing.sessions requested: {}", body);
+
+        final JsonObject duplicate = weekCommencingApiValidator.getWeekCommencingDuplicateValidation(body);
+        if (!duplicate.isEmpty()) {
+            throw new ValidationException(duplicate);
+        }
+
+        final CreateSessionRequestParam createRequest = weekCommencingSessionService.enrichCreateSessionRequest(body);
+
+        final JsonObject validate = weekCommencingApiValidator.getWeekCommencingCreateValidation(body, createRequest);
+        if (!validate.isEmpty()) {
+            throw new ValidationException(validate);
+        }
+
+        sessionsService.create(createRequest);
+        return ResponseEntity.status(HttpStatus.ACCEPTED).build();
+    }
+
     /**
      * Re-applies the defaults the legacy CreateSessionsRequestParamConverter filled in for fields
      * the caller omitted, so requests that relied on them keep validating and persisting the same
      * way: sessions[] entries default allDaySplit=false and maxDurationFor*=0, sessionToBeAdded
      * defaults maxDurationFor*=-1 (flagged by validation as "not supplied"), and both default the
-     * jurisdiction to MAGISTRATES.
+     * jurisdiction to MAGISTRATES. isWeekCommencing is always cleared: week commencing sessions are
+     * only created through POST /session/weekCommencing, which enforces their duplicate rule.
      */
     private static CreateSessionRequestParam applyLegacyCreateDefaults(final CreateSessionRequestParam param) {
         if (param == null) {
@@ -294,6 +324,7 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
     }
 
     private static void applyLegacySessionDefaults(final Session session, final int defaultMaxDuration) {
+        session.setIsWeekCommencing(null);
         if (session.getMaxDurationForMorning() == null) {
             session.setMaxDurationForMorning(defaultMaxDuration);
         }

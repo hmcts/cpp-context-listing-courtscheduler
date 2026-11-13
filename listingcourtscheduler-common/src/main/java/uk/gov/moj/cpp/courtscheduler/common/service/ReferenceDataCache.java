@@ -162,6 +162,15 @@ public class ReferenceDataCache {
         }
     }
 
+    public List<CourtRoom> getCpCourtRoomsByCourtCentreId(final String courtCentreId) {
+        if (isNull(courtCentreId)) {
+            return emptyList();
+        }
+        return referenceDataService.getCpCourtRooms().stream()
+                .filter(c -> courtCentreId.equals(c.getOucodeUUID()))
+                .toList();
+    }
+
     public Optional<CourtRoom> getCpCourtRoomByCourtRoomIdAndCourtCentreId(final String courtRoomId, final String courtCentreId) {
         return getCpCourtRoomsByCourtRoomId(courtRoomId).stream()
                 .filter(c -> nonNull(courtCentreId) && courtCentreId.equals(c.getOucodeUUID()))

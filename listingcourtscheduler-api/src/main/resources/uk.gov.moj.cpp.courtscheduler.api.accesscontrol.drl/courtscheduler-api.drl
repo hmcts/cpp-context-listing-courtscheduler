@@ -16,6 +16,15 @@ rule "API - Action - courtscheduler.create"
     $outcome.setSuccess(true);
 end
 
+rule "API - Action - courtscheduler.create-week-commencing.sessions"
+  when
+    $outcome: Outcome();
+    $action: Action(name == "courtscheduler.create-week-commencing.sessions");
+        eval(userAndGroupProvider.hasPermission($action, PermissionConstants.createCourtSchedulePermission()));
+  then
+    $outcome.setSuccess(true);
+end
+
 rule "API - Action - courtscheduler.validate.create"
   when
     $outcome: Outcome();
