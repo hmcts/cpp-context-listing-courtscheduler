@@ -201,12 +201,7 @@ public class SlotsUpdateService {
             return toResponseFromExisting(existing.get());
         }
 
-        final Optional<CrownFallbackSearchResult> found = courtScheduleRepository.searchCrownFallbackSlots(
-                request.getCourtCentreId(),
-                request.getHearingDate(),
-                request.getDurationInMinutes(),
-                request.getCourtRoomId(),
-                request.getEarliestHearingTime());
+        final Optional<CrownFallbackSearchResult> found = searchCrownFallbackSession(request);
 
         // SPRDT-1159: no bookable session on the requested date/room -> create one on the fly from
         // the request parameters (FINAL when a courtRoomId was supplied, DRAFT otherwise) so the
@@ -220,13 +215,7 @@ public class SlotsUpdateService {
         final String allocationSource = found.isPresent() ? SOURCE_EXEMPT_SAB : SOURCE_AUTO_CREATE_SAB;
 
         final CourtSchedule session = searchResult.session();
-        final AllocatedSlot slot = buildAllocatedSlot(request, session, allocationSource);
-        final Result persistResult = courtScheduleRepository.saveBookedSlots(new ArrayList<>(List.of(slot)), false, false);
-        if (!Boolean.TRUE.equals(persistResult.getSuccess())) {
-            throw new CrownFallbackNoSessionException(
-                    "Crown fallback failed to persist allocation for hearingId " + request.getHearingId()
-                            + ": " + persistResult.getMsg());
-        }
+        persistSingleDayBooking(request, session, allocationSource, true);
 
         // The existing saveBookedSlots pipeline doesn't reliably propagate the slot's source to
         // allocated_listings.source (observed null on IT in some branches of
@@ -240,6 +229,44 @@ public class SlotsUpdateService {
                 searchResult.overbooked(), request.getSource(), allocationSource);
 
         return toResponse(request, searchResult);
+    }
+
+    /**
+     * The single-day search shared by the fresh booking ({@link #crownFallbackSearchAndBook}) and the
+     * single-day MOVE ({@link #crownSingleDayMove}). It has NO availability predicate (SPRDT-1159), so
+     * a hearing's own already-booked minutes can never make it miss a session.
+     */
+    private Optional<CrownFallbackSearchResult> searchCrownFallbackSession(final CrownFallbackRequest request) {
+        return courtScheduleRepository.searchCrownFallbackSlots(
+                request.getCourtCentreId(),
+                request.getHearingDate(),
+                request.getDurationInMinutes(),
+                request.getCourtRoomId(),
+                request.getEarliestHearingTime());
+    }
+
+    /**
+     * Builds the single-day allocation slot for {@code session} and persists it. {@code allocationSource}
+     * is stamped on the slot, which {@code CourtScheduleRepositoryImpl#saveAllocatedListing} copies
+     * verbatim onto the new allocated_listings row.
+     *
+     * <p>{@code releaseExistingHearingAllocations=true} is the fresh booking (the hearing holds no
+     * row, so the repository's hearing-wide release is a no-op). The MOVE passes {@code false}: it
+     * has already released the hearing's old rows through {@code releaseOldAllocatedListings}, so
+     * the save must not release a second time.</p>
+     */
+    private void persistSingleDayBooking(final CrownFallbackRequest request, final CourtSchedule session,
+                                         final String allocationSource,
+                                         final boolean releaseExistingHearingAllocations) {
+        final List<AllocatedSlot> slots = new ArrayList<>(List.of(buildAllocatedSlot(request, session, allocationSource)));
+        final Result persistResult = releaseExistingHearingAllocations
+                ? courtScheduleRepository.saveBookedSlots(slots, false, false)
+                : courtScheduleRepository.saveBookedSlots(slots, false, false, false);
+        if (!Boolean.TRUE.equals(persistResult.getSuccess())) {
+            throw new CrownFallbackNoSessionException(
+                    "Crown fallback failed to persist allocation for hearingId " + request.getHearingId()
+                            + ": " + persistResult.getMsg());
+        }
     }
 
     /**
@@ -333,9 +360,22 @@ public class SlotsUpdateService {
      * (ADR-005): the room is only settled at allocation.
      */
     private static CrownFallbackResponse toResponse(final CrownFallbackRequest request, final CrownFallbackSearchResult result) {
-        final CourtSchedule session = result.session();
+        return toResponse(request, result, request.getSource());
+    }
+
+    /** As {@link #toResponse(CrownFallbackRequest, CrownFallbackSearchResult)}, with the response {@code source} overridden. */
+    private static CrownFallbackResponse toResponse(final CrownFallbackRequest request, final CrownFallbackSearchResult result,
+                                                    final String source) {
+        return toFullResponse(request.getHearingId(), result.session(), request.getDurationInMinutes(),
+                source, result.overbooked());
+    }
+
+    /** Every single-day response field filled from the booked {@code session} (the room stays null for a draft, ADR-005). */
+    private static CrownFallbackResponse toFullResponse(final String hearingId, final CourtSchedule session,
+                                                        final Integer durationInMinutes, final String source,
+                                                        final boolean overbooked) {
         return new CrownFallbackResponse(
-                request.getHearingId(),
+                hearingId,
                 session.getCourtScheduleId(),
                 Boolean.TRUE.equals(session.getDraft()) ? null : session.getCourtRoomId(),
                 session.getSessionDate().toString(),
@@ -343,11 +383,21 @@ public class SlotsUpdateService {
                         ? DateUtils.toIsoString(session.getSessionStartTime()) : null,
                 session.getSessionEndTime() != null
                         ? DateUtils.toIsoString(session.getSessionEndTime()) : null,
-                request.getDurationInMinutes(),
+                durationInMinutes,
                 session.getDraft(),
                 session.getBusinessType(),
-                request.getSource(),
-                result.overbooked());
+                source,
+                overbooked);
+    }
+
+    private static CrownSearchAndBookResponse toSearchAndBookResponse(final CrownFallbackResponse fallbackResponse) {
+        return new CrownSearchAndBookResponse(
+                fallbackResponse.hearingId(), fallbackResponse.courtScheduleId(),
+                fallbackResponse.source(), Collections.emptyList(),
+                fallbackResponse.courtRoomId(), fallbackResponse.sessionDate(),
+                fallbackResponse.sessionStartTime(), fallbackResponse.sessionEndTime(),
+                fallbackResponse.durationInMinutes(), fallbackResponse.isDraft(),
+                fallbackResponse.businessType(), fallbackResponse.overbooked());
     }
 
     private CrownFallbackResponse toResponseFromExisting(final AllocatedListing existing) {
@@ -383,8 +433,9 @@ public class SlotsUpdateService {
 
     /**
      * CROWN search-and-book (SPRDT-1089, AC1/AC2/AC3/AC6).
-     * Idempotency first; single-day strict (+ relaxed fallback when {@code source} present);
-     * multi-day consecutive weekdays from the optional anchor, else searched across the court centre.
+     * Single-day: a fresh booking when the hearing holds no allocated_listings row, otherwise an
+     * idempotent answer or a MOVE ({@link #crownSingleDayHeldSearchAndBook}); multi-day consecutive
+     * weekdays from the optional anchor, else searched across the court centre.
      */
     public CrownSearchAndBookResponse crownSearchAndBook(final CrownSearchAndBookRequest request) {
         LOGGER.info("[CROWN-SAB] hearingId: {}, centre: {}, date: {}, endDate: {}, durationMins: {}, anchor: {}, source: {}",
@@ -395,32 +446,181 @@ public class SlotsUpdateService {
             return crownMultiDaySearchAndBook(request);
         }
 
-        // Single-day idempotency + delegation — UNCHANGED. findAllocatedListingByHearingId returns
-        // a single (Optional) row, which is correct here: single-day CROWN allocations are always
-        // exactly one allocated_listings row per hearing.
-        final Optional<AllocatedListing> existing =
-                courtScheduleRepository.findAllocatedListingByHearingId(request.getHearingId());
-        if (existing.isPresent()) {
-            final AllocatedListing allocation = existing.get();
-            LOGGER.info("[CROWN-SAB] Idempotent hit - hearingId: {} already allocated to courtScheduleId: {}",
-                    Encode.forJava(request.getHearingId()), Encode.forJava(allocation.getCourtScheduleId()));
-            return new CrownSearchAndBookResponse(
-                    request.getHearingId(), allocation.getCourtScheduleId(), allocation.getSource(),
-                    Collections.emptyList(), null, null, null, null, null, null, null, null);
+        // SPRDT-1539 (H23): a hearing holding ANY allocated_listings row (findByHearingId — all of
+        // them, since an earlier multi-day block leaves several) is answered or moved by
+        // crownSingleDayHeldSearchAndBook; it never gets the old null-field "idempotent hit".
+        final List<AllocatedListing> heldAllocations =
+                allocatedListingRepository.findByHearingId(request.getHearingId());
+        if (!heldAllocations.isEmpty()) {
+            return crownSingleDayHeldSearchAndBook(request, heldAllocations);
         }
 
-        // Single-day: delegate to the existing single-day CROWN engine (crownFallbackSearchAndBook),
+        // No row held: delegate to the existing single-day CROWN engine (crownFallbackSearchAndBook),
         // which searches (searchCrownFallbackSlots) and books. It requires a source; a single-day
         // request without one is rejected there (CrownFallbackInvalidRequestException) — a known single
         // session is a list.hearings-in-sessions case, not search-and-book.
-        final CrownFallbackResponse fallbackResponse = crownFallbackSearchAndBook(toCrownFallbackRequest(request));
-        return new CrownSearchAndBookResponse(
-                fallbackResponse.hearingId(), fallbackResponse.courtScheduleId(),
-                fallbackResponse.source(), Collections.emptyList(),
-                fallbackResponse.courtRoomId(), fallbackResponse.sessionDate(),
-                fallbackResponse.sessionStartTime(), fallbackResponse.sessionEndTime(),
-                fallbackResponse.durationInMinutes(), fallbackResponse.isDraft(),
-                fallbackResponse.businessType(), fallbackResponse.overbooked());
+        return toSearchAndBookResponse(crownFallbackSearchAndBook(toCrownFallbackRequest(request)));
+    }
+
+    /**
+     * SPRDT-1539 (H23): single-day request for a hearing that already holds one or more
+     * allocated_listings rows. Each row's session is resolved with the full-fields lookup
+     * ({@code getCourtSchedulesByIdList}; {@code findCourtScheduleById} drops the room).
+     *
+     * <ul>
+     *   <li>Exactly one row held and its session matches the request ({@link #matchesSingleDayRequest}):
+     *       idempotent — no writes, full single-day answer built from that session.</li>
+     *   <li>Otherwise a MOVE ({@link #crownSingleDayMove}), which also shrinks an old multi-day block
+     *       to the one requested day.</li>
+     * </ul>
+     */
+    private CrownSearchAndBookResponse crownSingleDayHeldSearchAndBook(
+            final CrownSearchAndBookRequest request, final List<AllocatedListing> heldAllocations) {
+        final List<String> heldIds = heldAllocations.stream().map(AllocatedListing::getCourtScheduleId).distinct().toList();
+        final Map<String, CourtSchedule> heldSessionById = new LinkedHashMap<>();
+        courtScheduleRepository.getCourtSchedulesByIdList(heldIds)
+                .forEach(session -> heldSessionById.putIfAbsent(session.getCourtScheduleId(), session));
+
+        final Optional<CourtSchedule> matchingHeldSession = findMatchingHeldSession(request, heldAllocations, heldSessionById);
+
+        if (heldAllocations.size() == 1 && matchingHeldSession.isPresent()) {
+            final AllocatedListing allocation = heldAllocations.get(0);
+            final CourtSchedule session = matchingHeldSession.get();
+            LOGGER.info("[CROWN-SAB] Idempotent hit - hearingId: {} already allocated to courtScheduleId: {} on the requested date/room",
+                    Encode.forJava(request.getHearingId()), Encode.forJava(allocation.getCourtScheduleId()));
+            return toSearchAndBookResponse(toFullResponse(
+                    request.getHearingId(), session, allocation.getDuration(), allocation.getSource(),
+                    isOverbookedExcludingOwnMinutes(session, heldAllocations, request.getDurationInMinutes(), false)));
+        }
+
+        return crownSingleDayMove(request, heldAllocations, heldSessionById);
+    }
+
+    /** First held session (in row order, so the choice is deterministic) that matches the request; a row whose session is missing never matches. */
+    private static Optional<CourtSchedule> findMatchingHeldSession(
+            final CrownSearchAndBookRequest request, final List<AllocatedListing> heldAllocations,
+            final Map<String, CourtSchedule> heldSessionById) {
+        return heldAllocations.stream()
+                .map(allocation -> heldSessionById.get(allocation.getCourtScheduleId()))
+                .filter(session -> session != null && matchesSingleDayRequest(request, session))
+                .findFirst();
+    }
+
+    /**
+     * A held session "matches" a single-day request when it sits on the requested date and, if the
+     * request names a courtroom, is in that room AND is FINAL (a DRAFT session holds no room, ADR-005,
+     * so it cannot satisfy a room request). Without a courtroom the date alone decides.
+     */
+    private static boolean matchesSingleDayRequest(final CrownSearchAndBookRequest request, final CourtSchedule session) {
+        if (request.getHearingDate() == null || !request.getHearingDate().equals(session.getSessionDate())) {
+            return false;
+        }
+        final String requestedRoom = request.getCourtRoomId();
+        if (requestedRoom == null || requestedRoom.isBlank()) {
+            return true;
+        }
+        return requestedRoom.equals(session.getCourtRoomId()) && !Boolean.TRUE.equals(session.getDraft());
+    }
+
+    /**
+     * SPRDT-1539 (H23): single-day MOVE. Search BEFORE release (as {@link #crownMultiDayMove} and
+     * moveHearingToPastDate do), so a miss never orphans the hearing:
+     * <ol>
+     *   <li>Target = the held session that matches the request, when there is one (no search);
+     *       else the same search a fresh single-day booking runs; else auto-create exactly as the fresh
+     *       path does (FINAL with a room, DRAFT without).</li>
+     *   <li>Auto-create impossible: 422 NO_AVAILABILITY on the requested date, existing allocation untouched.</li>
+     *   <li>Release ALL the hearing's old rows (payback via {@code releaseOldAllocatedListings}), then
+     *       persist ONE row with source MOVE and the request's duration.</li>
+     * </ol>
+     */
+    private CrownSearchAndBookResponse crownSingleDayMove(
+            final CrownSearchAndBookRequest request, final List<AllocatedListing> heldAllocations,
+            final Map<String, CourtSchedule> heldSessionById) {
+        LOGGER.info("[CROWN-SAB] Single-day move - hearingId: {}, held allocation(s): {}, date: {}, room: {}",
+                Encode.forJava(request.getHearingId()), heldAllocations.size(), request.getHearingDate(),
+                Encode.forJava(request.getCourtRoomId()));
+
+        final CrownFallbackRequest fallbackRequest = toCrownFallbackRequest(request);
+        // Before any write: a 0-minute / dateless / source-less request must not persist a row.
+        validateCrownFallbackRequest(fallbackRequest);
+
+        final Optional<CourtSchedule> matchingHeldSession = findMatchingHeldSession(request, heldAllocations, heldSessionById);
+        final CrownFallbackSearchResult target;
+        if (matchingHeldSession.isPresent()) {
+            // Its capacity already holds this hearing's own minutes, so a search could wrongly skip it
+            // (and its availability would read low): keep it, no search.
+            final CourtSchedule session = matchingHeldSession.get();
+            target = new CrownFallbackSearchResult(session,
+                    isOverbookedExcludingOwnMinutes(session, heldAllocations, request.getDurationInMinutes(), false));
+        } else {
+            final Optional<CrownFallbackSearchResult> found = searchCrownFallbackSession(fallbackRequest);
+            target = found
+                    .map(result -> withOwnMinutesExcluded(result, heldSessionById, heldAllocations, request.getDurationInMinutes()))
+                    .orElseGet(() -> autoCreateSessionForMove(fallbackRequest));
+        }
+
+        // Old rows go only now that a target exists. Payback restores the freed sessions' capacity.
+        courtScheduleRepository.releaseOldAllocatedListings(request.getHearingId());
+        // source=MOVE is stamped on the slot, so it is written with the new row. The save is the
+        // no-release variant: the release above already removed every old row, and a second
+        // hearing-wide release inside the save would be redundant.
+        persistSingleDayBooking(fallbackRequest, target.session(), SOURCE_MOVE, false);
+
+        LOGGER.info("[CROWN-SAB] Single-day move - hearingId: {}, now on courtScheduleId: {}, isDraft: {}, overbooked: {}",
+                Encode.forJava(request.getHearingId()), Encode.forJava(target.session().getCourtScheduleId()),
+                target.session().getDraft(), target.overbooked());
+        return toSearchAndBookResponse(toResponse(fallbackRequest, target, SOURCE_MOVE));
+    }
+
+    /**
+     * The fresh path's auto-create, with its "impossible" outcome (no session to copy from and no
+     * ouCode on the request) turned into 422 NO_AVAILABILITY [requested date] — the flat body the
+     * multi-day move/resize uses. Only the auto-create call is wrapped: a persist failure is a
+     * different error and keeps its own type.
+     */
+    private CrownFallbackSearchResult autoCreateSessionForMove(final CrownFallbackRequest request) {
+        try {
+            return autoCreateSession(request);
+        } catch (final CrownFallbackNoSessionException e) {
+            LOGGER.info("[CROWN-SAB] Single-day move - hearingId: {}, no session found or creatable on {}; existing allocation left intact, 422 NO_AVAILABILITY",
+                    Encode.forJava(request.getHearingId()), request.getHearingDate());
+            throw new ExtendMultidayHearingException(NO_AVAILABILITY, e.getMessage(), List.of(request.getHearingDate()));
+        }
+    }
+
+    /**
+     * The search has no availability predicate, so it cannot MISS a session the hearing already holds;
+     * but when it returns one (e.g. the hearing's own DRAFT at the requested room), its
+     * {@code overbooked} flag is computed from an availability that still counts this hearing's own
+     * minutes. Recompute the flag without them.
+     */
+    private static CrownFallbackSearchResult withOwnMinutesExcluded(
+            final CrownFallbackSearchResult found, final Map<String, CourtSchedule> heldSessionById,
+            final List<AllocatedListing> heldAllocations, final int requiredMinutes) {
+        final CourtSchedule heldSession = heldSessionById.get(found.session().getCourtScheduleId());
+        if (heldSession == null) {
+            return found;
+        }
+        return new CrownFallbackSearchResult(found.session(),
+                isOverbookedExcludingOwnMinutes(heldSession, heldAllocations, requiredMinutes, found.overbooked()));
+    }
+
+    /**
+     * Whether booking {@code requiredMinutes} on {@code heldSession} overbooks it once the hearing's own
+     * held minutes are given back ({@link #reclaimHearingsOwnCapacity}). {@code fallback} is returned
+     * when the session's capacity fields cannot support the arithmetic (all-day split, or no
+     * max/booked figures).
+     */
+    private static boolean isOverbookedExcludingOwnMinutes(
+            final CourtSchedule heldSession, final List<AllocatedListing> heldAllocations,
+            final int requiredMinutes, final boolean fallback) {
+        if (Boolean.TRUE.equals(heldSession.getAllDaySplit())
+                || heldSession.getMaxDuration() == null || heldSession.getTotalBooked() == null) {
+            return fallback;
+        }
+        reclaimHearingsOwnCapacity(List.of(heldSession), heldAllocations);
+        return getEffectiveAvailableDuration(heldSession) < requiredMinutes;
     }
 
     /**
@@ -501,13 +701,32 @@ public class SlotsUpdateService {
                         courtScheduleRepository.findConsecutiveSessions(request.getCourtScheduleId(), daysNeeded),
                         daysNeeded, request.getHearingId(), perDay)
                 : bookConsecutiveSessions(
-                        courtScheduleRepository.findConsecutiveDurationBasedSessionsForCentre(
-                                request.getCourtCentreId(), request.getHearingDate(), daysNeeded),
+                        findNoAnchorCrownRun(request, daysNeeded, false),
                         daysNeeded, request.getHearingId(), perDay);
         CourtScheduleRoomSanitiser.stripCourtRoomFromDraftSessions(sessions);
         return new CrownSearchAndBookResponse(
                 request.getHearingId(), null, null, sessions,
                 null, null, null, null, null, null, null, null);
+    }
+
+    /**
+     * SPRDT-1539: the consecutive-session candidates for a multi-day CROWN request without an anchor.
+     * A request that names a courtroom is searched in that courtroom only ({@code finalSessionsOnly}
+     * keeps an allocated block on FINAL sessions); without one, the whole centre is searched, as
+     * before. The centre-wide search ignored the courtroom, so a no-anchor move could book the block
+     * into any room of the centre, draft sessions included, with no error.
+     */
+    private List<CourtSchedule> findNoAnchorCrownRun(final CrownSearchAndBookRequest request, final int daysNeeded,
+                                                     final boolean finalSessionsOnly) {
+        if (request.getCourtRoomId() != null && !request.getCourtRoomId().isBlank()) {
+            LOGGER.info("[CROWN-SAB] No-anchor search kept to courtroom {} - hearingId: {}, from {}, {} day(s), finalOnly: {}",
+                    Encode.forJava(request.getCourtRoomId()), Encode.forJava(request.getHearingId()),
+                    request.getHearingDate(), daysNeeded, finalSessionsOnly);
+            return courtScheduleRepository.findConsecutiveDurationBasedSessionsInCourtRoom(
+                    request.getCourtCentreId(), request.getHearingDate(), daysNeeded, request.getCourtRoomId(), finalSessionsOnly);
+        }
+        return courtScheduleRepository.findConsecutiveDurationBasedSessionsForCentre(
+                request.getCourtCentreId(), request.getHearingDate(), daysNeeded);
     }
 
     /**
@@ -527,10 +746,11 @@ public class SlotsUpdateService {
 
         final int daysNeeded = crownDaysNeeded(request);
         final int perDay = perDayDuration(request.getDurationInMinutes(), daysNeeded);
+        // No anchor and a named courtroom: the run stays in that courtroom, and an allocated block
+        // only moves onto FINAL sessions, so a move never lands in another room or unallocates.
         final List<CourtSchedule> rawCandidates = (request.getCourtScheduleId() != null && !request.getCourtScheduleId().isBlank())
                 ? courtScheduleRepository.findConsecutiveSessions(request.getCourtScheduleId(), daysNeeded)
-                : courtScheduleRepository.findConsecutiveDurationBasedSessionsForCentre(
-                        request.getCourtCentreId(), request.getHearingDate(), daysNeeded);
+                : findNoAnchorCrownRun(request, daysNeeded, isAllocatedBlockEdit(request, existingSessions));
         // A candidate day may be one the SAME hearing already occupies (e.g. anchoring the move on a
         // continuation day of its own existing block — the STE 00b7b8bd/072b7512 scenario). totalBooked
         // is a live SUM(al.duration) over allocated_listings, so until the old rows are released (below)
@@ -577,26 +797,18 @@ public class SlotsUpdateService {
     }
 
     /**
-     * MAGS search-and-book (SPRDT-1089, AC4/AC5). No anchor. Multi-day books CONSECUTIVE weekday
-     * sessions (one room + business type); single-day honours {@code isPolice} overbooking.
+     * MAGS search-and-book, as on main (SPRDT-1539): one session per request through main's single-day
+     * matcher, with {@code isPolice} overbooking. No anchor. The matcher releases the hearing's existing
+     * bookings first, so a repeat request books again (there is no idempotent short-cut).
+     * {@code durationInMinutes} is booked whole on that session and {@code endDate} is accepted and
+     * ignored. This reverses the multi-day consecutive booking of SPRDT-1089 AC4/AC5.
      */
     public MagsSearchAndBookResponse magsSearchAndBook(final MagsSearchAndBookRequest request) {
         LOGGER.info("[MAGS-SAB] hearingId: {}, centre: {}, date: {}, endDate: {}, durationMins: {}, isPolice: {}",
                 Encode.forJava(request.getHearingId()), Encode.forJava(request.getCourtCentreId()), request.getHearingDate(), request.getEndDate(),
                 request.getDurationInMinutes(), request.getIsPolice());
 
-        final Optional<AllocatedListing> existing =
-                courtScheduleRepository.findAllocatedListingByHearingId(request.getHearingId());
-        if (existing.isPresent()) {
-            LOGGER.info("[MAGS-SAB] Idempotent hit - hearingId: {}", Encode.forJava(request.getHearingId()));
-            return new MagsSearchAndBookResponse(request.getHearingId(), Collections.emptyList());
-        }
-
-        final int daysNeeded = daysNeeded(request.getDurationInMinutes(), request.getHearingDate(), request.getEndDate());
-        final List<CourtSchedule> sessions = daysNeeded <= 1
-                ? magsSingleDaySearchAndBook(request)
-                : magsMultidayConsecutiveSearchAndBook(request, daysNeeded);
-        return new MagsSearchAndBookResponse(request.getHearingId(), sessions);
+        return new MagsSearchAndBookResponse(request.getHearingId(), magsSingleDaySearchAndBook(request));
     }
 
     /**
@@ -629,28 +841,6 @@ public class SlotsUpdateService {
                 .filter(Objects::nonNull)
                 .toList();
         return courtScheduleRepository.getCourtSchedulesByIdList(bookedScheduleIds);
-    }
-
-    /**
-     * MAGS multiday search-and-book — CONSECUTIVE business days only (no sparse). Finds one room +
-     * business type in the centre with {@code daysNeeded} consecutive AD weekday sessions (keyed on the
-     * courtCentreId UUID), then books each by its courtScheduleId (isSearchUpdate=false). Returns empty
-     * if a consecutive run of the required length is not available.
-     * <p>NB: reuses the AD-weekday consecutive search; if MAGS multiday must match non-AD/slot-based
-     * sessions, this method is the single point to adjust.
-     */
-    private List<CourtSchedule> magsMultidayConsecutiveSearchAndBook(final MagsSearchAndBookRequest request,
-                                                                     final int daysNeeded) {
-        final List<CourtSchedule> sessions = courtScheduleRepository.findConsecutiveSessionsForCentre(
-                request.getCourtCentreId(), request.getHearingDate(), daysNeeded);
-        if (sessions.size() < daysNeeded) {
-            LOGGER.info("[MAGS-SAB] multiday: found {} consecutive session(s) of {} needed for hearingId {}",
-                    sessions.size(), daysNeeded, Encode.forJava(request.getHearingId()));
-            return Collections.emptyList();
-        }
-        persistSessions(sessions, request.getHearingId(), false,
-                perDayDuration(request.getDurationInMinutes(), daysNeeded), SOURCE_NONPOLICE);
-        return sessions;
     }
 
     /**
