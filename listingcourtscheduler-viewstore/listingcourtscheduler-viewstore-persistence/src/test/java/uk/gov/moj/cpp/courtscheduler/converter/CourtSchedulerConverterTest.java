@@ -12,6 +12,8 @@ import java.util.List;
 
 import io.github.benas.randombeans.api.EnhancedRandom;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class CourtSchedulerConverterTest {
 
@@ -70,6 +72,17 @@ class CourtSchedulerConverterTest {
         assertEquals(converted.getCreatedOn(), uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toOffsetDateTime(courtScheduleEnt.getCreatedOn()));
         assertEquals(converted.getUpdatedOn(), uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toOffsetDateTime(courtScheduleEnt.getUpdatedOn()));
         assertFalse(converted.getAllDaySplit());
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void shouldCarryTheWeekCommencingFlag(final boolean weekCommencing) {
+        final CourtSchedule courtScheduleEnt = EnhancedRandom.random(CourtSchedule.class);
+        courtScheduleEnt.setSupportAdSplit(null);
+        courtScheduleEnt.setWeekCommencing(weekCommencing);
+
+        assertEquals(weekCommencing, CourtSchedulerConverter.convert(courtScheduleEnt).getIsWeekCommencing());
+        assertEquals(weekCommencing, CourtSchedulerConverter.convert(courtScheduleEnt, List.of()).getIsWeekCommencing());
     }
 
     @Test

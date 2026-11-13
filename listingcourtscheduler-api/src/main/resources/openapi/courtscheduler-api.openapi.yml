@@ -1184,6 +1184,7 @@ components:
         totalBookedForAfternoon: { type: integer, default: 0 }
         isOverbookingAllowed: { type: boolean, default: false }
         isDraft: { type: boolean, default: false }
+        isWeekCommencing: { type: boolean, default: false }
         jurisdiction: { type: string, nullable: true }
         # "HH:mm" UTC-formatted strings, not OffsetDateTime — see reshaping comment above.
         sessionStartTime: { type: string, nullable: true }
@@ -1246,6 +1247,7 @@ components:
         # isOverbookingAllowed/isDraft afterwards (see CourtSchedulerApi#toSessionMapWithUtcTimes).
         overbookingAllowed: { type: boolean, default: false }
         draft: { type: boolean, default: false }
+        isWeekCommencing: { type: boolean, default: false }
         jurisdiction: { type: string, nullable: true }
         sessionStartTime: { type: string, format: date-time, nullable: true, x-field-extra-annotation: '@com.fasterxml.jackson.annotation.JsonFormat(shape = com.fasterxml.jackson.annotation.JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd''T''HH:mm:ss.SSSxxx", timezone = "UTC")' }
         sessionEndTime: { type: string, format: date-time, nullable: true, x-field-extra-annotation: '@com.fasterxml.jackson.annotation.JsonFormat(shape = com.fasterxml.jackson.annotation.JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd''T''HH:mm:ss.SSSxxx", timezone = "UTC")' }

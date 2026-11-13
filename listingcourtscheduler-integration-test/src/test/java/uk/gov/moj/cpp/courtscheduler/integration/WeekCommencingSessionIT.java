@@ -4,6 +4,7 @@ import static jakarta.json.Json.createObjectBuilder;
 import static jakarta.ws.rs.core.Response.Status.ACCEPTED;
 import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
 import static jakarta.ws.rs.core.Response.Status.FORBIDDEN;
+import static jakarta.ws.rs.core.Response.Status.OK;
 import static java.time.DayOfWeek.MONDAY;
 import static java.time.DayOfWeek.TUESDAY;
 import static java.time.DayOfWeek.WEDNESDAY;
@@ -25,9 +26,15 @@ import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.WEEK_
 
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 
+import java.io.StringReader;
+import java.sql.SQLException;
+import java.time.ZoneOffset;
+
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
@@ -35,6 +42,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
+import jakarta.json.Json;
+import jakarta.json.JsonObject;
 import jakarta.json.JsonObjectBuilder;
 import jakarta.ws.rs.core.Response;
 import org.junit.jupiter.api.Test;
@@ -43,6 +52,8 @@ class WeekCommencingSessionIT extends AbstractIT {
 
     private static final String URL = "/session/weekCommencing";
     private static final String CONTENT_TYPE = "application/vnd.courtscheduler.create-week-commencing.sessions+json";
+    private static final String GET_COURT_SCHEDULE_URL = "/courtschedule";
+    private static final String GET_COURT_SCHEDULE_ACCEPT = "application/vnd.courtscheduler.get+json";
     private static final String COURT_CENTRE_ID = "785339c1-af71-3322-a55b-ba255e0db1c2";
     private static final String FIRST_LISTED_COURT_ROOM_ID = "3fc02c0f-f92e-31da-9686-d626ac8ccdc3";
     private static final String DURATION_BASED_BUSINESS_TYPE = "TRL";
@@ -72,6 +83,40 @@ class WeekCommencingSessionIT extends AbstractIT {
             assertThat(rows.stream().map(CourtSchedule::getMaxDuration).toList(), everyItem(is(CAPACITY_FIVE_DAYS)));
             assertThat(rows.stream().map(CourtSchedule::getAvailableDuration).toList(), everyItem(is(CAPACITY_FIVE_DAYS)));
             assertThat(rows.stream().map(CourtSchedule::isOverbookingAllowed).toList(), everyItem(is(true)));
+        }
+    }
+
+    @Test
+    void shouldReturnWeekCommencingSessionsWithTheFlagWhenGettingTheCourtSchedule() throws SQLException {
+        assertCreated(request(DURATION_BASED_BUSINESS_TYPE, startDate, endDate));
+        final LocalDate ordinarySessionDate = startDate.with(next(TUESDAY));
+        final String ordinarySessionId = seedOrdinaryDraftSession(ordinarySessionDate);
+
+        final Map<String, Object> query = new HashMap<>();
+        query.put("courtCentreId", COURT_CENTRE_ID);
+        query.put("sessionStartDate", startDate.toString());
+        query.put("sessionEndDate", endDate.toString());
+        query.put("pageSize", "50");
+        query.put("pageNumber", "1");
+        try (Response response = getCommand(getRequestParams(GET_COURT_SCHEDULE_URL, GET_COURT_SCHEDULE_ACCEPT, USER_ID, query))) {
+            final String body = response.readEntity(String.class);
+            assertThat(body, response.getStatus(), is(OK.getStatusCode()));
+
+            final List<JsonObject> sessions = Json.createReader(new StringReader(body)).readObject()
+                    .getJsonArray("courtSchedules").getValuesAs(JsonObject.class).stream()
+                    .flatMap(room -> room.getJsonArray("sessions").getValuesAs(JsonObject.class).stream())
+                    .toList();
+            final List<JsonObject> weekCommencing = sessions.stream()
+                    .filter(session -> !session.getString("courtScheduleId").equals(ordinarySessionId)).toList();
+            final JsonObject ordinary = sessions.stream()
+                    .filter(session -> session.getString("courtScheduleId").equals(ordinarySessionId)).findFirst().orElseThrow();
+
+            assertThat(weekCommencing.stream().map(session -> LocalDate.parse(session.getString("sessionDate"))).sorted().toList(),
+                    is(mondaysBetween(startDate, endDate)));
+            assertThat(weekCommencing.stream().map(session -> session.getBoolean("isWeekCommencing")).toList(), everyItem(is(true)));
+            assertThat(weekCommencing.stream().map(session -> session.getBoolean("isDraft")).toList(), everyItem(is(true)));
+            assertThat(ordinary.getBoolean("isWeekCommencing"), is(false));
+            assertThat(ordinary.getBoolean("isDraft"), is(true));
         }
     }
 
@@ -220,6 +265,41 @@ class WeekCommencingSessionIT extends AbstractIT {
                 .add("endDate", end.toString())
                 .add("capacityInMinutes", CAPACITY_FIVE_DAYS)
                 .add("isOverbookingAllowed", true);
+    }
+
+    private String seedOrdinaryDraftSession(final LocalDate sessionDate) throws SQLException {
+        final String id = UUID.randomUUID().toString();
+        final CourtSchedule session = new CourtSchedule();
+        session.setCourtScheduleId(id);
+        session.setListingProfileId(UUID.randomUUID().toString());
+        session.setOuCode("B01LY00");
+        session.setCourtRoomId(FIRST_LISTED_COURT_ROOM_ID);
+        session.setCourtRoomNumber(1);
+        session.setCourtHouseId(COURT_CENTRE_ID);
+        session.setCourtHouseName("Crown Court");
+        session.setCourtRoomName("Courtroom 01");
+        session.setOperationalUnit("B01LY00");
+        session.setBusinessType(DURATION_BASED_BUSINESS_TYPE);
+        session.setPanel("ADULT");
+        session.setCourtSession("AD");
+        session.setActive(true);
+        session.setSlotBased(false);
+        session.setSessionDate(sessionDate);
+        session.setMaxSlots(0);
+        session.setMaxDuration(360);
+        session.setAvailableSlots(0);
+        session.setAvailableDuration(360);
+        session.setSupportAdSplit(false);
+        session.setMaxAdMorningDuration(180);
+        session.setMaxAdAfternoonDuration(180);
+        session.setSessionStartTime(sessionDate.atTime(10, 0).toInstant(ZoneOffset.UTC));
+        session.setSessionEndTime(sessionDate.atTime(17, 0).toInstant(ZoneOffset.UTC));
+        session.setNationalBreakTime(sessionDate.atTime(13, 0).toInstant(ZoneOffset.UTC));
+        session.setIsOverbookingAllowed(false);
+        session.setIsDraft(true);
+        session.setJurisdiction("CROWN");
+        databaseSeeder.insertCourtSchedule(session);
+        return id;
     }
 
     private static List<LocalDate> mondaysBetween(final LocalDate start, final LocalDate end) {

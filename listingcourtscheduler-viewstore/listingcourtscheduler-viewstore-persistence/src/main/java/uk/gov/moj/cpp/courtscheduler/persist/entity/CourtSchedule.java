@@ -169,6 +169,7 @@ import org.hibernate.annotations.UpdateTimestamp;
                                 @ColumnResult(name = "national_break_time", type = Instant.class),
                                 @ColumnResult(name = IS_DRAFT, type = Boolean.class),
                                 @ColumnResult(name = JURISDICTION, type = String.class),
+                                @ColumnResult(name = IS_WEEK_COMMENCING, type = Boolean.class),
                         }
                 )
         )
@@ -313,7 +314,8 @@ public class CourtSchedule implements Serializable {
                          final Boolean isOverbookingAllowed,
                          final Instant nationalBreakTime,
                          final Boolean isDraft,
-                         final String jurisdiction) {
+                         final String jurisdiction,
+                         final Boolean isWeekCommencing) {
         this.courtRoomNumber = courtRoomNumber;
         this.courtScheduleId = courtScheduleId;
         this.listingProfileId = listingProfileId;
@@ -345,6 +347,7 @@ public class CourtSchedule implements Serializable {
         this.nationalBreakTime = nationalBreakTime;
         this.draft = isDraft;
         this.jurisdiction = jurisdiction;
+        this.weekCommencing = Boolean.TRUE.equals(isWeekCommencing);
     }
 
     //this constructor is used in the SqlResultSetMapping. columnn order is significant!

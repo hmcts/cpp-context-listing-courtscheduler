@@ -132,6 +132,9 @@
                 "isDraft": {
                     "type": "boolean"
                 },
+                "isWeekCommencing": {
+                    "type": "boolean"
+                },
                 "jurisdiction": {
                     "type": "string"
                 }
