@@ -83,7 +83,7 @@ class MoveHearingToPastDateApiTest {
         // constructor: slotsUpdateService is 12th and hearingSlotsApiValidator 14th. A merge added
         // a parameter ahead of them and left this call one short, which silently shifted both.
         api = new CourtSchedulerApi(new ObjectMapper(), request, null, null, null, null, null, null, null, null,
-                null, slotsUpdateService, null, new HearingSlotsApiValidator(), null, null, null, null, null, null, null);
+                null, slotsUpdateService, null, new HearingSlotsApiValidator(), null, null, null, null, null, null);
         lenient().when(request.getContentType()).thenReturn(MOVE_MT);
     }
 

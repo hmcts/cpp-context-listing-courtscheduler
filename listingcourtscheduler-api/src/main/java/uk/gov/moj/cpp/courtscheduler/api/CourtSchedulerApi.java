@@ -50,7 +50,6 @@ import uk.gov.moj.cpp.courtscheduler.api.validator.ProvisionalBookingApiValidato
 import uk.gov.moj.cpp.courtscheduler.api.validator.SessionsApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.ValidationException;
 import uk.gov.moj.cpp.courtscheduler.common.service.AllocatedListingService;
-import uk.gov.moj.cpp.courtscheduler.common.service.BookingLogPurgeService;
 import uk.gov.moj.cpp.courtscheduler.common.service.JudiciaryAssignmentService;
 import uk.gov.moj.cpp.courtscheduler.common.service.JudiciaryUnassignmentService;
 import uk.gov.moj.cpp.courtscheduler.common.service.SessionsService;
@@ -183,7 +182,6 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
     private final ProvisionalBookingService provisionalBookingService;
     private final ProvisionalBookingApiValidator provisionalBookingApiValidator;
     private final ProvisionalSlotConverter provisionalSlotConverter;
-    private final BookingLogPurgeService bookingLogPurgeService;
 
     public CourtSchedulerApi(final ObjectMapper objectMapper,
                              final HttpServletRequest request,
@@ -204,8 +202,7 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
                              final MiFilterCriteriaRequestParamConverter miFilterCriteriaRequestParamConverter,
                              final ProvisionalBookingService provisionalBookingService,
                              final ProvisionalBookingApiValidator provisionalBookingApiValidator,
-                             final ProvisionalSlotConverter provisionalSlotConverter,
-                             final BookingLogPurgeService bookingLogPurgeService) {
+                             final ProvisionalSlotConverter provisionalSlotConverter) {
         this.objectMapper = objectMapper;
         this.lenientObjectMapper = objectMapper.copy()
                 .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
@@ -228,7 +225,6 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
         this.provisionalBookingService = provisionalBookingService;
         this.provisionalBookingApiValidator = provisionalBookingApiValidator;
         this.provisionalSlotConverter = provisionalSlotConverter;
-        this.bookingLogPurgeService = bookingLogPurgeService;
     }
 
     /* ============================================================
@@ -547,15 +543,13 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
 
     /**
      * POST /sessions — purge allocated listings (reserved sessions) whose expiresAt has already
-     * passed, then booking_log rows past their retention period.
+     * passed.
      */
     @Override
     public ResponseEntity<Void> postPurgeExpiredReservedSessions(final Map<String, Object> body) {
         LOG.info("courtscheduler.purge-expired-reserved-sessions requested");
         final int purged = allocatedListingService.purgeExpiredReservedSessions();
         LOG.info("courtscheduler.purge-expired-reserved-sessions purged {} allocated listing(s)", purged);
-        final int logRows = bookingLogPurgeService.purge();
-        LOG.info("courtscheduler.purge-expired-reserved-sessions deleted {} booking log row(s)", logRows);
         return ResponseEntity.status(HttpStatus.ACCEPTED).build();
     }
 

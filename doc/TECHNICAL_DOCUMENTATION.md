@@ -537,7 +537,9 @@ booking id is never touched. Called by hearing (a draft save dropped the booking
 **Response:** 202 Accepted
 
 **Business Logic:**
-- Deletes court schedules older than configured retention period
+- Deletes court schedules older than `numberOfPreviousMonthsAndOlder` months (default 6, counted as
+  30 days each), with their allocated listings and judiciaries, and old rota process logs
+- Last, deletes the `booking_log` rows whose session no longer exists
 
 ### Validation Endpoints
 
@@ -793,15 +795,11 @@ booking's latest event is its current state.
 The pre-share check re-books a booking only when its latest state is `EXPIRED`, onto that event's
 rows.
 
-The nightly purge (`POST /sessions`), after releasing expired holds, deletes log rows recorded
-before `courtscheduler.booking-log.retention-days` that a later event of the same booking
-supersedes (`BookingLogPurgeService`, in a transaction of its own). Nothing reads them; every
-lookup takes a booking's latest event.
-
-A booking's latest event is kept however old. `CONFIRMED`, `UNLISTED` and `SURPLUS_RELEASED` are
-what lets a re-share go ahead once the booking's listing rows are gone, and a lapsed hold on a
-session still to come can be re-booked. The table therefore keeps one event per booking
-indefinitely.
+Rows are kept for as long as their session exists. `CONFIRMED`, `UNLISTED` and `SURPLUS_RELEASED`
+are what lets a re-share go ahead once the booking's listing rows are gone, and a lapsed hold on a
+session still to come can be re-booked. The only deletion is the last step of
+`POST /rotasl/clean-redundant-rota-data`: once old sessions are deleted, every log row left without
+its session goes, latest events included (`BookingLogPurgeService`).
 
 #### CourtScheduleJudiciary
 Represents a judge/magistrate assigned to a court schedule.
@@ -1035,10 +1033,6 @@ totalbookedforafternoon = SUM(
 #### Rota File Processing
 - `rota.months.of.provisional.data.to.populate`: Number of months to populate provisional data (default: 6)
 - `rota.cycle.to.populate.length`: Length of rota cycle in days (default: 28)
-
-#### Booking Log
-- `courtscheduler.booking-log.retention-days`: how long `booking_log` keeps a superseded row
-  before the nightly purge deletes it; a booking's latest event is never purged (default: 60)
 
 #### Azure Blob Storage
 - Azure storage account connection string

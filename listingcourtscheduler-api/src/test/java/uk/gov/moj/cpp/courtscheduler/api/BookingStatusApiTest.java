@@ -118,6 +118,6 @@ class BookingStatusApiTest {
         // 20 args, positional: provisionalBookingService is 18th. Nothing else is reached.
         return new CourtSchedulerApi(new ObjectMapper(), mock(HttpServletRequest.class), null, null, null, null,
                 null, null, null, null, null, null, null, null, null, null, null,
-                provisionalBookingService, null, null, null);
+                provisionalBookingService, null, null);
     }
 }

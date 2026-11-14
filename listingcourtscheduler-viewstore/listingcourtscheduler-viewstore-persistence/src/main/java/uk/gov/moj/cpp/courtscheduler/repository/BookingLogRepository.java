@@ -21,7 +21,7 @@ import org.springframework.stereotype.Repository;
 
 /**
  * The booking log (LPT-2611): what happened to each booking reference, one row per
- * allocated_listings row touched. Append-only apart from the retention clean-up.
+ * allocated_listings row touched. Append-only apart from the rota clean-up.
  */
 @Repository
 public interface BookingLogRepository extends JpaRepository<BookingLog, String> {
@@ -53,19 +53,14 @@ public interface BookingLogRepository extends JpaRepository<BookingLog, String> 
     List<BookingLog> findLatestEvent(@Param("bookingId") String bookingId);
 
     /**
-     * Deletes rows recorded before {@code cutoff} that a later event of the same booking
-     * supersedes. Nothing reads them: every lookup takes a booking's latest event.
-     *
-     * <p>A booking's latest event is kept however old: CONFIRMED, UNLISTED and SURPLUS_RELEASED are
-     * what lets a re-share of the hearing go ahead once its listing rows are gone.
+     * Deletes the rows of sessions that no longer exist, latest events included: a hearing day on a
+     * deleted session is broken anyway. Run by the rota clean-up once it has deleted old sessions.
      */
     @Modifying
     @Query(value = """
             DELETE FROM booking_log b
-             WHERE b.recorded_at < :cutoff
-               AND EXISTS (SELECT 1 FROM booking_log l
-                            WHERE l.booking_id = b.booking_id
-                              AND l.recorded_at > b.recorded_at)
+             WHERE b.court_schedule_id IS NOT NULL
+               AND NOT EXISTS (SELECT 1 FROM court_schedule cs WHERE cs.id = b.court_schedule_id)
             """, nativeQuery = true)
-    int deleteSupersededRecordedBefore(@Param("cutoff") Instant cutoff);
+    int deleteRowsOfDeletedSessions();
 }

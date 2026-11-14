@@ -2,15 +2,17 @@ package uk.gov.moj.cpp.courtscheduler.repository;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static uk.gov.moj.cpp.courtscheduler.persist.entity.BookingState.CONFIRMED;
 import static uk.gov.moj.cpp.courtscheduler.persist.entity.BookingState.EXPIRED;
 import static uk.gov.moj.cpp.courtscheduler.persist.entity.BookingState.REBOOKED;
 import static uk.gov.moj.cpp.courtscheduler.persist.entity.BookingState.RESERVED;
 
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.BookingLog;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -25,10 +27,13 @@ class BookingLogRepositoryTest extends AbstractRepositoryTest {
 
     private static final String BOOKING_A = "booking-a";
     private static final String BOOKING_B = "booking-b";
-    private static final Instant CUTOFF = Instant.now().minus(30, ChronoUnit.DAYS);
+    private static final String DELETED_SESSION = "deleted-session";
 
     @Autowired
     private BookingLogRepository bookingLogRepository;
+
+    @Autowired
+    private CourtScheduleRepository courtScheduleRepository;
 
     @AfterEach
     void tearDown() {
@@ -66,40 +71,26 @@ class BookingLogRepositoryTest extends AbstractRepositoryTest {
     }
 
     @Test
-    void deleteSupersededRemovesOnlyOlderRowsWithALaterEvent() {
-        bookingLogRepository.record(EXPIRED, List.of(hold(BOOKING_A, CS_1)));
-        age(bookingLogRepository.findAll(), 100);
-        bookingLogRepository.record(REBOOKED, List.of(hold(BOOKING_A, CS_1)));
-        bookingLogRepository.record(EXPIRED, List.of(hold(BOOKING_B, CS_2)));
+    void deleteRowsOfDeletedSessionsRemovesEveryRowWhoseSessionIsGoneLatestEventIncluded() {
+        final String liveSession = persistSessionOn(LocalDate.now().minusDays(10));
+        bookingLogRepository.record(RESERVED, List.of(hold(BOOKING_A, DELETED_SESSION)));
+        bookingLogRepository.record(CONFIRMED, List.of(hold(BOOKING_A, DELETED_SESSION)));
+        bookingLogRepository.record(CONFIRMED, List.of(hold(BOOKING_B, liveSession)));
+        bookingLogRepository.record(EXPIRED, List.of(hold("booking-no-session", null)));
 
-        final int deleted = bookingLogRepository.deleteSupersededRecordedBefore(CUTOFF);
+        final int deleted = bookingLogRepository.deleteRowsOfDeletedSessions();
 
-        assertEquals(1, deleted);
-        assertEquals(2, bookingLogRepository.findAll().size());
-        assertEquals(REBOOKED, bookingLogRepository.findLatestEvent(BOOKING_A).get(0).getState());
+        assertEquals(2, deleted);
+        assertEquals(List.of(), bookingLogRepository.findLatestEvent(BOOKING_A));
+        assertEquals(CONFIRMED, bookingLogRepository.findLatestEvent(BOOKING_B).get(0).getState());
+        assertEquals(EXPIRED, bookingLogRepository.findLatestEvent("booking-no-session").get(0).getState());
     }
 
-    @Test
-    void deleteSupersededKeepsEachBookingsLatestEventHoweverOld() {
-        // the status check reads the latest event to say why a booking has no rows, and a draft
-        // can carry a booking for longer than the retention period
-        bookingLogRepository.record(RESERVED, List.of(hold(BOOKING_A, CS_1)));
-        bookingLogRepository.record(EXPIRED, List.of(hold(BOOKING_A, CS_1)));
-        age(bookingLogRepository.findAll(), 200);
-
-        final int deleted = bookingLogRepository.deleteSupersededRecordedBefore(CUTOFF);
-
-        assertEquals(1, deleted);
-        final List<BookingLog> latest = bookingLogRepository.findLatestEvent(BOOKING_A);
-        assertEquals(1, latest.size());
-        assertEquals(EXPIRED, latest.get(0).getState());
-    }
-
-    private void age(final List<BookingLog> rows, final int days) {
-        rows.forEach(row -> {
-            row.setRecordedAt(row.getRecordedAt().minus(days, ChronoUnit.DAYS));
-            bookingLogRepository.save(row);
-        });
+    private String persistSessionOn(final LocalDate sessionDate) {
+        final CourtSchedule session = random(CourtSchedule.class);
+        session.setSessionDate(sessionDate);
+        courtScheduleRepository.save(session);
+        return session.getCourtScheduleId();
     }
 
     private static Set<String> eventIdsOf(final List<BookingLog> rows, final String bookingId) {
