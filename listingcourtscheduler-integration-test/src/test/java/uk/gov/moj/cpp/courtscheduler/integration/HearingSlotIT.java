@@ -340,6 +340,7 @@ class HearingSlotIT extends AbstractIT {
         assertThat("exactly one allocated_listings row for the hearing after re-list", hearingRows, is(1L));
     }
 
+
     @Test
     void shouldRetrieveHearingSlot() throws Exception {
         final String courtSession = AM_SESSION;

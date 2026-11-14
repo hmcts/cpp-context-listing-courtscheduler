@@ -6,6 +6,7 @@ import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -31,6 +32,39 @@ public interface AllocatedListingRepository
 
     /** Spring Data generates the JPQL: {@code SELECT al FROM AllocatedListing al WHERE al.hearingId = :hearingId}. */
     List<AllocatedListing> findByHearingId(String hearingId);
+
+    /**
+     * Every row under the booking: its unconfirmed holds (expires_at set, hearing_id null) and any
+     * listing a share confirmed from it (no expires_at). Filter on expires_at to tell them apart.
+     */
+    List<AllocatedListing> findByBookingId(String bookingId);
+
+    /**
+     * The unconfirmed holds of these bookings, in one query - and only those: a listing a share
+     * confirmed keeps its booking_id but has no expires_at, so it is never returned. An empty
+     * collection must not reach here: {@code IN ()} is not valid SQL.
+     */
+    @Query(value = """
+            SELECT al.*
+            FROM allocated_listings al
+            WHERE al.booking_id IN (:bookingIds)
+              AND al.expires_at IS NOT NULL
+            """, nativeQuery = true)
+    List<AllocatedListing> findUnconfirmedByBookingIds(@Param("bookingIds") Collection<String> bookingIds);
+
+    /**
+     * Every reservation whose hold has lapsed — {@code expires_at} set and before the given
+     * cutoff. Returns rows rather than deleting them so the caller can perform the full
+     * three-step release — a bare DELETE would strand the capacity on court_schedule.
+     * Self-healing: not scoped to "yesterday", so a missed daily run's backlog is still swept.
+     */
+    @Query(value = """
+            SELECT al.*
+            FROM allocated_listings al
+            WHERE al.expires_at IS NOT NULL
+              AND al.expires_at < :cutoff
+            """, nativeQuery = true)
+    List<AllocatedListing> findExpiredReservedSessions(@Param("cutoff") LocalDate cutoff);
 
     /** Spring Data generates the JPQL: {@code SELECT al FROM AllocatedListing al WHERE al.courtScheduleId = :courtScheduleId}. */
     List<AllocatedListing> findByCourtScheduleId(String courtScheduleId);

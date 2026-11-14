@@ -15,7 +15,7 @@ tags:
   - name: courtschedule
   - name: hearingslots
   - name: hearings
-  - name: provisional-booking
+  - name: unconfirmed-booking
   - name: mi
   - name: rotasl
   - name: validate
@@ -126,6 +126,19 @@ paths:
             application/vnd.courtscheduler.search.court-schedules-by-id+json:
               schema:
                 $ref: '#/components/schemas/CourtschedulerSearchCourtSchedulesByIdResponse'
+    post:
+      tags: [session]
+      operationId: postPurgeExpiredReservedSessions
+      summary: Purge allocated listings (reserved sessions) whose expiresAt has already passed.
+      requestBody:
+        required: true
+        content:
+          application/vnd.courtscheduler.purge-expired-reserved-sessions+json:
+            schema:
+              $ref: '#/components/schemas/CourtschedulerPurgeExpiredReservedSessions'
+      responses:
+        '202':
+          description: Accepted
 
   /sessions/judiciaries:
     post:
@@ -376,21 +389,26 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /provisionalBooking:
+  /unconfirmedBooking:
     post:
-      tags: [provisional-booking]
+      tags: [unconfirmed-booking]
       operationId: postCreateProvisionalBooking
       requestBody:
         required: true
         content:
-          application/vnd.courtscheduler.create.provisional.booking+json:
+          application/vnd.courtscheduler.create.unconfirmed.booking+json:
+            # Body is bound as Map<String, Object> (see PassthroughObject below); real request
+            # validation happens against src/raml/json/schema/courtscheduler.create.unconfirmed.booking.json
+            # via RequestSchemaValidationFilter. Each provisionalSlots[] item there now also
+            # accepts an optional integer "duration" (minutes) — additive, not required, so
+            # existing callers are unaffected.
             schema:
               $ref: '#/components/schemas/CourtschedulerCreateProvisionalBooking'
       responses:
         '200':
           description: OK
           content:
-            application/vnd.courtscheduler.create.provisional.booking.response+json:
+            application/vnd.courtscheduler.create.unconfirmed.booking.response+json:
               schema:
                 $ref: '#/components/schemas/CourtschedulerCreateProvisionalBookingResponse'
             # Backward compatibility: the legacy WildFly endpoint returned application/json
@@ -401,7 +419,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/CourtschedulerCreateProvisionalBookingResponse'
     get:
-      tags: [provisional-booking]
+      tags: [unconfirmed-booking]
       operationId: getProvisionalBooking
       parameters:
         - { in: query, name: bookingIds, required: true, schema: { type: string } }
@@ -409,9 +427,61 @@ paths:
         '200':
           description: OK
           content:
-            application/vnd.courtscheduler.get.provisional.booking+json:
+            application/vnd.courtscheduler.get.unconfirmed.booking+json:
               schema:
                 $ref: '#/components/schemas/CourtschedulerGetProvisionalBooking'
+
+  /unconfirmedBooking/status:
+    # The pre-share check: is each booking still safe to share? status is RESERVED, SHARED,
+    # REBOOKED, SURPLUS, UNLISTED, EXPIRED, RELEASED or NOT_FOUND; safeToShare is the decision.
+    # With reserveIfExpired (LPT-2611) a booking that would answer EXPIRED
+    # is first re-booked under the same id if the session it expired on still has room. A POST
+    # because it can book capacity; without the flag it only reads. The only booking-status
+    # endpoint - the GET it replaced was never released. The body is validated against
+    # src/raml/json/schema/courtscheduler.query.booking.status.json.
+    post:
+      tags: [unconfirmed-booking]
+      operationId: postBookingStatus
+      requestBody:
+        required: true
+        content:
+          application/vnd.courtscheduler.query.booking.status+json:
+            schema:
+              $ref: '#/components/schemas/CourtschedulerQueryBookingStatus'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/vnd.courtscheduler.query.booking.status.response+json:
+              schema:
+                $ref: '#/components/schemas/CourtschedulerQueryBookingStatusResponse'
+
+  # Gives back the UNCONFIRMED holds taken under each booking id, in one transaction. Only rows
+  # under that booking_id that still carry expires_at are removed, so a confirmed listing grown
+  # from the same booking survives, and nothing keyed by hearing_id is ever touched - unlike
+  # DELETE /sessions/{hearingId}. Unknown ids are no-ops, duplicates count once, idempotent.
+  # Callers: hearing (release on draft save) and progression (surplus release after a share).
+  # The body is also validated against
+  # src/raml/json/schema/courtscheduler.release.unconfirmed.bookings.json by
+  # RequestSchemaValidationFilter, which answers 400 {"error": ...} before the controller runs.
+  /unconfirmedBooking/release:
+    post:
+      tags: [unconfirmed-booking]
+      operationId: postReleaseUnconfirmedBookings
+      requestBody:
+        required: true
+        content:
+          application/vnd.courtscheduler.release.unconfirmed.bookings+json:
+            schema:
+              $ref: '#/components/schemas/CourtschedulerReleaseUnconfirmedBookings'
+      responses:
+        '202':
+          description: Accepted
+        # No content declared on purpose: a declared response media type becomes the mapping's
+        # "produces", and a caller sending a vendor Accept would then get 406 instead of 202.
+        # The 400 body is the usual {"error": "..."} (GlobalExceptionHandler / the schema filter).
+        '400':
+          description: bookingIds missing or empty, or an entry is blank.
 
   /mi/court_schedules:
     get:
@@ -543,7 +613,7 @@ paths:
             # type, so listing's HearingSlotsService.validateSessionAvailability() sends
             # `Accept: application/json`. Keep it producible, else strict content negotiation
             # rejects the request with 406 before validation ever runs. Same fix as
-            # /provisionalBooking. See SessionAvailabilityValidationIT.
+            # /unconfirmedBooking. See SessionAvailabilityValidationIT.
             application/json:
               schema:
                 $ref: '#/components/schemas/CourtschedulerValidateResponse'
@@ -1244,6 +1314,11 @@ components:
     AllocatedSlot:
       type: object
       properties:
+        # The sole discriminator between a reservation and a confirmed listing: a reservation
+        # carries a date here, a confirmed booking carries null. ReservationService stamps it and
+        # SlotsUpdateService filters on it; without it the whole hold mechanism collapses into
+        # "every row is confirmed".
+        expiresAt: { type: string, format: date, nullable: true }
         duration: { type: integer, default: 0 }
         sessionDate: { type: string, nullable: true }
         hearingStartTime: { type: string, nullable: true }
@@ -1280,6 +1355,9 @@ components:
     HearingSlot:
       type: object
       properties:
+        # Identifies the booking a release targets, so a hold can be given back by booking rather
+        # than by hearing — see SlotsUpdateService.
+        bookingId: { type: string, nullable: true }
         hearingId: { type: string, nullable: true }
         courtScheduleIds:
           type: array
@@ -1305,6 +1383,7 @@ components:
     Hearing:
       type: object
       properties:
+        bookingId: { type: string, nullable: true }
         hearingId: { type: string, nullable: true }
         courtScheduleId: { type: string, nullable: true }
         hearingStartTime: { type: string, nullable: true }
@@ -1364,9 +1443,58 @@ components:
 
     CourtschedulerCreateProvisionalBooking:         { $ref: '#/components/schemas/ProvisionalBookingSlots' }
 
+    # Body is accepted and ignored — the purge takes no parameters, the operation exists so it can
+    # be triggered over HTTP. PassthroughObject keeps the generated signature a Map, matching
+    # CourtSchedulerApi#postPurgeExpiredReservedSessions.
+    CourtschedulerPurgeExpiredReservedSessions:    { $ref: '#/components/schemas/PassthroughObject' }
+
+    # Deliberately still a PassthroughObject. The real shape is
+    #   { bookings: [ { bookingId, safeToShare, status } ] }
+    # with status one of RESERVED | SHARED | REBOOKED | SURPLUS | UNLISTED | EXPIRED | RELEASED |
+    # NOT_FOUND, and it is enforced by the RAML JSON schema
+    # at src/raml/json/schema/courtscheduler.query.booking.status.response.json. Typing it here would change
+    # the generated return type from Map to a model and so require rewriting both
+    # CourtSchedulerApi#getBookingStatus and ProvisionalBookingService#getBookingStatus, which
+    # builds the JsonObject by hand. That is worth doing, but not inside a merge.
+    CourtschedulerQueryBookingStatusResponse:       { $ref: '#/components/schemas/PassthroughObject' }
+
+    # LPT-2611. Typed: the controller reads both fields. The RAML JSON schema
+    # courtscheduler.query.booking.status.json enforces the rules.
+    CourtschedulerQueryBookingStatus:
+      type: object
+      required: [bookingIds]
+      properties:
+        bookingIds:
+          type: array
+          minItems: 1
+          items: { type: string, minLength: 1 }
+        reserveIfExpired: { type: boolean, nullable: true }
+
+    # Typed (not a PassthroughObject): the controller reads bookingIds directly. The rules here
+    # mirror the RAML JSON schema of the same name, which is what actually enforces them.
+    CourtschedulerReleaseUnconfirmedBookings:
+      type: object
+      required: [bookingIds]
+      properties:
+        bookingIds:
+          type: array
+          minItems: 1
+          items: { type: string, minLength: 1 }
+        # LPT-2611: why the caller releases, recorded in booking_log. DROPPED_FROM_DRAFT (hearing:
+        # the line no longer carries the booking) or SURPLUS (progression: a share merged it away).
+        # A plain string here so the generated model stays a String; the RAML JSON schema enforces
+        # the two values.
+        reason: { type: string, nullable: true }
+
     ProvisionalBookingSlots:
       type: object
       properties:
+        # Reuse this booking rather than minting a new one. Sent when a clerk re-picks a session
+        # for a draft that already holds a bookingReference: a reservation's hearing_id is its
+        # bookingId, so the booking pipeline releases the previous pick's rows before taking the
+        # new ones and the abandoned session's capacity comes back in the same transaction.
+        # Absent on a first pick, in which case an id is minted and returned.
+        bookingId: { type: string, nullable: true }
         provisionalSlots:
           type: array
           nullable: true
@@ -1377,6 +1505,11 @@ components:
       properties:
         courtScheduleId: { type: string, nullable: true }
         hearingStartTime: { type: string, nullable: true }
+        # Hearing duration in minutes. Required for duration-based sessions, where the reservation
+        # decrements available_duration by this amount; omitting it is the
+        # "400 duration is required and must be greater than zero" refusal. Slot-based sessions
+        # ignore it, so it stays nullable.
+        duration: { type: integer, nullable: true }
 
     # bookProvisionalSlots(...) returns just the generated bookingId, not the slots themselves.
     CourtschedulerCreateProvisionalBookingResponse:

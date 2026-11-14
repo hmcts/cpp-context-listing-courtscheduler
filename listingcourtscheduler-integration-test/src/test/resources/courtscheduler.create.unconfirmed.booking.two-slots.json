@@ -1,0 +1,15 @@
+{
+  "provisionalSlots" :
+    [
+      {
+        "courtScheduleId": "COURTSCHEDULER_ID_1",
+        "hearingStartTime": "2020-01-01T11:00:00.000Z",
+        "duration": 60
+      },
+      {
+        "courtScheduleId": "COURTSCHEDULER_ID_2",
+        "hearingStartTime": "2020-01-02T11:00:00.000Z",
+        "duration": 60
+      }
+    ]
+}

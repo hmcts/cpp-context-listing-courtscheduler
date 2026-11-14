@@ -32,6 +32,16 @@ class AllocatedListingRepositoryImpl implements AllocatedListingRepositoryCustom
     @PersistenceContext
     private EntityManager entityManager;
 
+    /**
+     * The session's real occupancy, counted from rows. This is the ONLY source of availability:
+     * court_schedule.available_slot and available_duration_mins are stale bookkeeping that nothing
+     * maintains, and are scheduled for deletion - never read them. Callers get max - totalBooked,
+     * assembled by CourtSchedulerConverter from the @Transient field this fills.
+     *
+     * <p>Deliberately no expires_at filter: a reservation holds capacity exactly like a confirmed
+     * listing, which is what a hold is for. The consequence is that a hold which outlives the
+     * share that should have released it goes on costing the session a slot until it is purged.
+     */
     @Override
     public List<AllocatedListingTotalBooked> getAllocatedListingsByCourtScheduleId(final List<String> courtScheduleIds) {
         final String sql = """
@@ -64,9 +74,15 @@ class AllocatedListingRepositoryImpl implements AllocatedListingRepositoryCustom
 
         // Re-uses the method-name query Spring Data generates on the main interface, via
         // a lookup so this Custom impl doesn't require the main interface bean.
+        //
+        // expiresAt IS NULL excludes reservations. A reservation's hearing_id is a minted
+        // bookingId, not a hearing that any downstream MI consumer can resolve, so exporting one
+        // as a hearing would put a phantom row in every extract for as long as the hold lives.
+        // Confirmed bookings - the only real hearings - always have a null expiresAt.
         final List<AllocatedListing> allocatedListings = entityManager.createQuery(
                         "SELECT al FROM AllocatedListing al "
-                                + "WHERE al.updatedOn > :fromDate AND al.updatedOn < :toDate",
+                                + "WHERE al.updatedOn > :fromDate AND al.updatedOn < :toDate "
+                                + "AND al.expiresAt IS NULL",
                         AllocatedListing.class)
                 .setParameter("fromDate", DateUtils.getDate(miFilterCriteria.getFromDate()).toInstant())
                 .setParameter("toDate", DateUtils.getDate(miFilterCriteria.getToDate()).toInstant())
