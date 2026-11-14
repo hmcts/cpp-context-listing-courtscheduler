@@ -1,6 +1,7 @@
 package uk.gov.moj.cpp.courtscheduler.api.service;
 
 import static java.util.UUID.randomUUID;
+import static java.util.stream.Collectors.toMap;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -37,6 +38,7 @@ import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import jakarta.json.JsonArray;
 import jakarta.json.JsonObject;
@@ -72,6 +74,8 @@ class ProvisionalBookingServiceTest {
     private static final String BK_NPE = "bk-npe";
 
     private static final String JUDICIARIES = "judiciaries";
+    private static final String IS_BENCH_CHAIRMAN = "isBenchChairman";
+    private static final String IS_DEPUTY = "isDeputy";
 
     @InjectMocks
     private ProvisionalBookingService provisionalBookingService;
@@ -595,7 +599,7 @@ class ProvisionalBookingServiceTest {
         final ProvisionalBooking provisionalBooking =
                 prepareProvisionalBookingWithListingProfile(bookingId, courtScheduleId, listingProfileId);
         final CourtScheduleJudiciary judiciaryEntity =
-                judiciaryEntity(courtScheduleId, judiciaryId, listingProfileId, expectedEmail);
+                judiciaryEntity(courtScheduleId, judiciaryId, listingProfileId, expectedEmail, true, true);
 
         doReturn(List.of(provisionalBooking)).when(provisionalBookingRepository).findByBookingIdIn(anyList());
         doReturn(List.of(judiciaryEntity)).when(courtScheduleRepository)
@@ -608,7 +612,10 @@ class ProvisionalBookingServiceTest {
         final JsonObject slot = actual.getJsonArray(PROVISIONALSLOTS).get(0).asJsonObject();
         assertThat(slot.getString(BOOKINGID), is(bookingId));
         assertThat(slot.getJsonArray(JUDICIARIES).size(), is(1));
-        assertThat(slot.getJsonArray(JUDICIARIES).get(0).asJsonObject().getString("emailAddress"), is(expectedEmail));
+        final JsonObject judiciary = slot.getJsonArray(JUDICIARIES).get(0).asJsonObject();
+        assertThat(judiciary.getString("emailAddress"), is(expectedEmail));
+        assertThat(judiciary.getBoolean(IS_BENCH_CHAIRMAN), is(true));
+        assertThat(judiciary.getBoolean(IS_DEPUTY), is(true));
     }
 
     @Test
@@ -620,9 +627,9 @@ class ProvisionalBookingServiceTest {
         final ProvisionalBooking provisionalBooking =
                 prepareProvisionalBookingWithListingProfile(bookingId, courtScheduleId, listingProfileId);
         final CourtScheduleJudiciary first =
-                judiciaryEntity(courtScheduleId, randomUUID().toString(), listingProfileId, "first@example.com");
+                judiciaryEntity(courtScheduleId, randomUUID().toString(), listingProfileId, "first@example.com", true, false);
         final CourtScheduleJudiciary second =
-                judiciaryEntity(courtScheduleId, randomUUID().toString(), listingProfileId, "second@example.com");
+                judiciaryEntity(courtScheduleId, randomUUID().toString(), listingProfileId, "second@example.com", false, true);
 
         doReturn(List.of(provisionalBooking)).when(provisionalBookingRepository).findByBookingIdIn(anyList());
         doReturn(List.of(first, second)).when(courtScheduleRepository)
@@ -632,13 +639,22 @@ class ProvisionalBookingServiceTest {
 
         final JsonObject slot = actual.getJsonArray(PROVISIONALSLOTS).get(0).asJsonObject();
         assertThat(slot.getJsonArray(JUDICIARIES).size(), is(2));
+        final Map<String, JsonObject> byEmail = slot.getJsonArray(JUDICIARIES).stream()
+                .map(JsonValue::asJsonObject)
+                .collect(toMap(judiciary -> judiciary.getString("emailAddress"), judiciary -> judiciary));
+        assertThat(byEmail.get("first@example.com").getBoolean(IS_BENCH_CHAIRMAN), is(true));
+        assertThat(byEmail.get("first@example.com").getBoolean(IS_DEPUTY), is(false));
+        assertThat(byEmail.get("second@example.com").getBoolean(IS_BENCH_CHAIRMAN), is(false));
+        assertThat(byEmail.get("second@example.com").getBoolean(IS_DEPUTY), is(true));
     }
 
     private static CourtScheduleJudiciary judiciaryEntity(
             final String courtScheduleId,
             final String judiciaryId,
             final String listingProfileId,
-            final String email) {
+            final String email,
+            final boolean benchChairman,
+            final boolean deputy) {
         final CourtScheduleJudiciary entity = new CourtScheduleJudiciary();
         entity.setId(new CourtScheduleJudiciaryKey(courtScheduleId, judiciaryId));
         entity.setCourtListingProfileId(listingProfileId);
@@ -648,8 +664,8 @@ class ProvisionalBookingServiceTest {
         entity.setForenames("Test");
         entity.setSurname("Judge");
         entity.setJudiciaryType("CIRCUIT_JUDGE");
-        entity.setBenchChairman(false);
-        entity.setDeputy(false);
+        entity.setBenchChairman(benchChairman);
+        entity.setDeputy(deputy);
         entity.setPosition("1");
         entity.setActive(true);
         return entity;
