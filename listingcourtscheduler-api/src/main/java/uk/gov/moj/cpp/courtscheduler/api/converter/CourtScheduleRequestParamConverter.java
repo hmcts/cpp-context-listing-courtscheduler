@@ -22,6 +22,9 @@ public class CourtScheduleRequestParamConverter implements Converter<JsonObject,
                 jsonObject.getString(RequestParameterConstant.BUSINESS_TYPE.getLabel()) : null;
         final Boolean isDraft = jsonObject.containsKey(RequestParameterConstant.IS_DRAFT.getLabel()) ?
                 jsonObject.getBoolean(RequestParameterConstant.IS_DRAFT.getLabel()) : null;
-        return new CourtScheduleRequestParam(courtCentreId, courtRoomId, businessType, startDate, endDate, isDraft, pageSize, pageNumber);
+        final Boolean isWeekCommencing = jsonObject.containsKey(RequestParameterConstant.IS_WEEK_COMMENCING.getLabel()) ?
+                jsonObject.getBoolean(RequestParameterConstant.IS_WEEK_COMMENCING.getLabel()) : null;
+        return new CourtScheduleRequestParam(courtCentreId, courtRoomId, businessType, startDate, endDate, isDraft, pageSize, pageNumber,
+                isWeekCommencing);
     }
 }

@@ -48,6 +48,11 @@ paths:
         - { in: query, name: sessionStartDate, required: true, schema: { type: string } }
         - { in: query, name: sessionEndDate,   required: true, schema: { type: string } }
         - { in: query, name: isDraft,    required: false, schema: { type: boolean } }
+        - in: query
+          name: isWeekCommencing
+          required: false
+          description: true returns only week commencing sessions; absent or false returns only non week commencing sessions
+          schema: { type: boolean }
         - { in: query, name: pageSize,   required: true,  schema: { type: string } }
         - { in: query, name: pageNumber, required: true,  schema: { type: string } }
       responses:
@@ -309,6 +314,11 @@ paths:
           required: true
           description: Court jurisdiction type
           schema: { type: string, enum: [CROWN, MAGISTRATES] }
+        - in: query
+          name: isWeekCommencing
+          required: false
+          description: true returns only week commencing sessions; absent or false returns only non week commencing sessions
+          schema: { type: boolean }
       responses:
         '200':
           description: OK

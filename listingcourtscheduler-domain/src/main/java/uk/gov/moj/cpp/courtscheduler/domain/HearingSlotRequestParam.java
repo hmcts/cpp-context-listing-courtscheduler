@@ -19,7 +19,8 @@ public record HearingSlotRequestParam(String panel,
                                       Boolean showOverbookedSlots,
                                       String duration,
                                       String status,
-                                      String jurisdiction) {
+                                      String jurisdiction,
+                                      Boolean isWeekCommencing) {
 
     private static final String CROWN = "CROWN";
 
@@ -33,6 +34,27 @@ public record HearingSlotRequestParam(String panel,
     public static final int FULL_DAY_DURATION_MINS = 360;
 
     /**
+     * Without the week commencing filter: {@link #isWeekCommencing()} is {@code null}, which the
+     * hearing slots query treats as "non week commencing sessions only". The hearing ids query
+     * ignores the field.
+     */
+    public HearingSlotRequestParam(final String panel, final String sessionStartDate, final String sessionEndDate,
+                                   final String exactHearingStartDateTime, final String oucodeL2Code, final String ouCode,
+                                   final String pageSize, final String pageNumber, final String courtRoomId,
+                                   final String courtRoomNumber, final String businessType, final String courtSession,
+                                   final Boolean isSlotBased, final String hearingStartTime, final Boolean showOverbookedSlots,
+                                   final String duration, final String status, final String jurisdiction) {
+        this(panel, sessionStartDate, sessionEndDate, exactHearingStartDateTime, oucodeL2Code, ouCode, pageSize, pageNumber,
+                courtRoomId, courtRoomNumber, businessType, courtSession, isSlotBased, hearingStartTime, showOverbookedSlots,
+                duration, status, jurisdiction, null);
+    }
+
+    /** True only when the caller asked for week commencing sessions; absent or false means ordinary sessions. */
+    public boolean weekCommencingOnly() {
+        return Boolean.TRUE.equals(isWeekCommencing);
+    }
+
+    /**
      * SPRDT-1276: the discriminator for "this search can only be satisfied by whole,
      * duration-based days". MAGISTRATES never satisfies it, so every rule keyed on this method
      * is CROWN-only by construction.
@@ -42,7 +64,9 @@ public record HearingSlotRequestParam(String panel,
      * before, and it must not introduce a new failure mode for them.</p>
      */
     public boolean isCrownMultiDaySearch() {
-        if (!CROWN.equalsIgnoreCase(jurisdiction) || duration == null || duration.isBlank()) {
+        // SPRDT-1612: week commencing sessions are single Mondays holding several days of capacity, so a
+        // week commencing search never needs consecutive days; it is a single-session capacity search.
+        if (weekCommencingOnly() || !CROWN.equalsIgnoreCase(jurisdiction) || duration == null || duration.isBlank()) {
             return false;
         }
         try {
@@ -79,7 +103,8 @@ public record HearingSlotRequestParam(String panel,
                 && Objects.equals(showOverbookedSlots(), that.showOverbookedSlots()) &&
                 Objects.equals(duration(), that.duration()) &&
                 Objects.equals(status(), that.status()) &&
-                Objects.equals(jurisdiction(), that.jurisdiction());
+                Objects.equals(jurisdiction(), that.jurisdiction()) &&
+                Objects.equals(isWeekCommencing(), that.isWeekCommencing());
     }
 
     @Override
@@ -87,6 +112,6 @@ public record HearingSlotRequestParam(String panel,
         return Objects.hash(panel(), sessionStartDate(), sessionEndDate(), exactHearingStartDateTime(), oucodeL2Code(),
                 ouCode(), pageSize(), pageNumber(), courtRoomId(), courtRoomNumber(),
                 businessType(), courtSession(), isSlotBased(), hearingStartTime(), showOverbookedSlots(), duration(),
-                status(), jurisdiction());
+                status(), jurisdiction(), isWeekCommencing());
     }
 }

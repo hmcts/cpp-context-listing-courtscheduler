@@ -88,7 +88,8 @@ import org.hibernate.annotations.UpdateTimestamp;
                                 @ColumnResult(name = "totalbookedforafternoon", type = Integer.class),
                                 @ColumnResult(name = "totalbooked", type = Integer.class),
                                 @ColumnResult(name = IS_DRAFT, type = Boolean.class),
-                                @ColumnResult(name = JURISDICTION, type = String.class)
+                                @ColumnResult(name = JURISDICTION, type = String.class),
+                                @ColumnResult(name = IS_WEEK_COMMENCING, type = Boolean.class)
                         }
                 )
         ),
@@ -129,7 +130,8 @@ import org.hibernate.annotations.UpdateTimestamp;
                                 @ColumnResult(name = "totalbookedforafternoon", type = Integer.class),
                                 @ColumnResult(name = "totalbooked", type = Integer.class),
                                 @ColumnResult(name = IS_DRAFT, type = Boolean.class),
-                                @ColumnResult(name = JURISDICTION, type = String.class)
+                                @ColumnResult(name = JURISDICTION, type = String.class),
+                                @ColumnResult(name = IS_WEEK_COMMENCING, type = Boolean.class)
                         }
                 )
         ),
@@ -383,7 +385,8 @@ public class CourtSchedule implements Serializable {
                          final Integer totalBookedAfternoon,
                          final Integer totalBooked,
                          final Boolean isDraft,
-                         final String jurisdiction) {
+                         final String jurisdiction,
+                         final Boolean isWeekCommencing) {
         this.courtScheduleId = id;
         this.listingProfileId = courtListingProfileId;
         this.ouCode = ouCode;
@@ -417,6 +420,7 @@ public class CourtSchedule implements Serializable {
         this.totalBooked = totalBooked;
         this.draft = isDraft;
         this.jurisdiction = jurisdiction;
+        this.weekCommencing = Boolean.TRUE.equals(isWeekCommencing);
     }
 
     public CourtSchedule(
@@ -452,7 +456,8 @@ public class CourtSchedule implements Serializable {
             final Integer totalBookedAfternoon,
             final Integer totalBooked,
             final Boolean isDraft,
-            final String jurisdiction
+            final String jurisdiction,
+            final Boolean isWeekCommencing
     ) {
         this.courtScheduleId = id;
         this.listingProfileId = courtListingProfileId;
@@ -487,6 +492,7 @@ public class CourtSchedule implements Serializable {
         this.totalBooked = totalBooked;
         this.draft = isDraft;
         this.jurisdiction = jurisdiction;
+        this.weekCommencing = Boolean.TRUE.equals(isWeekCommencing);
     }
 
     public String getCourtScheduleId() {

@@ -44,7 +44,11 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 
+import org.apache.commons.lang3.tuple.Pair;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -266,8 +270,11 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
                         .stream().map(CourtSchedule::getCourtScheduleId).toList());
     }
 
-    @Test
-    void courtSchedulesByShouldReturnWeekCommencingSessionsWithTheFlag() {
+    // SPRDT-1612: isWeekCommencing=true returns only week commencing sessions; absent or false only the others.
+    @ParameterizedTest
+    @NullSource
+    @ValueSource(booleans = {false, true})
+    void courtSchedulesByShouldFilterOnTheWeekCommencingParamAndReturnTheFlag(final Boolean isWeekCommencing) {
         final String courtRoomId = randomUUID().toString();
         final LocalDate monday = LocalDate.of(2099, 1, 19);
         final CourtSchedule ordinary = courtScheduleRepository.save(upsertSession(courtRoomId, monday, false, ORDINARY_CAPACITY));
@@ -275,13 +282,88 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
         em.flush();
 
         final Map<String, Boolean> flagById = courtScheduleRepository.getCourtSchedulesBy(new CourtScheduleRequestParam(
-                        "CH" + WC_UPSERT_OU_CODE, courtRoomId, null, monday.toString(), monday.toString(), null, "10", "1"))
+                        "CH" + WC_UPSERT_OU_CODE, courtRoomId, null, monday.toString(), monday.toString(), null, "10", "1",
+                        isWeekCommencing))
+                .stream().collect(toMap(uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule::getCourtScheduleId,
+                        uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule::getIsWeekCommencing));
+
+        final Map<String, Boolean> expected = Boolean.TRUE.equals(isWeekCommencing)
+                ? Map.of(weekCommencing.getCourtScheduleId(), true)
+                : Map.of(ordinary.getCourtScheduleId(), false);
+        assertEquals(expected, flagById);
+    }
+
+    @Test
+    void editPathLookupShouldStillLoadBothKindsWithTheirFlag() {
+        final String courtRoomId = randomUUID().toString();
+        final LocalDate monday = LocalDate.of(2099, 1, 26);
+        final CourtSchedule ordinary = courtScheduleRepository.save(upsertSession(courtRoomId, monday, false, ORDINARY_CAPACITY));
+        final CourtSchedule weekCommencing = courtScheduleRepository.save(upsertSession(courtRoomId, monday, true, WEEK_COMMENCING_CAPACITY));
+        em.flush();
+
+        assertTrue(courtScheduleRepository.retrieveCourtScheduleWithListingById(weekCommencing.getCourtScheduleId()).isWeekCommencing());
+        assertFalse(courtScheduleRepository.retrieveCourtScheduleWithListingById(ordinary.getCourtScheduleId()).isWeekCommencing());
+    }
+
+    @ParameterizedTest
+    @NullSource
+    @ValueSource(booleans = {false, true})
+    void hearingSlotsShouldFilterOnTheWeekCommencingParamWithAMatchingCountAndFlag(final Boolean isWeekCommencing) {
+        final String courtRoomId = randomUUID().toString();
+        final LocalDate monday = LocalDate.of(2099, 2, 2);
+        final CourtSchedule ordinary = courtScheduleRepository.save(upsertSession(courtRoomId, monday, false, ORDINARY_CAPACITY));
+        final CourtSchedule weekCommencing = courtScheduleRepository.save(upsertSession(courtRoomId, monday, true, WEEK_COMMENCING_CAPACITY));
+        em.flush();
+
+        final Pair<Integer, List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule>> result =
+                courtScheduleRepository.getCourtSchedules(weekCommencingHearingSlotRequest(courtRoomId, monday, monday, isWeekCommencing));
+
+        final CourtSchedule expected = Boolean.TRUE.equals(isWeekCommencing) ? weekCommencing : ordinary;
+        assertEquals(1, result.getKey());
+        assertEquals(List.of(expected.getCourtScheduleId()), result.getValue().stream()
+                .map(uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule::getCourtScheduleId).toList());
+        assertEquals(Boolean.TRUE.equals(isWeekCommencing), result.getValue().getFirst().getIsWeekCommencing());
+    }
+
+    // Week commencing searches never take the multi-day path (HearingSlotRequestParam.isCrownMultiDaySearch),
+    // so this path only ever runs for ordinary sessions. A week commencing row on the same Monday must not join the run.
+    @ParameterizedTest
+    @NullSource
+    @ValueSource(booleans = {false})
+    void multidayHearingSlotCandidatesShouldLeaveOutWeekCommencingSessions(final Boolean isWeekCommencing) {
+        final String courtRoomId = randomUUID().toString();
+        final LocalDate monday = LocalDate.of(2099, 2, 9);
+        final LocalDate tuesday = monday.plusDays(1);
+        final List<String> ordinaryIds = new ArrayList<>();
+        for (final LocalDate day : List.of(monday, tuesday)) {
+            ordinaryIds.add(courtScheduleRepository.save(upsertSession(courtRoomId, day, false, ORDINARY_CAPACITY)).getCourtScheduleId());
+        }
+        courtScheduleRepository.save(upsertSession(courtRoomId, monday, true, WEEK_COMMENCING_CAPACITY));
+        em.flush();
+
+        final List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> result = courtScheduleRepository
+                .getMultidayHearingSlotCandidates(weekCommencingHearingSlotRequest(courtRoomId, monday, tuesday, isWeekCommencing), 2);
+
+        assertEquals(ordinaryIds.stream().sorted().toList(), result.stream()
+                .map(uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule::getCourtScheduleId).sorted().toList());
+        assertTrue(result.stream().noneMatch(uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule::getIsWeekCommencing));
+    }
+
+    // M2: GET /sessions?ids= reads the flag (the all-fields mapping), without filtering on it.
+    @Test
+    void courtSchedulesByIdListShouldReturnBothKindsWithTheirFlag() {
+        final String courtRoomId = randomUUID().toString();
+        final LocalDate monday = LocalDate.of(2099, 2, 16);
+        final CourtSchedule ordinary = courtScheduleRepository.save(upsertSession(courtRoomId, monday, false, ORDINARY_CAPACITY));
+        final CourtSchedule weekCommencing = courtScheduleRepository.save(upsertSession(courtRoomId, monday, true, WEEK_COMMENCING_CAPACITY));
+        em.flush();
+
+        final Map<String, Boolean> flagById = courtScheduleRepository
+                .getCourtSchedulesByIdList(List.of(ordinary.getCourtScheduleId(), weekCommencing.getCourtScheduleId()))
                 .stream().collect(toMap(uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule::getCourtScheduleId,
                         uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule::getIsWeekCommencing));
 
         assertEquals(Map.of(ordinary.getCourtScheduleId(), false, weekCommencing.getCourtScheduleId(), true), flagById);
-        assertTrue(courtScheduleRepository.retrieveCourtScheduleWithListingById(weekCommencing.getCourtScheduleId()).isWeekCommencing());
-        assertFalse(courtScheduleRepository.retrieveCourtScheduleWithListingById(ordinary.getCourtScheduleId()).isWeekCommencing());
     }
 
     @Test
@@ -1349,6 +1431,12 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
     private static CourtSchedule slotBased(final CourtSchedule schedule) {
         schedule.setSlotBased(true);
         return schedule;
+    }
+
+    private static HearingSlotRequestParam weekCommencingHearingSlotRequest(final String courtRoomId, final LocalDate from,
+                                                                            final LocalDate to, final Boolean isWeekCommencing) {
+        return new HearingSlotRequestParam(ADULT_2, from.toString(), to.toString(), null, null, WC_UPSERT_OU_CODE, "10", "1",
+                courtRoomId, null, null, null, null, null, true, null, null, CROWN_2, isWeekCommencing);
     }
 
     /** A draft CROWN all-day session for the upsert tests, ordinary or week commencing. */

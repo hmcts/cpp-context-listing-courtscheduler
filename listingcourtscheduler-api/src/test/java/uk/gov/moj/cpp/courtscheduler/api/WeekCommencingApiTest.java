@@ -50,6 +50,7 @@ import org.springframework.http.ResponseEntity;
 class WeekCommencingApiTest {
 
     private static final String BUSINESS_TYPE = "TRL";
+    private static final String FIRST_MONDAY = "2027-01-04";
 
     @Mock
     private SessionsService sessionsService;
@@ -63,6 +64,8 @@ class WeekCommencingApiTest {
     private WeekCommencingApiValidator weekCommencingApiValidator;
     @Captor
     private ArgumentCaptor<CreateSessionRequestParam> createCaptor;
+    @Captor
+    private ArgumentCaptor<CourtScheduleRequestParam> courtScheduleParamCaptor;
 
     @Test
     void shouldCheckForDuplicatesThenEnrichValidateAndCreateAndReturn202() {
@@ -118,7 +121,7 @@ class WeekCommencingApiTest {
         final CreateSessionRequestParam body = new CreateSessionRequestParam()
                 .sessions(List.of(new Session().sessionType("AD").isDraft(true).jurisdiction("CROWN").isWeekCommencing(true)))
                 .sessionToBeAdded(new Session().sessionType("AD").isWeekCommencing(true))
-                .repeatPattern(new RepeatPattern().startDate("2027-01-04").endDate("2027-01-04").frequency("ONCE"));
+                .repeatPattern(new RepeatPattern().startDate(FIRST_MONDAY).endDate(FIRST_MONDAY).frequency("ONCE"));
 
         api().postCourtschedulerCreateCourtschedule(body);
 
@@ -128,22 +131,35 @@ class WeekCommencingApiTest {
     }
 
     @Test
-    void courtScheduleQueryShouldReturnTheWeekCommencingFlagOnEachSession() {
+    void courtScheduleQueryShouldPassTheWeekCommencingFilterAndReturnTheFlagOnEachSession() {
         when(courtScheduleApiValidator.getCourtSchedulesValidation(any(CourtScheduleRequestParam.class))).thenReturn(EMPTY_JSON_OBJECT);
         final String courtRoomId = "room-1";
         when(sessionsService.getCourtSchedules(any(CourtScheduleRequestParam.class))).thenReturn(new ArrayList<>(List.of(
-                new CourtSchedule().courtScheduleId("wc").courtRoomId(courtRoomId).sessionDate(LocalDate.of(2027, 1, 4))
+                new CourtSchedule().courtScheduleId("wc-1").courtRoomId(courtRoomId).sessionDate(LocalDate.of(2027, 1, 4))
                         .draft(true).isWeekCommencing(true),
-                new CourtSchedule().courtScheduleId("ordinary").courtRoomId(courtRoomId).sessionDate(LocalDate.of(2027, 1, 5))
-                        .draft(true).isWeekCommencing(false))));
+                new CourtSchedule().courtScheduleId("wc-2").courtRoomId(courtRoomId).sessionDate(LocalDate.of(2027, 1, 11))
+                        .draft(true).isWeekCommencing(true))));
 
         final CourtschedulerGetCourtSchedule body = api()
-                .getCourtschedule("centre", "2027-01-04", "2027-01-10", "10", "1", null, null, null).getBody();
+                .getCourtschedule("centre", FIRST_MONDAY, "2027-01-17", "10", "1", null, null, null, true).getBody();
 
+        verify(sessionsService).getCourtSchedules(courtScheduleParamCaptor.capture());
+        assertThat(courtScheduleParamCaptor.getValue().isWeekCommencing(), is(true));
         final List<CourtScheduleGroupedSession> sessions = body.getCourtSchedules().getFirst().getSessions();
-        assertThat(sessions.stream().map(CourtScheduleGroupedSession::getCourtScheduleId).toList(), is(List.of("wc", "ordinary")));
-        assertThat(sessions.stream().map(CourtScheduleGroupedSession::getIsWeekCommencing).toList(), is(List.of(true, false)));
+        assertThat(sessions.stream().map(CourtScheduleGroupedSession::getCourtScheduleId).toList(), is(List.of("wc-1", "wc-2")));
+        assertThat(sessions.stream().map(CourtScheduleGroupedSession::getIsWeekCommencing).toList(), is(List.of(true, true)));
         assertThat(sessions.stream().map(CourtScheduleGroupedSession::getIsDraft).toList(), is(List.of(true, true)));
+    }
+
+    @Test
+    void courtScheduleQueryWithoutTheParamShouldLeaveTheFilterUnset() {
+        when(courtScheduleApiValidator.getCourtSchedulesValidation(any(CourtScheduleRequestParam.class))).thenReturn(EMPTY_JSON_OBJECT);
+        when(sessionsService.getCourtSchedules(any(CourtScheduleRequestParam.class))).thenReturn(new ArrayList<>());
+
+        api().getCourtschedule("centre", FIRST_MONDAY, "2027-01-10", "10", "1", null, null, null, null);
+
+        verify(sessionsService).getCourtSchedules(courtScheduleParamCaptor.capture());
+        assertThat(courtScheduleParamCaptor.getValue().isWeekCommencing(), is(nullValue()));
     }
 
     private CourtSchedulerApi api() {

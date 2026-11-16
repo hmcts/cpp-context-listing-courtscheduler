@@ -119,7 +119,8 @@ public class SlotsSearchService {
                 requestParam.courtRoomId(), requestParam.courtRoomNumber(), requestParam.businessType(),
                 MULTIDAY_COURT_SESSION, MULTIDAY_IS_SLOT_BASED, requestParam.hearingStartTime(),
                 requestParam.showOverbookedSlots(),
-                requestParam.duration(), requestParam.status(), requestParam.jurisdiction());
+                requestParam.duration(), requestParam.status(), requestParam.jurisdiction(),
+                requestParam.isWeekCommencing());
 
         // Discover viable rooms first, then load their full schedule rows.
         final List<CourtSchedule> candidates = courtScheduleRepository

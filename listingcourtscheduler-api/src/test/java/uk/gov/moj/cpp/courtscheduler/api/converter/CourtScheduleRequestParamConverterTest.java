@@ -1,11 +1,14 @@
 package uk.gov.moj.cpp.courtscheduler.api.converter;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static uk.gov.moj.cpp.platform.test.data.utils.FileUtil.fileToString;
 
 import uk.gov.moj.cpp.courtscheduler.common.converter.StringToJsonObjectConverter;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleRequestParam;
 
+import jakarta.json.Json;
 import jakarta.json.JsonObject;
 
 import org.junit.jupiter.api.Test;
@@ -20,6 +23,14 @@ class CourtScheduleRequestParamConverterTest {
         final CourtScheduleRequestParam courtScheduleRequestParam = courtScheduleRequestParamConverter.convert(jsonObject);
 
         assertNotNull(courtScheduleRequestParam);
+        assertNull(courtScheduleRequestParam.isWeekCommencing());
+    }
+
+    @Test
+    void shouldReadTheWeekCommencingFlag() {
+        final JsonObject jsonObject = Json.createObjectBuilder(toJsonObject()).add("isWeekCommencing", true).build();
+
+        assertEquals(Boolean.TRUE, courtScheduleRequestParamConverter.convert(jsonObject).isWeekCommencing());
     }
 
     private JsonObject toJsonObject() {

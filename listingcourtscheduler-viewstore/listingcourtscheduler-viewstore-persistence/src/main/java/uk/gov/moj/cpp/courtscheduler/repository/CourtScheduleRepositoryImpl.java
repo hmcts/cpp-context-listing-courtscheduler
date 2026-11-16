@@ -157,6 +157,7 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
                     s.is_overbooking_allowed,
                     s.is_draft,
                     s.jurisdiction,
+                    s.is_week_commencing,
             
                     -- Total booked duration
                     CAST(COALESCE(SUM(al.duration), 0) AS INTEGER) AS totalbooked,
@@ -228,7 +229,8 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
                     s.session_end_time,
                     s.is_overbooking_allowed,
                     s.is_draft,
-                    s.jurisdiction
+                    s.jurisdiction,
+                    s.is_week_commencing
             """;
 
     private static final int BATCH_SIZE = 50;
@@ -296,6 +298,7 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
             cs.national_break_time,
             cs.is_draft,
             cs.jurisdiction,
+            cs.is_week_commencing,
             -- Adjusted calculation for morning bookings
             COALESCE(
                     SUM(
@@ -370,7 +373,8 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
                     cs.max_ad_afternoon_duration,
                     cs.is_overbooking_allowed,
                     cs.is_draft,
-                    cs.jurisdiction
+                    cs.jurisdiction,
+                    cs.is_week_commencing
                 ORDER BY cs.session_start, cs.court_house_name, cs.court_room_name, cs.court_session, cs.rota_business_type
             """;
 
@@ -429,6 +433,7 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
     private static final int DEFAULT_DURATION_TO_BE_RETURNED = 20;
     private static final String HEARING_START_TIME = "hearingStartTime";
     private static final String IS_DRAFT = "isDraft";
+    private static final String IS_WEEK_COMMENCING_PARAM = "isWeekCommencing";
 
     // SPRDT-1159 auto-created session shape: duration-based AD sessions with a fixed full-day
     // capacity and overbooking disallowed. LNG when the caller pinned a courtroom (FINAL session),
@@ -785,7 +790,10 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
             queryString.append("AND s.is_draft = :isDraft ");
             params.put(IS_DRAFT, courtScheduleRequestParam.isDraft());
         }
-        queryString.append("group by s.id, al.id, s.court_room_number order by session_start ");
+        // SPRDT-1612: isWeekCommencing=true returns only week commencing sessions; absent or false only the others.
+        params.put(IS_WEEK_COMMENCING_PARAM, Boolean.TRUE.equals(courtScheduleRequestParam.isWeekCommencing()));
+        queryString.append("AND s.is_week_commencing = :isWeekCommencing "
+                + "group by s.id, al.id, s.court_room_number order by session_start ");
         if (courtScheduleRequestParam.pageSize() != null) {
             queryString.append("LIMIT :pageSize ");
             params.put("pageSize", new BigInteger(courtScheduleRequestParam.pageSize()));
@@ -1828,6 +1836,11 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
         if (StringUtils.isNotBlank(requestParam.jurisdiction())) {
             query.append(" AND cs.jurisdiction = :jurisdiction");
         }
+
+        // SPRDT-1612: always applied, so the count, paginated and multi-day discovery queries agree.
+        // isWeekCommencing=true returns only week commencing sessions; absent or false only the others.
+        // A boolean literal, never request text.
+        query.append(requestParam.weekCommencingOnly() ? " AND cs.is_week_commencing = true" : " AND cs.is_week_commencing = false");
     }
 
     private List<CourtSchedule> executeQuery(final String query, final Map<String, Object> params) {

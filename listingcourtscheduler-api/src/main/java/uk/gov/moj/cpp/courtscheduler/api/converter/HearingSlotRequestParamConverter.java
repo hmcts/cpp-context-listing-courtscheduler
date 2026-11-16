@@ -52,9 +52,13 @@ public class HearingSlotRequestParamConverter implements Converter<JsonObject, H
                 jsonObject.getString(RequestParameterConstant.STATUS.getLabel()) : null;
         final String jurisdiction = jsonObject.containsKey(RequestParameterConstant.JURISDICTION.getLabel()) ?
                 jsonObject.getString(RequestParameterConstant.JURISDICTION.getLabel()) : null;
+        // Same string-or-boolean shapes as showOverbookedSlots; absent stays null (= non week commencing only).
+        final String weekCommencingKey = RequestParameterConstant.IS_WEEK_COMMENCING.getLabel();
+        final Boolean isWeekCommencing = jsonObject.containsKey(weekCommencingKey) ? readFlexibleBoolean(jsonObject, weekCommencingKey) : null;
 
         return new HearingSlotRequestParam(panel, startDate, endDate, exactHearingStartDateTime, ouLevel, ouCode, pageSize,
-                pageNumber, courtRoomId, courtRoomNumber, businessType, courtSession, isSlotBased, hearingStartTime, showOverbookingSlots, duration, status, jurisdiction);
+                pageNumber, courtRoomId, courtRoomNumber, businessType, courtSession, isSlotBased, hearingStartTime, showOverbookingSlots, duration, status, jurisdiction,
+                isWeekCommencing);
     }
 
     private static boolean readFlexibleBoolean(final JsonObject jsonObject, final String key) {

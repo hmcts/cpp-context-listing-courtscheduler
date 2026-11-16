@@ -344,14 +344,15 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
                                                                 final String pageNumber,
                                                                 final String courtRoomId,
                                                                 final String businessType,
-                                                                final Boolean isDraft) {
-        LOG.info("courtscheduler.get.court_schedule courtCentreId={}, sessionStart={}, sessionEnd={}",
-                courtCentreId, sessionStartDate, sessionEndDate);
+                                                                final Boolean isDraft,
+                                                                final Boolean isWeekCommencing) {
+        LOG.info("courtscheduler.get.court_schedule courtCentreId={}, sessionStart={}, sessionEnd={}, isWeekCommencing={}",
+                courtCentreId, sessionStartDate, sessionEndDate, isWeekCommencing);
 
         final CourtScheduleRequestParam param = new CourtScheduleRequestParam(
                 courtCentreId, courtRoomId, businessType,
                 sessionStartDate, sessionEndDate,
-                isDraft, pageSize, pageNumber);
+                isDraft, pageSize, pageNumber, isWeekCommencing);
 
         final JsonObject validate = courtScheduleApiValidator.getCourtSchedulesValidation(param);
         if (!validate.isEmpty()) {
