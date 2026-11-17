@@ -79,6 +79,9 @@
             "draft": {
               "type": "boolean"
             },
+            "isWeekCommencing": {
+              "type": "boolean"
+            },
             "judiciaries": {
               "type": "array",
               "items": [

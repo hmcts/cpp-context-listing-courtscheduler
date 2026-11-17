@@ -24,6 +24,7 @@
       "availableSlots": -24,
       "availableDuration": 0,
       "draft": false,
+      "isWeekCommencing": false,
       "judiciaries": [
         {
           "judiciaryId": "b1fe7c40-b329-362d-842d-5f3d03798840",

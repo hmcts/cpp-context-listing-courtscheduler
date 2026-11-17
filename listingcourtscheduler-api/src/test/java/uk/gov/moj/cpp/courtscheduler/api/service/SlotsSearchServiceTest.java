@@ -9,6 +9,7 @@ import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.nullValue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -1321,6 +1322,35 @@ class SlotsSearchServiceTest {
     }
 
     @Test
+    void search_shouldUseNormalPathForWeekCommencingCrownOver360() {
+        final CourtSchedule weekCommencing = createMultidayCourtSchedule(randomUUID().toString(), parse(DATE_2026_03_23), 1800, 0, false)
+                .isWeekCommencing(true);
+        when(courtScheduleRepository.getCourtSchedules(any())).thenReturn(Pair.of(1, List.of(weekCommencing)));
+
+        final JsonObject jsonObject = slotsSearchService.search(weekCommencingRequest(createMultidayRequestParamWithPagination(CROWN_2, VALUE_1080, "10", "1")));
+
+        assertThat(jsonObject.getInt(RESULTS), is(1));
+        assertThat(jsonObject.getJsonArray(HEARING_SLOTS).getJsonObject(0).getBoolean("isWeekCommencing"), is(true));
+        verify(courtScheduleRepository, never()).getMultidayHearingSlotCandidates(any(), anyInt());
+    }
+
+    @Test
+    void search_shouldLeaveOutAWeekCommencingSessionWithoutEnoughCapacityForTheDuration() {
+        final CourtSchedule weekCommencing = createMultidayCourtSchedule(randomUUID().toString(), parse(DATE_2026_03_23), 720, 0, false)
+                .isWeekCommencing(true);
+        when(courtScheduleRepository.getCourtSchedules(any())).thenReturn(Pair.of(1, List.of(weekCommencing)));
+
+        final JsonObject jsonObject = slotsSearchService.search(weekCommencingRequest(createMultidayRequestParamWithPagination(CROWN_2, VALUE_1080, "10", "1")));
+
+        assertThat(jsonObject.getJsonArray(HEARING_SLOTS).size(), is(0));
+    }
+
+    @Test
+    void isMultidayCrownSearch_shouldReturnFalseForAWeekCommencingSearch() {
+        assertThat(slotsSearchService.isMultidayCrownSearch(weekCommencingRequest(createMultidayRequestParam(CROWN_2, VALUE_1080))), is(false));
+    }
+
+    @Test
     void search_shouldReturnCorrectPageCountForMultidayCrown() {
         final String courtRoomId = randomUUID().toString();
         // Mon 23 to Fri 27 = 5 consecutive weekdays, duration 1080 (3 days) => valid starts: 23,24,25 = 3
@@ -1764,6 +1794,13 @@ class SlotsSearchServiceTest {
         return new HearingSlotRequestParam(ADULT_2, LocalDate.now().toString(), LocalDate.now().plusDays(14).toString(),
                 null, null, C20_CO00, "10", "1", null, null, null, "AD", false, null, false,
                 duration, null, jurisdiction);
+    }
+
+    private static HearingSlotRequestParam weekCommencingRequest(final HearingSlotRequestParam base) {
+        return new HearingSlotRequestParam(base.panel(), base.sessionStartDate(), base.sessionEndDate(), base.exactHearingStartDateTime(),
+                base.oucodeL2Code(), base.ouCode(), base.pageSize(), base.pageNumber(), base.courtRoomId(), base.courtRoomNumber(),
+                base.businessType(), base.courtSession(), base.isSlotBased(), base.hearingStartTime(), base.showOverbookedSlots(),
+                base.duration(), base.status(), base.jurisdiction(), true);
     }
 
     private HearingSlotRequestParam createMultidayRequestParamWithPagination(final String jurisdiction, final String duration,

@@ -119,7 +119,8 @@ public class HearingSlotsApi implements HearingslotsOpenApi {
                                                                final String hearingStartTime,
                                                                final String availableDurationMins,
                                                                final Boolean showOverbookedSlots,
-                                                               final String status) {
+                                                               final String status,
+                                                               final Boolean isWeekCommencing) {
         final Map<String, Object> qp = new LinkedHashMap<>();
         qp.put("panel", panel);
         qp.put("sessionStartDate", sessionStartDate);
@@ -139,6 +140,7 @@ public class HearingSlotsApi implements HearingslotsOpenApi {
         if (availableDurationMins != null) { qp.put("availableDurationMins", availableDurationMins); }
         if (showOverbookedSlots != null) { qp.put("showOverbookedSlots", showOverbookedSlots.toString()); }
         if (status != null) { qp.put("status", status); }
+        if (isWeekCommencing != null) { qp.put("isWeekCommencing", isWeekCommencing.toString()); }
 
         final HearingSlotRequestParam param = hearingSlotRequestParamConverter.convert(toJsonObject(qp));
 

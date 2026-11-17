@@ -9,8 +9,20 @@ public record CourtScheduleRequestParam(String courtCentreId,
                                         String sessionEndDate,
                                         Boolean isDraft,
                                         String pageSize,
-                                        String pageNumber
+                                        String pageNumber,
+                                        Boolean isWeekCommencing
 ) {
+
+    /**
+     * Without the week commencing filter: {@link #isWeekCommencing()} is {@code null}, which the
+     * query treats as "both kinds of session".
+     */
+    public CourtScheduleRequestParam(final String courtCentreId, final String courtRoomId, final String businessType,
+                                     final String sessionStartDate, final String sessionEndDate, final Boolean isDraft,
+                                     final String pageSize, final String pageNumber) {
+        this(courtCentreId, courtRoomId, businessType, sessionStartDate, sessionEndDate, isDraft, pageSize, pageNumber, null);
+    }
+
     @Override
     public boolean equals(final Object o) {
         if (this == o) {
@@ -23,12 +35,13 @@ public record CourtScheduleRequestParam(String courtCentreId,
         return Objects.equals(courtCentreId, that.courtCentreId) && Objects.equals(courtRoomId, that.courtRoomId)
                 && Objects.equals(businessType, that.businessType) && Objects.equals(sessionStartDate, that.sessionStartDate)
                 && Objects.equals(sessionEndDate, that.sessionEndDate) && Objects.equals(isDraft, that.isDraft)
-                && Objects.equals(pageSize, that.pageSize) && Objects.equals(pageNumber, that.pageNumber);
+                && Objects.equals(pageSize, that.pageSize) && Objects.equals(pageNumber, that.pageNumber)
+                && Objects.equals(isWeekCommencing, that.isWeekCommencing);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(courtCentreId, courtRoomId, businessType, sessionStartDate, sessionEndDate, isDraft, pageSize, pageNumber);
+        return Objects.hash(courtCentreId, courtRoomId, businessType, sessionStartDate, sessionEndDate, isDraft, pageSize, pageNumber, isWeekCommencing);
     }
 
     @Override

@@ -60,6 +60,34 @@ class HearingSlotRequestParamConverterTest {
         assertNull(hearingSlotRequestParam.ouCode());
     }
 
+    @Test
+    void shouldReadIsWeekCommencingAsJsonStringTrueTheShapeHearingSlotsApiSends() {
+        final HearingSlotRequestParam param = hearingSlotRequestParamConverter.convert(createObjectBuilder()
+                .add("isWeekCommencing", Boolean.TRUE.toString())
+                .build());
+
+        assertEquals(Boolean.TRUE, param.isWeekCommencing());
+        assertTrue(param.weekCommencingOnly());
+    }
+
+    @Test
+    void shouldReadIsWeekCommencingAsJsonBooleanFalse() {
+        final HearingSlotRequestParam param = hearingSlotRequestParamConverter.convert(createObjectBuilder()
+                .add("isWeekCommencing", false)
+                .build());
+
+        assertEquals(Boolean.FALSE, param.isWeekCommencing());
+        assertFalse(param.weekCommencingOnly());
+    }
+
+    @Test
+    void shouldLeaveIsWeekCommencingNullWhenAbsentMeaningNonWeekCommencingOnly() {
+        final HearingSlotRequestParam param = hearingSlotRequestParamConverter.convert(toJsonObject());
+
+        assertNull(param.isWeekCommencing());
+        assertFalse(param.weekCommencingOnly());
+    }
+
     // Production path: HearingSlotsApi.getHearingSlots receives showOverbookedSlots
     // as Boolean and stores it in the qp map via .toString() before round-tripping
     // through toJsonObject(...). Parsson then exposes it as JsonString("true"),

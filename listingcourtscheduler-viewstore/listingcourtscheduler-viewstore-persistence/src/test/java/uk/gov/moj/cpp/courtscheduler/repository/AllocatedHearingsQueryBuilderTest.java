@@ -40,6 +40,21 @@ class AllocatedHearingsQueryBuilderTest extends uk.gov.moj.cpp.courtscheduler.re
 
 
     @Test
+    void hearingIdsQueryShouldIgnoreTheWeekCommencingParam() {
+        final HearingSlotRequestParam withoutParam = new HearingSlotRequestParam(MAGISTRATES_2, DATE_2024_01_01, DATE_2024_01_31,
+                null, null, OU123_2, "10", "1", ROOM123_2, null, null, null, null, null, null, null, null, null);
+        final HearingSlotRequestParam weekCommencingOnly = new HearingSlotRequestParam(MAGISTRATES_2, DATE_2024_01_01, DATE_2024_01_31,
+                null, null, OU123_2, "10", "1", ROOM123_2, null, null, null, null, null, null, null, null, null, true);
+
+        final AllocatedHearingsQueryBuilder plain = new AllocatedHearingsQueryBuilder(withoutParam);
+        final AllocatedHearingsQueryBuilder weekCommencing = new AllocatedHearingsQueryBuilder(weekCommencingOnly);
+
+        assertEquals(plain.getAllocatedHearingsQuery(), weekCommencing.getAllocatedHearingsQuery());
+        assertEquals(plain.getPagedQueryParamMap(), weekCommencing.getPagedQueryParamMap());
+        assertThat(weekCommencing.getAllocatedHearingsQuery(), not(containsString("is_week_commencing")));
+    }
+
+    @Test
     void testConstructorWithMinimalParameters() {
         // Given
         final HearingSlotRequestParam requestParam = new HearingSlotRequestParam(

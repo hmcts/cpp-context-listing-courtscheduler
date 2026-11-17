@@ -56,6 +56,7 @@ public enum RequestParameterConstant {
     HEARING_START_TIME("hearingStartTime"),
     STATUS("status"),
     IS_DRAFT("isDraft"),
+    IS_WEEK_COMMENCING("isWeekCommencing"),
     JURISDICTION("jurisdiction"),
     INDEX("index"),
     COURT_SCHEDULE_IDS("courtScheduleIds"),

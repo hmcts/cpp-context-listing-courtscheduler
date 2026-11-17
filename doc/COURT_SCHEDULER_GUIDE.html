@@ -325,6 +325,7 @@ classDiagram
         businessType
         jurisdiction : MAGISTRATES, CROWN
         isDraft
+        isWeekCommencing
         slotBased
         maxSlots / availableSlots
         maxDuration / availableDuration
@@ -1009,7 +1010,7 @@ Configuration comes from environment variables and an optional Kubernetes secret
 | Method & path | Media type (request / response) | Success | Purpose |
 |---|---|---|---|
 | `POST /courtschedule` | `vnd.courtscheduler.create+json` | 202 | Create sessions with a repeat pattern |
-| `GET /courtschedule` | → `vnd.courtscheduler.get+json` | 200 | Query sessions (centre, room, business type, dates, paging) |
+| `GET /courtschedule` | → `vnd.courtscheduler.get+json` | 200 | Query sessions (centre, room, business type, dates, paging). `isWeekCommencing=true` returns only week commencing sessions; with no param both kinds are returned (the view/edit sessions screen); `false` returns only the others. Each session has `isDraft` and `isWeekCommencing` |
 | `POST /courtschedule/edit` | `vnd.courtscheduler.update+json` | 202 | Update one session |
 | `POST /courtschedule/delete` | `vnd.courtscheduler.delete+json` → `.delete.response+json` | 200 | Delete sessions without bookings |
 | `POST /courtschedule/assign.courtroom` | `vnd.courtscheduler.assign.courtroom+json` → `.response+json` | 200 | Assign a courtroom to Crown draft sessions |
@@ -1027,8 +1028,8 @@ Configuration comes from environment variables and an optional Kubernetes secret
 
 | Method & path | Media type | Success | Purpose |
 |---|---|---|---|
-| `GET /hearingslots` | → `vnd.courtscheduler.get.hearing.slots+json` | 200 | Search free capacity |
-| `GET /hearingslots` | → `vnd.courtscheduler.get.hearing.ids+json` | 200 | Hearing IDs for allocated slots |
+| `GET /hearingslots` | → `vnd.courtscheduler.get.hearing.slots+json` | 200 | Search free capacity. `isWeekCommencing=true` returns only week commencing sessions; absent or `false` returns only the others. A week commencing search never uses the CROWN multi-day (consecutive days) search, because each week commencing session already holds several days of capacity. Each slot has `isWeekCommencing` |
+| `GET /hearingslots` | → `vnd.courtscheduler.get.hearing.ids+json` | 200 | Hearing IDs for allocated slots, in week commencing sessions or not (`isWeekCommencing` is ignored) |
 | `PUT /hearingslots` | `vnd.courtscheduler.update.hearing.slots+json` → `.response+json` | 200 | Book a hearing |
 | `DELETE /hearingslots/{hearingId}` | n/a | 202 | Release a hearing's allocations |
 | `PUT /list/hearingslots` | `vnd.courtscheduler.list.hearings-in-court-sessions+json` → `.response+json` | 200 | Book multiple hearings |

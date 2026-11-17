@@ -50,6 +50,10 @@ protocols: [ HTTP, HTTPS ]
         description: isDraft
         type: boolean
         required: false
+      isWeekCommencing:
+        description: true returns only week commencing sessions; false returns only non week commencing sessions; absent returns both
+        type: boolean
+        required: false
       pageSize:
         description: Number of records to be displayed per page
         type: string
@@ -393,6 +397,10 @@ protocols: [ HTTP, HTTPS ]
         type: string
         enum: [ CROWN, MAGISTRATES ]
         required: true
+      isWeekCommencing:
+        description: true returns only week commencing sessions; absent or false returns only non week commencing sessions
+        type: boolean
+        required: false
     responses:
       200:
         body:
