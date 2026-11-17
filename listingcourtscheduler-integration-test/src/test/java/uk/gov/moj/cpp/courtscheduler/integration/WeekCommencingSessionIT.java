@@ -62,7 +62,6 @@ class WeekCommencingSessionIT extends AbstractIT {
     private static final String COURT_SCHEDULE_ID = "courtScheduleId";
     private static final String IS_WEEK_COMMENCING = "isWeekCommencing";
     private static final String SESSION_DATE = "sessionDate";
-    private static final String EDIT_CONTENT_TYPE = "application/vnd.courtscheduler.update+json";
     private static final String HEARING_SLOTS_URL = "/hearingslots";
     private static final String GET_HEARING_SLOTS_ACCEPT = "application/vnd.courtscheduler.get.hearing.slots+json";
     private static final String GET_HEARING_IDS_ACCEPT = "application/vnd.courtscheduler.get.hearing.ids+json";
@@ -210,16 +209,19 @@ class WeekCommencingSessionIT extends AbstractIT {
         databaseSeeder.insertAllocatedListing(booking);
 
         // hearing ids ignore the param: the same hearing comes back whatever is sent
-        for (final Boolean isWeekCommencing : new Boolean[]{null, true, false}) {
-            try (Response response = getCommand(getRequestParams(HEARING_SLOTS_URL, GET_HEARING_IDS_ACCEPT, SYSTEM_USER_ID,
-                    hearingSlotsQuery(isWeekCommencing)))) {
-                final String body = response.readEntity(String.class);
-                assertThat(body, response.getStatus(), is(OK.getStatusCode()));
-                final List<String> hearingIds = Json.createReader(new StringReader(body)).readObject()
-                        .getJsonArray("hearingIds").getValuesAs(JsonObject.class).stream()
-                        .map(id -> id.getString("hearingId")).toList();
-                assertThat(String.valueOf(isWeekCommencing), hearingIds, is(List.of(hearingId)));
-            }
+        assertThat(hearingIds(null), is(List.of(hearingId)));
+        assertThat(hearingIds(true), is(List.of(hearingId)));
+        assertThat(hearingIds(false), is(List.of(hearingId)));
+    }
+
+    private List<String> hearingIds(final Boolean isWeekCommencing) {
+        try (Response response = getCommand(getRequestParams(HEARING_SLOTS_URL, GET_HEARING_IDS_ACCEPT, SYSTEM_USER_ID,
+                hearingSlotsQuery(isWeekCommencing)))) {
+            final String body = response.readEntity(String.class);
+            assertThat(body, response.getStatus(), is(OK.getStatusCode()));
+            return Json.createReader(new StringReader(body)).readObject()
+                    .getJsonArray("hearingIds").getValuesAs(JsonObject.class).stream()
+                    .map(id -> id.getString("hearingId")).toList();
         }
     }
 
