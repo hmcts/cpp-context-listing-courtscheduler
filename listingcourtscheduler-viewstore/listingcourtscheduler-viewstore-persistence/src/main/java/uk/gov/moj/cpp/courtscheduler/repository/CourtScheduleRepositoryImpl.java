@@ -790,7 +790,6 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
             queryString.append("AND s.is_draft = :isDraft ");
             params.put(IS_DRAFT, courtScheduleRequestParam.isDraft());
         }
-        // SPRDT-1612: absent returns both kinds (the view/edit sessions screen); true only week commencing; false only the others.
         if (courtScheduleRequestParam.isWeekCommencing() != null) {
             queryString.append("AND s.is_week_commencing = :isWeekCommencing ");
             params.put(IS_WEEK_COMMENCING_PARAM, courtScheduleRequestParam.isWeekCommencing());
@@ -1839,9 +1838,6 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
             query.append(" AND cs.jurisdiction = :jurisdiction");
         }
 
-        // SPRDT-1612: always applied, so the count, paginated and multi-day discovery queries agree.
-        // isWeekCommencing=true returns only week commencing sessions; absent or false only the others.
-        // A boolean literal, never request text.
         query.append(requestParam.weekCommencingOnly() ? " AND cs.is_week_commencing = true" : " AND cs.is_week_commencing = false");
     }
 

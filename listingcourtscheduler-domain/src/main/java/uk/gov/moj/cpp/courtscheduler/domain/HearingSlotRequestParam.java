@@ -64,8 +64,6 @@ public record HearingSlotRequestParam(String panel,
      * before, and it must not introduce a new failure mode for them.</p>
      */
     public boolean isCrownMultiDaySearch() {
-        // SPRDT-1612: week commencing sessions are single Mondays holding several days of capacity, so a
-        // week commencing search never needs consecutive days; it is a single-session capacity search.
         if (weekCommencingOnly() || !CROWN.equalsIgnoreCase(jurisdiction) || duration == null || duration.isBlank()) {
             return false;
         }

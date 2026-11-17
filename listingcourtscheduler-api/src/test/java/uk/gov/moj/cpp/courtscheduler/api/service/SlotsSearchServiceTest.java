@@ -1321,8 +1321,6 @@ class SlotsSearchServiceTest {
         assertThat(jsonObject.getInt(RESULTS), is(1));
     }
 
-    // SPRDT-1612: a week commencing session is a single Monday holding several days of capacity, so a long
-    // CROWN week commencing search is a single-session capacity search, never the consecutive-days search.
     @Test
     void search_shouldUseNormalPathForWeekCommencingCrownOver360() {
         final CourtSchedule weekCommencing = createMultidayCourtSchedule(randomUUID().toString(), parse(DATE_2026_03_23), 1800, 0, false)

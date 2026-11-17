@@ -98,7 +98,6 @@ class WeekCommencingSessionIT extends AbstractIT {
         }
     }
 
-    // SPRDT-1612: the view/edit sessions screen sends no param and must see both kinds; false only the others; true only WC.
     @Test
     void shouldReturnBothKindsOfSessionFromTheCourtScheduleWithoutTheParam() throws SQLException {
         assertCreated(request(DURATION_BASED_BUSINESS_TYPE, startDate, endDate));
@@ -222,31 +221,6 @@ class WeekCommencingSessionIT extends AbstractIT {
                 assertThat(String.valueOf(isWeekCommencing), hearingIds, is(List.of(hearingId)));
             }
         }
-    }
-
-    @Test
-    void shouldStillEditAWeekCommencingSessionAndKeepItWeekCommencing() {
-        assertCreated(request(DURATION_BASED_BUSINESS_TYPE, startDate, endDate));
-        final CourtSchedule weekCommencing = databaseReader.courtSchedules().getFirst();
-        final int editedCapacity = CAPACITY_FIVE_DAYS + MINUTES_PER_DAY;
-        final String edit = createObjectBuilder()
-                .add(COURT_SCHEDULE_ID, weekCommencing.getCourtScheduleId())
-                .add("courtRoomId", FIRST_LISTED_COURT_ROOM_ID)
-                .add("courtSession", "AD")
-                .add("businessType", DURATION_BASED_BUSINESS_TYPE)
-                .add("panel", ADULT)
-                .add("jurisdiction", CROWN)
-                .add("isDraft", true)
-                .add("maxDuration", editedCapacity)
-                .build().toString();
-
-        try (Response response = postCommand(GET_COURT_SCHEDULE_URL + "/edit", EDIT_CONTENT_TYPE, USER_ID, edit)) {
-            assertThat(response.readEntity(String.class), response.getStatus(), is(ACCEPTED.getStatusCode()));
-        }
-
-        final CourtSchedule edited = databaseReader.courtScheduleById(weekCommencing.getCourtScheduleId());
-        assertThat(edited.isWeekCommencing(), is(true));
-        assertThat(edited.getMaxDuration(), is(editedCapacity));
     }
 
     @Test

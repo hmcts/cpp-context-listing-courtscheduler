@@ -39,7 +39,6 @@ class AllocatedHearingsQueryBuilderTest extends uk.gov.moj.cpp.courtscheduler.re
     private static final String SESSION_START_DATE = "sessionStartDate";
 
 
-    // SPRDT-1612: the week commencing filter applies to hearing slots and court schedules only; hearing ids ignore it.
     @Test
     void hearingIdsQueryShouldIgnoreTheWeekCommencingParam() {
         final HearingSlotRequestParam withoutParam = new HearingSlotRequestParam(MAGISTRATES_2, DATE_2024_01_01, DATE_2024_01_31,

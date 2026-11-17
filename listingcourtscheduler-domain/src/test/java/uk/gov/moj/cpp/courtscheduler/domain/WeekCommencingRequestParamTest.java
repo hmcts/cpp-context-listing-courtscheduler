@@ -8,7 +8,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
 
-/** SPRDT-1612: the isWeekCommencing filter on the two search request records. */
 class WeekCommencingRequestParamTest {
 
     private static final String CROWN = "CROWN";

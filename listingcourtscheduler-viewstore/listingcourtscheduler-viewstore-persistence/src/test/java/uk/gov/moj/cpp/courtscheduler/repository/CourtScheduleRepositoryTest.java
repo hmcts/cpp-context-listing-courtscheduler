@@ -273,7 +273,6 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
                         .stream().map(CourtSchedule::getCourtScheduleId).toList());
     }
 
-    // SPRDT-1612: absent returns both kinds (view/edit sessions screen); false only the others; true only week commencing.
     private static Stream<Arguments> courtScheduleWeekCommencingCases() {
         return Stream.of(
                 Arguments.of(null, true, true),
