@@ -790,10 +790,12 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
             queryString.append("AND s.is_draft = :isDraft ");
             params.put(IS_DRAFT, courtScheduleRequestParam.isDraft());
         }
-        // SPRDT-1612: isWeekCommencing=true returns only week commencing sessions; absent or false only the others.
-        params.put(IS_WEEK_COMMENCING_PARAM, Boolean.TRUE.equals(courtScheduleRequestParam.isWeekCommencing()));
-        queryString.append("AND s.is_week_commencing = :isWeekCommencing "
-                + "group by s.id, al.id, s.court_room_number order by session_start ");
+        // SPRDT-1612: absent returns both kinds (the view/edit sessions screen); true only week commencing; false only the others.
+        if (courtScheduleRequestParam.isWeekCommencing() != null) {
+            queryString.append("AND s.is_week_commencing = :isWeekCommencing ");
+            params.put(IS_WEEK_COMMENCING_PARAM, courtScheduleRequestParam.isWeekCommencing());
+        }
+        queryString.append("group by s.id, al.id, s.court_room_number order by session_start ");
         if (courtScheduleRequestParam.pageSize() != null) {
             queryString.append("LIMIT :pageSize ");
             params.put("pageSize", new BigInteger(courtScheduleRequestParam.pageSize()));

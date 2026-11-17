@@ -43,10 +43,13 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Stream;
 
 import org.apache.commons.lang3.tuple.Pair;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -270,11 +273,19 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
                         .stream().map(CourtSchedule::getCourtScheduleId).toList());
     }
 
-    // SPRDT-1612: isWeekCommencing=true returns only week commencing sessions; absent or false only the others.
+    // SPRDT-1612: absent returns both kinds (view/edit sessions screen); false only the others; true only week commencing.
+    private static Stream<Arguments> courtScheduleWeekCommencingCases() {
+        return Stream.of(
+                Arguments.of(null, true, true),
+                Arguments.of(false, true, false),
+                Arguments.of(true, false, true));
+    }
+
     @ParameterizedTest
-    @NullSource
-    @ValueSource(booleans = {false, true})
-    void courtSchedulesByShouldFilterOnTheWeekCommencingParamAndReturnTheFlag(final Boolean isWeekCommencing) {
+    @MethodSource("courtScheduleWeekCommencingCases")
+    void courtSchedulesByShouldFilterOnTheWeekCommencingParamAndReturnTheFlag(final Boolean isWeekCommencing,
+                                                                               final boolean expectOrdinary,
+                                                                               final boolean expectWeekCommencing) {
         final String courtRoomId = randomUUID().toString();
         final LocalDate monday = LocalDate.of(2099, 1, 19);
         final CourtSchedule ordinary = courtScheduleRepository.save(upsertSession(courtRoomId, monday, false, ORDINARY_CAPACITY));
@@ -287,10 +298,9 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
                 .stream().collect(toMap(uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule::getCourtScheduleId,
                         uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule::getIsWeekCommencing));
 
-        final Map<String, Boolean> expected = Boolean.TRUE.equals(isWeekCommencing)
-                ? Map.of(weekCommencing.getCourtScheduleId(), true)
-                : Map.of(ordinary.getCourtScheduleId(), false);
-        assertEquals(expected, flagById);
+        assertEquals(expectOrdinary ? Boolean.FALSE : null, flagById.get(ordinary.getCourtScheduleId()));
+        assertEquals(expectWeekCommencing ? Boolean.TRUE : null, flagById.get(weekCommencing.getCourtScheduleId()));
+        assertEquals((expectOrdinary ? 1 : 0) + (expectWeekCommencing ? 1 : 0), flagById.size());
     }
 
     @Test

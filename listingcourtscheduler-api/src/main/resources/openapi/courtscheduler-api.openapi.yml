@@ -51,7 +51,7 @@ paths:
         - in: query
           name: isWeekCommencing
           required: false
-          description: true returns only week commencing sessions; absent or false returns only non week commencing sessions
+          description: true returns only week commencing sessions; false returns only non week commencing sessions; absent returns both
           schema: { type: boolean }
         - { in: query, name: pageSize,   required: true,  schema: { type: string } }
         - { in: query, name: pageNumber, required: true,  schema: { type: string } }

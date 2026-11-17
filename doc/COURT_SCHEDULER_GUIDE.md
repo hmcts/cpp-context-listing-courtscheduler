@@ -894,7 +894,7 @@ Configuration comes from environment variables and an optional Kubernetes secret
 | Method & path | Media type (request / response) | Success | Purpose |
 |---|---|---|---|
 | `POST /courtschedule` | `vnd.courtscheduler.create+json` | 202 | Create sessions with a repeat pattern |
-| `GET /courtschedule` | → `vnd.courtscheduler.get+json` | 200 | Query sessions (centre, room, business type, dates, paging). `isWeekCommencing=true` returns only week commencing sessions; absent or `false` returns only the others. Each session has `isDraft` and `isWeekCommencing` |
+| `GET /courtschedule` | → `vnd.courtscheduler.get+json` | 200 | Query sessions (centre, room, business type, dates, paging). `isWeekCommencing=true` returns only week commencing sessions; with no param both kinds are returned (the view/edit sessions screen); `false` returns only the others. Each session has `isDraft` and `isWeekCommencing` |
 | `POST /courtschedule/edit` | `vnd.courtscheduler.update+json` | 202 | Update one session |
 | `POST /courtschedule/delete` | `vnd.courtscheduler.delete+json` → `.delete.response+json` | 200 | Delete sessions without bookings |
 | `POST /courtschedule/assign.courtroom` | `vnd.courtscheduler.assign.courtroom+json` → `.response+json` | 200 | Assign a courtroom to Crown draft sessions |

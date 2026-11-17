@@ -43,6 +43,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.stream.Stream;
 
 import jakarta.json.Json;
 import jakarta.json.JsonObject;
@@ -60,6 +61,7 @@ class WeekCommencingSessionIT extends AbstractIT {
     private static final String ADULT = "ADULT";
     private static final String COURT_SCHEDULE_ID = "courtScheduleId";
     private static final String IS_WEEK_COMMENCING = "isWeekCommencing";
+    private static final String SESSION_DATE = "sessionDate";
     private static final String EDIT_CONTENT_TYPE = "application/vnd.courtscheduler.update+json";
     private static final String HEARING_SLOTS_URL = "/hearingslots";
     private static final String GET_HEARING_SLOTS_ACCEPT = "application/vnd.courtscheduler.get.hearing.slots+json";
@@ -96,19 +98,35 @@ class WeekCommencingSessionIT extends AbstractIT {
         }
     }
 
-    // SPRDT-1612: isWeekCommencing=true returns only week commencing sessions; absent or false only the others.
+    // SPRDT-1612: the view/edit sessions screen sends no param and must see both kinds; false only the others; true only WC.
     @Test
-    void shouldReturnOnlyNonWeekCommencingSessionsFromTheCourtScheduleWithoutTheParam() throws SQLException {
+    void shouldReturnBothKindsOfSessionFromTheCourtScheduleWithoutTheParam() throws SQLException {
+        assertCreated(request(DURATION_BASED_BUSINESS_TYPE, startDate, endDate));
+        final LocalDate tuesday = startDate.with(next(TUESDAY));
+        final String ordinarySessionId = seedOrdinaryDraftSession(tuesday);
+
+        final List<String> dateAndKind = courtScheduleSessions(null).stream()
+                .map(session -> session.getString(SESSION_DATE) + " "
+                        + (session.getBoolean(IS_WEEK_COMMENCING) ? "WC" : session.getString(COURT_SCHEDULE_ID)))
+                .sorted().toList();
+
+        final List<String> expected = Stream.concat(
+                        mondaysBetween(startDate, endDate).stream().map(monday -> monday + " WC"),
+                        Stream.of(tuesday + " " + ordinarySessionId))
+                .sorted().toList();
+        assertThat(dateAndKind, is(expected));
+    }
+
+    @Test
+    void shouldReturnOnlyNonWeekCommencingSessionsFromTheCourtScheduleWhenTheParamIsFalse() throws SQLException {
         assertCreated(request(DURATION_BASED_BUSINESS_TYPE, startDate, endDate));
         final String ordinarySessionId = seedOrdinaryDraftSession(startDate.with(next(TUESDAY)));
 
-        for (final Boolean isWeekCommencing : new Boolean[]{null, false}) {
-            final List<JsonObject> sessions = courtScheduleSessions(isWeekCommencing);
+        final List<JsonObject> sessions = courtScheduleSessions(false);
 
-            assertThat(sessions.stream().map(session -> session.getString(COURT_SCHEDULE_ID)).toList(), is(List.of(ordinarySessionId)));
-            assertThat(sessions.getFirst().getBoolean(IS_WEEK_COMMENCING), is(false));
-            assertThat(sessions.getFirst().getBoolean("isDraft"), is(true));
-        }
+        assertThat(sessions.stream().map(session -> session.getString(COURT_SCHEDULE_ID)).toList(), is(List.of(ordinarySessionId)));
+        assertThat(sessions.getFirst().getBoolean(IS_WEEK_COMMENCING), is(false));
+        assertThat(sessions.getFirst().getBoolean("isDraft"), is(true));
     }
 
     @Test
@@ -120,7 +138,7 @@ class WeekCommencingSessionIT extends AbstractIT {
 
         assertThat(sessions.stream().map(session -> session.getString(COURT_SCHEDULE_ID)).toList(),
                 everyItem(not(ordinarySessionId)));
-        assertThat(sessions.stream().map(session -> LocalDate.parse(session.getString("sessionDate"))).sorted().toList(),
+        assertThat(sessions.stream().map(session -> LocalDate.parse(session.getString(SESSION_DATE))).sorted().toList(),
                 is(mondaysBetween(startDate, endDate)));
         assertThat(sessions.stream().map(session -> session.getBoolean(IS_WEEK_COMMENCING)).toList(), everyItem(is(true)));
         assertThat(sessions.stream().map(session -> session.getBoolean("isDraft")).toList(), everyItem(is(true)));
@@ -151,7 +169,7 @@ class WeekCommencingSessionIT extends AbstractIT {
 
         assertThat(body.getInt("results"), is(mondaysBetween(startDate, endDate).size()));
         assertThat(slots.stream().map(slot -> slot.getString(COURT_SCHEDULE_ID)).toList(), everyItem(not(ordinarySessionId)));
-        assertThat(slots.stream().map(slot -> LocalDate.parse(slot.getString("sessionDate"))).sorted().toList(),
+        assertThat(slots.stream().map(slot -> LocalDate.parse(slot.getString(SESSION_DATE))).sorted().toList(),
                 is(mondaysBetween(startDate, endDate)));
         assertThat(slots.stream().map(slot -> slot.getBoolean(IS_WEEK_COMMENCING)).toList(), everyItem(is(true)));
     }
@@ -169,7 +187,7 @@ class WeekCommencingSessionIT extends AbstractIT {
             assertThat(body, response.getStatus(), is(OK.getStatusCode()));
             final List<JsonObject> slots = Json.createReader(new StringReader(body)).readObject()
                     .getJsonArray("hearingSlots").getValuesAs(JsonObject.class);
-            assertThat(slots.stream().map(slot -> LocalDate.parse(slot.getString("sessionDate"))).sorted().toList(),
+            assertThat(slots.stream().map(slot -> LocalDate.parse(slot.getString(SESSION_DATE))).sorted().toList(),
                     is(mondaysBetween(startDate, endDate)));
             assertThat(slots.stream().map(slot -> slot.getBoolean(IS_WEEK_COMMENCING)).toList(), everyItem(is(true)));
         }

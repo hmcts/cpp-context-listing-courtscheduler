@@ -15,7 +15,7 @@ public record CourtScheduleRequestParam(String courtCentreId,
 
     /**
      * Without the week commencing filter: {@link #isWeekCommencing()} is {@code null}, which the
-     * query treats as "non week commencing sessions only".
+     * query treats as "both kinds of session".
      */
     public CourtScheduleRequestParam(final String courtCentreId, final String courtRoomId, final String businessType,
                                      final String sessionStartDate, final String sessionEndDate, final Boolean isDraft,
