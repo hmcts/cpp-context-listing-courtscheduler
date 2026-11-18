@@ -391,6 +391,48 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
     }
 
     @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    void theSameRoomBusinessTypeAndMondayShouldHoldAnAssignedADraftAndAWeekCommencingSession() {
+        final String courtRoomId = randomUUID().toString();
+        final LocalDate monday = LocalDate.of(2099, 3, 2);
+        final CourtSchedule assigned = upsertSession(courtRoomId, monday, false, ORDINARY_CAPACITY);
+        assigned.setIsDraft(false);
+        final CourtSchedule draft = upsertSession(courtRoomId, monday, false, ORDINARY_CAPACITY);
+        final CourtSchedule weekCommencing = upsertSession(courtRoomId, monday, true, WEEK_COMMENCING_CAPACITY);
+
+        courtScheduleRepository.saveCourtSchedules(List.of(weekCommencing, assigned, draft));
+
+        final Map<String, Integer> capacityById = courtScheduleRepository.findAll().stream()
+                .filter(cs -> courtRoomId.equals(cs.getCourtRoomId()))
+                .collect(toMap(CourtSchedule::getCourtScheduleId, CourtSchedule::getMaxDuration));
+        assertEquals(Map.of(assigned.getCourtScheduleId(), ORDINARY_CAPACITY,
+                draft.getCourtScheduleId(), ORDINARY_CAPACITY,
+                weekCommencing.getCourtScheduleId(), WEEK_COMMENCING_CAPACITY), capacityById);
+    }
+
+    @Test
+    void assignCourtroomDuplicateCheckShouldIgnoreWeekCommencingSessions() {
+        final String courtRoomId = randomUUID().toString();
+        final LocalDate monday = LocalDate.of(2099, 3, 9);
+        final CourtSchedule draftToAssign = courtScheduleRepository.save(upsertSession(randomUUID().toString(), monday, false, ORDINARY_CAPACITY));
+        courtScheduleRepository.save(upsertSession(courtRoomId, monday, true, WEEK_COMMENCING_CAPACITY));
+        em.flush();
+
+        assertTrue(assignCourtroomDuplicates(courtRoomId, monday, draftToAssign).isEmpty());
+
+        final CourtSchedule ordinaryInTheRoom = courtScheduleRepository.save(upsertSession(courtRoomId, monday, false, ORDINARY_CAPACITY));
+        em.flush();
+
+        assertEquals(List.of(ordinaryInTheRoom.getCourtScheduleId()),
+                assignCourtroomDuplicates(courtRoomId, monday, draftToAssign).stream().map(CourtSchedule::getCourtScheduleId).toList());
+    }
+
+    private List<CourtSchedule> assignCourtroomDuplicates(final String courtRoomId, final LocalDate sessionDate, final CourtSchedule sessionToAssign) {
+        return courtScheduleRepository.findDuplicateSessionsForAssignCourtroom(courtRoomId, sessionDate, TRF_2,
+                List.of("AD", "AM", "PM"), "CH" + WC_UPSERT_OU_CODE, sessionToAssign.getCourtScheduleId());
+    }
+
+    @Test
     void courtSchedulesByIdListShouldReturnEmptyListForEmptyOrNullInput() {
         assertTrue(courtScheduleRepository.getCourtSchedulesByIdList(new ArrayList<>()).isEmpty());
         assertTrue(courtScheduleRepository.getCourtSchedulesByIdList(null).isEmpty());
