@@ -148,7 +148,7 @@ public interface CourtScheduleRepository
     @Query("SELECT entity FROM CourtSchedule entity WHERE entity.courtRoomId = :courtRoomId "
             + "AND entity.sessionDate = :sessionDate AND entity.businessType = :businessType "
             + "AND entity.courtSession IN (:courtSessions) AND entity.active = true "
-            + "AND entity.courtHouseId = :courtHouseId AND entity.weekCommencing = false "
+            + "AND entity.courtHouseId = :courtHouseId "
             + "AND entity.courtScheduleId != :excludeCourtScheduleId")
     List<CourtSchedule> findDuplicateSessionsForAssignCourtroom(@Param(COURT_ROOM_ID) String courtRoomId,
                                                                 @Param(SESSION_DATE) LocalDate sessionDate,

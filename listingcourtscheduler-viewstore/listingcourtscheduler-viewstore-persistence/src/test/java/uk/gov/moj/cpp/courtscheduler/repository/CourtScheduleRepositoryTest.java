@@ -391,28 +391,6 @@ class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
     }
 
     @Test
-    void assignCourtroomDuplicateCheckShouldIgnoreWeekCommencingSessions() {
-        final String courtRoomId = randomUUID().toString();
-        final LocalDate monday = LocalDate.of(2099, 3, 9);
-        final CourtSchedule draftToAssign = courtScheduleRepository.save(upsertSession(randomUUID().toString(), monday, false, ORDINARY_CAPACITY));
-        courtScheduleRepository.save(upsertSession(courtRoomId, monday, true, WEEK_COMMENCING_CAPACITY));
-        em.flush();
-
-        assertTrue(assignCourtroomDuplicates(courtRoomId, monday, draftToAssign).isEmpty());
-
-        final CourtSchedule ordinaryInTheRoom = courtScheduleRepository.save(upsertSession(courtRoomId, monday, false, ORDINARY_CAPACITY));
-        em.flush();
-
-        assertEquals(List.of(ordinaryInTheRoom.getCourtScheduleId()),
-                assignCourtroomDuplicates(courtRoomId, monday, draftToAssign).stream().map(CourtSchedule::getCourtScheduleId).toList());
-    }
-
-    private List<CourtSchedule> assignCourtroomDuplicates(final String courtRoomId, final LocalDate sessionDate, final CourtSchedule sessionToAssign) {
-        return courtScheduleRepository.findDuplicateSessionsForAssignCourtroom(courtRoomId, sessionDate, TRF_2,
-                List.of("AD", "AM", "PM"), "CH" + WC_UPSERT_OU_CODE, sessionToAssign.getCourtScheduleId());
-    }
-
-    @Test
     void courtSchedulesByIdListShouldReturnEmptyListForEmptyOrNullInput() {
         assertTrue(courtScheduleRepository.getCourtSchedulesByIdList(new ArrayList<>()).isEmpty());
         assertTrue(courtScheduleRepository.getCourtSchedulesByIdList(null).isEmpty());

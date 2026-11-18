@@ -72,13 +72,10 @@ class WeekCommencingSessionIT extends AbstractIT {
     private static final String GET_HEARING_IDS_ACCEPT = "application/vnd.courtscheduler.get.hearing.ids+json";
     private static final String COURT_CENTRE_ID = "785339c1-af71-3322-a55b-ba255e0db1c2";
     private static final String FIRST_LISTED_COURT_ROOM_ID = "3fc02c0f-f92e-31da-9686-d626ac8ccdc3";
-    private static final String SECOND_LISTED_COURT_ROOM_ID = "e06e1734-aa04-3ec0-b14c-400edab8b831";
     private static final String COURT_SCHEDULE_URL = "/courtschedule";
     private static final String CREATE_CONTENT_TYPE = "application/vnd.courtscheduler.create+json";
     private static final String VALIDATE_URL = "/validate";
     private static final String VALIDATE_CREATE_CONTENT_TYPE = "application/vnd.courtscheduler.validate.create+json";
-    private static final String ASSIGN_COURTROOM_URL = "/courtschedule/assign.courtroom";
-    private static final String ASSIGN_COURTROOM_CONTENT_TYPE = "application/vnd.courtscheduler.assign.courtroom+json";
     private static final String DURATION_BASED_BUSINESS_TYPE = "TRL";
     private static final String OTHER_DURATION_BASED_BUSINESS_TYPE = "LGT";
     private static final String SLOT_BASED_BUSINESS_TYPE = "DVLA";
@@ -399,47 +396,19 @@ class WeekCommencingSessionIT extends AbstractIT {
         assertThat(databaseReader.courtSchedules(), hasSize(expected.size()));
     }
 
-    @Test
-    void shouldAssignADraftSessionToTheCourtRoomThatHoldsTheWeekCommencingSession() {
-        assertCreated(request(DURATION_BASED_BUSINESS_TYPE, startDate, startDate.plusDays(6)));
-        assertOrdinarySessionValidatedAndCreated(SECOND_LISTED_COURT_ROOM_ID, true, startDate.plusDays(6));
-        final String draftId = databaseReader.courtSchedules().stream().filter(row -> !row.isWeekCommencing())
-                .map(CourtSchedule::getCourtScheduleId).findFirst().orElseThrow();
-        final String payload = createObjectBuilder()
-                .add("courtScheduleIds", createArrayBuilder().add(draftId))
-                .add("courtRoomId", FIRST_LISTED_COURT_ROOM_ID)
-                .build().toString();
-
-        try (Response response = postCommand(ASSIGN_COURTROOM_URL, ASSIGN_COURTROOM_CONTENT_TYPE, USER_ID, payload)) {
-            final String body = response.readEntity(String.class);
-            assertThat(body, response.getStatus(), is(OK.getStatusCode()));
-            assertThat(body, Json.createReader(new StringReader(body)).readObject().getJsonArray("errorGroups"), hasSize(0));
-        }
-
-        final LocalDate monday = startDate.with(nextOrSame(MONDAY));
-        assertThat(databaseReader.courtSchedules().stream().map(WeekCommencingSessionIT::dateAndKind).sorted().toList(),
-                is(List.of(monday + " assigned", monday + " draft week commencing")));
-        assertThat(databaseReader.courtSchedules().stream().map(CourtSchedule::getCourtRoomId).toList(),
-                everyItem(is(FIRST_LISTED_COURT_ROOM_ID)));
-    }
-
     private static String dateAndKind(final CourtSchedule row) {
         return row.getSessionDate() + (row.isDraft() ? " draft" : " assigned") + (row.isWeekCommencing() ? " week commencing" : "");
     }
 
     private void assertOrdinarySessionValidatedAndCreated(final String courtRoomId, final boolean isDraft) {
-        assertOrdinarySessionValidatedAndCreated(courtRoomId, isDraft, endDate);
-    }
-
-    private void assertOrdinarySessionValidatedAndCreated(final String courtRoomId, final boolean isDraft, final LocalDate end) {
-        try (Response response = validateOrdinarySession(courtRoomId, isDraft, end)) {
+        try (Response response = validateOrdinarySession(courtRoomId, isDraft)) {
             final String body = response.readEntity(String.class);
             assertThat(body, response.getStatus(), is(OK.getStatusCode()));
             assertThat(body, is("{}"));
         }
         final String payload = createObjectBuilder()
                 .add("sessions", createArrayBuilder().add(ordinarySession(courtRoomId, isDraft)))
-                .add("repeatPattern", everyWeekUntil(end))
+                .add("repeatPattern", everyWeek())
                 .build().toString();
         try (Response response = postCommand(COURT_SCHEDULE_URL, CREATE_CONTENT_TYPE, USER_ID, payload)) {
             assertThat(response.readEntity(String.class), response.getStatus(), is(ACCEPTED.getStatusCode()));
@@ -447,14 +416,10 @@ class WeekCommencingSessionIT extends AbstractIT {
     }
 
     private Response validateOrdinarySession(final String courtRoomId, final boolean isDraft) {
-        return validateOrdinarySession(courtRoomId, isDraft, endDate);
-    }
-
-    private Response validateOrdinarySession(final String courtRoomId, final boolean isDraft, final LocalDate end) {
         final String payload = createObjectBuilder()
                 .add("sessions", createArrayBuilder())
                 .add("sessionToBeAdded", ordinarySession(courtRoomId, isDraft))
-                .add("repeatPattern", everyWeekUntil(end))
+                .add("repeatPattern", everyWeek())
                 .build().toString();
         return postCommand(VALIDATE_URL, VALIDATE_CREATE_CONTENT_TYPE, USER_ID, payload);
     }
@@ -474,10 +439,10 @@ class WeekCommencingSessionIT extends AbstractIT {
                 .add("isDraft", isDraft);
     }
 
-    private JsonObjectBuilder everyWeekUntil(final LocalDate end) {
+    private JsonObjectBuilder everyWeek() {
         return createObjectBuilder()
                 .add("startDate", startDate.toString())
-                .add("endDate", end.toString())
+                .add("endDate", endDate.toString())
                 .add("repeatFor", 1)
                 .add("frequency", "EVERY_WEEK");
     }
