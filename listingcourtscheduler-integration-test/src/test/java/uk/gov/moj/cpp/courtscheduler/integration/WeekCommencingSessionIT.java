@@ -61,6 +61,8 @@ class WeekCommencingSessionIT extends AbstractIT {
     private static final String GET_COURT_SCHEDULE_URL = "/courtschedule";
     private static final String GET_COURT_SCHEDULE_ACCEPT = "application/vnd.courtscheduler.get+json";
     private static final String CROWN = "CROWN";
+    private static final String ALL_DAY = "AD";
+    private static final String COURT_CENTRE_ID_FIELD = "courtCentreId";
     private static final String ADULT = "ADULT";
     private static final String COURT_SCHEDULE_ID = "courtScheduleId";
     private static final String IS_WEEK_COMMENCING = "isWeekCommencing";
@@ -95,7 +97,7 @@ class WeekCommencingSessionIT extends AbstractIT {
             assertThat(rows.stream().map(CourtSchedule::getSessionDate).toList(), is(mondaysBetween(startDate, endDate)));
             assertThat(rows.stream().map(CourtSchedule::isWeekCommencing).toList(), everyItem(is(true)));
             assertThat(rows.stream().map(CourtSchedule::isDraft).toList(), everyItem(is(true)));
-            assertThat(rows.stream().map(CourtSchedule::getCourtSession).toList(), everyItem(is("AD")));
+            assertThat(rows.stream().map(CourtSchedule::getCourtSession).toList(), everyItem(is(ALL_DAY)));
             assertThat(rows.stream().map(CourtSchedule::getJurisdiction).toList(), everyItem(is(CROWN)));
             assertThat(rows.stream().map(CourtSchedule::getPanel).toList(), everyItem(is(ADULT)));
             assertThat(rows.stream().map(CourtSchedule::getCourtHouseId).toList(), everyItem(is(COURT_CENTRE_ID)));
@@ -318,7 +320,7 @@ class WeekCommencingSessionIT extends AbstractIT {
     @Test
     void shouldRejectACourtCentreWithNoCourtRoom() {
         final String unknownCourtCentreId = UUID.randomUUID().toString();
-        try (Response response = create(request(DURATION_BASED_BUSINESS_TYPE, startDate, endDate).add("courtCentreId", unknownCourtCentreId))) {
+        try (Response response = create(request(DURATION_BASED_BUSINESS_TYPE, startDate, endDate).add(COURT_CENTRE_ID_FIELD, unknownCourtCentreId))) {
             assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
             assertThat(response.readEntity(String.class), containsString(WEEK_COMMENCING_NO_COURTROOM + unknownCourtCentreId));
             assertThat(databaseReader.courtSchedules(), hasSize(0));
@@ -381,7 +383,7 @@ class WeekCommencingSessionIT extends AbstractIT {
         assertThat(rows.stream().map(WeekCommencingSessionIT::dateAndKind).sorted().toList(), is(expected));
         assertThat(rows.stream().map(CourtSchedule::getCourtRoomId).toList(), everyItem(is(FIRST_LISTED_COURT_ROOM_ID)));
         assertThat(rows.stream().map(CourtSchedule::getBusinessType).toList(), everyItem(is(DURATION_BASED_BUSINESS_TYPE)));
-        assertThat(rows.stream().map(CourtSchedule::getCourtSession).toList(), everyItem(is("AD")));
+        assertThat(rows.stream().map(CourtSchedule::getCourtSession).toList(), everyItem(is(ALL_DAY)));
         assertThat(rows.stream().map(CourtSchedule::isActive).toList(), everyItem(is(true)));
 
         for (final boolean isDraft : List.of(true, false)) {
@@ -459,10 +461,10 @@ class WeekCommencingSessionIT extends AbstractIT {
 
     private static JsonObjectBuilder ordinarySession(final String courtRoomId, final boolean isDraft) {
         return createObjectBuilder()
-                .add("courtCentreId", COURT_CENTRE_ID)
+                .add(COURT_CENTRE_ID_FIELD, COURT_CENTRE_ID)
                 .add("courtRoomId", courtRoomId)
                 .add("jurisdiction", CROWN)
-                .add("sessionType", "AD")
+                .add("sessionType", ALL_DAY)
                 .add("businessType", DURATION_BASED_BUSINESS_TYPE)
                 .add("duration", MINUTES_PER_DAY)
                 .add("allDaySplit", false)
@@ -492,7 +494,7 @@ class WeekCommencingSessionIT extends AbstractIT {
 
     private static JsonObjectBuilder request(final String businessType, final LocalDate start, final LocalDate end) {
         return createObjectBuilder()
-                .add("courtCentreId", COURT_CENTRE_ID)
+                .add(COURT_CENTRE_ID_FIELD, COURT_CENTRE_ID)
                 .add("businessType", businessType)
                 .add("startDate", start.toString())
                 .add("endDate", end.toString())
@@ -502,7 +504,7 @@ class WeekCommencingSessionIT extends AbstractIT {
 
     private List<JsonObject> courtScheduleSessions(final Boolean isWeekCommencing) {
         final Map<String, Object> query = new HashMap<>();
-        query.put("courtCentreId", COURT_CENTRE_ID);
+        query.put(COURT_CENTRE_ID_FIELD, COURT_CENTRE_ID);
         query.put("sessionStartDate", startDate.toString());
         query.put("sessionEndDate", endDate.toString());
         query.put("pageSize", "50");
@@ -567,7 +569,7 @@ class WeekCommencingSessionIT extends AbstractIT {
         session.setOperationalUnit("B01LY00");
         session.setBusinessType(DURATION_BASED_BUSINESS_TYPE);
         session.setPanel(ADULT);
-        session.setCourtSession("AD");
+        session.setCourtSession(ALL_DAY);
         session.setActive(true);
         session.setSlotBased(false);
         session.setSessionDate(sessionDate);
