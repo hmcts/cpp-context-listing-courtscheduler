@@ -58,7 +58,7 @@ class WeekCommencingSessionIT extends AbstractIT {
 
     private static final String URL = "/session/weekCommencing";
     private static final String CONTENT_TYPE = "application/vnd.courtscheduler.create-week-commencing.sessions+json";
-    private static final String GET_COURT_SCHEDULE_URL = "/courtschedule";
+    private static final String COURT_SCHEDULE_URL = "/courtschedule";
     private static final String GET_COURT_SCHEDULE_ACCEPT = "application/vnd.courtscheduler.get+json";
     private static final String CROWN = "CROWN";
     private static final String ALL_DAY = "AD";
@@ -72,7 +72,6 @@ class WeekCommencingSessionIT extends AbstractIT {
     private static final String GET_HEARING_IDS_ACCEPT = "application/vnd.courtscheduler.get.hearing.ids+json";
     private static final String COURT_CENTRE_ID = "785339c1-af71-3322-a55b-ba255e0db1c2";
     private static final String FIRST_LISTED_COURT_ROOM_ID = "3fc02c0f-f92e-31da-9686-d626ac8ccdc3";
-    private static final String COURT_SCHEDULE_URL = "/courtschedule";
     private static final String CREATE_CONTENT_TYPE = "application/vnd.courtscheduler.create+json";
     private static final String VALIDATE_URL = "/validate";
     private static final String VALIDATE_CREATE_CONTENT_TYPE = "application/vnd.courtscheduler.validate.create+json";
@@ -393,7 +392,7 @@ class WeekCommencingSessionIT extends AbstractIT {
             assertThat(duplicate.getStatus(), is(BAD_REQUEST.getStatusCode()));
             assertThat(duplicate.readEntity(String.class), containsString(DUPLICATE_SESSIONS));
         }
-        assertThat(databaseReader.courtSchedules(), hasSize(expected.size()));
+        assertThat(databaseReader.courtSchedules().stream().map(WeekCommencingSessionIT::dateAndKind).sorted().toList(), is(expected));
     }
 
     private static String dateAndKind(final CourtSchedule row) {
@@ -477,7 +476,7 @@ class WeekCommencingSessionIT extends AbstractIT {
         if (isWeekCommencing != null) {
             query.put(IS_WEEK_COMMENCING, isWeekCommencing.toString());
         }
-        try (Response response = getCommand(getRequestParams(GET_COURT_SCHEDULE_URL, GET_COURT_SCHEDULE_ACCEPT, USER_ID, query))) {
+        try (Response response = getCommand(getRequestParams(COURT_SCHEDULE_URL, GET_COURT_SCHEDULE_ACCEPT, USER_ID, query))) {
             final String body = response.readEntity(String.class);
             assertThat(body, response.getStatus(), is(OK.getStatusCode()));
             return Json.createReader(new StringReader(body)).readObject()
