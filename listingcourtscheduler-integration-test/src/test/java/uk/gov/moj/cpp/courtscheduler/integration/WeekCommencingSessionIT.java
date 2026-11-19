@@ -65,8 +65,8 @@ class WeekCommencingSessionIT extends AbstractIT {
     private static final int UPDATED_CAPACITY = 2160;
     private static final String COURT_SCHEDULE_URL = "/courtschedule";
     private static final String GET_COURT_SCHEDULE_ACCEPT = "application/vnd.courtscheduler.get+json";
-    private static final String CAPACITY_IN_MINUTES = CAPACITY_IN_MINUTES;
-    private static final String IS_OVERBOOKING_ALLOWED = IS_OVERBOOKING_ALLOWED;
+    private static final String CAPACITY_IN_MINUTES = "capacityInMinutes";
+    private static final String IS_OVERBOOKING_ALLOWED = "isOverbookingAllowed";
     private static final String CROWN = "CROWN";
     private static final String ALL_DAY = "AD";
     private static final String COURT_CENTRE_ID_FIELD = "courtCentreId";
