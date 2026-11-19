@@ -70,6 +70,9 @@ class WeekCommencingSessionIT extends AbstractIT {
     private static final String COURT_SCHEDULE_ID = "courtScheduleId";
     private static final String IS_WEEK_COMMENCING = "isWeekCommencing";
     private static final String SESSION_DATE = "sessionDate";
+    private static final String HEARING_SLOTS = "hearingSlots";
+    private static final String COURT_ROOM_ID_FIELD = "courtRoomId";
+    private static final String SESSIONS = "sessions";
     private static final String HEARING_SLOTS_URL = "/hearingslots";
     private static final String GET_HEARING_SLOTS_ACCEPT = "application/vnd.courtscheduler.get.hearing.slots+json";
     private static final String GET_HEARING_IDS_ACCEPT = "application/vnd.courtscheduler.get.hearing.ids+json";
@@ -173,7 +176,7 @@ class WeekCommencingSessionIT extends AbstractIT {
 
         for (final Boolean isWeekCommencing : new Boolean[]{null, false}) {
             final JsonObject body = hearingSlots(isWeekCommencing);
-            final List<JsonObject> slots = body.getJsonArray("hearingSlots").getValuesAs(JsonObject.class);
+            final List<JsonObject> slots = body.getJsonArray(HEARING_SLOTS).getValuesAs(JsonObject.class);
 
             assertThat(body.getInt("results"), is(1));
             assertThat(slots.stream().map(slot -> slot.getString(COURT_SCHEDULE_ID)).toList(), is(List.of(ordinarySessionId)));
@@ -187,7 +190,7 @@ class WeekCommencingSessionIT extends AbstractIT {
         final String ordinarySessionId = seedOrdinaryDraftSession(startDate.with(next(TUESDAY)));
 
         final JsonObject body = hearingSlots(true);
-        final List<JsonObject> slots = body.getJsonArray("hearingSlots").getValuesAs(JsonObject.class);
+        final List<JsonObject> slots = body.getJsonArray(HEARING_SLOTS).getValuesAs(JsonObject.class);
 
         assertThat(body.getInt("results"), is(mondaysBetween(startDate, endDate).size()));
         assertThat(slots.stream().map(slot -> slot.getString(COURT_SCHEDULE_ID)).toList(), everyItem(not(ordinarySessionId)));
@@ -208,7 +211,7 @@ class WeekCommencingSessionIT extends AbstractIT {
             final String body = response.readEntity(String.class);
             assertThat(body, response.getStatus(), is(OK.getStatusCode()));
             final List<JsonObject> slots = Json.createReader(new StringReader(body)).readObject()
-                    .getJsonArray("hearingSlots").getValuesAs(JsonObject.class);
+                    .getJsonArray(HEARING_SLOTS).getValuesAs(JsonObject.class);
             assertThat(slots.stream().map(slot -> LocalDate.parse(slot.getString(SESSION_DATE))).sorted().toList(),
                     is(mondaysBetween(startDate, endDate)));
             assertThat(slots.stream().map(slot -> slot.getBoolean(IS_WEEK_COMMENCING)).toList(), everyItem(is(true)));
@@ -419,7 +422,7 @@ class WeekCommencingSessionIT extends AbstractIT {
                 .map(CourtSchedule::getCourtScheduleId).findFirst().orElseThrow();
         final String payload = createObjectBuilder()
                 .add("courtScheduleIds", createArrayBuilder().add(draftId))
-                .add("courtRoomId", FIRST_LISTED_COURT_ROOM_ID)
+                .add(COURT_ROOM_ID_FIELD, FIRST_LISTED_COURT_ROOM_ID)
                 .build().toString();
 
         try (Response response = postCommand(ASSIGN_COURTROOM_URL, ASSIGN_COURTROOM_CONTENT_TYPE, USER_ID, payload)) {
@@ -467,13 +470,13 @@ class WeekCommencingSessionIT extends AbstractIT {
             final String body = response.readEntity(String.class);
             assertThat(body, response.getStatus(), is(OK.getStatusCode()));
             final List<JsonObject> sessions = Json.createReader(new StringReader(body)).readObject()
-                    .getJsonArray("sessions").getValuesAs(JsonObject.class);
+                    .getJsonArray(SESSIONS).getValuesAs(JsonObject.class);
             assertThat(sessions.stream().map(booked -> booked.getString(COURT_SCHEDULE_ID)).toList(),
                     is(List.of(session.getCourtScheduleId())));
             assertThat(sessions.getFirst().getBoolean(IS_WEEK_COMMENCING), is(true));
             assertThat(sessions.getFirst().getBoolean("draft"), is(true));
             assertThat(sessions.getFirst().getString(SESSION_DATE), is(session.getSessionDate().toString()));
-            assertThat(sessions.getFirst().containsKey("courtRoomId") && !sessions.getFirst().isNull("courtRoomId"), is(false));
+            assertThat(sessions.getFirst().containsKey(COURT_ROOM_ID_FIELD) && !sessions.getFirst().isNull(COURT_ROOM_ID_FIELD), is(false));
         }
 
         final List<AllocatedListing> rows = bookingsOf(hearingId);
@@ -609,7 +612,7 @@ class WeekCommencingSessionIT extends AbstractIT {
 
     private Response listHearingInSession(final String hearingId, final CourtSchedule session, final int duration) {
         return postCommand(HEARINGS_URL, LIST_HEARINGS_IN_SESSIONS_CONTENT_TYPE, SYSTEM_USER_ID, createObjectBuilder()
-                .add("hearingSlots", createArrayBuilder().add(createObjectBuilder()
+                .add(HEARING_SLOTS, createArrayBuilder().add(createObjectBuilder()
                         .add("hearingId", hearingId)
                         .add("courtScheduleIds", createArrayBuilder().add(createObjectBuilder()
                                 .add(COURT_SCHEDULE_ID, session.getCourtScheduleId())
@@ -673,7 +676,7 @@ class WeekCommencingSessionIT extends AbstractIT {
             assertThat(body, is("{}"));
         }
         final String payload = createObjectBuilder()
-                .add("sessions", createArrayBuilder().add(ordinarySession(courtRoomId, isDraft)))
+                .add(SESSIONS, createArrayBuilder().add(ordinarySession(courtRoomId, isDraft)))
                 .add("repeatPattern", everyWeekUntil(end))
                 .build().toString();
         try (Response response = postCommand(COURT_SCHEDULE_URL, CREATE_CONTENT_TYPE, USER_ID, payload)) {
@@ -687,7 +690,7 @@ class WeekCommencingSessionIT extends AbstractIT {
 
     private Response validateOrdinarySession(final String courtRoomId, final boolean isDraft, final LocalDate end) {
         final String payload = createObjectBuilder()
-                .add("sessions", createArrayBuilder())
+                .add(SESSIONS, createArrayBuilder())
                 .add("sessionToBeAdded", ordinarySession(courtRoomId, isDraft))
                 .add("repeatPattern", everyWeekUntil(end))
                 .build().toString();
@@ -697,7 +700,7 @@ class WeekCommencingSessionIT extends AbstractIT {
     private static JsonObjectBuilder ordinarySession(final String courtRoomId, final boolean isDraft) {
         return createObjectBuilder()
                 .add(COURT_CENTRE_ID_FIELD, COURT_CENTRE_ID)
-                .add("courtRoomId", courtRoomId)
+                .add(COURT_ROOM_ID_FIELD, courtRoomId)
                 .add("jurisdiction", CROWN)
                 .add("sessionType", ALL_DAY)
                 .add("businessType", DURATION_BASED_BUSINESS_TYPE)
@@ -752,7 +755,7 @@ class WeekCommencingSessionIT extends AbstractIT {
             assertThat(body, response.getStatus(), is(OK.getStatusCode()));
             return Json.createReader(new StringReader(body)).readObject()
                     .getJsonArray("courtSchedules").getValuesAs(JsonObject.class).stream()
-                    .flatMap(room -> room.getJsonArray("sessions").getValuesAs(JsonObject.class).stream())
+                    .flatMap(room -> room.getJsonArray(SESSIONS).getValuesAs(JsonObject.class).stream())
                     .toList();
         }
     }
@@ -772,7 +775,7 @@ class WeekCommencingSessionIT extends AbstractIT {
         query.put("sessionStartDate", startDate.toString());
         query.put("sessionEndDate", endDate.toString());
         query.put("ouCode", weekCommencingOuCode());
-        query.put("courtRoomId", FIRST_LISTED_COURT_ROOM_ID);
+        query.put(COURT_ROOM_ID_FIELD, FIRST_LISTED_COURT_ROOM_ID);
         query.put("jurisdiction", CROWN);
         query.put("showOverbookedSlots", "true");
         query.put("pageSize", "50");
