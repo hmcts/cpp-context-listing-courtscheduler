@@ -311,19 +311,29 @@ class NewRotaFileProcessorIT extends AbstractIT {
         // Remove session A's judiciaries so the third run re-assigns them and A counts as changed
         databaseSeeder.deleteJudiciaryByCourtScheduleId(courtScheduleIdA);
         databaseSeeder.cleanMigrationStatusTable();
+
+        // The second run's syncJudiciaryWithListing fires asynchronously after its rota processing
+        // completes. Blob I/O inside uploadAndCleanup can delay it enough for the sync to execute
+        // after the allocated-listing inserts above, sending spurious commands for singleSessionHearingId
+        // and sameJudiciaryHearingId. Wait here to let that async sync settle, then capture baseline
+        // counts so the third-run assertions use a delta (increment by 1) rather than an absolute count.
+        await().pollDelay(5, SECONDS).atMost(60, SECONDS).until(() -> true);
+        final int baselineSingleSession = countChangeJudiciaryForHearingsRequestsContaining(singleSessionHearingId);
+        final int baselineSameJudiciary = countChangeJudiciaryForHearingsRequestsContaining(sameJudiciaryHearingId);
+
         final int expectedJudiciariesWithSeeded = expectedJudiciaries + judiciariesA.size() + 1;
         verifyFullRotaFileProcessed(ROTA_FILE_PROCESSOR_REQUEST_NEW, expectedSchedules + 2, expectedJudiciariesWithSeeded);
 
         await().timeout(DEFAULT_POLL_TIMEOUT_FOR_ROTA_FILE_PROCESS_IN_SEC, SECONDS)
-                .until(() -> countChangeJudiciaryForHearingsRequestsContaining(singleSessionHearingId) >= 1
-                        && countChangeJudiciaryForHearingsRequestsContaining(sameJudiciaryHearingId) >= 1);
+                .until(() -> countChangeJudiciaryForHearingsRequestsContaining(singleSessionHearingId) >= baselineSingleSession + 1
+                        && countChangeJudiciaryForHearingsRequestsContaining(sameJudiciaryHearingId) >= baselineSameJudiciary + 1);
 
         // Single-session hearing and multi-session hearing with the same judiciaries: one command each
-        assertEquals(1, countChangeJudiciaryForHearingsRequestsContaining(singleSessionHearingId),
+        assertEquals(baselineSingleSession + 1, countChangeJudiciaryForHearingsRequestsContaining(singleSessionHearingId),
                 format("Expected one change-judiciary-for-hearings command for single-session hearing %s", singleSessionHearingId));
-        assertEquals(1, countChangeJudiciaryForHearingsRequestsContaining(sameJudiciaryHearingId),
+        assertEquals(baselineSameJudiciary + 1, countChangeJudiciaryForHearingsRequestsContaining(sameJudiciaryHearingId),
                 format("Expected one change-judiciary-for-hearings command for multi-session hearing %s", sameJudiciaryHearingId));
-        assertEquals(1, countSchemaShapedChangeJudiciaryForHearingsRequestsFor(sameJudiciaryHearingId),
+        assertEquals(baselineSameJudiciary + 1, countSchemaShapedChangeJudiciaryForHearingsRequestsFor(sameJudiciaryHearingId),
                 format("Expected a schema-shaped change-judiciary-for-hearings command for hearing %s", sameJudiciaryHearingId));
 
         // Multi-session hearing whose sessions have different judiciaries: no command
