@@ -4,8 +4,10 @@ import static jakarta.json.JsonValue.EMPTY_JSON_OBJECT;
 import static java.lang.Boolean.TRUE;
 import static java.util.Objects.isNull;
 import static uk.gov.moj.cpp.courtscheduler.common.CommonUtils.buildErrorResponse;
+import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.SESSION_NOT_FOUND;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.WEEK_COMMENCING_NO_COURTROOM;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.WEEK_COMMENCING_NO_MONDAY;
+import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.WEEK_COMMENCING_SESSION_NOT_WC;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.WEEK_COMMENCING_SLOT_BASED_NOT_ALLOWED;
 
 import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataCache;
@@ -14,6 +16,9 @@ import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.BusinessType;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.CreateSessionRequestParam;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.WeekCommencingCreateRequest;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.WeekCommencingUpdateRequest;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
@@ -31,13 +36,16 @@ public class WeekCommencingApiValidator {
     private final SessionsApiValidator sessionsApiValidator;
     private final ReferenceDataCache referenceDataCache;
     private final SessionsService sessionsService;
+    private final CourtScheduleRepository courtScheduleRepository;
 
     public WeekCommencingApiValidator(final SessionsApiValidator sessionsApiValidator,
                                       final ReferenceDataCache referenceDataCache,
-                                      final SessionsService sessionsService) {
+                                      final SessionsService sessionsService,
+                                      final CourtScheduleRepository courtScheduleRepository) {
         this.sessionsApiValidator = sessionsApiValidator;
         this.referenceDataCache = referenceDataCache;
         this.sessionsService = sessionsService;
+        this.courtScheduleRepository = courtScheduleRepository;
     }
 
     /**
@@ -81,6 +89,22 @@ public class WeekCommencingApiValidator {
             return buildErrorResponse(WEEK_COMMENCING_NO_MONDAY);
         }
 
+        return EMPTY_JSON_OBJECT;
+    }
+
+    /**
+     * Validates that the session identified by the request exists and is a week commencing session.
+     * Returns the first error found, or an empty object when the request is valid.
+     */
+    public JsonObject getWeekCommencingUpdateValidation(final WeekCommencingUpdateRequest request) {
+        final CourtSchedule persisted = courtScheduleRepository.retrieveCourtScheduleWithListingById(
+                request.getCourtScheduleId());
+        if (isNull(persisted)) {
+            return buildErrorResponse(SESSION_NOT_FOUND);
+        }
+        if (!TRUE.equals(persisted.isWeekCommencing())) {
+            return buildErrorResponse(WEEK_COMMENCING_SESSION_NOT_WC);
+        }
         return EMPTY_JSON_OBJECT;
     }
 

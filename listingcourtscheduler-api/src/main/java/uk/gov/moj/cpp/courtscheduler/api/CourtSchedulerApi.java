@@ -42,6 +42,7 @@ import uk.gov.moj.cpp.courtscheduler.api.service.MiService;
 import uk.gov.moj.cpp.courtscheduler.api.service.ProvisionalBookingService;
 import uk.gov.moj.cpp.courtscheduler.api.service.SlotsRemoveService;
 import uk.gov.moj.cpp.courtscheduler.api.service.SlotsUpdateService;
+import uk.gov.moj.cpp.courtscheduler.api.service.WeekCommencingEditSessionService;
 import uk.gov.moj.cpp.courtscheduler.api.service.WeekCommencingSessionService;
 import uk.gov.moj.cpp.courtscheduler.api.validator.AssignJudiciariesApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.CourtScheduleApiValidator;
@@ -88,6 +89,7 @@ import uk.gov.moj.cpp.courtscheduler.openapi.model.RequestedSlots;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.Result;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.UpdateCourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.WeekCommencingCreateRequest;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.WeekCommencingUpdateRequest;
 import uk.gov.moj.cpp.courtscheduler.exception.CrownFallbackInvalidRequestException;
 import uk.gov.moj.cpp.courtscheduler.exception.CrownFallbackNoSessionException;
 import uk.gov.moj.cpp.courtscheduler.exception.ExtendMultidayHearingException;
@@ -189,6 +191,7 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
     private final BookingLogPurgeService bookingLogPurgeService;
     private final WeekCommencingSessionService weekCommencingSessionService;
     private final WeekCommencingApiValidator weekCommencingApiValidator;
+    private final WeekCommencingEditSessionService weekCommencingEditSessionService;
 
     public CourtSchedulerApi(final ObjectMapper objectMapper,
                              final HttpServletRequest request,
@@ -212,7 +215,8 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
                              final ProvisionalSlotConverter provisionalSlotConverter,
                              final BookingLogPurgeService bookingLogPurgeService,
                              final WeekCommencingSessionService weekCommencingSessionService,
-                             final WeekCommencingApiValidator weekCommencingApiValidator) {
+                             final WeekCommencingApiValidator weekCommencingApiValidator,
+                             final WeekCommencingEditSessionService weekCommencingEditSessionService) {
         this.objectMapper = objectMapper;
         this.lenientObjectMapper = objectMapper.copy()
                 .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
@@ -238,6 +242,7 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
         this.bookingLogPurgeService = bookingLogPurgeService;
         this.weekCommencingSessionService = weekCommencingSessionService;
         this.weekCommencingApiValidator = weekCommencingApiValidator;
+        this.weekCommencingEditSessionService = weekCommencingEditSessionService;
     }
 
     /* ============================================================
@@ -278,7 +283,7 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
     }
 
     @Override
-    public ResponseEntity<Void> postCreateWeekCommencingSession(final WeekCommencingCreateRequest body) {
+    public ResponseEntity<Void> postWeekCommencingSession(final WeekCommencingCreateRequest body) {
         LOG.info("courtscheduler.create-week-commencing.sessions requested: {}", body);
 
         final JsonObject duplicate = weekCommencingApiValidator.getWeekCommencingDuplicateValidation(body);
@@ -294,6 +299,30 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
         }
 
         sessionsService.create(createRequest);
+        return ResponseEntity.status(HttpStatus.ACCEPTED).build();
+    }
+
+    @Override
+    public ResponseEntity<Void> putWeekCommencingSession(final WeekCommencingUpdateRequest body) {
+        LOG.info("courtscheduler.update-week-commencing.sessions requested: {}", body);
+
+        final JsonObject preValidation = weekCommencingApiValidator.getWeekCommencingUpdateValidation(body);
+        if (!preValidation.isEmpty()) {
+            throw new ValidationException(preValidation);
+        }
+
+        final UpdateCourtSchedule updateRequest = weekCommencingEditSessionService.enrichUpdateSessionRequest(body);
+
+        final JsonObject validate = sessionsApiValidator.getSessionsUpdateValidation(updateRequest);
+        if (!validate.isEmpty()) {
+            throw new ValidationException(validate);
+        }
+
+        final Result result = sessionsService.update(updateRequest);
+        if (!Boolean.TRUE.equals(result.getSuccess())) {
+            throw new ValidationException(
+                    Json.createObjectBuilder().add(ERROR_MESSAGE, result.getMsg()).build());
+        }
         return ResponseEntity.status(HttpStatus.ACCEPTED).build();
     }
 

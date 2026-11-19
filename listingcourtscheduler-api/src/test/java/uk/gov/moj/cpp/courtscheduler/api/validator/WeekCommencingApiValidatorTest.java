@@ -16,6 +16,9 @@ import uk.gov.moj.cpp.courtscheduler.openapi.model.BusinessType;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.CreateSessionRequestParam;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.Session;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.WeekCommencingCreateRequest;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.WeekCommencingUpdateRequest;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -43,12 +46,14 @@ class WeekCommencingApiValidatorTest {
     private ReferenceDataCache referenceDataCache;
     @Mock
     private SessionsService sessionsService;
+    @Mock
+    private CourtScheduleRepository courtScheduleRepository;
 
     private WeekCommencingApiValidator validator;
 
     @BeforeEach
     void setUp() {
-        validator = new WeekCommencingApiValidator(sessionsApiValidator, referenceDataCache, sessionsService);
+        validator = new WeekCommencingApiValidator(sessionsApiValidator, referenceDataCache, sessionsService, courtScheduleRepository);
     }
 
     @Test
@@ -140,6 +145,40 @@ class WeekCommencingApiValidatorTest {
         verifyNoInteractions(sessionsService);
     }
 
+    @Test
+    void updateValidationShouldPassWhenSessionExistsAndIsWeekCommencing() {
+        final String courtScheduleId = randomUUID().toString();
+        final CourtSchedule persisted = new CourtSchedule();
+        persisted.setWeekCommencing(true);
+        when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId)).thenReturn(persisted);
+
+        final JsonObject result = validator.getWeekCommencingUpdateValidation(updateRequest(courtScheduleId));
+
+        assertThat(result.isEmpty(), is(true));
+    }
+
+    @Test
+    void updateValidationShouldReturnErrorWhenSessionNotFound() {
+        final String courtScheduleId = randomUUID().toString();
+        when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId)).thenReturn(null);
+
+        final JsonObject result = validator.getWeekCommencingUpdateValidation(updateRequest(courtScheduleId));
+
+        assertThat(result.getString(ERROR_MESSAGE), is(ErrorMessages.SESSION_NOT_FOUND));
+    }
+
+    @Test
+    void updateValidationShouldReturnErrorWhenSessionIsNotWeekCommencing() {
+        final String courtScheduleId = randomUUID().toString();
+        final CourtSchedule persisted = new CourtSchedule();
+        persisted.setWeekCommencing(false);
+        when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId)).thenReturn(persisted);
+
+        final JsonObject result = validator.getWeekCommencingUpdateValidation(updateRequest(courtScheduleId));
+
+        assertThat(result.getString(ERROR_MESSAGE), is(ErrorMessages.WEEK_COMMENCING_SESSION_NOT_WC));
+    }
+
     private void givenValidAndDurationBased() {
         when(sessionsApiValidator.getSessionsCreateValidation(any())).thenReturn(EMPTY_JSON_OBJECT);
         when(referenceDataCache.getRotaBusinessTypeByCode(BUSINESS_TYPE))
@@ -156,6 +195,12 @@ class WeekCommencingApiValidatorTest {
                 .businessType(BUSINESS_TYPE)
                 .startDate("2027-01-06")
                 .endDate("2027-02-01")
+                .capacityInMinutes(1800);
+    }
+
+    private static WeekCommencingUpdateRequest updateRequest(final String courtScheduleId) {
+        return new WeekCommencingUpdateRequest()
+                .courtScheduleId(courtScheduleId)
                 .capacityInMinutes(1800);
     }
 }
