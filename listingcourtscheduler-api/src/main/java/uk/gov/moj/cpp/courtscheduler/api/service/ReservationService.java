@@ -304,8 +304,9 @@ public class ReservationService {
      * with {@code perDayDuration(total, daysNeeded)} as the per-day minutes — so pick and share
      * can never disagree about which run this booking holds.
      *
-     * <p>Not a Crown multi-day pick (no duration, duration at or under one court day, or the
-     * anchor session's jurisdiction is not CROWN) returns empty and {@link #reserveAll} falls back
+     * <p>Not a Crown multi-day pick (no duration, duration at or under one court day, the
+     * anchor session's jurisdiction is not CROWN, or the anchor is a week commencing session,
+     * which holds the whole hearing itself) returns empty and {@link #reserveAll} falls back
      * to the ordinary single-session {@link #toReservedSlot}. Non-Crown and single-day requests
      * are therefore completely unaffected by this method.
      *
@@ -333,7 +334,8 @@ public class ReservationService {
         // SessionsService#validateSessionAvailabilityListMode branches to its slot-based validator
         // before it ever reaches validateListModeDurationBased/validateListModeMultiDay, so a
         // slot-based anchor is never a Crown multi-day pick, whatever duration happens to be sent.
-        if (Boolean.TRUE.equals(anchor.getSlotBased()) || !JURISDICTION_CROWN.equalsIgnoreCase(anchor.getJurisdiction())) {
+        if (Boolean.TRUE.equals(anchor.getSlotBased()) || !JURISDICTION_CROWN.equalsIgnoreCase(anchor.getJurisdiction())
+                || Boolean.TRUE.equals(anchor.getIsWeekCommencing())) {
             return Optional.empty();
         }
 

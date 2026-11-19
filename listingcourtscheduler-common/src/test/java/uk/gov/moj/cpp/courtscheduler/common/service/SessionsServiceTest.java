@@ -765,6 +765,22 @@ class SessionsServiceTest {
     }
 
     @Test
+    void weekCommencingSessionIsCheckedAgainstItsOwnCapacityForAHearingLongerThanADay() {
+        final String courtScheduleId = randomUUID().toString();
+        final CourtSchedule entity = durationBasedSession(courtScheduleId, 3600);
+        entity.setJurisdiction(CROWN_2);
+        entity.setWeekCommencing(true);
+        when(courtScheduleRepository.findByCourtScheduleIds(List.of(courtScheduleId))).thenReturn(List.of(entity));
+        when(allocatedListingService.getAllocatedListingEachBookedByCourtScheduleId(courtScheduleId))
+                .thenReturn(List.of(booked(courtScheduleId, 1800), booked(courtScheduleId, 1080)));
+
+        assertEquals(Optional.of(String.format("Schedule %s has 720 minutes available but 1080 minutes are required.", courtScheduleId)),
+                sessionsService.validateSessionAvailabilityListMode(List.of(courtScheduleId), 1080));
+        assertTrue(sessionsService.validateSessionAvailabilityListMode(List.of(courtScheduleId), 720).isEmpty());
+        verify(courtScheduleRepository, never()).findActiveByCourtRoomIdBetweenDates(any(), any(), any(), any(), any());
+    }
+
+    @Test
     void shouldReturnErrorWhenCrownMultiDayMissingConsecutiveDay() {
         final String courtScheduleId = randomUUID().toString();
         final LocalDate startDate = LocalDate.of(2026, 6, 1);

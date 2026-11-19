@@ -392,6 +392,10 @@ public class SlotsUpdateService {
                 request.getDurationInMinutes(), Encode.forJava(request.getCourtScheduleId()), request.getSource());
 
         if (isMultiDay(request.getDurationInMinutes(), request.getHearingDate(), request.getEndDate())) {
+            final Optional<CourtSchedule> weekCommencingSession = weekCommencingAnchor(request);
+            if (weekCommencingSession.isPresent()) {
+                return bookIntoWeekCommencingSession(request, weekCommencingSession.get());
+            }
             return crownMultiDaySearchAndBook(request);
         }
 
@@ -421,6 +425,29 @@ public class SlotsUpdateService {
                 fallbackResponse.sessionStartTime(), fallbackResponse.sessionEndTime(),
                 fallbackResponse.durationInMinutes(), fallbackResponse.isDraft(),
                 fallbackResponse.businessType(), fallbackResponse.overbooked());
+    }
+
+    private Optional<CourtSchedule> weekCommencingAnchor(final CrownSearchAndBookRequest request) {
+        if (request.getDurationInMinutes() <= MINUTES_IN_DAY || request.getCourtScheduleId() == null || request.getCourtScheduleId().isBlank()) {
+            return Optional.empty();
+        }
+        final boolean weekCommencing = courtScheduleRepository.findByCourtScheduleIds(List.of(request.getCourtScheduleId())).stream()
+                .anyMatch(session -> Boolean.TRUE.equals(session.isWeekCommencing()));
+        if (!weekCommencing) {
+            return Optional.empty();
+        }
+        return courtScheduleRepository.getCourtSchedulesByIdList(List.of(request.getCourtScheduleId())).stream().findFirst();
+    }
+
+    private CrownSearchAndBookResponse bookIntoWeekCommencingSession(final CrownSearchAndBookRequest request, final CourtSchedule session) {
+        LOGGER.info("[CROWN-SAB] Week commencing session - hearingId: {}, courtScheduleId: {}, durationMins: {} booked into the one session",
+                Encode.forJava(request.getHearingId()), Encode.forJava(session.getCourtScheduleId()), request.getDurationInMinutes());
+        final List<CourtSchedule> sessions = List.of(session);
+        persistSessions(sessions, request.getHearingId(), false, request.getDurationInMinutes(), SOURCE_NONPOLICE);
+        CourtScheduleRoomSanitiser.stripCourtRoomFromDraftSessions(sessions);
+        return new CrownSearchAndBookResponse(
+                request.getHearingId(), null, null, sessions,
+                null, null, null, null, null, null, null, null);
     }
 
     /**

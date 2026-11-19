@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.eq;
@@ -67,6 +68,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -465,6 +467,15 @@ class SlotsUpdateServiceTest {
 
     private static uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule buildSession(final LocalDate date) {
         return buildSession(date, 360, 0, false);
+    }
+
+    private static uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule sessionEntity(
+            final String courtScheduleId, final boolean active, final boolean weekCommencing) {
+        final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule entity = new uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule();
+        entity.setCourtScheduleId(courtScheduleId);
+        entity.setActive(active);
+        entity.setWeekCommencing(weekCommencing);
+        return entity;
     }
 
     /** Like {@link #buildSession(LocalDate)}, but with an explicit courtScheduleId rather than a random UUID. */
@@ -1072,6 +1083,71 @@ class SlotsUpdateServiceTest {
             final CrownSearchAndBookResponse response = service.crownSearchAndBook(request);
             verify(courtScheduleRepository).findConsecutiveSessions(anchorId, 3);
             assertEquals(3, response.sessions().size());
+        }
+
+        @Test
+        void should_bookTheWholeHearingIntoTheOneSession_when_theAnchorIsAWeekCommencingSession() {
+            final String hearingId = UUID.randomUUID().toString();
+            final uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule weekCommencing = buildSession(LocalDate.of(2026, 9, 7), 3600, 0, false);
+            weekCommencing.setActive(true);
+            weekCommencing.setDraft(true);
+            weekCommencing.setIsWeekCommencing(true);
+            final String anchorId = weekCommencing.getCourtScheduleId();
+            final CrownSearchAndBookRequest request = new CrownSearchAndBookRequest()
+                    .hearingId(hearingId)
+                    .courtCentreId(UUID.randomUUID().toString())
+                    .hearingDate(LocalDate.of(2026, 9, 7))
+                    .courtScheduleId(anchorId)
+                    .durationInMinutes(1080);
+            when(courtScheduleRepository.findByCourtScheduleIds(List.of(anchorId))).thenReturn(List.of(sessionEntity(anchorId, true, true)));
+            when(courtScheduleRepository.getCourtSchedulesByIdList(List.of(anchorId))).thenReturn(List.of(weekCommencing));
+            when(courtScheduleRepository.saveBookedSlots(any(), eq(false), eq(false)))
+                    .thenReturn(new Result().msg("").success(true));
+
+            final CrownSearchAndBookResponse response = service.crownSearchAndBook(request);
+
+            final ArgumentCaptor<List<AllocatedSlot>> booked = ArgumentCaptor.forClass(List.class);
+            verify(courtScheduleRepository).saveBookedSlots(booked.capture(), eq(false), eq(false));
+            assertEquals(1, booked.getValue().size());
+            assertEquals(anchorId, booked.getValue().get(0).getCourtScheduleId());
+            assertEquals(hearingId, booked.getValue().get(0).getHearingId());
+            assertEquals(1080, booked.getValue().get(0).getDuration());
+            assertEquals("NONPOLICE", booked.getValue().get(0).getSource());
+            assertEquals("2026-09-07", booked.getValue().get(0).getSessionDate());
+            assertEquals(weekCommencing.getOuCode(), booked.getValue().get(0).getOuCode());
+            assertEquals(List.of(anchorId), response.sessions().stream().map(uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule::getCourtScheduleId).toList());
+            assertEquals(hearingId, response.hearingId());
+            Assertions.assertNull(response.sessions().get(0).getCourtRoomId());
+            verify(courtScheduleRepository, never()).findConsecutiveSessions(any(), anyInt());
+        }
+
+        @Test
+        void should_stillBookConsecutiveDays_when_theAnchorIsOrdinaryInactiveOrCannotBeFound() {
+            final String hearingId = UUID.randomUUID().toString();
+            final uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule ordinary = buildSession(LocalDate.of(2026, 9, 7));
+            ordinary.setActive(true);
+            ordinary.setIsWeekCommencing(false);
+            final uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule inactiveWeekCommencing = buildSession(LocalDate.of(2026, 9, 7));
+            final uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule missing = buildSession(LocalDate.of(2026, 9, 7));
+            when(courtScheduleRepository.findByCourtScheduleIds(List.of(ordinary.getCourtScheduleId()))).thenReturn(List.of(sessionEntity(ordinary.getCourtScheduleId(), true, false)));
+            when(courtScheduleRepository.findByCourtScheduleIds(List.of(inactiveWeekCommencing.getCourtScheduleId()))).thenReturn(List.of(sessionEntity(inactiveWeekCommencing.getCourtScheduleId(), false, true)));
+            when(courtScheduleRepository.findByCourtScheduleIds(List.of(missing.getCourtScheduleId()))).thenReturn(List.of());
+            for (final uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule anchor : List.of(ordinary, inactiveWeekCommencing, missing)) {
+                final String anchorId = anchor.getCourtScheduleId();
+                when(courtScheduleRepository.findConsecutiveSessions(anchorId, 3)).thenReturn(buildConsecutiveSessions(LocalDate.of(2026, 9, 7), 3));
+                lenient().when(courtScheduleRepository.saveBookedSlots(any(), eq(false), eq(false)))
+                        .thenReturn(new Result().msg("").success(true));
+
+                final CrownSearchAndBookResponse response = service.crownSearchAndBook(new CrownSearchAndBookRequest()
+                        .hearingId(hearingId)
+                        .courtCentreId(UUID.randomUUID().toString())
+                        .hearingDate(LocalDate.of(2026, 9, 7))
+                        .courtScheduleId(anchorId)
+                        .durationInMinutes(1080));
+
+                verify(courtScheduleRepository).findConsecutiveSessions(anchorId, 3);
+                assertEquals(3, response.sessions().size());
+            }
         }
 
         @Test

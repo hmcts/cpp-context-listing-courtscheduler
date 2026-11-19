@@ -1152,7 +1152,7 @@ public class SessionsService {
         }
         if (requestedDuration > FULL_DAY_DURATION_MINS) {
             final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule anchor = courtSchedules.getFirst();
-            if (CROWN.equalsIgnoreCase(anchor.getJurisdiction())) {
+            if (CROWN.equalsIgnoreCase(anchor.getJurisdiction()) && !TRUE.equals(anchor.isWeekCommencing())) {
                 return validateListModeMultiDay(anchor, requestedDuration);
             }
         }

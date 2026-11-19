@@ -550,6 +550,43 @@ class ReservationServiceTest {
     }
 
     @Test
+    void shouldHoldTheOneWeekCommencingSessionForAHearingLongerThanADay() {
+        final CourtSchedule weekCommencing = crownSession(SESSION_ID, LocalDate.of(2026, 10, 12), 3600, 0);
+        weekCommencing.setIsWeekCommencing(true);
+        when(courtScheduleRepository.getCourtSchedulesByIdList(List.of(SESSION_ID))).thenReturn(List.of(weekCommencing));
+        when(allocatedListingRepository.findByBookingId(BOOKING_ID)).thenReturn(List.of());
+        when(sessionsService.validateSessionAvailabilityListMode(List.of(SESSION_ID), 1080)).thenReturn(Optional.empty());
+        when(courtScheduleRepository.saveBookedSlots(anyList(), anyBoolean(), anyBoolean(), anyBoolean())).thenReturn(new Result().msg(SUCCESS).success(true));
+
+        final List<AllocatedSlot> reserved =
+                reservationService.reserveAll(BOOKING_ID, List.of(slotRequest(SESSION_ID, 1080)));
+
+        assertThat(reserved.size(), is(1));
+        assertThat(reserved.get(0).getCourtScheduleId(), is(SESSION_ID));
+        assertThat(reserved.get(0).getDuration(), is(1080));
+        assertThat(reserved.get(0).getBookingId(), is(BOOKING_ID));
+        verify(courtScheduleRepository, never()).findConsecutiveSessions(anyString(), anyInt());
+        verify(sessionsService).validateSessionAvailabilityListMode(List.of(SESSION_ID), 1080);
+    }
+
+    @Test
+    void shouldRefuseToHoldAWeekCommencingSessionThatHasNoRoomForTheHearing() {
+        final CourtSchedule weekCommencing = crownSession(SESSION_ID, LocalDate.of(2026, 10, 12), 3600, 2880);
+        weekCommencing.setIsWeekCommencing(true);
+        when(courtScheduleRepository.getCourtSchedulesByIdList(List.of(SESSION_ID))).thenReturn(List.of(weekCommencing));
+        when(allocatedListingRepository.findByBookingId(BOOKING_ID)).thenReturn(List.of());
+        when(sessionsService.validateSessionAvailabilityListMode(List.of(SESSION_ID), 1080))
+                .thenReturn(Optional.of("Schedule " + SESSION_ID + " has 720 minutes available but 1080 minutes are required."));
+
+        final NoCapacityException refused = assertThrows(NoCapacityException.class,
+                () -> reservationService.reserveAll(BOOKING_ID, List.of(slotRequest(SESSION_ID, 1080))));
+
+        assertThat(refused.getMessage(), is("Schedule " + SESSION_ID + " has 720 minutes available but 1080 minutes are required."));
+        verify(courtScheduleRepository, never()).saveBookedSlots(anyList(), anyBoolean(), anyBoolean(), anyBoolean());
+        verify(courtScheduleRepository, never()).findConsecutiveSessions(anyString(), anyInt());
+    }
+
+    @Test
     void shouldNotExpandASlotBasedCrownSessionEvenIfADurationIsSent() {
         // Slot-based sessions are untouched by the Crown multi-day expansion, whatever duration
         // value happens to be present on the request.
