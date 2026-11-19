@@ -39,7 +39,7 @@ class WeekCommencingEditSessionServiceTest {
     }
 
     @Test
-    void shouldBuildUpdateCourtScheduleFromPersistedSession() {
+    void shouldBuildUpdateCourtScheduleFromRequestAndPersistedSession() {
         final CourtSchedule persisted = persistedSession(COURT_ROOM_ID, BUSINESS_TYPE, "AD", "ADULT",
                 "CROWN", true, null, null);
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(COURT_SCHEDULE_ID)).thenReturn(persisted);
@@ -47,6 +47,7 @@ class WeekCommencingEditSessionServiceTest {
         final UpdateCourtSchedule result = service.enrichUpdateSessionRequest(
                 new WeekCommencingUpdateRequest()
                         .courtScheduleId(COURT_SCHEDULE_ID)
+                        .businessType(BUSINESS_TYPE)
                         .capacityInMinutes(CAPACITY_IN_MINUTES)
                         .isOverbookingAllowed(true));
 
@@ -66,17 +67,19 @@ class WeekCommencingEditSessionServiceTest {
     }
 
     @Test
-    void shouldDefaultOverbookingAllowedToFalseWhenNotProvided() {
-        final CourtSchedule persisted = persistedSession(COURT_ROOM_ID, BUSINESS_TYPE, "AD", "ADULT",
+    void businessTypeShouldComeFromRequestNotPersistedEntity() {
+        final CourtSchedule persisted = persistedSession(COURT_ROOM_ID, "TRL", "AD", "ADULT",
                 "CROWN", true, null, null);
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(COURT_SCHEDULE_ID)).thenReturn(persisted);
 
         final UpdateCourtSchedule result = service.enrichUpdateSessionRequest(
                 new WeekCommencingUpdateRequest()
                         .courtScheduleId(COURT_SCHEDULE_ID)
-                        .capacityInMinutes(CAPACITY_IN_MINUTES));
+                        .businessType("FWT")
+                        .capacityInMinutes(CAPACITY_IN_MINUTES)
+                        .isOverbookingAllowed(false));
 
-        assertThat(result.getIsOverbookingAllowed(), is(false));
+        assertThat(result.getBusinessType(), is("FWT"));
     }
 
     @Test
@@ -90,7 +93,9 @@ class WeekCommencingEditSessionServiceTest {
         final UpdateCourtSchedule result = service.enrichUpdateSessionRequest(
                 new WeekCommencingUpdateRequest()
                         .courtScheduleId(COURT_SCHEDULE_ID)
-                        .capacityInMinutes(CAPACITY_IN_MINUTES));
+                        .businessType(BUSINESS_TYPE)
+                        .capacityInMinutes(CAPACITY_IN_MINUTES)
+                        .isOverbookingAllowed(false));
 
         assertThat(result.getSessionStartTime(), is("10:00"));
         assertThat(result.getSessionEndTime(), is("17:00"));
@@ -105,7 +110,9 @@ class WeekCommencingEditSessionServiceTest {
         final UpdateCourtSchedule result = service.enrichUpdateSessionRequest(
                 new WeekCommencingUpdateRequest()
                         .courtScheduleId(COURT_SCHEDULE_ID)
-                        .capacityInMinutes(CAPACITY_IN_MINUTES));
+                        .businessType(BUSINESS_TYPE)
+                        .capacityInMinutes(CAPACITY_IN_MINUTES)
+                        .isOverbookingAllowed(false));
 
         assertThat(result.getSessionStartTime(), is(nullValue()));
         assertThat(result.getSessionEndTime(), is(nullValue()));

@@ -26,9 +26,10 @@ public class WeekCommencingEditSessionService {
 
     /**
      * Builds the full UpdateCourtSchedule from the simplified week commencing edit request,
-     * filling in immutable fields (courtroom, session type, business type, panel, jurisdiction,
-     * start/end times) from the persisted session. Called after pre-validation confirms the
-     * session exists and is a week commencing session.
+     * filling in immutable fields (courtroom, session type, panel, jurisdiction, start/end times)
+     * from the persisted session. businessType comes from the request (caller confirms or changes
+     * it; SessionsService.update validates jurisdiction compatibility). Called after pre-validation
+     * confirms the session exists and is a week commencing session.
      */
     public UpdateCourtSchedule enrichUpdateSessionRequest(final WeekCommencingUpdateRequest request) {
         final CourtSchedule persisted = courtScheduleRepository.retrieveCourtScheduleWithListingById(
@@ -38,7 +39,7 @@ public class WeekCommencingEditSessionService {
                 .courtScheduleId(request.getCourtScheduleId())
                 .courtRoomId(persisted.getCourtRoomId())
                 .courtSession(persisted.getCourtSession())
-                .businessType(persisted.getBusinessType())
+                .businessType(request.getBusinessType())
                 .panel(persisted.getPanel())
                 .maxDuration(request.getCapacityInMinutes())
                 .maxSlots(0)
