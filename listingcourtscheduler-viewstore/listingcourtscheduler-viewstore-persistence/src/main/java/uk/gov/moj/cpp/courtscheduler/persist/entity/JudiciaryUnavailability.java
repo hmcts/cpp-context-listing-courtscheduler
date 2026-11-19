@@ -1,7 +1,7 @@
 package uk.gov.moj.cpp.courtscheduler.persist.entity;
 
+import java.time.Instant;
 import java.time.LocalDate;
-import java.util.Date;
 import java.util.Objects;
 
 import jakarta.persistence.Column;
@@ -13,8 +13,6 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
-import jakarta.persistence.Temporal;
-import jakarta.persistence.TemporalType;
 
 import uk.gov.moj.cpp.courtscheduler.domain.UnavailabilityReason;
 
@@ -44,24 +42,19 @@ public class JudiciaryUnavailability {
     private UnavailabilityReason reason;
 
     @CreationTimestamp
-    @Temporal(TemporalType.TIMESTAMP)
     @Column(name = "created_on", nullable = false)
-    private Date createdOn;
+    private Instant createdOn;
 
     @UpdateTimestamp
-    @Temporal(TemporalType.TIMESTAMP)
     @Column(name = "updated_on", nullable = false)
-    private Date updatedOn;
+    private Instant updatedOn;
 
-    public JudiciaryUnavailability() {
-        //For JPA
-    }
 
     public String getId() {
         return this.id;
     }
 
-    public void setId(String id) {
+    public void setId(final String id) {
         this.id = id;
     }
 
@@ -69,7 +62,7 @@ public class JudiciaryUnavailability {
         return this.rule;
     }
 
-    public void setRule(JudiciaryAvailabilityRule rule) {
+    public void setRule(final JudiciaryAvailabilityRule rule) {
         this.rule = rule;
     }
 
@@ -77,7 +70,7 @@ public class JudiciaryUnavailability {
         return this.fromDate;
     }
 
-    public void setFromDate(LocalDate fromDate) {
+    public void setFromDate(final LocalDate fromDate) {
         this.fromDate = fromDate;
     }
 
@@ -85,7 +78,7 @@ public class JudiciaryUnavailability {
         return this.toDate;
     }
 
-    public void setToDate(LocalDate toDate) {
+    public void setToDate(final LocalDate toDate) {
         this.toDate = toDate;
     }
 
@@ -93,29 +86,31 @@ public class JudiciaryUnavailability {
         return this.reason;
     }
 
-    public void setReason(UnavailabilityReason reason) {
+    public void setReason(final UnavailabilityReason reason) {
         this.reason = reason;
     }
 
-    public Date getCreatedOn() {
+    public Instant getCreatedOn() {
         return this.createdOn;
     }
 
-    public void setCreatedOn(Date createdOn) {
+    public void setCreatedOn(final Instant createdOn) {
         this.createdOn = createdOn;
     }
 
-    public Date getUpdatedOn() {
+    public Instant getUpdatedOn() {
         return this.updatedOn;
     }
 
-    public void setUpdatedOn(Date updatedOn) {
+    public void setUpdatedOn(final Instant updatedOn) {
         this.updatedOn = updatedOn;
     }
 
     @Override
     public boolean equals(final Object o) {
-        if (!(o instanceof final JudiciaryUnavailability that)) return false;
+        if (!(o instanceof final JudiciaryUnavailability that)) {
+            return false;
+        }
         return Objects.equals(getId(), that.getId()) && Objects.equals(getRule(), that.getRule()) && Objects.equals(getFromDate(), that.getFromDate()) && Objects.equals(getToDate(), that.getToDate()) && Objects.equals(getReason(), that.getReason()) && Objects.equals(getCreatedOn(), that.getCreatedOn()) && Objects.equals(getUpdatedOn(), that.getUpdatedOn());
     }
 

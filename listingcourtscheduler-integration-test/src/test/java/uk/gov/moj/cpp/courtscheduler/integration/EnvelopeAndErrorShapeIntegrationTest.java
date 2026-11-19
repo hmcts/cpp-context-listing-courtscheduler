@@ -16,7 +16,7 @@ import org.springframework.http.ResponseEntity;
  *       {@link uk.gov.moj.cpp.courtscheduler.controllers.GlobalExceptionHandler}.</li>
  * </ul>
  */
-class EnvelopeAndErrorShapeIntegrationTest extends AbstractIntegrationTest {
+class EnvelopeAndErrorShapeIntegrationTest extends IntegrationTestBase {
 
     @Test
     void responseBodiesIncludeMetadataEnvelope() {

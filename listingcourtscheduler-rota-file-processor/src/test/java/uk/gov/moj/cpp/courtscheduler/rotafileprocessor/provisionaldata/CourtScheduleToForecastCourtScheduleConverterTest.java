@@ -5,10 +5,9 @@ import static java.util.UUID.randomUUID;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary.judiciary;
 
-import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtScheduleJudiciary;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -44,27 +43,26 @@ class CourtScheduleToForecastCourtScheduleConverterTest {
     @Test
     void shouldConvertToProvisionalCourtSchedule() {
         final List<CourtScheduleJudiciary> judiciaries = new ArrayList<>();
-        judiciaries.add(judiciary().withRotaJudiciaryId("123").withPosition("CHAIR").build());
-        final CourtSchedule courtScheduleExtracted = new CourtSchedule.CourtScheduleBuilder()
-                .withCourtScheduleId("0000fbb0-8579-4f2b-948e-c4e48a48e3f8")
-                .withListingProfileId("0000fbb0-8579-4f2b-948e-c4e48a48e3f7")
-                .withSessionDate(parse("2020-12-01"))
-                .withOuCode(OU_CODE)
-                .withCourtRoomId(COURT_ROOM_ID)
-                .withCourtRoomNumber(COURT_ROOM_NUMBER)
-                .withCourtHouseName(COURT_HOUSE_NAME)
-                .withCourtHouseId(COURT_HOUSE_ID)
-                .withCourtRoomName(COURT_ROOM_NAME)
-                .withOperationalUnit(OPERATIONAL_UNIT)
-                .withBusinessType(BUSINESS_TYPE)
-                .withPanel(PANEL)
-                .withCourtSession(COURT_SESSION)
-                .withMaxDuration(MAX_DURATION)
-                .withAvailableSlots(AVAILABLE_SLOTS)
-                .withAvailableDuration(AVAILABLE_DURATION)
-                .withMaxSlots(MAX_SLOTS)
-                .withJudiciaries(judiciaries)
-                .build();
+        judiciaries.add(new CourtScheduleJudiciary().rotaJudiciaryId("123").position("CHAIR"));
+        final CourtSchedule courtScheduleExtracted = new CourtSchedule()
+                .courtScheduleId("0000fbb0-8579-4f2b-948e-c4e48a48e3f8")
+                .listingProfileId("0000fbb0-8579-4f2b-948e-c4e48a48e3f7")
+                .sessionDate(parse("2020-12-01"))
+                .ouCode(OU_CODE)
+                .courtRoomId(COURT_ROOM_ID)
+                .courtRoomNumber(COURT_ROOM_NUMBER)
+                .courtHouseName(COURT_HOUSE_NAME)
+                .courtHouseId(COURT_HOUSE_ID)
+                .courtRoomName(COURT_ROOM_NAME)
+                .operationalUnit(OPERATIONAL_UNIT)
+                .businessType(BUSINESS_TYPE)
+                .panel(PANEL)
+                .courtSession(COURT_SESSION)
+                .maxDuration(MAX_DURATION)
+                .availableSlots(AVAILABLE_SLOTS)
+                .availableDuration(AVAILABLE_DURATION)
+                .maxSlots(MAX_SLOTS)
+                .judiciaries(judiciaries);
         final String newCourtScheduleId = randomUUID().toString();
 
         final LocalDate newSessionDate = LocalDate.of(2020, 12, 01);

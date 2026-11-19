@@ -11,6 +11,8 @@ import org.springframework.web.server.ResponseStatusException;
  */
 public class ValidationException extends ResponseStatusException {
 
+    private static final long serialVersionUID = 1L;
+
     private final JsonObject errors;
 
     public ValidationException(final JsonObject errors) {

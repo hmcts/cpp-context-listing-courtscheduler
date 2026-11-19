@@ -13,9 +13,10 @@ import uk.gov.moj.cpp.courtscheduler.common.AzureBlobClientService;
 import uk.gov.moj.cpp.courtscheduler.common.service.JudiciaryAssignmentService;
 import uk.gov.moj.cpp.courtscheduler.common.service.RotaFileProcessHistoryService;
 import uk.gov.moj.cpp.courtscheduler.common.service.data.BlobContent;
-import uk.gov.moj.cpp.courtscheduler.domain.AssignJudiciariesResponse;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.AssignJudiciariesResponse;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.AssignJudiciariesRequest;
 import uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload;
+import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.provisionaldata.RotaPeriodDateInfoProvider;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.RotaFileProcessHistory;
 import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.RotaFileParser;
 
@@ -28,6 +29,8 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtScheduleJudiciary;
+
 import jakarta.inject.Inject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,7 +39,7 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-@org.springframework.transaction.annotation.Transactional
+@Transactional
 public class RotaFileProcessor {
 
     private static final Logger logger = LoggerFactory.getLogger(RotaFileProcessor.class);
@@ -74,12 +77,7 @@ public class RotaFileProcessor {
     // PUBLIC API METHODS
     // ============================================================================
 
-    /**
-     * Downloads and processes a single rota file.
-     *
-     * @return the court schedule IDs whose judiciaries changed while processing the blob,
-     *         or an empty list when the file was skipped or processing failed
-     */
+    @SuppressWarnings("PMD.AvoidCatchingGenericException")
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public List<String> downloadAndProcessForEachFile(final BlobContent blobContent, final String blobName, final String leaseId) {
         logger.info("downloadAndProcessForEachFile called for blob with name: {}", blobName);
@@ -122,13 +120,13 @@ public class RotaFileProcessor {
         logger.info("Processing blob: {} with execution ID: {} - parsed {} record types", blobName, executionId, records.size());
 
         // Extract locations and resolve OU codes
-        final var locations = rotaLocationPeriodHelper.getLocationFromRecords(records);
+        final List<String> locations = rotaLocationPeriodHelper.getLocationFromRecords(records);
         logger.info("Extracted {} location IDs from blob: {}", locations.size(), blobName);
-        final var ouCodes = rotaLocationPeriodHelper.getOuCodesFromCourtRoomMappingsByLocationId(locations);
+        final List<String> ouCodes = rotaLocationPeriodHelper.getOuCodesFromCourtRoomMappingsByLocationId(locations);
         logger.info("Resolved {} OU codes for blob: {}", ouCodes.size(), blobName);
 
         // Get rota period dates and delete unallocated court schedule judiciaries
-        final var rotaPeriodDateInfoProvider = rotaLocationPeriodHelper.getRotaPeriodDates(records);
+        final RotaPeriodDateInfoProvider rotaPeriodDateInfoProvider = rotaLocationPeriodHelper.getRotaPeriodDates(records);
 
         // Capture the unallocated court schedule judiciaries (keyed by courtScheduleId) before they are deleted
         final Map<String, List<CourtScheduleJudiciary>> preAssignmentCourtScheduleJudiciaryMap =
@@ -284,9 +282,9 @@ public class RotaFileProcessor {
                 courtScheduleJudiciary.getCourtListingProfileId(),
                 courtScheduleJudiciary.getJudiciaryType(),
                 courtScheduleJudiciary.getPosition(),
-                courtScheduleJudiciary.getBenchChairman(),
-                courtScheduleJudiciary.getDeputy(),
-                courtScheduleJudiciary.isActive());
+                courtScheduleJudiciary.getIsBenchChairman(),
+                courtScheduleJudiciary.getIsDeputy(),
+                courtScheduleJudiciary.getActive());
     }
 
     /**
@@ -419,7 +417,7 @@ public class RotaFileProcessor {
     private AssignJudiciariesResponse processJudiciaryAssignments(
             final List<JudiciaryScheduleAssignment> assignmentList,
             final String executionId) {
-        final var assignRequest = judiciaryAssignmentRequestHelper.buildAssignJudiciariesRequest(assignmentList);
+        final AssignJudiciariesRequest assignRequest = judiciaryAssignmentRequestHelper.buildAssignJudiciariesRequest(assignmentList);
         // Use repository for Rota processing (useRepository = true)
         return judiciaryAssignmentService.assignJudiciaries(assignRequest, executionId, true);
     }

@@ -23,6 +23,18 @@
           "availableSlots": -1819024539,
           "availableDuration": -1716884195,
           "totalBooked" : 120,
+          "judiciaries": [
+            {
+              "judiciaryId": "9f39f876-3ff6-32b5-926e-c588e36a87b8",
+              "title": "His Honour",
+              "forenames": "Mark J",
+              "surname": "Ainsworth",
+              "emailAddress": "mark.ainsworth@ejudiciary.net",
+              "judiciaryType": "Recorder",
+              "isBenchChairman": true,
+              "isDeputy": false
+            }
+          ],
           "isDraft": false,
           "jurisdiction": "MAGISTRATES"
         },

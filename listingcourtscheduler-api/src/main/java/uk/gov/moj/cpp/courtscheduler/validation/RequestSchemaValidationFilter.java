@@ -26,7 +26,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.core.io.ClassPathResource;
+import org.everit.json.schema.SchemaException;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.InvalidMediaTypeException;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -141,7 +143,7 @@ public class RequestSchemaValidationFilter extends OncePerRequestFilter {
         final MediaType mediaType;
         try {
             mediaType = MediaType.parseMediaType(contentType);
-        } catch (final RuntimeException invalid) {
+        } catch (final InvalidMediaTypeException invalid) {
             return null;
         }
         final String subtype = mediaType.getSubtype(); // e.g. vnd.courtscheduler.validate.create+json
@@ -173,7 +175,7 @@ public class RequestSchemaValidationFilter extends OncePerRequestFilter {
             final Schema compiled = SchemaLoader.load(new JSONObject(new JSONTokener(in)));
             schemaCache.put(schemaName, compiled);
             return compiled;
-        } catch (final Exception e) {
+        } catch (final IOException | JSONException | SchemaException e) {
             LOG.warn("Could not load request schema {}: {}", schemaName, e.getMessage());
             noSchema.add(schemaName);
             return null;

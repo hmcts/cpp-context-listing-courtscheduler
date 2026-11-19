@@ -4,6 +4,8 @@ import static java.lang.String.format;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.SQLException;
+
 import org.postgresql.Driver;
 
 /**
@@ -20,7 +22,7 @@ public class ConnectionProvider {
         try {
             DriverManager.registerDriver(new Driver());
             return DriverManager.getConnection(url, username, password);
-        } catch (Exception e) {
+        } catch (SQLException e) {
             throw new RuntimeException(format("Failed to get JDBC connection to %s database. url: '%s', username '%s'",
                     databaseName, url, username), e);
         }

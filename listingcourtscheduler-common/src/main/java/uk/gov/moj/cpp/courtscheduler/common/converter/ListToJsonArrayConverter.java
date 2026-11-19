@@ -1,7 +1,5 @@
 package uk.gov.moj.cpp.courtscheduler.common.converter;
 
-import uk.gov.moj.cpp.courtscheduler.common.converter.StringToJsonObjectConverter;
-
 import java.io.IOException;
 import java.util.List;
 
@@ -20,13 +18,16 @@ public class ListToJsonArrayConverter<T> implements Converter<List<T>, JsonArray
     // `spring.jackson.default-property-inclusion: non_null` policy so
     // responses don't leak `"field": null` entries that JSON-P consumers
     // (containsKey + getString) cannot parse.
+    /* package */
     final ObjectMapper mapper = new ObjectMapper()
             .findAndRegisterModules()
             .disable(SerializationFeature.FAIL_ON_EMPTY_BEANS)
             .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
             .setSerializationInclusion(JsonInclude.Include.NON_NULL);
+    /* package */
     final StringToJsonObjectConverter stringToJsonObjectConverter = new StringToJsonObjectConverter();
 
+    @Override
     public JsonArray convert(final List<T> sourceList) {
         final JsonArrayBuilder jsonArrayBuilder = Json.createArrayBuilder();
         if (sourceList == null) {

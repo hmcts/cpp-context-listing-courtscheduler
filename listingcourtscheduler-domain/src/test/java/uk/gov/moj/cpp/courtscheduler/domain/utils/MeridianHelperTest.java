@@ -10,7 +10,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 
-public class MeridianHelperTest {
+class MeridianHelperTest {
 
     @ParameterizedTest
     @ValueSource(strings = {
@@ -18,7 +18,7 @@ public class MeridianHelperTest {
             "2019-12-02T09:15:30-05:00"
 
     })
-    public void shouldGetAmMeridian(String zonedDataTimeStr) {
+    void shouldGetAmMeridian(final String zonedDataTimeStr) {
         final ZonedDateTime zonedDateTime = ZonedDateTime.parse(zonedDataTimeStr);
 
         final String meridian = getMeridian(zonedDateTime);
@@ -33,7 +33,7 @@ public class MeridianHelperTest {
             "2019-12-02T14:15:30-05:00", // PmMeridian
             "2019-12-02T13:15:30-05:00", // Between1PmAnd2Pm
     })
-    public void shouldGetPmMeridianForPM(String zonedDataTimeStr) {
+    void shouldGetPmMeridianForPM(final String zonedDataTimeStr) {
         final ZonedDateTime zonedDateTime = ZonedDateTime.parse(zonedDataTimeStr);
 
         final String meridian = getMeridian(zonedDateTime);
@@ -48,7 +48,7 @@ public class MeridianHelperTest {
             "2019-12-02T02:15:30-05:00" // AfterPm
 
     })
-    public void shouldGetAdMeridianForAD(String zonedDataTimeStr) {
+    void shouldGetAdMeridianForAD(final String zonedDataTimeStr) {
         final ZonedDateTime zonedDateTime = ZonedDateTime.parse(zonedDataTimeStr);
 
         final String meridian = getMeridian(zonedDateTime);

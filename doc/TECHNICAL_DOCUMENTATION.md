@@ -348,7 +348,6 @@ Supports complex filtering:
 - `hearingStartTime`, `duration` (optional)
 - `pageSize`, `pageNumber` (required)
 - `showOverbookedSlots` (optional): Include overbooked slots
-- `caseIdentifier` (optional): Source channel
 
 **Response:** `application/vnd.courtscheduler.get.hearing.slots+json`
 
@@ -398,18 +397,20 @@ Supports complex filtering:
 
 **Response:** `application/vnd.courtscheduler.get.hearing.ids+json`
 
-#### POST `/hearings/{hearingId}`
-**Purpose:** Move a hearing to a past-dated MAGISTRATES court-schedule session (SPRDT-985)
+#### POST `/hearings/{hearingId}` (move-hearing-to-past-date)
+**Purpose:** Move a hearing to past-dated court-schedule session(s), both jurisdictions. Restored from main (SPRDT-985/987) by SPRDT-1447 after the main merge `8de19ce` dropped it; extended to Crown by the SPRDT-1447 test findings.
 
-**Request:** `application/vnd.courtscheduler.move-hearing-to-past-date+json`
+**Request:** `application/vnd.courtscheduler.move-hearing-to-past-date+json` (`courtCentreId`, `courtRoomId`, `jurisdiction`, `startTime`, `endTime` as UTC instants; optional `durationInMinutes`)
 
-**Response:** `application/vnd.courtscheduler.move-hearing-to-past-date.response+json`
+**Response:** `{hearingId, source, sessions[]}` (`application/vnd.courtscheduler.move-hearing-to-past-date.response+json`)
 
 **Business Logic:**
-- Finds the first active MAGISTRATES session matching the exact `startDate` and `courtCentreId` (non-draft, lowest court room first)
-- Releases any prior allocation held by the hearing and books the session with `source=MOVE_TO_PAST_DATE`
-- `durationInMinutes` defaults to 1 when omitted
-- 422 `FUTURE_DATE_NOT_ALLOWED` when `startDate` is after today; 422 `JURISDICTION_NOT_SUPPORTED` for CROWN; 422 `NO_SESSION_FOUND` when no session matches or the allocation cannot be persisted
+- Past dates only: `startTime`/`endTime` on or after today (UTC) is a 422 `FUTURE_DATE_NOT_ALLOWED`
+- A multi-day CROWN move is not supported: 422 `MULTI_DAY_NOT_ALLOWED`
+- For each sitting day (weekdays; a weekend-only span books the requested days) finds the active, non-draft session in `courtRoomId` at `courtCentreId` whose window contains the `startTime` time-of-day — any `court_session` (AM/PM/AD), lowest room number first — no fallback to another room. Draft sessions are never booked.
+- The booked duration is the submitted window (a full court day, 360 minutes, per day for a MAGISTRATES multi-day span); the submitted start/end are stamped on the booking and returned on each session
+- Every day is resolved before anything changes; the hearing's prior allocation is then released (payback, SPRDT-1333) and the new session(s) booked with `source=MOVE_TO_PAST_DATE`
+- 422 `NO_SESSION_FOUND` when any day has no matching session (nothing is released or booked) or the allocation cannot be persisted
 
 ### Provisional Booking Endpoints
 
@@ -458,15 +459,6 @@ Supports complex filtering:
 **Response:** `application/vnd.courtscheduler.export.allocated_listings+json`
 
 ### Operational Endpoints
-
-#### POST `/oucode/recalculate-availability`
-**Purpose:** Recalculate availability for an OU code
-
-**Request:** `application/vnd.courtscheduler.oucode.recalculate.availability+json`
-
-**Business Logic:**
-- Recalculates availability for all court schedules for the OU code
-- Fixes inconsistencies in availability calculations
 
 #### POST `/oucode/migrate`
 **Purpose:** Mark OU codes as migrated/non-migrated

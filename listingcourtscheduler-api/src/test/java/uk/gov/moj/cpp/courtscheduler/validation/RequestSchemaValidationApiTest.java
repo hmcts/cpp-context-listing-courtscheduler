@@ -29,8 +29,13 @@ import org.springframework.web.bind.annotation.RestController;
  * validation layer (the filter behaves identically regardless of the downstream controller).
  */
 class RequestSchemaValidationApiTest {
+    /** MockMvc andExpect(...) performs the assertions in these tests, which PMD does not recognise. */
+    private static final String MOCKMVC_ASSERTS = "PMD.UnitTestShouldIncludeAssert";
+    private static final String SESSION = "/session";
+    private static final String SESSIONS_REMOVE_ALL_JUDICIARIES = "/sessions/remove-all-judiciaries";
 
-    private static final String MIGRATE_CT = "application/vnd.courtscheduler.oucode.migrate+json";
+
+    private static final String REMOVE_ALL_CT = "application/vnd.courtscheduler.remove-all-judiciary+json";
     private static final String ASSIGN_CT = "application/vnd.courtscheduler.assign-judiciary+json";
 
     private MockMvc mvc;
@@ -45,63 +50,79 @@ class RequestSchemaValidationApiTest {
 
     // ---------- invalid bodies rejected at the API boundary (400, controller not reached) ----------
 
+    // Deliberate: MockMvc andExpect(...) performs the assertions, which PMD does not recognise
+    @SuppressWarnings(MOCKMVC_ASSERTS)
     @Test
-    void postMigrate_missingRequiredField_isRejectedWith400() throws Exception {
-        mvc.perform(post("/oucode/migrate").contentType(MIGRATE_CT)
-                        .content("{\"ouCodes\":[\"B01OU00\"]}"))            // missing "migrated"
+    void postRemoveAll_missingRequiredField_isRejectedWith400() throws Exception {
+        mvc.perform(post(SESSIONS_REMOVE_ALL_JUDICIARIES).contentType(REMOVE_ALL_CT)
+                        .content("{}"))                                        // missing "courtScheduleIds"
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").exists());
     }
 
+    // Deliberate: MockMvc andExpect(...) performs the assertions, which PMD does not recognise
+    @SuppressWarnings(MOCKMVC_ASSERTS)
     @Test
-    void postMigrate_wrongType_isRejectedWith400() throws Exception {
-        mvc.perform(post("/oucode/migrate").contentType(MIGRATE_CT)
-                        .content("{\"ouCodes\":\"not-an-array\",\"migrated\":true}"))
+    void postRemoveAll_wrongType_isRejectedWith400() throws Exception {
+        mvc.perform(post(SESSIONS_REMOVE_ALL_JUDICIARIES).contentType(REMOVE_ALL_CT)
+                        .content("{\"courtScheduleIds\":\"not-an-array\"}"))
                 .andExpect(status().isBadRequest());
     }
 
+    // Deliberate: MockMvc andExpect(...) performs the assertions, which PMD does not recognise
+    @SuppressWarnings(MOCKMVC_ASSERTS)
     @Test
     void postSession_unknownField_rejectedByAdditionalPropertiesFalse() throws Exception {
         final String body = "{\"judiciaries\":[{\"judiciaryId\":\"j-1\","
                 + "\"sessionIds\":[\"f2ea88af-5cd9-339c-8e2c-405df1f55ea6\"]}],\"bogusField\":true}";
-        mvc.perform(post("/session").contentType(ASSIGN_CT).content(body))
+        mvc.perform(post(SESSION).contentType(ASSIGN_CT).content(body))
                 .andExpect(status().isBadRequest());
     }
 
+    // Deliberate: MockMvc andExpect(...) performs the assertions, which PMD does not recognise
+    @SuppressWarnings(MOCKMVC_ASSERTS)
     @Test
     void postSession_badUuidPattern_isRejectedWith400() throws Exception {
         final String body = "{\"judiciaries\":[{\"judiciaryId\":\"j-1\",\"sessionIds\":[\"not-a-uuid\"]}]}";
-        mvc.perform(post("/session").contentType(ASSIGN_CT).content(body))
+        mvc.perform(post(SESSION).contentType(ASSIGN_CT).content(body))
                 .andExpect(status().isBadRequest());
     }
 
+    // Deliberate: MockMvc andExpect(...) performs the assertions, which PMD does not recognise
+    @SuppressWarnings(MOCKMVC_ASSERTS)
     @Test
-    void postMigrate_invalidJson_isRejectedWith400() throws Exception {
-        mvc.perform(post("/oucode/migrate").contentType(MIGRATE_CT).content("{not json"))
+    void postRemoveAll_invalidJson_isRejectedWith400() throws Exception {
+        mvc.perform(post(SESSIONS_REMOVE_ALL_JUDICIARIES).contentType(REMOVE_ALL_CT).content("{not json"))
                 .andExpect(status().isBadRequest());
     }
 
     // ---------- valid bodies reach the controller ----------
 
+    // Deliberate: MockMvc andExpect(...) performs the assertions, which PMD does not recognise
+    @SuppressWarnings(MOCKMVC_ASSERTS)
     @Test
-    void postMigrate_validBody_reachesController() throws Exception {
-        mvc.perform(post("/oucode/migrate").contentType(MIGRATE_CT)
-                        .content("{\"ouCodes\":[\"B01OU00\"],\"migrated\":true}"))
+    void postRemoveAll_validBody_reachesController() throws Exception {
+        mvc.perform(post(SESSIONS_REMOVE_ALL_JUDICIARIES).contentType(REMOVE_ALL_CT)
+                        .content("{\"courtScheduleIds\":[\"f2ea88af-5cd9-339c-8e2c-405df1f55ea6\"]}"))
                 .andExpect(status().isOk())
-                .andExpect(content().string("reached:migrate"));
+                .andExpect(content().string("reached:removeall"));
     }
 
+    // Deliberate: MockMvc andExpect(...) performs the assertions, which PMD does not recognise
+    @SuppressWarnings(MOCKMVC_ASSERTS)
     @Test
     void postSession_validBody_reachesController() throws Exception {
         final String body = "{\"judiciaries\":[{\"judiciaryId\":\"j-1\","
                 + "\"sessionIds\":[\"f2ea88af-5cd9-339c-8e2c-405df1f55ea6\"]}]}";
-        mvc.perform(post("/session").contentType(ASSIGN_CT).content(body))
+        mvc.perform(post(SESSION).contentType(ASSIGN_CT).content(body))
                 .andExpect(status().isOk())
                 .andExpect(content().string("reached:session"));
     }
 
     // ---------- not validated (matches WildFly) ----------
 
+    // Deliberate: MockMvc andExpect(...) performs the assertions, which PMD does not recognise
+    @SuppressWarnings(MOCKMVC_ASSERTS)
     @Test
     void nonVendorMediaType_isNotValidated() throws Exception {
         // application/json has no matching schema -> passes through unvalidated
@@ -111,34 +132,36 @@ class RequestSchemaValidationApiTest {
                 .andExpect(content().string("reached:passthrough"));
     }
 
+    // Deliberate: MockMvc andExpect(...) performs the assertions, which PMD does not recognise
+    @SuppressWarnings(MOCKMVC_ASSERTS)
     @Test
-    void getRequest_isNotValidated() throws Exception {
-        mvc.perform(get("/oucode/migrate").contentType(MIGRATE_CT))
+    void httpGetRequest_isNotValidated() throws Exception {
+        mvc.perform(get(SESSIONS_REMOVE_ALL_JUDICIARIES).contentType(REMOVE_ALL_CT))
                 .andExpect(status().isOk())
                 .andExpect(content().string("reached:get"));
     }
 
     /** Minimal controller standing in for the real endpoints; only reached when validation passes. */
     @RestController
-    static class StubEndpoints {
+    /* default */ static class StubEndpoints {
 
-        @PostMapping(path = "/oucode/migrate", consumes = MIGRATE_CT)
-        ResponseEntity<String> migrate(@RequestBody final String body) {
-            return ResponseEntity.ok("reached:migrate");
+        @PostMapping(path = SESSIONS_REMOVE_ALL_JUDICIARIES, consumes = REMOVE_ALL_CT)
+        /* default */ ResponseEntity<String> removeAll(@RequestBody final String body) {
+            return ResponseEntity.ok("reached:removeall");
         }
 
-        @PostMapping(path = "/session", consumes = ASSIGN_CT)
-        ResponseEntity<String> session(@RequestBody final String body) {
+        @PostMapping(path = SESSION, consumes = ASSIGN_CT)
+        /* default */ ResponseEntity<String> session(@RequestBody final String body) {
             return ResponseEntity.ok("reached:session");
         }
 
         @PostMapping(path = "/passthrough", consumes = MediaType.APPLICATION_JSON_VALUE)
-        ResponseEntity<String> passthrough(@RequestBody final String body) {
+        /* default */ ResponseEntity<String> passthrough(@RequestBody final String body) {
             return ResponseEntity.ok("reached:passthrough");
         }
 
-        @org.springframework.web.bind.annotation.GetMapping("/oucode/migrate")
-        ResponseEntity<String> get() {
+        @org.springframework.web.bind.annotation.GetMapping(SESSIONS_REMOVE_ALL_JUDICIARIES)
+        /* default */ ResponseEntity<String> get() {
             return ResponseEntity.ok("reached:get");
         }
     }

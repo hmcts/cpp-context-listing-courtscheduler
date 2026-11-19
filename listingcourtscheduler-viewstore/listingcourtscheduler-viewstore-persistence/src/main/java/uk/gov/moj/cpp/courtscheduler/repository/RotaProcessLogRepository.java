@@ -21,7 +21,7 @@ public class RotaProcessLogRepository {
             "DELETE FROM rota_process_log WHERE timestamp < (CURRENT_DATE - :numberOfDays)";
 
     @PersistenceContext
-    EntityManager entityManager;
+    /* package */ EntityManager entityManager;
 
     @Transactional
     public int deleteRedundantRotaData(final int numberOfDays) {

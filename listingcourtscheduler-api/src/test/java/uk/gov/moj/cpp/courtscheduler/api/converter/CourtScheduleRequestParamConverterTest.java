@@ -12,18 +12,18 @@ import org.junit.jupiter.api.Test;
 
 class CourtScheduleRequestParamConverterTest {
 
-    CourtScheduleRequestParamConverter courtScheduleRequestParamConverter = new CourtScheduleRequestParamConverter();
+    private CourtScheduleRequestParamConverter courtScheduleRequestParamConverter = new CourtScheduleRequestParamConverter();
     
     @Test
     void shouldConvertJsonObjectToRequestParam() {
-        JsonObject jsonObject = toJsonObject();
-        CourtScheduleRequestParam courtScheduleRequestParam = courtScheduleRequestParamConverter.convert(jsonObject);
+        final JsonObject jsonObject = toJsonObject();
+        final CourtScheduleRequestParam courtScheduleRequestParam = courtScheduleRequestParamConverter.convert(jsonObject);
 
         assertNotNull(courtScheduleRequestParam);
     }
 
     private JsonObject toJsonObject() {
-        StringToJsonObjectConverter stringToJsonObjectConverter = new StringToJsonObjectConverter();
+        final StringToJsonObjectConverter stringToJsonObjectConverter = new StringToJsonObjectConverter();
         return stringToJsonObjectConverter.convert(fileToString("/test-data/courtscheduler.get.court.schedules.json"));
     }
 }

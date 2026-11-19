@@ -29,6 +29,7 @@ Thumbs.db
 ._.Trashes
 
 # Eclipse
+bin/
 .classpath
 .compatibility
 .project
@@ -62,6 +63,10 @@ build/
 *.log
 *.orig
 *.sonar
+
+# Playwright MCP working output (browser snapshots / console logs)
+.playwright-mcp/
+
 deployWars.sh
 buildContexts.sh
 

@@ -5,7 +5,7 @@ import static java.util.Objects.nonNull;
 import static java.util.UUID.randomUUID;
 
 import uk.gov.moj.cpp.courtscheduler.common.service.SessionsService;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -27,7 +27,7 @@ public class ProvisionalDataProducer {
 
     public List<CourtSchedule> produceProvisionalData(final LocalDate startDate, final LocalDate endDate, final int cyclesToPopulate, final List<String> ouCodes, final ProvisionalSessionDateProvider provisionalSessionDateProvider) {
         final List<CourtSchedule> courtSchedules = sessionsService.getExtractedCourtSchedulesForGhostRota(ouCodes, startDate, endDate);
-        final List<CourtSchedule> provisionalCourtList = new ArrayList();
+        final List<CourtSchedule> provisionalCourtList = new ArrayList<>();
 
         for (int cycleNo = 0; cycleNo < cyclesToPopulate; cycleNo++) {
             for (final CourtSchedule courtSchedule : courtSchedules) {

@@ -1,0 +1,20 @@
+{
+  "hearingId": "7755fb96-e90a-4df2-8575-47841d8fbdd0",
+  "source": "CHANGE_COURT_ROOM_MULTIDAY",
+  "allocatedSchedules": [
+    {
+      "courtScheduleId": "5e2a3f91-9e5d-3e44-b664-d5345bb13be2",
+      "sessionDate": "2026-05-02",
+      "courtRoomId": "court-room-uuid-1",
+      "businessType": "CR",
+      "isDraft": false
+    },
+    {
+      "courtScheduleId": "6f3b4a02-af6e-4f55-c775-e6456cc24cf3",
+      "sessionDate": "2026-05-03",
+      "courtRoomId": "court-room-uuid-1",
+      "businessType": "CR",
+      "isDraft": false
+    }
+  ]
+}

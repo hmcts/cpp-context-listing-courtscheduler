@@ -6,8 +6,8 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static uk.gov.moj.cpp.platform.test.data.utils.FileUtil.fileToString;
 
-import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalBookingSlots;
-import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalSlot;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.ProvisionalBookingSlots;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.ProvisionalSlot;
 
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -16,14 +16,14 @@ import org.mockito.InjectMocks;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
-public class ProvisionalSlotConverterTest {
+class ProvisionalSlotConverterTest {
 
     @InjectMocks
     private ProvisionalSlotConverter provisionalSlotConverter;
 
 
     @Test
-    public void shouldConvertProvisionalSlot() {
+    void shouldConvertProvisionalSlot() {
         final String payload = fileToString("/test-data/courtscheduler.book.provisional.hearing.slots.json");
 
         final ProvisionalBookingSlots provisionalBookingSlots = provisionalSlotConverter.convert(payload);
@@ -37,7 +37,7 @@ public class ProvisionalSlotConverterTest {
     }
 
     @Test
-    public void shouldConvertProvisionalSlotWithEmptyArray() {
+    void shouldConvertProvisionalSlotWithEmptyArray() {
         final String payload = fileToString("/test-data/courtscheduler.book.provisional.hearing.slots-empty-array-payload.json");
 
         final ProvisionalBookingSlots provisionalBookingSlots = provisionalSlotConverter.convert(payload);
@@ -47,7 +47,7 @@ public class ProvisionalSlotConverterTest {
     }
 
     @Test
-    public void shouldThrowJsonProcessingException() {
+    void shouldThrowJsonProcessingException() {
         Assertions.assertThrows(ConverterException.class, () -> {
             provisionalSlotConverter.convert("nonJson");
         });

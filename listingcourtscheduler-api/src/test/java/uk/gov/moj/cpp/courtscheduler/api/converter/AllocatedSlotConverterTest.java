@@ -5,8 +5,8 @@ import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static uk.gov.moj.cpp.platform.test.data.utils.FileUtil.fileToString;
 
-import uk.gov.moj.cpp.courtscheduler.domain.AllocatedSlot;
-import uk.gov.moj.cpp.courtscheduler.domain.AllocatedSlots;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.AllocatedSlot;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.AllocatedSlots;
 
 import java.util.List;
 
@@ -23,7 +23,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
      void shouldConvertAllocatedSlot() {
         final String payload = fileToString("/test-data/courtscheduler.update.available.hearing.slots.json");
 
-        AllocatedSlots allocatedSlots = converter.convert(payload);
+        final AllocatedSlots allocatedSlots = converter.convert(payload);
         final List<AllocatedSlot> allocatedSlotsList = allocatedSlots.getHearingSlots();
 
         assertThat(allocatedSlotsList.size(), is(2));
@@ -53,7 +53,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
      void shouldConvertAllocatedSlotWithBookingId() {
         final String payload = fileToString("/test-data/courtscheduler.update.available.hearing.slots-with-bookingid.json");
 
-        AllocatedSlots allocatedSlots = converter.convert(payload);
+        final AllocatedSlots allocatedSlots = converter.convert(payload);
         final List<AllocatedSlot> allocatedSlotsList = allocatedSlots.getHearingSlots();
 
         assertThat(allocatedSlotsList.size(), is(1));

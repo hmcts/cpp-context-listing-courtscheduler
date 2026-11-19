@@ -4,6 +4,7 @@ import static java.lang.Boolean.parseBoolean;
 import static java.lang.String.format;
 import static java.util.Collections.emptyList;
 import static java.util.Objects.isNull;
+import static java.util.Objects.nonNull;
 import static java.util.Optional.empty;
 import static java.util.Optional.of;
 import static java.util.Optional.ofNullable;
@@ -14,11 +15,12 @@ import org.springframework.beans.factory.annotation.Value;
 import uk.gov.moj.cpp.courtscheduler.common.converter.JsonObjectToObjectConverter;
 import uk.gov.moj.cpp.courtscheduler.common.converter.StringToJsonObjectConverter;
 import uk.gov.moj.cpp.courtscheduler.cache.CacheService;
-import uk.gov.moj.cpp.courtscheduler.domain.BusinessType;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtRoomSessionAllocation;
-import uk.gov.moj.cpp.courtscheduler.domain.Judiciary;
-import uk.gov.moj.cpp.courtscheduler.domain.Venue;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.Judiciary;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.BusinessType;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtRoom;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtRoomSessionAllocation;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.OrganisationUnit;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.Venue;
 
 import java.util.List;
 import java.util.Map;
@@ -34,6 +36,7 @@ import jakarta.json.JsonObject;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.owasp.encoder.Encode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -58,6 +61,8 @@ public class ReferenceDataCache {
     @Value("${redis.common-cache.key-5-mins-ttl:300}")
     private String redisCommonCacheKey5MinsTTL;
 
+    private static final int MULTIPLE_COURT_ROOMS_THRESHOLD = 1;
+
     private static final String COURT_DETAIL_NOT_FOUND = "COURT_DETAIL_NOT_FOUND";
     private static final String COURT_ROOM_FETCHED_BY_VENUE_NAME = "CourtRoom fetched by VenueName: %s%n,can't find by VenueId:%s%n";
     private static final String MULTIPLE_COURTROOMS_FOUND_BY_VENUE_NAME = "Multiple courtrooms found by VenueName : %s%n , but VenueId: %s%n selected by created_on";
@@ -66,16 +71,13 @@ public class ReferenceDataCache {
 
     public static final String ROTA_BUSINESS_TYPE_CACHE_PREFIX = "RotaBusinessType_";
     public static final String ROTA_COURTROOM_CACHE_PREFIX = "RotaCourtRoom_";
-    public static final String CP_COURTROOM_CACHE_PREFIX = "CpCourtRoom_";
+    public static final String CP_COURTROOMS_BY_ID_CACHE_PREFIX = "CpCourtRoomsById_";
     public static final String ROTA_COURTROOM_BY_VENUE_CACHE_PREFIX = "RotaCourtRoomByVenue_%d_%s";
     public static final String ROTA_BUSINESS_TYPES_CACHE_KEY = "RotaBusinessTypes";
     public static final String ROTA_JUDICIARIES_CACHE_KEY = "RotaJudiciaries_";
     public static final String ROTA_COURTROOMS_CACHE_KEY = "RotaCourtRooms_";
     public static final String ROTA_COURT_ROOM_SESSION_ALLOCATIONS_KEY = "RotaCourtRoomSessionAllocations_";
-
-    public ReferenceDataCache() {
-        //Default Constructor
-    }
+    public static final String ORGANISATION_UNIT_CACHE_PREFIX = "OrganisationUnit_";
 
     public Optional<BusinessType> getRotaBusinessTypeByCode(final String businessTypeCode) {
         if (parseBoolean(redisCommonCacheEnabled)) {
@@ -133,14 +135,37 @@ public class ReferenceDataCache {
         }
     }
 
-    public Optional<CourtRoom> getCpCourtRoomByCourtRoomId(final String courtRoomId) {
+    public Optional<OrganisationUnit> getOrganisationUnit(final String organisationUnitId) {
         if (parseBoolean(redisCommonCacheEnabled)) {
-            return getCpCourtRoomByIdFromTheCache(courtRoomId);
+            return getOrganisationUnitFromTheCache(organisationUnitId);
+        } else {
+            return referenceDataService.getOrganisationUnit(organisationUnitId);
+        }
+    }
+
+    public Optional<CourtRoom> getCpCourtRoomByCourtRoomId(final String courtRoomId) {
+        return getCpCourtRoomsByCourtRoomId(courtRoomId).stream().findFirst();
+    }
+
+    /**
+     * A courtroom can be shared between court centres, in which case the ou-courtrooms
+     * reference data nests the same courtroom id under each organisation unit it belongs to.
+     * Returns one entry per court centre membership (empty if the courtroom does not exist).
+     */
+    public List<CourtRoom> getCpCourtRoomsByCourtRoomId(final String courtRoomId) {
+        if (parseBoolean(redisCommonCacheEnabled)) {
+            return getCpCourtRoomsByIdFromTheCache(courtRoomId);
         } else {
             return referenceDataService.getCpCourtRooms().stream()
-                    .filter(c -> c.getId().equals(courtRoomId))
-                    .findFirst();
+                    .filter(c -> nonNull(c.getId()) && c.getId().equals(courtRoomId))
+                    .collect(Collectors.toList());
         }
+    }
+
+    public Optional<CourtRoom> getCpCourtRoomByCourtRoomIdAndCourtCentreId(final String courtRoomId, final String courtCentreId) {
+        return getCpCourtRoomsByCourtRoomId(courtRoomId).stream()
+                .filter(c -> nonNull(courtCentreId) && courtCentreId.equals(c.getOucodeUUID()))
+                .findFirst();
     }
 
     private Optional<BusinessType> getBusinessTypeByCodeFromTheCache(final String businessTypeCode) {
@@ -170,7 +195,7 @@ public class ReferenceDataCache {
                 return objectMapper.readValue(cacheResult, new TypeReference<>() {
                 });
             } catch (final JsonProcessingException jsonProcessingException) {
-                LOGGER.error("exception whilst reading cacheResult and converting to List<BusinessType> with exception: {}", jsonProcessingException.getMessage(), jsonProcessingException);
+                LOGGER.error("exception whilst reading cacheResult and converting to List<BusinessType> with exception: {}", Encode.forJava(jsonProcessingException.getMessage()), jsonProcessingException);
             }
             return emptyList();
         }
@@ -187,7 +212,7 @@ public class ReferenceDataCache {
                 LOGGER.debug("cacheResult has been found for judiciaries in getJudiciariesFromTheCache for key: {}", ROTA_JUDICIARIES_CACHE_KEY);
                 return objectMapper.readValue(cacheResult, new TypeReference<>() {});
             } catch (final JsonProcessingException jsonProcessingException) {
-                LOGGER.error("exception whilst reading cacheResult and converting to List<Judiciary> with exception: {}", jsonProcessingException.getMessage(), jsonProcessingException);
+                LOGGER.error("exception whilst reading cacheResult and converting to List<Judiciary> with exception: {}", Encode.forJava(jsonProcessingException.getMessage()), jsonProcessingException);
             }
             return emptyList();
         }
@@ -204,7 +229,7 @@ public class ReferenceDataCache {
                 LOGGER.debug("cacheResult has been found for courtRooms in getCourtRoomsFromTheCache for key : {}", ROTA_COURTROOMS_CACHE_KEY);
                 return objectMapper.readValue(cacheResult, new TypeReference<>() {});
             } catch (final JsonProcessingException jsonProcessingException) {
-                LOGGER.error("exception whilst reading cacheResult and converting to List<CourtRoom> with exception: {}", jsonProcessingException.getMessage(), jsonProcessingException);
+                LOGGER.error("exception whilst reading cacheResult and converting to List<CourtRoom> with exception: {}", Encode.forJava(jsonProcessingException.getMessage()), jsonProcessingException);
             }
             return emptyList();
         }
@@ -222,7 +247,7 @@ public class ReferenceDataCache {
                 return objectMapper.readValue(cacheResult, new TypeReference<>() {
                 });
             } catch (final JsonProcessingException jsonProcessingException) {
-                LOGGER.error("exception whilst reading cacheResult and converting to List<CourtRoomSessionAllocation> with exception: {}", jsonProcessingException.getMessage(), jsonProcessingException);
+                LOGGER.error("exception whilst reading cacheResult and converting to List<CourtRoomSessionAllocation> with exception: {}", Encode.forJava(jsonProcessingException.getMessage()), jsonProcessingException);
             }
             return emptyList();
         }
@@ -232,29 +257,46 @@ public class ReferenceDataCache {
         final String cacheResult = cacheService.get(ROTA_COURTROOM_CACHE_PREFIX + courtRoomId);
 
         if (isNull(cacheResult)) {
-            LOGGER.debug("no cache result found for courtroomId: {} in getCourtRoomByIdFromTheCache", courtRoomId);
+            LOGGER.debug("no cache result found for courtroomId: {} in getCourtRoomByIdFromTheCache", Encode.forJava(courtRoomId));
             final AtomicReference<CourtRoom> courtRoomAtomicReference = new AtomicReference<>();
             return processCourtRoomMap(courtRoomId, courtRoomAtomicReference);
         } else {
-            LOGGER.debug("cacheResult has been found for courtroomId: {} in getBusinessTypeByCodeFromTheCache", courtRoomId);
+            LOGGER.debug("cacheResult has been found for courtroomId: {} in getBusinessTypeByCodeFromTheCache", Encode.forJava(courtRoomId));
             final JsonObject cacheResultJsonObject = stringToJsonObjectConverter.convert(cacheResult);
             final CourtRoom courtRoom = jsonObjectToObjectConverter.convert(cacheResultJsonObject, CourtRoom.class);
             return of(courtRoom);
         }
     }
 
-    private Optional<CourtRoom> getCpCourtRoomByIdFromTheCache(final String courtRoomId) {
-        final String cacheResult = cacheService.get(CP_COURTROOM_CACHE_PREFIX + courtRoomId);
+    private List<CourtRoom> getCpCourtRoomsByIdFromTheCache(final String courtRoomId) {
+        final String cacheResult = cacheService.get(CP_COURTROOMS_BY_ID_CACHE_PREFIX + courtRoomId);
 
         if (isNull(cacheResult)) {
-            LOGGER.debug("no cache result found for cp courtroomId: {} in getCpCourtRoomByIdFromTheCache", courtRoomId);
-            final AtomicReference<CourtRoom> courtRoomAtomicReference = new AtomicReference<>();
-            return processCpCourtRoomMap(courtRoomId, courtRoomAtomicReference);
+            LOGGER.debug("no cache result found for cp courtroomId: {} in getCpCourtRoomsByIdFromTheCache", Encode.forJava(courtRoomId));
+            return processCpCourtRoomsMap(courtRoomId);
         } else {
-            LOGGER.debug("cacheResult has been found for cp courtroomId: {} in getCpCourtRoomByIdFromTheCache", courtRoomId);
+            LOGGER.debug("cacheResult has been found for cp courtroomId: {} in getCpCourtRoomsByIdFromTheCache", Encode.forJava(courtRoomId));
+            try {
+                return objectMapper.readValue(cacheResult, new TypeReference<>() {
+                });
+            } catch (final JsonProcessingException jsonProcessingException) {
+                LOGGER.error("exception whilst reading cacheResult and converting to List<CourtRoom> for cp courtRoomId: {} with exception: {}", Encode.forJava(courtRoomId), Encode.forJava(jsonProcessingException.getMessage()), jsonProcessingException);
+            }
+            return emptyList();
+        }
+    }
+
+    private Optional<OrganisationUnit> getOrganisationUnitFromTheCache(final String organisationUnitId) {
+        final String cacheResult = cacheService.get(ORGANISATION_UNIT_CACHE_PREFIX + organisationUnitId);
+
+        if (isNull(cacheResult)) {
+            LOGGER.debug("no cache result found for organisationUnitId: {} in getOrganisationUnitFromTheCache", Encode.forJava(organisationUnitId));
+            return processOrganisationUnit(organisationUnitId);
+        } else {
+            LOGGER.debug("cacheResult has been found for organisationUnitId: {} in getOrganisationUnitFromTheCache", Encode.forJava(organisationUnitId));
             final JsonObject cacheResultJsonObject = stringToJsonObjectConverter.convert(cacheResult);
-            final CourtRoom courtRoom = jsonObjectToObjectConverter.convert(cacheResultJsonObject, CourtRoom.class);
-            return of(courtRoom);
+            final OrganisationUnit organisationUnit = jsonObjectToObjectConverter.convert(cacheResultJsonObject, OrganisationUnit.class);
+            return of(organisationUnit);
         }
     }
 
@@ -271,12 +313,12 @@ public class ReferenceDataCache {
                 final List<CourtRoom> courtRooms = objectMapper.readValue(cacheResult, new TypeReference<>() {});
 
                 final Optional<CourtRoom> courtRoomWithVenueIdOptional = courtRooms.stream().filter(courtRoom -> courtRoom.getRotaVenueId().equals(venue.getVenueId())).findAny();
-                return courtRoomWithVenueIdOptional.isPresent() ? courtRoomWithVenueIdOptional : of(courtRooms.get(0));
+                return courtRoomWithVenueIdOptional.isPresent() ? courtRoomWithVenueIdOptional : of(courtRooms.getFirst());
             } catch (final JsonProcessingException jsonProcessingException) {
-                LOGGER.error("exception whilst reading cacheResult for getCourtRoomByVenueFromTheCache and converting to List<CourtRoom> with exception: {}", jsonProcessingException.getMessage(), jsonProcessingException);
+                LOGGER.error("exception whilst reading cacheResult for getCourtRoomByVenueFromTheCache and converting to List<CourtRoom> with exception: {}", Encode.forJava(jsonProcessingException.getMessage()), jsonProcessingException);
             }
         }
-        return Optional.empty();
+        return empty();
     }
 
     private List<BusinessType> processRotaBusinessTypes() {
@@ -288,7 +330,7 @@ public class ReferenceDataCache {
                 return rotaBusinessTypes;
             }
         } catch (final JsonProcessingException jsonProcessingException) {
-            LOGGER.error("exception whilst adding into the cache for BusinessTypes with exception: {}", jsonProcessingException.getMessage(), jsonProcessingException);
+            LOGGER.error("exception whilst adding into the cache for BusinessTypes with exception: {}", Encode.forJava(jsonProcessingException.getMessage()), jsonProcessingException);
         }
         return emptyList();
     }
@@ -302,7 +344,7 @@ public class ReferenceDataCache {
                 return judiciaries;
             }
         } catch (final JsonProcessingException jsonProcessingException) {
-            LOGGER.error("exception whilst adding into the cache for Judiciaries with exception: {}", jsonProcessingException.getMessage(), jsonProcessingException);
+            LOGGER.error("exception whilst adding into the cache for Judiciaries with exception: {}", Encode.forJava(jsonProcessingException.getMessage()), jsonProcessingException);
         }
         return emptyList();
     }
@@ -316,7 +358,7 @@ public class ReferenceDataCache {
                 return courtRooms;
             }
         } catch (final JsonProcessingException jsonProcessingException) {
-            LOGGER.error("exception whilst adding into the cache for CourtRooms with exception: {}", jsonProcessingException.getMessage(), jsonProcessingException);
+            LOGGER.error("exception whilst adding into the cache for CourtRooms with exception: {}", Encode.forJava(jsonProcessingException.getMessage()), jsonProcessingException);
         }
         return emptyList();
     }
@@ -326,13 +368,25 @@ public class ReferenceDataCache {
 
         try {
             if (isNotEmpty(courtRoomSessionAllocations)) {
-                cacheService.add(ROTA_COURT_ROOM_SESSION_ALLOCATIONS_KEY, objectMapper.writeValueAsString(courtRoomSessionAllocations), redisCommonCacheKey5MinsTTL());
+                cacheService.add(ROTA_COURT_ROOM_SESSION_ALLOCATIONS_KEY, objectMapper.writeValueAsString(courtRoomSessionAllocations), redisCommonCacheKey5MinsTTLSeconds());
                 return courtRoomSessionAllocations;
             }
         } catch (final JsonProcessingException jsonProcessingException) {
-            LOGGER.error("exception whilst adding into the cache for CourtRoomSessionAllocations with exception: {}", jsonProcessingException.getMessage(), jsonProcessingException);
+            LOGGER.error("exception whilst adding into the cache for CourtRoomSessionAllocations with exception: {}", Encode.forJava(jsonProcessingException.getMessage()), jsonProcessingException);
         }
         return emptyList();
+    }
+
+    private Optional<OrganisationUnit> processOrganisationUnit(final String organisationUnitId) {
+        final Optional<OrganisationUnit> organisationUnit = referenceDataService.getOrganisationUnit(organisationUnitId);
+        organisationUnit.ifPresent(ou -> {
+            try {
+                cacheService.add(ORGANISATION_UNIT_CACHE_PREFIX + organisationUnitId, objectMapper.writeValueAsString(ou), redisCommonCacheKey5MinsTTLSeconds());
+            } catch (final JsonProcessingException jsonProcessingException) {
+                LOGGER.error("exception whilst adding into the cache for organisationUnitId: {} with exception: {}", Encode.forJava(organisationUnitId), Encode.forJava(jsonProcessingException.getMessage()), jsonProcessingException);
+            }
+        });
+        return organisationUnit;
     }
 
     private Optional<BusinessType> processRotaBusinessTypeMap(final String businessTypeCode, final AtomicReference<BusinessType> businessTypeForCode) {
@@ -346,7 +400,7 @@ public class ReferenceDataCache {
                         businessTypeForCode.set(businessType);
                     }
                 } catch (final JsonProcessingException jsonProcessingException) {
-                    LOGGER.error("exception whilst adding into the cache for BusinessTypeCode: {} with exception: {}", typeCode, jsonProcessingException.getMessage(), jsonProcessingException);
+                    LOGGER.error("exception whilst adding into the cache for BusinessTypeCode: {} with exception: {}", Encode.forJava(typeCode), Encode.forJava(jsonProcessingException.getMessage()), jsonProcessingException);
                 }
             });
 
@@ -365,7 +419,7 @@ public class ReferenceDataCache {
                         courtRoomForId.set(courtRoom);
                     }
                 } catch (final JsonProcessingException jsonProcessingException) {
-                    LOGGER.error("exception whilst adding into the cache for courtRoomId: {} with exception: {}", courtRoomUUID, jsonProcessingException.getMessage(), jsonProcessingException);
+                    LOGGER.error("exception whilst adding into the cache for courtRoomId: {} with exception: {}", courtRoomUUID, Encode.forJava(jsonProcessingException.getMessage()), jsonProcessingException);
                 }
             });
 
@@ -374,23 +428,28 @@ public class ReferenceDataCache {
         return empty();
     }
 
-    private Optional<CourtRoom> processCpCourtRoomMap(final String courtRoomId, final AtomicReference<CourtRoom> courtRoomForId) {
+    private List<CourtRoom> processCpCourtRoomsMap(final String courtRoomId) {
         final List<CourtRoom> courtRooms = referenceDataService.getCpCourtRooms();
         if (isNotEmpty(courtRooms)) {
-            courtRooms.forEach(courtRoom -> {
+            final long idLessCourtRooms = courtRooms.stream().filter(c -> isNull(c.getId())).count();
+            if (idLessCourtRooms > 0) {
+                LOGGER.warn("Skipping {} CP courtroom(s) without an id in the ou-courtrooms reference data", idLessCourtRooms);
+            }
+            // a shared courtroom appears once per court centre it belongs to, so cache all memberships per id
+            final Map<String, List<CourtRoom>> courtRoomsById = courtRooms.stream()
+                    .filter(c -> nonNull(c.getId()))
+                    .collect(Collectors.groupingBy(CourtRoom::getId));
+            courtRoomsById.forEach((id, memberships) -> {
                 try {
-                    cacheService.add(CP_COURTROOM_CACHE_PREFIX + courtRoom.getId(), objectMapper.writeValueAsString(courtRoom));
-                    if (courtRoomId.equals(courtRoom.getId())) {
-                        courtRoomForId.set(courtRoom);
-                    }
+                    cacheService.add(CP_COURTROOMS_BY_ID_CACHE_PREFIX + id, objectMapper.writeValueAsString(memberships));
                 } catch (final JsonProcessingException jsonProcessingException) {
-                    LOGGER.error("exception whilst adding into the cache for cp courtRoomId: {} with exception: {}", courtRoom.getId(), jsonProcessingException.getMessage(), jsonProcessingException);
+                    LOGGER.error("exception whilst adding into the cache for cp courtRoomId: {} with exception: {}", Encode.forJava(id), Encode.forJava(jsonProcessingException.getMessage()), jsonProcessingException);
                 }
             });
 
-            return ofNullable(courtRoomForId.get());
+            return courtRoomsById.getOrDefault(courtRoomId, emptyList());
         }
-        return empty();
+        return emptyList();
     }
 
     private Optional<CourtRoom> processCourtRoomMapByVenue(final Venue venue, final AtomicReference<CourtRoom> courtRoomsForVenue, final Map<String, String> exceptionMessages) {
@@ -407,7 +466,7 @@ public class ReferenceDataCache {
                                 processFoundCourtRoomWithVenue(venue, courtRoomsForVenue, exceptionMessages, courtRoomList);
                             }
                         } catch (final JsonProcessingException jsonProcessingException) {
-                            LOGGER.error("exception whilst adding into the cache for locationId: {} and venueName {} with exception: {}", locationId, venueName, jsonProcessingException.getMessage(), jsonProcessingException);
+                            LOGGER.error("exception whilst adding into the cache for locationId: {} and venueName {} with exception: {}", locationId, Encode.forJava(venueName), Encode.forJava(jsonProcessingException.getMessage()), jsonProcessingException);
                         }
                     })
             );
@@ -423,16 +482,16 @@ public class ReferenceDataCache {
         if (courtRoomOptional.isPresent()) {
             courtRoomsForVenue.set(courtRoomOptional.get());
         } else {
-            if (courtRoomList.size() > 1) {
+            if (courtRoomList.size() > MULTIPLE_COURT_ROOMS_THRESHOLD) {
                 exceptionMessages.put(format(MULTIPLE_COURTROOMS_FOUND_BY_VENUE_NAME, venue.getVenueName(), venue.getVenueId()), COURT_DETAIL_NOT_FOUND);
             } else {
                 exceptionMessages.put(format(COURT_ROOM_FETCHED_BY_VENUE_NAME, venue.getVenueName(), venue.getVenueId()), COURT_DETAIL_NOT_FOUND);
             }
-            courtRoomsForVenue.set(courtRoomList.get(0));
+            courtRoomsForVenue.set(courtRoomList.getFirst());
         }
     }
 
-    private Integer redisCommonCacheKey5MinsTTL() {
+    private Integer redisCommonCacheKey5MinsTTLSeconds() {
         return Integer.parseInt(redisCommonCacheKey5MinsTTL);
     }
 }

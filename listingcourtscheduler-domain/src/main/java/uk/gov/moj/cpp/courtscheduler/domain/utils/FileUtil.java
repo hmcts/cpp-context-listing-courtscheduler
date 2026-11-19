@@ -7,6 +7,7 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.util.Optional;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,7 +44,7 @@ public class FileUtil {
     }
 
     public static String getLJASnapshotFileNamePrefix(final String fileName) {
-        return fileName.substring(0, (fileName.length() - (getLJASnapshotFileTimeStampAsString(fileName).length() + ".xml".length())));
+        return fileName.substring(0, fileName.length() - (getLJASnapshotFileTimeStampAsString(fileName).length() + ".xml".length()));
     }
 
     /**
@@ -78,12 +79,21 @@ public class FileUtil {
                 fileName.length() - XML_NAME_PART.length() - TIMESTAMP_STRING_LENGTH,
                 fileName.length() - XML_NAME_PART.length());
 
+        // If timestamp parsing fails, return current timestamp
+        return isValidTimestamp(timestampCandidate)
+                ? timestampCandidate
+                : LocalDateTime.now(ZoneOffset.UTC).format(DateTimeFormatter.ofPattern(FILE_NAME_TIMESTAMP_PATTERN));
+    }
+
+    private static boolean isValidTimestamp(final String timestamp) {
+        return parseTimestamp(timestamp).isPresent();
+    }
+
+    private static Optional<LocalDateTime> parseTimestamp(final String timestamp) {
         try {
-            LocalDateTime.parse(timestampCandidate, DateTimeFormatter.ofPattern(FILE_NAME_TIMESTAMP_PATTERN));
-            return timestampCandidate;
+            return Optional.of(LocalDateTime.parse(timestamp, DateTimeFormatter.ofPattern(FILE_NAME_TIMESTAMP_PATTERN)));
         } catch (DateTimeParseException e) {
-            // If timestamp parsing fails, return current timestamp
-            return LocalDateTime.now(ZoneOffset.UTC).format(DateTimeFormatter.ofPattern(FILE_NAME_TIMESTAMP_PATTERN));
+            return Optional.empty();
         }
     }
 
@@ -128,6 +138,6 @@ public class FileUtil {
             return fileName;
         }
 
-        return fileName.substring(0, (fileName.length() - (timeStampAsString.length() + XML_NAME_PART.length())));
+        return fileName.substring(0, fileName.length() - (timeStampAsString.length() + XML_NAME_PART.length()));
     }
 }

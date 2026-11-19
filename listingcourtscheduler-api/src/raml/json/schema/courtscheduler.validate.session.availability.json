@@ -4,21 +4,20 @@
   "properties": {
     "courtScheduleIdList": {
       "type": "array",
+      "minItems": 1,
       "items": {
         "type": "object",
         "properties": {
-          "courtScheduleId": {
-            "$ref": "#/definitions/uuid"
-          }
+          "courtScheduleId": { "$ref": "#/definitions/uuid" }
         },
-        "required": ["courtScheduleId"]
+        "required": ["courtScheduleId"],
+        "additionalProperties": false
       }
     },
-    "duration": {
-      "type": "integer"
-    }
+    "duration": { "type": "integer", "minimum": 1 }
   },
   "required": ["courtScheduleIdList"],
+  "additionalProperties": false,
   "definitions": {
     "uuid": {
       "type": "string",

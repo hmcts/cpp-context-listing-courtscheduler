@@ -6,15 +6,17 @@ import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.core.Is.is;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import uk.gov.moj.cpp.courtscheduler.domain.MiFilterCriteria;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.MiFilterCriteria;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary;
 
+import java.time.Instant;
 import java.time.LocalDate;
-import java.util.Calendar;
-import java.util.Date;
+import java.util.Collections;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,72 +36,88 @@ class CourtScheduleJudiciaryRepositoryTest extends uk.gov.moj.cpp.courtscheduler
 
     @AfterEach
     public void tearDown() {
-        List<CourtScheduleJudiciary> all = courtScheduleJudiciaryRepository.findAll();
+        final List<CourtScheduleJudiciary> all = courtScheduleJudiciaryRepository.findAll();
         all.forEach(courtScheduleJudiciary -> courtScheduleJudiciaryRepository.remove(courtScheduleJudiciary));
     }
 
     @Test
-    public void shouldSave() {
+    void shouldSave() {
         final CourtScheduleJudiciary courtScheduleJudiciary = newCourtScheduleJudiciaryWithSavedSchedule();
 
         courtScheduleJudiciaryRepository.save(courtScheduleJudiciary);
-        CourtScheduleJudiciary by = courtScheduleJudiciaryRepository.findBy(courtScheduleJudiciary.getId());
+        final CourtScheduleJudiciary by = courtScheduleJudiciaryRepository.findBy(courtScheduleJudiciary.getId());
 
         assertThat(by, notNullValue());
 
     }
 
     @Test
-    public void shouldFindByEmail() {
+    void shouldSaveUiDrivenAssignmentWithNullableRotaFields() {
+        final CourtScheduleJudiciary courtScheduleJudiciary = newCourtScheduleJudiciaryWithSavedSchedule();
+        courtScheduleJudiciary.setRotaJudiciaryId(null);
+        courtScheduleJudiciary.setCourtListingProfileId(null);
+        courtScheduleJudiciary.setPosition(null);
+
+        courtScheduleJudiciaryRepository.save(courtScheduleJudiciary);
+        final CourtScheduleJudiciary loaded = courtScheduleJudiciaryRepository.findBy(courtScheduleJudiciary.getId());
+
+        assertNotNull(loaded);
+        assertNull(loaded.getRotaJudiciaryId());
+        assertNull(loaded.getCourtListingProfileId());
+        assertNull(loaded.getPosition());
+    }
+
+    @Test
+    void shouldFindByEmail() {
         final CourtScheduleJudiciary courtScheduleJudiciary = newCourtScheduleJudiciaryWithSavedSchedule();
 
         courtScheduleJudiciaryRepository.save(courtScheduleJudiciary);
-        CourtScheduleJudiciary by = courtScheduleJudiciaryRepository.findByEmail(courtScheduleJudiciary.getEmail());
+        final CourtScheduleJudiciary by = courtScheduleJudiciaryRepository.findByEmail(courtScheduleJudiciary.getEmail());
 
         assertThat(by, notNullValue());
 
     }
 
     @Test
-    public void shouldFindCourtScheduleJudiciariesUpdatedBetweenDates() {
-        CourtScheduleJudiciary courtScheduleJudiciary = newCourtScheduleJudiciaryWithSavedSchedule();
-        LocalDate fromDate = LocalDate.now().minusDays(1);
-        LocalDate toDate = LocalDate.now().plusDays(1);
-        MiFilterCriteria miFilterCriteria = new MiFilterCriteria(fromDate, toDate);
+    void shouldFindCourtScheduleJudiciariesUpdatedBetweenDates() {
+        final CourtScheduleJudiciary courtScheduleJudiciary = newCourtScheduleJudiciaryWithSavedSchedule();
+        final LocalDate fromDate = LocalDate.now().minusDays(1);
+        final LocalDate toDate = LocalDate.now().plusDays(1);
+        final MiFilterCriteria miFilterCriteria = new MiFilterCriteria().fromDate(fromDate).toDate(toDate);
 
 
         courtScheduleJudiciaryRepository.save(courtScheduleJudiciary);
 
-        List<uk.gov.moj.cpp.courtscheduler.domain.mi.CourtScheduleJudiciary> courtScheduleJudiciaryList = courtScheduleJudiciaryRepository.findByUpdatedOnGreaterThanAndUpdatedOnLessThan(miFilterCriteria);
+        final List<uk.gov.moj.cpp.courtscheduler.domain.mi.CourtScheduleJudiciary> courtScheduleJudiciaryList = courtScheduleJudiciaryRepository.findByUpdatedOnGreaterThanAndUpdatedOnLessThan(miFilterCriteria);
         assertThat(courtScheduleJudiciaryList.isEmpty(), is(false));
     }
 
     @Test
-    public void shouldDeactivateSchedules() {
+    void shouldDeactivateSchedules() {
         final String courtScheduleId = persistRandomCourtSchedule();
         final CourtScheduleJudiciary courtScheduleJudiciary = newCourtScheduleJudiciaryWithSavedSchedule();
         courtScheduleJudiciary.getId().setCourtScheduleId(courtScheduleId);
 
         courtScheduleJudiciaryRepository.save(courtScheduleJudiciary);
 
-        final Date updatedOn = Calendar.getInstance().getTime();
+        final Instant updatedOn = Instant.now();
         courtScheduleJudiciaryRepository.deactivateSchedules(List.of(courtScheduleId), updatedOn);
 
         final CourtScheduleJudiciary courtScheduleJudiciaryAfterDeactivation = courtScheduleJudiciaryRepository.findBy(courtScheduleJudiciary.getId());
         courtScheduleJudiciaryRepository.refresh(courtScheduleJudiciaryAfterDeactivation);
 
-        assertEquals(false, courtScheduleJudiciaryAfterDeactivation.getActive());
-        assertEquals(courtScheduleJudiciaryAfterDeactivation.getUpdatedOn().getTime(), updatedOn.getTime());
+        assertEquals(false, courtScheduleJudiciaryAfterDeactivation.isActive());
+        assertEquals(courtScheduleJudiciaryAfterDeactivation.getUpdatedOn().toEpochMilli(), updatedOn.toEpochMilli());
     }
 
     @Test
-    public void shouldUpdateCourtScheduleJudiciaryPosition() {
+    void shouldUpdateCourtScheduleJudiciaryPosition() {
         final String courtScheduleId = persistRandomCourtSchedule();
         final String judiciaryId = randomUUID().toString();
 
         final CourtScheduleJudiciary courtScheduleJudiciary = newCourtScheduleJudiciaryWithSavedSchedule();
         courtScheduleJudiciary.setPosition("6");
-        courtScheduleJudiciary.setUpdatedOn(Calendar.getInstance().getTime());
+        courtScheduleJudiciary.setUpdatedOn(Instant.now());
         courtScheduleJudiciary.setActive(false);
         courtScheduleJudiciary.getId().setCourtScheduleId(courtScheduleId);
         courtScheduleJudiciary.getId().setJudiciaryId(judiciaryId);
@@ -108,19 +126,19 @@ class CourtScheduleJudiciaryRepositoryTest extends uk.gov.moj.cpp.courtscheduler
         courtScheduleJudiciaryRepository.save(courtScheduleJudiciary);
 
         final String newPosition = "10";
-        final Date updatedOn = Calendar.getInstance().getTime();
+        final Instant updatedOn = Instant.now();
         courtScheduleJudiciaryRepository.updateCourtScheduleJudiciaryPosition(newPosition, updatedOn, courtScheduleId, judiciaryId);
 
         final CourtScheduleJudiciary courtScheduleJudiciaryUpdated = courtScheduleJudiciaryRepository.findBy(courtScheduleJudiciary.getId());
         courtScheduleJudiciaryRepository.refresh(courtScheduleJudiciaryUpdated);
 
         assertEquals(courtScheduleJudiciaryUpdated.getPosition(), newPosition);
-        assertEquals(courtScheduleJudiciaryUpdated.getUpdatedOn().getTime(), updatedOn.getTime());
-        assertEquals(true, courtScheduleJudiciaryUpdated.getActive());
+        assertEquals(courtScheduleJudiciaryUpdated.getUpdatedOn().toEpochMilli(), updatedOn.toEpochMilli());
+        assertEquals(true, courtScheduleJudiciaryUpdated.isActive());
     }
 
     @Test
-    public void shouldFindInCourtSchedules() {
+    void shouldFindInCourtSchedules() {
         final String courtScheduleId1 = persistRandomCourtSchedule();
         final CourtScheduleJudiciary courtScheduleJudiciary1 = newCourtScheduleJudiciaryWithSavedSchedule();
         courtScheduleJudiciary1.getId().setCourtScheduleId(courtScheduleId1);
@@ -141,7 +159,7 @@ class CourtScheduleJudiciaryRepositoryTest extends uk.gov.moj.cpp.courtscheduler
     @Disabled("when removing transactional ut not working, otherwise it receives an exception whilst runtime")
     @Test
     @Transactional
-    public void shouldDeleteSchedules() {
+    void shouldDeleteSchedules() {
         final String courtScheduleId1 = persistRandomCourtSchedule();
         final CourtScheduleJudiciary courtScheduleJudiciary1 = newCourtScheduleJudiciaryWithSavedSchedule();
         courtScheduleJudiciary1.getId().setCourtScheduleId(courtScheduleId1);
@@ -168,7 +186,7 @@ class CourtScheduleJudiciaryRepositoryTest extends uk.gov.moj.cpp.courtscheduler
     @Disabled("when we remove transactional annotation, then it is causing the assertion to fail - will fix later")
     @Test
     @Transactional
-    public void shouldDeleteCourtScheduleJudiciariesEntriesForRotaPeriod() {
+    void shouldDeleteUnAllocatedCourtScheduleJudiciariesEntriesForRotaPeriod() {
         final String courtScheduleId1 = persistRandomCourtSchedule();
         final String ouCode1 = "B53DT00";
         final CourtScheduleJudiciary courtScheduleJudiciary1 = newCourtScheduleJudiciaryWithSavedSchedule();
@@ -222,7 +240,7 @@ class CourtScheduleJudiciaryRepositoryTest extends uk.gov.moj.cpp.courtscheduler
     }
 
     @Test
-    public void shouldFindCourtScheduleIdsByJudiciaryDateRangeAndSessionType() {
+    void shouldFindCourtScheduleIdsByJudiciaryDateRangeAndSessionType() {
         final String courtScheduleId = persistRandomCourtSchedule();
         final String judiciaryId = randomUUID().toString();
         final LocalDate sessionDate = LocalDate.now().plusDays(5);
@@ -252,6 +270,77 @@ class CourtScheduleJudiciaryRepositoryTest extends uk.gov.moj.cpp.courtscheduler
 
         assertThat(result.size(), is(1));
         assertEquals(courtScheduleId, result.get(0)[0]);
+    }
+
+    @Test
+    void shouldFindCourtScheduleIdsByJudiciaryDateRangeAndSessionTypeWhenRuleIsAllDay() {
+        final String courtScheduleId = persistRandomCourtSchedule();
+        final String judiciaryId = randomUUID().toString();
+        final LocalDate sessionDate = LocalDate.now().plusDays(7);
+        final String sessionType = "AD";
+
+        final CourtSchedule courtSchedule = random(CourtSchedule.class);
+        courtSchedule.setCourtScheduleId(courtScheduleId);
+        courtSchedule.setSessionDate(sessionDate);
+        courtSchedule.setCourtSession(sessionType);
+        courtSchedule.setActive(true);
+        courtSchedule.setMaxSlots(10);
+        courtSchedule.setAvailableSlots(10);
+        courtSchedule.setMaxDuration(0);
+        courtSchedule.setAvailableDuration(0);
+        courtScheduleRepository.save(courtSchedule);
+
+        final CourtScheduleJudiciary courtScheduleJudiciary = newCourtScheduleJudiciaryWithSavedSchedule();
+        courtScheduleJudiciary.getId().setCourtScheduleId(courtScheduleId);
+        courtScheduleJudiciary.getId().setJudiciaryId(judiciaryId);
+        courtScheduleJudiciary.setActive(true);
+        courtScheduleJudiciaryRepository.save(courtScheduleJudiciary);
+
+        final LocalDate startDate = sessionDate.minusDays(1);
+        final LocalDate endDate = sessionDate.plusDays(1);
+        final List<Object[]> result = courtScheduleJudiciaryRepository.findCourtScheduleIdsByJudiciaryDateRangeAndSessionType(
+                judiciaryId, startDate, endDate, "AD");
+
+        assertThat(result.size(), is(1));
+        assertEquals(courtScheduleId, result.get(0)[0]);
+    }
+
+    @Test
+    void shouldFindCourtScheduleIdsByJudiciaryAndDateRange() {
+        final String courtScheduleId = persistRandomCourtSchedule();
+        final String judiciaryId = randomUUID().toString();
+        final LocalDate sessionDate = LocalDate.now().plusDays(10);
+
+        final CourtSchedule courtSchedule = random(CourtSchedule.class);
+        courtSchedule.setCourtScheduleId(courtScheduleId);
+        courtSchedule.setSessionDate(sessionDate);
+        courtSchedule.setCourtSession("PM");
+        courtSchedule.setActive(true);
+        courtSchedule.setMaxSlots(10);
+        courtSchedule.setAvailableSlots(10);
+        courtSchedule.setMaxDuration(0);
+        courtSchedule.setAvailableDuration(0);
+        courtScheduleRepository.save(courtSchedule);
+
+        final CourtScheduleJudiciary courtScheduleJudiciary = newCourtScheduleJudiciaryWithSavedSchedule();
+        courtScheduleJudiciary.getId().setCourtScheduleId(courtScheduleId);
+        courtScheduleJudiciary.getId().setJudiciaryId(judiciaryId);
+        courtScheduleJudiciary.setActive(true);
+        courtScheduleJudiciaryRepository.save(courtScheduleJudiciary);
+
+        final LocalDate startDate = sessionDate.minusDays(1);
+        final LocalDate endDate = sessionDate.plusDays(1);
+        final List<String> ids = courtScheduleJudiciaryRepository.findCourtScheduleIdsByJudiciaryAndDateRange(
+                judiciaryId, startDate, endDate);
+
+        assertThat(ids.size(), is(1));
+        assertEquals(courtScheduleId, ids.get(0));
+    }
+
+    @Test
+    void shouldReturnZeroWhenDeleteAllAssignmentsForNullOrEmptyCourtScheduleIds() {
+        assertEquals(0, courtScheduleJudiciaryRepository.deleteAllAssignmentsForCourtScheduleIds(null));
+        assertEquals(0, courtScheduleJudiciaryRepository.deleteAllAssignmentsForCourtScheduleIds(Collections.emptyList()));
     }
 
 }

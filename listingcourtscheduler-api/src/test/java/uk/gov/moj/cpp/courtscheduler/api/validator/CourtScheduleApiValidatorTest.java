@@ -13,36 +13,39 @@ import jakarta.json.JsonObject;
 import org.junit.jupiter.api.Test;
 
 class CourtScheduleApiValidatorTest {
+    private static final String DATE_2024_12_03 = "2024-12-03";
+    private static final String COURT_CENTRE_ID = "courtCentreId";
 
-    CourtScheduleApiValidator courtScheduleApiValidator = new CourtScheduleApiValidator();
+
+    private CourtScheduleApiValidator courtScheduleApiValidator = new CourtScheduleApiValidator();
 
     @Test
     void shouldValidateSuccessfully() {
-        JsonObject response = courtScheduleApiValidator.getCourtSchedulesValidation(createRequestParam());
+        final JsonObject response = courtScheduleApiValidator.getCourtSchedulesValidation(createRequestParam());
         assertEquals(EMPTY_JSON_OBJECT, response);
     }
 
     @Test
     void shouldValidateAndReturnError() {
 
-        JsonObject response = courtScheduleApiValidator.getCourtSchedulesValidation(createInvalidRequestParam());
+        final JsonObject response = courtScheduleApiValidator.getCourtSchedulesValidation(createInvalidRequestParam());
 
         assertEquals(MANDATORY_SEARCH_CRITERIA + RequestParameterConstant.START_DATE.getLabel() + CANNOT_BE_NULL, response.getString("errorMessage"));
     }
 
     @Test
     void shouldReturnErrorWhenStartDateAfterEndDate() {
-        CourtScheduleRequestParam params = new CourtScheduleRequestParam(
-                "courtCentreId",
+        final CourtScheduleRequestParam params = new CourtScheduleRequestParam(
+                COURT_CENTRE_ID,
                 "courtRoomId",
                 "businessType",
                 "2024-12-05",
-                "2024-12-03",
+                DATE_2024_12_03,
                 null,
                 "10",
                 "1");
 
-        JsonObject response = courtScheduleApiValidator.getCourtSchedulesValidation(params);
+        final JsonObject response = courtScheduleApiValidator.getCourtSchedulesValidation(params);
 
         assertEquals("Start date must be on or before end date", response.getString("errorMessage"));
     }
@@ -50,38 +53,38 @@ class CourtScheduleApiValidatorTest {
     @Test
     void shouldReturnSuccessWhenOptionalFieldsMissing() {
 
-        JsonObject response = courtScheduleApiValidator.getCourtSchedulesValidation(createRequestWithOptionalFieldsOnly());
+        final JsonObject response = courtScheduleApiValidator.getCourtSchedulesValidation(createRequestWithOptionalFieldsOnly());
 
         assertEquals(EMPTY_JSON_OBJECT, response);
     }
 
     private CourtScheduleRequestParam createRequestParam() {
-        String courtCentreId = "courtCentreId";
-        String courtRoomId = "courtRoomId";
-        String businessType = "businessType";
-        String sessionStartDate = "2024-12-01";
-        String sessionEndDate = "2024-12-03";
-        String pageSize = "10";
-        String pageNumber = "1";
+        final String courtCentreId = COURT_CENTRE_ID;
+        final String courtRoomId = "courtRoomId";
+        final String businessType = "businessType";
+        final String sessionStartDate = "2024-12-01";
+        final String sessionEndDate = DATE_2024_12_03;
+        final String pageSize = "10";
+        final String pageNumber = "1";
         return new CourtScheduleRequestParam(courtCentreId, courtRoomId, businessType, sessionStartDate, sessionEndDate, null, pageSize, pageNumber);
     }
 
     private CourtScheduleRequestParam createInvalidRequestParam() {
-        String courtCentreId = "courtCentreId";
-        String courtRoomId = "courtRoomId";
-        String businessType = "businessType";
-        String sessionEndDate = "2024-12-03";
-        String pageSize = "10";
-        String pageNumber = "1";
+        final String courtCentreId = COURT_CENTRE_ID;
+        final String courtRoomId = "courtRoomId";
+        final String businessType = "businessType";
+        final String sessionEndDate = DATE_2024_12_03;
+        final String pageSize = "10";
+        final String pageNumber = "1";
         return new CourtScheduleRequestParam(courtCentreId, courtRoomId, businessType, null, sessionEndDate, null, pageSize, pageNumber);
     }
 
     private CourtScheduleRequestParam createRequestWithOptionalFieldsOnly() {
-        String courtCentreId = "courtCentreId";
-        String sessionStartDate = "2024-12-01";
-        String sessionEndDate = "2024-12-03";
-        String pageSize = "10";
-        String pageNumber = "1";
+        final String courtCentreId = COURT_CENTRE_ID;
+        final String sessionStartDate = "2024-12-01";
+        final String sessionEndDate = DATE_2024_12_03;
+        final String pageSize = "10";
+        final String pageNumber = "1";
         return new CourtScheduleRequestParam(courtCentreId, null, null, sessionStartDate, sessionEndDate, null, pageSize, pageNumber);
     }
 

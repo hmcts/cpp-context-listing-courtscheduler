@@ -2,23 +2,35 @@
   "$schema": "http://json-schema.org/draft-04/schema#",
   "type": "object",
   "properties": {
-    "bookedSlots": {
+    "hearingId": {
+      "type": "string"
+    },
+    "source": {
+      "type": "string"
+    },
+    "sessions": {
       "type": "array",
       "items": {
         "type": "object",
         "properties": {
-          "hearingId": {
-            "type": "string"
-          },
           "courtScheduleId": {
-            "type": "string"
-          },
-          "courtRoomId": {
             "type": "string"
           },
           "sessionDate": {
             "type": "string",
             "format": "date"
+          },
+          "courtRoomId": {
+            "type": "string"
+          },
+          "businessType": {
+            "type": "string"
+          },
+          "isDraft": {
+            "type": "boolean"
+          },
+          "hearingId": {
+            "type": "string"
           },
           "sessionStartTime": {
             "type": "string"
@@ -29,31 +41,19 @@
           "durationInMinutes": {
             "type": "integer"
           },
-          "isDraft": {
-            "type": "boolean"
-          },
-          "businessType": {
-            "type": "string"
-          },
           "source": {
             "type": "string"
           },
           "overbooked": {
             "type": "boolean"
           }
-        },
-        "required": [
-          "hearingId",
-          "courtScheduleId",
-          "sessionDate",
-          "durationInMinutes",
-          "isDraft",
-          "source"
-        ]
-      }
+        }
+      },
+      "description": "One item per booked day, both jurisdictions - sessionStartTime/sessionEndTime are the SUBMITTED start/end on that day and durationInMinutes the submitted window."
     }
   },
   "required": [
-    "bookedSlots"
+    "hearingId",
+    "sessions"
   ]
 }

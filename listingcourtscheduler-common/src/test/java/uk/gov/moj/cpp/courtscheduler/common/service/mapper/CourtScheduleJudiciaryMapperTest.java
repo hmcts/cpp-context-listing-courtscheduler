@@ -6,11 +6,17 @@ import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 
-import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.platform.test.data.utils.FileUtil;
+
+import java.time.Instant;
+import java.util.UUID;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -27,6 +33,43 @@ class CourtScheduleJudiciaryMapperTest {
         final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary courtScheduleJudiciaryEntity = CourtScheduleJudiciaryMapper.toEntity(courtScheduleJudiciaryDomain);
 
         assertThat(courtScheduleJudiciaryEntity, notNullValue());
+    }
+
+    @Test
+    void shouldMapNullableRotaProfileAndPositionBetweenDomainAndEntity() {
+        final String courtScheduleId = UUID.randomUUID().toString();
+        final String judiciaryId = UUID.randomUUID().toString();
+        final CourtScheduleJudiciary domain = new CourtScheduleJudiciary()
+                .courtScheduleId(courtScheduleId)
+                .judiciaryId(judiciaryId)
+                .rotaJudiciaryId(null)
+                .courtListingProfileId(null)
+                .position(null)
+                .title("Mr")
+                .forenames("Test")
+                .surname("Judge")
+                .emailAddress("test.judge@example.com")
+                .judiciaryType("DJ")
+                .isBenchChairman(false)
+                .isDeputy(false)
+                .active(true)
+                .createdOn(uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toOffsetDateTime(Instant.now()))
+                .updatedOn(uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toOffsetDateTime(Instant.now()));
+
+        final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary entity =
+                CourtScheduleJudiciaryMapper.toEntity(domain);
+        assertNotNull(entity);
+
+        assertNull(entity.getRotaJudiciaryId());
+        assertNull(entity.getCourtListingProfileId());
+        assertNull(entity.getPosition());
+
+        final CourtScheduleJudiciary roundTrip = CourtScheduleJudiciaryMapper.toDomain(entity);
+        assertNotNull(roundTrip);
+
+        assertNull(roundTrip.getRotaJudiciaryId());
+        assertNull(roundTrip.getCourtListingProfileId());
+        assertNull(roundTrip.getPosition());
     }
 
     @Test

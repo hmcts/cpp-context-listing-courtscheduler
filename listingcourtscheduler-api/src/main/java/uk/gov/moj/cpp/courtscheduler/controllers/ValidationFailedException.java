@@ -9,6 +9,8 @@ import java.util.List;
  */
 public class ValidationFailedException extends RuntimeException {
 
+    private static final long serialVersionUID = 1L;
+
     private final List<String> errorMessages;
 
     public ValidationFailedException(final List<String> errorMessages) {

@@ -49,25 +49,24 @@ import uk.gov.moj.cpp.courtscheduler.integration.utils.RequestParams;
  * so the IT classes compile without rewrites of every {@code response.getStatus()} or
  * {@code response.readEntity(...)} call site.</p>
  */
-public abstract class AbstractIT {
+public class AbstractIT {
+    private static final String CJSCPPUID_2 = "CJSCPPUID";
+
 
     /** Base URL of the dockerised Spring Boot app, set by the Gradle {@code integration} task. */
     protected static final String APP_BASE_URL = System.getProperty(
             "app.baseUrl",
             "http://localhost:8083/listingcourtscheduler-api/rest/courtscheduler");
 
-    /** Kept for source-compatibility with the legacy test classes. */
-    protected final String BASE_URL = APP_BASE_URL;
-
     protected static final UUID USER_ID = fromString("11111111-1111-1111-1111-111111111111");
     protected static final UUID SYSTEM_USER_ID = fromString("22222222-2222-2222-2222-222222222222");
 
-    protected static final Random random = new Random();
+    private static final Random RANDOM_NUMBERS = new Random();
     protected static final EnhancedRandom RANDOM = new EnhancedRandomBuilder()
             .maxStringLength(5)
-            .randomize(int.class, (Randomizer<Integer>) () -> random.nextInt(500))
-            .randomize(Integer.class, (Randomizer<Integer>) () -> random.nextInt(500))
-            .randomize(long.class, (Randomizer<Long>) () -> (long) random.nextInt(500))
+            .randomize(int.class, (Randomizer<Integer>) () -> RANDOM_NUMBERS.nextInt(500))
+            .randomize(Integer.class, (Randomizer<Integer>) () -> RANDOM_NUMBERS.nextInt(500))
+            .randomize(long.class, (Randomizer<Long>) () -> (long) RANDOM_NUMBERS.nextInt(500))
             .build();
 
     protected final DatabaseSeeder databaseSeeder = new DatabaseSeeder();
@@ -76,6 +75,11 @@ public abstract class AbstractIT {
     protected final StringToJsonObjectConverter stringToJsonObjectConverter = new StringToJsonObjectConverter();
 
     private static final RestTemplate REST = newRestTemplate();
+
+    /** Base class only: not meant to be instantiated directly. */
+    protected AbstractIT() {
+        super();
+    }
 
     static {
         TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
@@ -150,8 +154,8 @@ public abstract class AbstractIT {
                                              final UUID userId,
                                              final Map<String, Object> queryParams) {
         final String url = (queryParams == null || queryParams.isEmpty())
-                ? BASE_URL + path
-                : (BASE_URL + path + "?" + createUrlFromParam(queryParams));
+                ? APP_BASE_URL + path
+                : (APP_BASE_URL + path + "?" + createUrlFromParam(queryParams));
         return new RequestParams(url, contentType, userId == null ? null : userId.toString());
     }
 
@@ -162,7 +166,7 @@ public abstract class AbstractIT {
             headers.set(HttpHeaders.ACCEPT, params.getMediaType());
         }
         if (params.getUserId() != null) {
-            headers.set("CJSCPPUID", params.getUserId());
+            headers.set(CJSCPPUID_2, params.getUserId());
         }
         final ResponseEntity<String> response = REST.exchange(
                 URI.create(params.getUrl()), HttpMethod.GET,
@@ -180,10 +184,10 @@ public abstract class AbstractIT {
             headers.setContentType(MediaType.parseMediaType(contentType));
         }
         if (userId != null) {
-            headers.set("CJSCPPUID", userId.toString());
+            headers.set(CJSCPPUID_2, userId.toString());
         }
         final HttpEntity<String> entity = new HttpEntity<>(body, headers);
-        return REST.exchange(URI.create(BASE_URL + path), method, entity, String.class);
+        return REST.exchange(URI.create(APP_BASE_URL + path), method, entity, String.class);
     }
 
     /**
@@ -202,10 +206,10 @@ public abstract class AbstractIT {
         headers.setContentType(MediaType.parseMediaType(contentType));
         headers.setAccept(java.util.List.of(MediaType.parseMediaType(accept)));
         if (userId != null) {
-            headers.set("CJSCPPUID", userId.toString());
+            headers.set(CJSCPPUID_2, userId.toString());
         }
         final HttpEntity<String> entity = new HttpEntity<>(body, headers);
-        return toLegacyResponse(REST.exchange(URI.create(BASE_URL + path), HttpMethod.POST, entity, String.class));
+        return toLegacyResponse(REST.exchange(URI.create(APP_BASE_URL + path), HttpMethod.POST, entity, String.class));
     }
 
     /**
@@ -233,10 +237,10 @@ public abstract class AbstractIT {
         final HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.parseMediaType(contentType));
         if (userId != null) {
-            headers.set("CJSCPPUID", userId.toString());
+            headers.set(CJSCPPUID_2, userId.toString());
         }
         final HttpEntity<String> entity = new HttpEntity<>(body, headers);
-        return toLegacyResponse(noAccept.exchange(URI.create(BASE_URL + path), HttpMethod.POST, entity, String.class));
+        return toLegacyResponse(noAccept.exchange(URI.create(APP_BASE_URL + path), HttpMethod.POST, entity, String.class));
     }
 
     /**
@@ -303,11 +307,11 @@ public abstract class AbstractIT {
         @Override public java.util.Locale getLanguage() { return null; }
         @Override public int getLength() { return spring.getBody() == null ? -1 : spring.getBody().length(); }
         @Override public java.util.Set<String> getAllowedMethods() { return java.util.Collections.emptySet(); }
-        @Override public java.util.Map<String, jakarta.ws.rs.core.NewCookie> getCookies() { return java.util.Collections.emptyMap(); }
+        @Override public Map<String, jakarta.ws.rs.core.NewCookie> getCookies() { return java.util.Collections.emptyMap(); }
         @Override public jakarta.ws.rs.core.EntityTag getEntityTag() { return null; }
         @Override public java.util.Date getDate() { return null; }
         @Override public java.util.Date getLastModified() { return null; }
-        @Override public java.net.URI getLocation() { return null; }
+        @Override public URI getLocation() { return null; }
         @Override public java.util.Set<jakarta.ws.rs.core.Link> getLinks() { return java.util.Collections.emptySet(); }
         @Override public boolean hasLink(final String relation) { return false; }
         @Override public jakarta.ws.rs.core.Link getLink(final String relation) { return null; }

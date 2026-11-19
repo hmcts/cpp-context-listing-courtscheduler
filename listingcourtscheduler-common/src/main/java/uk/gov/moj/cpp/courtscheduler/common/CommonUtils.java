@@ -5,7 +5,7 @@ import static jakarta.json.Json.createObjectBuilder;
 import jakarta.json.JsonObject;
 
 public  class CommonUtils {
-    public static JsonObject buildErrorResponse(String errorMessage) {
+    public static JsonObject buildErrorResponse(final String errorMessage) {
         return createObjectBuilder()
                 .add("errorMessage", errorMessage)
                 .build();

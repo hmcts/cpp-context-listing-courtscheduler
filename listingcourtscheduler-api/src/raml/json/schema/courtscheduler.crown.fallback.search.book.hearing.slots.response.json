@@ -1,0 +1,48 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "hearingId": {
+      "type": "string"
+    },
+    "courtScheduleId": {
+      "type": "string"
+    },
+    "courtRoomId": {
+      "type": "integer"
+    },
+    "sessionDate": {
+      "type": "string",
+      "format": "date"
+    },
+    "sessionStartTime": {
+      "type": "string"
+    },
+    "sessionEndTime": {
+      "type": "string"
+    },
+    "durationInMinutes": {
+      "type": "integer"
+    },
+    "isDraft": {
+      "type": "boolean"
+    },
+    "businessType": {
+      "type": "string"
+    },
+    "source": {
+      "type": "string"
+    },
+    "overbooked": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "hearingId",
+    "courtScheduleId",
+    "sessionDate",
+    "durationInMinutes",
+    "isDraft",
+    "source"
+  ]
+}

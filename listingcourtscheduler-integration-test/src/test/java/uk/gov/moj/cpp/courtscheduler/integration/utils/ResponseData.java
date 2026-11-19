@@ -3,7 +3,7 @@ package uk.gov.moj.cpp.courtscheduler.integration.utils;
 import jakarta.ws.rs.core.Response;
 
 /**
- * Replacement for {@code uk.gov.justice.services.test.utils.core.http.ResponseData}.
+ * Replacement for {@code uk.gov.moj.cpp.courtscheduler.integration.utils.ResponseData}.
  * Exposes {@code getStatus()} returning the JAX-RS {@link Response.Status} enum (so
  * legacy Hamcrest assertions like {@code assertThat(responseData.getStatus(), is(OK))}
  * compare against an actual enum constant) plus {@code getPayload()} for the body.

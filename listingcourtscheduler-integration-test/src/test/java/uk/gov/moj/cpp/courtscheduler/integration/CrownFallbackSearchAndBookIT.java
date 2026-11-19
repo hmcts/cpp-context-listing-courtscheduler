@@ -1,0 +1,567 @@
+package uk.gov.moj.cpp.courtscheduler.integration;
+
+import static jakarta.json.Json.createReader;
+import static jakarta.ws.rs.core.Response.Status.OK;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.is;
+import static uk.gov.moj.cpp.courtscheduler.domain.utils.TimezoneUtils.LONDON_ZONE;
+
+import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
+
+import java.io.StringReader;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
+import java.util.List;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+import jakarta.json.Json;
+import jakarta.json.JsonObject;
+import jakarta.ws.rs.core.Response;
+
+import org.junit.jupiter.api.Test;
+
+/**
+ * Integration tests for the CROWN single-day fallback search-and-book path, now served by
+ * {@code POST /hearings/{hearingId}} with media type
+ * {@code application/vnd.courtscheduler.crown.search.and.book+json} (was the retired
+ * {@code GET /crownfallbacksearchandbook/hearingslots}).
+ *
+ * <p>The request carries a {@code courtCentreId}, a {@code hearingDate}, a small
+ * {@code durationInMinutes} (≤360 selects the single-day path), and optionally a
+ * {@code courtRoomId}. No {@code courtScheduleId} anchor is supplied — the engine picks any
+ * session at the centre+date, relaxing MAGS rota matching (no businessType filter) and ignoring
+ * remaining capacity entirely (search-and-book is overbooking-exempt, SPRDT-1159).
+ *
+ * <p>Sister unit tests live in {@code SlotsUpdateServiceTest.CrownFallbackSearchAndBook}; these ITs
+ * cover behaviours that need the real DB: native SQL predicate correctness against
+ * {@code court_schedule.court_house_id}, capacity-exempt selection, on-the-fly session creation
+ * attributes, and idempotency via {@code allocated_listings} inspection.
+ */
+class CrownFallbackSearchAndBookIT extends AbstractIT {
+    private static final String HEARINGS = "/hearings/";
+    private static final String C01_CY00 = "C01CY00";
+    private static final String C99_XX00 = "C99XX00";
+    private static final String CROWN_FB_LIST_2 = "CROWN_FB_LIST";
+    private static final String COURT_CENTRE_ID = "courtCentreId";
+    private static final String COURT_ROOM_ID = "courtRoomId";
+    private static final String COURT_SCHEDULE_ID = "courtScheduleId";
+    private static final String DURATION_IN_MINUTES = "durationInMinutes";
+    private static final String HEARING_DATE = "hearingDate";
+    private static final String IS_DRAFT = "isDraft";
+    private static final String SOURCE = "source";
+
+
+    private static final String ACCEPT = "application/vnd.courtscheduler.crown.search.and.book+json";
+
+    @Test
+    void shouldBookNonDraftSessionWhenCourtRoomIdSuppliedAndSessionAvailable() throws Exception {
+        final String centreId = UUID.randomUUID().toString();
+        final String roomId = UUID.randomUUID().toString();
+        final String hearingId = UUID.randomUUID().toString();
+        final LocalDate date = LocalDate.now().plusDays(14);
+
+        final String sessionId = seedSession(date, roomId, "CR", centreId, C01_CY00, false, false, 360);
+
+        final Response response = callFallback(hearingId, centreId, roomId, date, 10, CROWN_FB_LIST_2);
+
+        assertThat(response.getStatus(), is(OK.getStatusCode()));
+        final JsonObject body = parse(body(response));
+        assertThat(body.getString(COURT_SCHEDULE_ID), is(sessionId));
+        assertThat(body.getString(SOURCE), is(CROWN_FB_LIST_2));
+
+        final List<String> booked = databaseReader.allocatedListings().stream()
+                .filter(al -> hearingId.equals(al.getHearingId()))
+                .map(AllocatedListing::getCourtScheduleId)
+                .collect(Collectors.toList());
+        assertThat("allocated_listings row written", booked.size(), is(1));
+        assertThat(booked.get(0), is(sessionId));
+    }
+
+    @Test
+    void shouldBookDraftSessionWhenCourtRoomIdOmitted() throws Exception {
+        final String centreId = UUID.randomUUID().toString();
+        final String roomId = UUID.randomUUID().toString();
+        final String hearingId = UUID.randomUUID().toString();
+        final LocalDate date = LocalDate.now().plusDays(14);
+
+        final String draftId = seedSession(date, roomId, "CR", centreId, C01_CY00, true, false, 360);
+
+        final Response response = callFallback(hearingId, centreId, null, date, 10, CROWN_FB_LIST_2);
+
+        assertThat(response.getStatus(), is(OK.getStatusCode()));
+        final JsonObject body = parse(body(response));
+        assertThat("draft session booked when no courtRoomId supplied",
+                body.getString(COURT_SCHEDULE_ID), is(draftId));
+    }
+
+    @Test
+    void shouldReturn422WhenNoSessionAtCourtCentreOnDate() {
+        final String centreId = UUID.randomUUID().toString();
+        final String hearingId = UUID.randomUUID().toString();
+        final LocalDate date = LocalDate.now().plusDays(14);
+
+        // no seeded sessions AND no ouCode on the request → auto-create has neither a template nor
+        // request metadata to build from (SPRDT-1283), so the fallback still exhausts all tiers
+        final Response response = callFallback(hearingId, centreId, null, date, 10, CROWN_FB_LIST_2);
+
+        assertThat(response.getStatus(), is(422));
+        assertThat(response.readEntity(String.class), containsString("NO_SESSION_FOUND"));
+    }
+
+    @Test
+    void shouldReturnExistingAllocationOnIdempotentReplay() throws Exception {
+        final String centreId = UUID.randomUUID().toString();
+        final String roomId = UUID.randomUUID().toString();
+        final String hearingId = UUID.randomUUID().toString();
+        final LocalDate date = LocalDate.now().plusDays(14);
+
+        final String sessionId = seedSession(date, roomId, "CR", centreId, C01_CY00, false, false, 360);
+
+        final Response first = callFallback(hearingId, centreId, roomId, date, 10, CROWN_FB_LIST_2);
+        assertThat(first.getStatus(), is(OK.getStatusCode()));
+        final JsonObject firstBody = parse(body(first));
+        assertThat("first call returns a courtScheduleId", firstBody.getString(COURT_SCHEDULE_ID), is(sessionId));
+        assertThat("first call writes one allocated_listings row",
+                databaseReader.allocatedListings().stream()
+                        .filter(al -> hearingId.equals(al.getHearingId())).count(), is(1L));
+
+        final Response second = callFallback(hearingId, centreId, roomId, date, 10, CROWN_FB_LIST_2);
+        assertThat(second.getStatus(), is(OK.getStatusCode()));
+        final JsonObject secondBody = parse(body(second));
+        assertThat("idempotent replay returns same courtScheduleId",
+                secondBody.getString(COURT_SCHEDULE_ID), is(sessionId));
+        assertThat("no additional row written on replay",
+                databaseReader.allocatedListings().stream()
+                        .filter(al -> hearingId.equals(al.getHearingId())).count(), is(1L));
+    }
+
+    @Test
+    void shouldMoveHearingToOtherDateAndRoomWhenSingleDayRequestDiffersFromHeldBooking() throws Exception {
+        // SPRDT-1539 (H23): the single-day path MOVEs. The hearing holds day1/roomA; a request for
+        // day2/roomB releases the old row (payback) and books ONE row stamped source=MOVE, with the
+        // full single-day answer. A replay of the move is then idempotent, again with full fields.
+        final String centreId = UUID.randomUUID().toString();
+        final String roomA = UUID.randomUUID().toString();
+        final String roomB = UUID.randomUUID().toString();
+        final String hearingId = UUID.randomUUID().toString();
+        final LocalDate day1 = LocalDate.now().plusDays(14);
+        final LocalDate day2 = day1.plusDays(1);
+
+        final String session1 = seedSession(day1, roomA, "CR", centreId, C01_CY00, false, false, 360);
+        final String session2 = seedSession(day2, roomB, "CR", centreId, C01_CY00, false, false, 360);
+
+        final Response first = callFallback(hearingId, centreId, roomA, day1, 100, CROWN_FB_LIST_2);
+        assertThat(first.getStatus(), is(OK.getStatusCode()));
+        assertThat(parse(body(first)).getString(COURT_SCHEDULE_ID), is(session1));
+
+        final Response moved = callFallback(hearingId, centreId, roomB, day2, 100, "CROWN_FB_UPDATE");
+        assertThat(moved.getStatus(), is(OK.getStatusCode()));
+        final JsonObject movedBody = parse(body(moved));
+        assertThat(movedBody.getString(COURT_SCHEDULE_ID), is(session2));
+        assertThat(movedBody.getString(SOURCE), is("MOVE"));
+        assertThat(movedBody.getString(COURT_ROOM_ID), is(roomB));
+        assertThat(movedBody.getString("sessionDate"), is(day2.toString()));
+        assertThat(movedBody.getInt(DURATION_IN_MINUTES), is(100));
+        assertThat(movedBody.getBoolean(IS_DRAFT), is(false));
+
+        final List<AllocatedListing> rows = databaseReader.allocatedListings().stream()
+                .filter(al -> hearingId.equals(al.getHearingId()))
+                .collect(Collectors.toList());
+        assertThat("old row released, one new row booked", rows.size(), is(1));
+        assertThat(rows.get(0).getCourtScheduleId(), is(session2));
+        assertThat("the persisted row carries source=MOVE", rows.get(0).getSource(), is("MOVE"));
+        assertThat("old session's capacity restored by the release",
+                databaseReader.courtScheduleById(session1).getAvailableDuration(), is(360));
+        assertThat("new session charged once",
+                databaseReader.courtScheduleById(session2).getAvailableDuration(), is(260));
+
+        final Response replay = callFallback(hearingId, centreId, roomB, day2, 100, "CROWN_FB_UPDATE");
+        assertThat(replay.getStatus(), is(OK.getStatusCode()));
+        final JsonObject replayBody = parse(body(replay));
+        assertThat("replay is idempotent", replayBody.getString(COURT_SCHEDULE_ID), is(session2));
+        assertThat("replay carries the full single-day fields", replayBody.getString(COURT_ROOM_ID), is(roomB));
+        assertThat(replayBody.getString("sessionDate"), is(day2.toString()));
+        assertThat(replayBody.getBoolean(IS_DRAFT), is(false));
+        assertThat("no extra row on replay",
+                databaseReader.allocatedListings().stream()
+                        .filter(al -> hearingId.equals(al.getHearingId())).count(), is(1L));
+        assertThat("replay does not charge the session again",
+                databaseReader.courtScheduleById(session2).getAvailableDuration(), is(260));
+    }
+
+    @Test
+    void shouldReturn422NoAvailabilityAndKeepHeldBookingWhenMoveFindsNoSessionAndCannotAutoCreate() throws Exception {
+        // SPRDT-1539 (H23): search runs BEFORE release. A centre with no session and no ouCode on the
+        // request cannot auto-create, so the move answers 422 NO_AVAILABILITY [date] and the hearing
+        // keeps its existing allocation.
+        final String centreId = UUID.randomUUID().toString();
+        final String roomId = UUID.randomUUID().toString();
+        final String hearingId = UUID.randomUUID().toString();
+        final LocalDate day1 = LocalDate.now().plusDays(14);
+        final LocalDate day2 = day1.plusDays(1);
+
+        final String session1 = seedSession(day1, roomId, "CR", centreId, C01_CY00, false, false, 360);
+        final Response first = callFallback(hearingId, centreId, roomId, day1, 100, CROWN_FB_LIST_2);
+        assertThat(first.getStatus(), is(OK.getStatusCode()));
+
+        final String emptyCentreId = UUID.randomUUID().toString();
+        final Response rejected = callFallback(hearingId, emptyCentreId, roomId, day2, 100, "CROWN_FB_UPDATE");
+
+        assertThat(rejected.getStatus(), is(422));
+        final JsonObject error = parse(body(rejected));
+        assertThat(error.getString("errorCode"), is("NO_AVAILABILITY"));
+        assertThat(error.getJsonArray("unavailableDates").getString(0), is(day2.toString()));
+
+        final List<AllocatedListing> rows = databaseReader.allocatedListings().stream()
+                .filter(al -> hearingId.equals(al.getHearingId()))
+                .collect(Collectors.toList());
+        assertThat("existing allocation untouched", rows.size(), is(1));
+        assertThat(rows.get(0).getCourtScheduleId(), is(session1));
+        assertThat("existing session still charged",
+                databaseReader.courtScheduleById(session1).getAvailableDuration(), is(260));
+    }
+
+    @Test
+    void shouldIgnoreBusinessTypeAndPickAnySessionOnCentrePlusDate() throws Exception {
+        // Relaxed matching: a CR session at the centre+date should be picked even when the caller
+        // doesn't mention businessType at all. The MAGS search-and-book would have a tighter predicate.
+        final String centreId = UUID.randomUUID().toString();
+        final String roomId = UUID.randomUUID().toString();
+        final String hearingId = UUID.randomUUID().toString();
+        final LocalDate date = LocalDate.now().plusDays(14);
+
+        final String id = seedSession(date, roomId, "UNUSUAL_BT", centreId, C01_CY00, false, false, 360);
+
+        final Response response = callFallback(hearingId, centreId, roomId, date, 10, "CROWN_FB_ADJOURN");
+
+        assertThat(response.getStatus(), is(OK.getStatusCode()));
+        final JsonObject body = parse(body(response));
+        assertThat(body.getString(COURT_SCHEDULE_ID), is(id));
+        assertThat(body.getString(SOURCE), is("CROWN_FB_ADJOURN"));
+    }
+
+    @Test
+    void shouldBookSessionRegardlessOfRemainingCapacity() throws Exception {
+        // SPRDT-1159: search-and-book is overbooking-exempt — a session whose remaining capacity is
+        // below the requested duration (and which does NOT allow overbooking) still gets booked.
+        // Before this change the strict pass skipped it and the relaxed pass required
+        // is_overbooking_allowed=true, so this request would have found no session.
+        final String centreId = UUID.randomUUID().toString();
+        final String roomId = UUID.randomUUID().toString();
+        final String hearingId = UUID.randomUUID().toString();
+        final LocalDate date = LocalDate.now().plusDays(14);
+
+        final String sessionId = seedSession(date, roomId, "CR", centreId, C01_CY00, false, false, 5);
+
+        final Response response = callFallback(hearingId, centreId, roomId, date, 10, CROWN_FB_LIST_2);
+
+        assertThat(response.getStatus(), is(OK.getStatusCode()));
+        final JsonObject body = parse(body(response));
+        assertThat(body.getString(COURT_SCHEDULE_ID), is(sessionId));
+        assertThat("overbooked flag reports the capacity shortfall", body.getBoolean("overbooked"), is(true));
+    }
+
+    @Test
+    void shouldAutoCreateFinalLngAdSessionWhenRoomSuppliedAndNoSessionOnDate() throws Exception {
+        // SPRDT-1159 auto-create shape (room pinned): duration-based AD session, businessType LNG,
+        // fixed 360-minute capacity, overbooking disallowed, FINAL (is_draft=false).
+        final String centreId = UUID.randomUUID().toString();
+        final String roomId = UUID.randomUUID().toString();
+        final String hearingId = UUID.randomUUID().toString();
+        final LocalDate date = LocalDate.now().plusDays(14);
+
+        // Template session at the same centre+room but on a different date: the target date has no
+        // session, so the engine must create one, copying only residual metadata from this template.
+        seedSession(date.plusDays(7), roomId, "CR", centreId, C01_CY00, false, false, 300);
+
+        // An afternoon hearing time: the created session must still end at 17:00 (SPRDT-1324), not
+        // at start + the 360-minute capacity, which would have put it at 18:30. 17:00 is a
+        // Europe/London wall-clock time (16:00 UTC while BST applies), so it is asserted in that zone.
+        final Response response = postCommand(HEARINGS + hearingId, ACCEPT, SYSTEM_USER_ID,
+                Json.createObjectBuilder()
+                        .add(COURT_CENTRE_ID, centreId)
+                        .add(COURT_ROOM_ID, roomId)
+                        .add(HEARING_DATE, date.toString())
+                        .add(DURATION_IN_MINUTES, 10)
+                        .add("earliestHearingTime", date + "T12:30:00Z")
+                        .add(SOURCE, CROWN_FB_LIST_2)
+                        .build().toString());
+
+        assertThat(response.getStatus(), is(OK.getStatusCode()));
+        final JsonObject body = parse(body(response));
+        final String createdId = body.getString(COURT_SCHEDULE_ID);
+        assertThat(body.getBoolean(IS_DRAFT), is(false));
+
+        final CourtSchedule created = databaseReader.courtScheduleById(createdId);
+        assertThat(created.getBusinessType(), is("LNG"));
+        assertThat(created.getCourtSession(), is("AD"));
+        assertThat(created.getMaxDuration(), is(360));
+        assertThat(created.isOverbookingAllowed(), is(false));
+        assertThat(created.isDraft(), is(false));
+        assertThat(created.isSlotBased(), is(false));
+        assertThat(created.isSupportAdSplit(), is(false));
+        assertThat(created.getCourtRoomId(), is(roomId));
+        assertThat(created.getSessionDate(), is(date));
+        assertThat(java.sql.Timestamp.from(created.getSessionStartTime()).toLocalDateTime(),
+                is(date.atTime(12, 30)));
+        assertThat(created.getSessionEndTime().atZone(LONDON_ZONE).toLocalDateTime(),
+                is(date.atTime(17, 0)));
+    }
+
+    @Test
+    void shouldAutoCreateDraftGencAdSessionWhenRoomOmittedAndNoSessionOnDate() throws Exception {
+        // SPRDT-1159 auto-create shape (no room): duration-based AD session, businessType GENC,
+        // fixed 360-minute capacity, overbooking disallowed, DRAFT (is_draft=true).
+        final String centreId = UUID.randomUUID().toString();
+        final String roomId = UUID.randomUUID().toString();
+        final String hearingId = UUID.randomUUID().toString();
+        final LocalDate date = LocalDate.now().plusDays(14);
+
+        seedSession(date.plusDays(7), roomId, "CR", centreId, C01_CY00, false, false, 300);
+
+        final Response response = callFallback(hearingId, centreId, null, date, 10, CROWN_FB_LIST_2);
+
+        assertThat(response.getStatus(), is(OK.getStatusCode()));
+        final JsonObject body = parse(body(response));
+        final String createdId = body.getString(COURT_SCHEDULE_ID);
+        assertThat(body.getBoolean(IS_DRAFT), is(true));
+
+        final CourtSchedule created = databaseReader.courtScheduleById(createdId);
+        assertThat(created.getBusinessType(), is("GENC"));
+        assertThat(created.getCourtSession(), is("AD"));
+        assertThat(created.getMaxDuration(), is(360));
+        assertThat(created.isOverbookingAllowed(), is(false));
+        assertThat(created.isDraft(), is(true));
+        assertThat(created.isSlotBased(), is(false));
+        assertThat(created.isSupportAdSplit(), is(false));
+        // SPRDT-1324: the DRAFT variant ends at the same fixed all-day default
+        assertThat(created.getSessionEndTime().atZone(LONDON_ZONE).toLocalDateTime(),
+                is(date.atTime(17, 0)));
+    }
+
+    @Test
+    void shouldAutoCreateSessionAtNeverSeededCentreWhenOuCodeSupplied() throws Exception {
+        // SPRDT-1283 part 1: a centre with NO session at all to copy metadata from no longer blocks
+        // auto-creation — the session is built from the request's own metadata (ouCode/names) and
+        // starts at the requested hearing time.
+        final String centreId = UUID.randomUUID().toString();
+        final String roomId = UUID.randomUUID().toString();
+        final String hearingId = UUID.randomUUID().toString();
+        final LocalDate date = LocalDate.now().plusDays(14);
+        final String hearingTime = date + "T11:30:00Z";
+
+        // deliberately NO seeded session anywhere at this centre
+        final Response response = postCommand(HEARINGS + hearingId, ACCEPT, SYSTEM_USER_ID,
+                Json.createObjectBuilder()
+                        .add(COURT_CENTRE_ID, centreId)
+                        .add(COURT_ROOM_ID, roomId)
+                        .add(HEARING_DATE, date.toString())
+                        .add(DURATION_IN_MINUTES, 60)
+                        .add("earliestHearingTime", hearingTime)
+                        .add(SOURCE, CROWN_FB_LIST_2)
+                        .add("ouCode", C99_XX00)
+                        .add("courtCentreName", "Never Seeded Crown Court")
+                        .add("courtRoomName", "Courtroom 7")
+                        .build().toString());
+
+        assertThat(response.getStatus(), is(OK.getStatusCode()));
+        final JsonObject body = parse(body(response));
+        final String createdId = body.getString(COURT_SCHEDULE_ID);
+        assertThat(body.getBoolean(IS_DRAFT), is(false));
+
+        final CourtSchedule created = databaseReader.courtScheduleById(createdId);
+        assertThat(created.getOuCode(), is(C99_XX00));
+        assertThat(created.getCourtHouseId(), is(centreId));
+        assertThat(created.getCourtHouseName(), is("Never Seeded Crown Court"));
+        assertThat(created.getCourtRoomId(), is(roomId));
+        assertThat(created.getCourtRoomName(), is("Courtroom 7"));
+        assertThat(created.getListingProfileId(), is("CROWN-FB-AUTO"));
+        assertThat(created.getBusinessType(), is("LNG"));
+        assertThat(created.getCourtSession(), is("AD"));
+        assertThat(created.isDraft(), is(false));
+        assertThat(created.getMaxDuration(), is(360));
+        assertThat(created.getSessionDate(), is(date));
+        // session starts at the requested hearing time — compared as the stored UTC wall-clock
+        // (the app runs in UTC; asserting instants would break under a non-UTC test JVM)
+        assertThat(java.sql.Timestamp.from(created.getSessionStartTime()).toLocalDateTime(),
+                is(date.atTime(11, 30)));
+        // SPRDT-1324: an AD session ends at the fixed all-day default, never start + capacity
+        assertThat(created.getSessionEndTime().atZone(LONDON_ZONE).toLocalDateTime(),
+                is(date.atTime(17, 0)));
+
+        final List<AllocatedListing> booked = databaseReader.allocatedListings().stream()
+                .filter(al -> hearingId.equals(al.getHearingId()))
+                .collect(Collectors.toList());
+        assertThat("hearing booked onto the auto-created session", booked.size(), is(1));
+        assertThat(booked.get(0).getCourtScheduleId(), is(createdId));
+    }
+
+    @Test
+    void shouldAutoCreateDraftSessionAtNeverSeededCentreWhenRoomOmitted() throws Exception {
+        // SPRDT-1283 part 1 (no-room variant): with no template session and no courtRoomId the
+        // session is created DRAFT/GENC on a stable per-centre virtual room — proving every
+        // NOT NULL column is satisfiable without a template.
+        final String centreId = UUID.randomUUID().toString();
+        final String hearingId = UUID.randomUUID().toString();
+        final LocalDate date = LocalDate.now().plusDays(14);
+
+        final Response response = postCommand(HEARINGS + hearingId, ACCEPT, SYSTEM_USER_ID,
+                Json.createObjectBuilder()
+                        .add(COURT_CENTRE_ID, centreId)
+                        .add(HEARING_DATE, date.toString())
+                        .add(DURATION_IN_MINUTES, 60)
+                        .add(SOURCE, CROWN_FB_LIST_2)
+                        .add("ouCode", C99_XX00)
+                        .build().toString());
+
+        assertThat(response.getStatus(), is(OK.getStatusCode()));
+        final JsonObject body = parse(body(response));
+        final String createdId = body.getString(COURT_SCHEDULE_ID);
+        assertThat(body.getBoolean(IS_DRAFT), is(true));
+
+        final CourtSchedule created = databaseReader.courtScheduleById(createdId);
+        assertThat(created.getOuCode(), is(C99_XX00));
+        assertThat(created.getBusinessType(), is("GENC"));
+        assertThat(created.isDraft(), is(true));
+        // no name supplied -> ouCode stands in for display metadata; room is the virtual room
+        assertThat(created.getCourtHouseName(), is(C99_XX00));
+        assertThat(created.getCourtRoomId(), is(UUID.nameUUIDFromBytes(
+                ("CROWN-FB-ROOM:" + centreId).getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString()));
+    }
+
+    @Test
+    void shouldClampAllocatedListingStartTimeToSessionStartWhenRequestedTimeOutsideSessionWindow() throws Exception {
+        // SPRDT-1283 part 2: allocated_listings reflects the SESSION — a requested hearing time
+        // outside the booked session's window lands as the session's start time on the row (the
+        // listing viewstore keeps the user time; the divergence is accepted by design).
+        final String centreId = UUID.randomUUID().toString();
+        final String roomId = UUID.randomUUID().toString();
+        final String hearingId = UUID.randomUUID().toString();
+        final LocalDate date = LocalDate.now().plusDays(14);
+
+        // seeded session runs 10:00-17:00; the hearing asks for 23:00 — far enough outside the
+        // window that no test-JVM-vs-app timezone offset can pull it back inside
+        final String sessionId = seedSession(date, roomId, "CR", centreId, C01_CY00, false, false, 360);
+
+        final Response response = postCommand(HEARINGS + hearingId, ACCEPT, SYSTEM_USER_ID,
+                Json.createObjectBuilder()
+                        .add(COURT_CENTRE_ID, centreId)
+                        .add(COURT_ROOM_ID, roomId)
+                        .add(HEARING_DATE, date.toString())
+                        .add(DURATION_IN_MINUTES, 60)
+                        .add("earliestHearingTime", date + "T23:00:00Z")
+                        .add(SOURCE, CROWN_FB_LIST_2)
+                        .build().toString());
+
+        assertThat(response.getStatus(), is(OK.getStatusCode()));
+        assertThat(parse(body(response)).getString(COURT_SCHEDULE_ID), is(sessionId));
+
+        final List<AllocatedListing> booked = databaseReader.allocatedListings().stream()
+                .filter(al -> hearingId.equals(al.getHearingId()))
+                .collect(Collectors.toList());
+        assertThat(booked.size(), is(1));
+        // Compare DB wall-clocks: the stored value must equal what the seeder stored for the
+        // session's start (both round-trip through the same JDBC rendering, so the comparison is
+        // timezone-robust); the out-of-window 23:00 user time must NOT survive.
+        final Instant seededSessionStart = date.atTime(10, 0).toInstant(ZoneOffset.UTC);
+        assertThat("row carries the SESSION start, not the out-of-window user time",
+                java.sql.Timestamp.from(booked.get(0).getHearingStartTime()).toLocalDateTime(),
+                is(java.sql.Timestamp.from(seededSessionStart).toLocalDateTime()));
+    }
+
+    // NOTE: allocated_listings.source IT coverage intentionally omitted.
+    //
+    // End-to-end verification that the EXEMPT_SAB / AUTO_CREATE_SAB marker lands on
+    // allocated_listings.source requires the Crown fallback path's follow-up UPDATE to run within
+    // the command-handler's JTA transaction — which the current plumbing (save-based override
+    // through AllocatedListingRepository.updateSourceByHearingId) doesn't reliably guarantee
+    // outside the command-dispatch boundary. The marker IS correctly set on the AllocatedSlot
+    // before the save pipeline and is covered at the unit-test level by
+    // SlotsUpdateServiceTest.CrownFallbackSearchAndBook.shouldStampExemptSabSourceOnAllocatedSlot
+    // and .shouldAutoCreateSessionAndBookWhenSearchReturnsEmpty.
+    //
+    // Tracked as a follow-up: the label-persistence flow needs either (a) a dedicated
+    // @Transactional wrapper service method, or (b) the existing saveAllocatedListing pipeline
+    // amended to not null out source between AllocatedSlot and AllocatedListing. Both options
+    // are non-trivial and best handled in a dedicated ticket.
+
+    // --- helpers ---
+
+    private Response callFallback(final String hearingId,
+                                   final String courtCentreId,
+                                   final String courtRoomId,
+                                   final LocalDate hearingDate,
+                                   final int durationInMinutes,
+                                   final String source) {
+        final jakarta.json.JsonObjectBuilder b = Json.createObjectBuilder()
+                .add(COURT_CENTRE_ID, courtCentreId)
+                .add(HEARING_DATE, hearingDate.toString())
+                .add(DURATION_IN_MINUTES, durationInMinutes)
+                .add(SOURCE, source);
+        if (courtRoomId != null) {
+            b.add(COURT_ROOM_ID, courtRoomId);
+        }
+        return postCommand(HEARINGS + hearingId, ACCEPT, SYSTEM_USER_ID, b.build().toString());
+    }
+
+    private static String body(final Response response) {
+        return response.readEntity(String.class);
+    }
+
+    private static JsonObject parse(final String payload) {
+        return createReader(new StringReader(payload)).readObject();
+    }
+
+    private String seedSession(final LocalDate sessionDate,
+                               final String courtRoomId,
+                               final String businessType,
+                               final String courtHouseId,
+                               final String ouCode,
+                               final boolean isDraft,
+                               final boolean overbookingAllowed,
+                               final int maxDuration) throws java.sql.SQLException {
+        final String id = UUID.randomUUID().toString();
+        final Instant sessionStart = sessionDate.atTime(10, 0).toInstant(ZoneOffset.UTC);
+        final Instant sessionEnd = sessionDate.atTime(17, 0).toInstant(ZoneOffset.UTC);
+
+        final CourtSchedule cs = new CourtSchedule();
+        cs.setCourtScheduleId(id);
+        cs.setListingProfileId(UUID.randomUUID().toString());
+        cs.setOuCode(ouCode);
+        cs.setCourtRoomId(courtRoomId);
+        cs.setCourtRoomNumber(1);
+        cs.setCourtHouseId(courtHouseId);
+        cs.setCourtHouseName("Test Crown Court");
+        cs.setCourtRoomName("Court 1");
+        cs.setOperationalUnit(ouCode);
+        cs.setBusinessType(businessType);
+        cs.setPanel("Adult");
+        cs.setCourtSession("AD");
+        cs.setActive(true);
+        cs.setSlotBased(false);
+        cs.setSessionDate(sessionDate);
+        cs.setMaxSlots(0);
+        cs.setMaxDuration(maxDuration);
+        cs.setAvailableSlots(0);
+        cs.setAvailableDuration(maxDuration);
+        cs.setSupportAdSplit(false);
+        cs.setMaxAdMorningDuration(maxDuration / 2);
+        cs.setMaxAdAfternoonDuration(maxDuration / 2);
+        cs.setSessionStartTime(sessionStart);
+        cs.setSessionEndTime(sessionEnd);
+        cs.setNationalBreakTime(sessionStart);
+        cs.setIsOverbookingAllowed(overbookingAllowed);
+        cs.setIsDraft(isDraft);
+        cs.setJurisdiction("CROWN");
+        cs.setTotalBookedMorning(0);
+        cs.setTotalBookedAfternoon(0);
+        cs.setTotalBooked(0);
+
+        databaseSeeder.insertCourtSchedule(cs);
+        return id;
+    }
+}

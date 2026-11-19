@@ -2,6 +2,7 @@ package uk.gov.moj.cpp.courtscheduler.common.utils;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -34,8 +35,8 @@ public class VenueNameComparator {
         }
 
         // Normalize strings (trim and lowercase)
-        final String normalized1 = venueName1.trim().toLowerCase();
-        final String normalized2 = venueName2.trim().toLowerCase();
+        final String normalized1 = venueName1.trim().toLowerCase(Locale.ROOT);
+        final String normalized2 = venueName2.trim().toLowerCase(Locale.ROOT);
 
         // Extract alphabetic and numeric parts
         final List<String> alphabeticParts1 = extractAlphabeticParts(normalized1);

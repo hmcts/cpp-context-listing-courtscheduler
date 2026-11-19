@@ -16,7 +16,7 @@ import org.springframework.http.ResponseEntity;
  *       based on the user's permissions/groups.</li>
  * </ul>
  */
-class AuthorizationIntegrationTest extends AbstractIntegrationTest {
+class AuthorizationIntegrationTest extends IntegrationTestBase {
 
     private static final String GET_COURT_SCHEDULE_QUERY =
             "/courtschedule?courtCentreId=" + UUID.randomUUID()
@@ -71,9 +71,9 @@ class AuthorizationIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     void systemUser_isAllowedToCallSystemOnlyAction() {
-        // /courtschedule/search.court-schedules-by-id is gated to SYSTEM_USERS
+        // GET /sessions (search.court-schedules-by-id, was /courtschedule/search.court-schedules-by-id) is gated to SYSTEM_USERS
         final ResponseEntity<String> response = get(
-                "/courtschedule/search.court-schedules-by-id?courtScheduleIds=" + UUID.randomUUID(),
+                "/sessions?ids=" + UUID.randomUUID(),
                 SYSTEM_USER_ID,
                 "application/vnd.courtscheduler.search.court-schedules-by-id+json");
 
@@ -84,7 +84,7 @@ class AuthorizationIntegrationTest extends AbstractIntegrationTest {
     void courtScheduleUser_isDeniedFromSystemOnlyAction() {
         // courtScheduleUser is NOT a SYSTEM_USERS member
         final ResponseEntity<String> response = get(
-                "/courtschedule/search.court-schedules-by-id?courtScheduleIds=" + UUID.randomUUID(),
+                "/sessions?ids=" + UUID.randomUUID(),
                 COURT_SCHEDULE_USER_ID,
                 "application/vnd.courtscheduler.search.court-schedules-by-id+json");
 

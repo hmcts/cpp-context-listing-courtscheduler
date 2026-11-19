@@ -3,22 +3,11 @@ package uk.gov.moj.cpp.courtscheduler.domain;
 import java.util.List;
 import java.util.Objects;
 
-public class ValidateSessionAvailabilityRequestParam {
+public record ValidateSessionAvailabilityRequestParam(List<String> courtScheduleIds,
+                                                      Integer slotsOrDuration) {
 
-    private List<String> courtScheduleIds;
-    private Integer slotsOrDuration;
-
-    public List<String> getCourtScheduleIds() {
-        return courtScheduleIds;
-    }
-
-    public Integer getSlotsOrDuration() {
-        return slotsOrDuration;
-    }
-
-    public ValidateSessionAvailabilityRequestParam(List<String> courtScheduleIds, Integer duration) {
-        this.courtScheduleIds = courtScheduleIds;
-        this.slotsOrDuration = duration;
+    public boolean isListMode() {
+        return courtScheduleIds != null && !courtScheduleIds.isEmpty();
     }
 
     public static final class ValidateSessionAvailabilityRequestParamBuilder {
@@ -32,12 +21,12 @@ public class ValidateSessionAvailabilityRequestParam {
             return new ValidateSessionAvailabilityRequestParamBuilder();
         }
 
-        public ValidateSessionAvailabilityRequestParamBuilder withCourtScheduleIds(List<String> courtScheduleIds) {
+        public ValidateSessionAvailabilityRequestParamBuilder withCourtScheduleIds(final List<String> courtScheduleIds) {
             this.courtScheduleIds = courtScheduleIds;
             return this;
         }
 
-        public ValidateSessionAvailabilityRequestParamBuilder withSlotsOrDuration(Integer slotsOrDuration) {
+        public ValidateSessionAvailabilityRequestParamBuilder withSlotsOrDuration(final Integer slotsOrDuration) {
             this.slotsOrDuration = slotsOrDuration;
             return this;
         }
@@ -49,22 +38,26 @@ public class ValidateSessionAvailabilityRequestParam {
 
     @Override
     public boolean equals(final Object o) {
-        if (this == o) return true;
-        if (!(o instanceof final ValidateSessionAvailabilityRequestParam that)) return false;
-        return Objects.equals(getSlotsOrDuration(), that.getSlotsOrDuration()) &&
-                Objects.equals(getCourtScheduleIds(), that.getCourtScheduleIds());
+        if (this == o) {
+            return true;
+        }
+        if (!(o instanceof final ValidateSessionAvailabilityRequestParam that)) {
+            return false;
+        }
+        return Objects.equals(slotsOrDuration(), that.slotsOrDuration())
+                && Objects.equals(courtScheduleIds(), that.courtScheduleIds());
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(getCourtScheduleIds(), getSlotsOrDuration());
+        return Objects.hash(courtScheduleIds(), slotsOrDuration());
     }
 
     @Override
     public String toString() {
-        return "ValidateSessionAvailabilityRequestParam{" +
-                "courtScheduleIds=" + courtScheduleIds +
-                ", slotsOrDuration=" + slotsOrDuration +
-                '}';
+        return "ValidateSessionAvailabilityRequestParam{"
+                + "courtScheduleIds=" + courtScheduleIds
+                + ", slotsOrDuration=" + slotsOrDuration
+                + '}';
     }
 }

@@ -2,7 +2,6 @@ package uk.gov.moj.cpp.courtscheduler.integration;
 
 import static jakarta.ws.rs.core.Response.Status.ACCEPTED;
 import static java.lang.String.format;
-import static java.util.Date.from;
 import static java.util.Objects.isNull;
 import static java.util.Optional.of;
 import static java.util.UUID.randomUUID;
@@ -40,6 +39,7 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.sql.SQLException;
+import java.time.temporal.ChronoUnit;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -78,6 +78,8 @@ class NewRotaFileProcessorIT extends AbstractIT {
     private static final int DEFAULT_POLL_TIMEOUT_FOR_ROTA_FILE_PROCESS_IN_SEC = 50;
     
     private static final String BEDFORD_SHIRE_MASTER_FILE_BASE_NAME = "IT_Test_lja_bedfordshire_rotaa_20240401T180039Z";
+    private static final String RETIRED_BUSINESS_TYPE_FILE_BASE_NAME = "IT_Test_lja_bedfordshire_rota_retired_business_type_20240401T180039Z";
+    private static final int EXPECTED_SCHEDULES_WITHOUT_THE_RETIRED_PAIR = 585;
     private static final String BEDFORD_SHIRE_MAGISTRATES_COURT_OU_CODE = "B40IM00";
     private static final String COURT_SCHEDULE_MANUAL_ENTRIES_JSON = "court_schedule_manual_entries.json";
     private static final String ROTA_FILE_PROCESSOR_REQUEST_OLD = "rota-file-processor-request.json";
@@ -114,7 +116,7 @@ class NewRotaFileProcessorIT extends AbstractIT {
 
     private final AzureBlobClientService azureBlobClientService = new AzureBlobClientService();
     private LocalDateTime maxCreatedOnForCourtScheduleJudiciary;
-    private static final List<String> filesToBeDeletedFromOutputContainer = new ArrayList<>();
+    private static final List<String> FILES_TO_BE_DELETED_FROM_OUTPUT_CONTAINER = new ArrayList<>();
 
 
     @BeforeEach
@@ -124,7 +126,6 @@ class NewRotaFileProcessorIT extends AbstractIT {
         setField(azureBlobClientService, "rotaslInputContainerName", AZURE_BLOB_INPUT_CONTAINER_NAME);
         setField(azureBlobClientService, "rotaslArchiveContainerName", AZURE_BLOB_INPUT_CONTAINER_NAME);
         setField(azureBlobClientService, "storageApplicationParameters", storageApplicationParameters);
-        maxCreatedOnForCourtScheduleJudiciary = null;
         
         // Override stubs to use updated files for NewRotaFileProcessorIT
         stubGetReferenceDataJudiciaries(UPDATED_JUDICIARIES_FILE);
@@ -136,8 +137,45 @@ class NewRotaFileProcessorIT extends AbstractIT {
 
     @AfterEach
     void tearDown() {
-        filesToBeDeletedFromOutputContainer.forEach(fileToBeDeleted -> 
+        FILES_TO_BE_DELETED_FROM_OUTPUT_CONTAINER.forEach(fileToBeDeleted ->
                 azureBlobClientService.deleteFile(fileToBeDeleted, of(AZURE_BLOB_OUTPUT_CONTAINER_NAME)));
+    }
+
+    /**
+     * SPRDT-1370 (C2-13). One AM/PM pair in the rota file sits on a business type reference data no
+     * longer carries. That pair is reported in rota_process_log and left out; every other row still
+     * imports, so the batch does not abort on a single retired code. This is the session-creating
+     * flow ({@code rotaProcess=old}): the new flow only lays judiciary onto sessions that already
+     * exist and never reaches the business-type filter.
+     */
+    @Test
+    void shouldImportTheRestOfTheRotaFileWhenOneRowNamesARetiredBusinessType() throws IOException, SQLException {
+        // The log row is stamped by the app container's clock; a generous lower bound absorbs any skew.
+        final Instant processingStartedAt = Instant.now().minus(1, ChronoUnit.HOURS);
+        final String finalMasterRotaFileName = uploadRotaFile(RETIRED_BUSINESS_TYPE_FILE_BASE_NAME);
+        insertCourtSchedulerMigrationStatus(List.of(BEDFORD_SHIRE_MAGISTRATES_COURT_OU_CODE));
+
+        final Response response = postCommand(ROTASL_FILE_PROCESSOR_URL, ROTASL_PROCESS_ROTA_FILES_CONTENT_TYPE,
+                SYSTEM_USER_ID, getPayload(ROTA_FILE_PROCESSOR_REQUEST_OLD));
+        assertThat(response.getStatus(), is(ACCEPTED.getStatusCode()));
+        FILES_TO_BE_DELETED_FROM_OUTPUT_CONTAINER.add(finalMasterRotaFileName);
+
+        try {
+            await().timeout(DEFAULT_POLL_TIMEOUT_FOR_ROTA_FILE_PROCESS_IN_SEC, SECONDS).until(() ->
+                    databaseReader.rotaProcessLogErrorTextsSince("BUSINESS_TYPES_NOT_FOUND", processingStartedAt).stream()
+                            .anyMatch(text -> text.contains("FWT"))
+                            && databaseReader.courtSchedules().size() >= EXPECTED_SCHEDULES_WITHOUT_THE_RETIRED_PAIR);
+        } catch (final org.awaitility.core.ConditionTimeoutException timedOut) {
+            fail(format("rota file with a retired business type never settled: %d court schedules, rota_process_log rows %s",
+                    databaseReader.courtSchedules().size(),
+                    databaseReader.rotaProcessLogSince(processingStartedAt)));
+        }
+
+        final List<String> reported = databaseReader.rotaProcessLogErrorTextsSince("BUSINESS_TYPES_NOT_FOUND", processingStartedAt);
+        assertThat(reported.toString(), reported.stream().anyMatch(text -> text.contains("FWT")), is(true));
+        final List<CourtSchedule> courtSchedules = databaseReader.courtSchedules();
+        assertThat("court schedules imported alongside the retired pair", courtSchedules.size(), is(EXPECTED_SCHEDULES_WITHOUT_THE_RETIRED_PAIR));
+        assertThat(courtSchedules.stream().noneMatch(schedule -> "FWT".equals(schedule.getBusinessType())), is(true));
     }
 
     @Test
@@ -147,7 +185,7 @@ class NewRotaFileProcessorIT extends AbstractIT {
         
         // First run: process with old flow
         logger.info("Processing first rota file: {}", BEDFORD_SHIRE_MASTER_FILE_BASE_NAME);
-        processFullRotaFile(ROTA_FILE_PROCESSOR_REQUEST_OLD,
+        verifyFullRotaFileProcessed(ROTA_FILE_PROCESSOR_REQUEST_OLD,
                 expectedSchedules, expectedJudiciaries);
         validateRunResults("First run", expectedSchedules, expectedJudiciaries);
         
@@ -156,7 +194,7 @@ class NewRotaFileProcessorIT extends AbstractIT {
         
         // Second run: process with new flow
         logger.info("Processing second rota file: {}", BEDFORD_SHIRE_MASTER_FILE_BASE_NAME);
-        processFullRotaFile(ROTA_FILE_PROCESSOR_REQUEST_NEW,
+        verifyFullRotaFileProcessed(ROTA_FILE_PROCESSOR_REQUEST_NEW,
                 expectedSchedules, expectedJudiciaries);
         validateRunResults("Second run", expectedSchedules, expectedJudiciaries);
     }
@@ -169,7 +207,7 @@ class NewRotaFileProcessorIT extends AbstractIT {
         
         // First run: process with old flow
         logger.info("Processing first rota file: {}", BEDFORD_SHIRE_MASTER_FILE_BASE_NAME);
-        processFullRotaFile(ROTA_FILE_PROCESSOR_REQUEST_OLD,
+        verifyFullRotaFileProcessed(ROTA_FILE_PROCESSOR_REQUEST_OLD,
                 expectedSchedulesFirstRun, expectedJudiciariesFirstRun);
         validateRunResults("First run", expectedSchedulesFirstRun, expectedJudiciariesFirstRun);
         
@@ -183,7 +221,7 @@ class NewRotaFileProcessorIT extends AbstractIT {
         
         // Second run: process with new flow
         logger.info("Processing second rota file: {}", BEDFORD_SHIRE_MASTER_FILE_BASE_NAME);
-        processFullRotaFile(ROTA_FILE_PROCESSOR_REQUEST_NEW,
+        verifyFullRotaFileProcessed(ROTA_FILE_PROCESSOR_REQUEST_NEW,
                 expectedTotalSchedules, expectedJudiciariesSecondRun);
         validateRunResults("Second run", expectedTotalSchedules, expectedJudiciariesSecondRun);
     }
@@ -196,7 +234,7 @@ class NewRotaFileProcessorIT extends AbstractIT {
 
         // First run: establish the schedules and judiciaries with the old flow
         logger.info("Processing first rota file for change-judiciary IT: {}", BEDFORD_SHIRE_MASTER_FILE_BASE_NAME);
-        processFullRotaFile(ROTA_FILE_PROCESSOR_REQUEST_OLD, expectedSchedules, expectedJudiciaries);
+        verifyFullRotaFileProcessed(ROTA_FILE_PROCESSOR_REQUEST_OLD, expectedSchedules, expectedJudiciaries);
 
         // Allocate a hearing against a court schedule that has judiciaries - only allocated
         // schedules whose judiciaries changed should produce a change-judiciary command
@@ -213,7 +251,7 @@ class NewRotaFileProcessorIT extends AbstractIT {
 
         // Second run: reprocess with the new flow - the allocated schedule must trigger a command
         logger.info("Processing second rota file for change-judiciary IT: {}", BEDFORD_SHIRE_MASTER_FILE_BASE_NAME);
-        processFullRotaFile(ROTA_FILE_PROCESSOR_REQUEST_NEW, expectedSchedules, expectedJudiciaries);
+        verifyFullRotaFileProcessed(ROTA_FILE_PROCESSOR_REQUEST_NEW, expectedSchedules, expectedJudiciaries);
 
         await().timeout(DEFAULT_POLL_TIMEOUT_FOR_ROTA_FILE_PROCESS_IN_SEC, SECONDS)
                 .until(() -> countChangeJudiciaryForHearingsRequests() > commandCountBeforeSecondRun);
@@ -235,9 +273,9 @@ class NewRotaFileProcessorIT extends AbstractIT {
 
         // First run creates the schedules (old flow); second run assigns the judiciaries with the
         // new flow, so the third run below reproduces exactly the same assignments
-        processFullRotaFile(ROTA_FILE_PROCESSOR_REQUEST_OLD, expectedSchedules, expectedJudiciaries);
+        verifyFullRotaFileProcessed(ROTA_FILE_PROCESSOR_REQUEST_OLD, expectedSchedules, expectedJudiciaries);
         cleanJudiciaryTable();
-        processFullRotaFile(ROTA_FILE_PROCESSOR_REQUEST_NEW, expectedSchedules, expectedJudiciaries);
+        verifyFullRotaFileProcessed(ROTA_FILE_PROCESSOR_REQUEST_NEW, expectedSchedules, expectedJudiciaries);
 
         // Session A is a rota session; sessions B and C are seeded outside the rota period so the
         // rota run leaves their judiciaries untouched. B gets the same judiciaries as A, C a different one.
@@ -273,19 +311,29 @@ class NewRotaFileProcessorIT extends AbstractIT {
         // Remove session A's judiciaries so the third run re-assigns them and A counts as changed
         databaseSeeder.deleteJudiciaryByCourtScheduleId(courtScheduleIdA);
         databaseSeeder.cleanMigrationStatusTable();
+
+        // The second run's syncJudiciaryWithListing fires asynchronously after its rota processing
+        // completes. Blob I/O inside uploadAndCleanup can delay it enough for the sync to execute
+        // after the allocated-listing inserts above, sending spurious commands for singleSessionHearingId
+        // and sameJudiciaryHearingId. Wait here to let that async sync settle, then capture baseline
+        // counts so the third-run assertions use a delta (increment by 1) rather than an absolute count.
+        await().pollDelay(5, SECONDS).atMost(60, SECONDS).until(() -> true);
+        final int baselineSingleSession = countChangeJudiciaryForHearingsRequestsContaining(singleSessionHearingId);
+        final int baselineSameJudiciary = countChangeJudiciaryForHearingsRequestsContaining(sameJudiciaryHearingId);
+
         final int expectedJudiciariesWithSeeded = expectedJudiciaries + judiciariesA.size() + 1;
-        processFullRotaFile(ROTA_FILE_PROCESSOR_REQUEST_NEW, expectedSchedules + 2, expectedJudiciariesWithSeeded);
+        verifyFullRotaFileProcessed(ROTA_FILE_PROCESSOR_REQUEST_NEW, expectedSchedules + 2, expectedJudiciariesWithSeeded);
 
         await().timeout(DEFAULT_POLL_TIMEOUT_FOR_ROTA_FILE_PROCESS_IN_SEC, SECONDS)
-                .until(() -> countChangeJudiciaryForHearingsRequestsContaining(singleSessionHearingId) >= 1
-                        && countChangeJudiciaryForHearingsRequestsContaining(sameJudiciaryHearingId) >= 1);
+                .until(() -> countChangeJudiciaryForHearingsRequestsContaining(singleSessionHearingId) >= baselineSingleSession + 1
+                        && countChangeJudiciaryForHearingsRequestsContaining(sameJudiciaryHearingId) >= baselineSameJudiciary + 1);
 
         // Single-session hearing and multi-session hearing with the same judiciaries: one command each
-        assertEquals(1, countChangeJudiciaryForHearingsRequestsContaining(singleSessionHearingId),
+        assertEquals(baselineSingleSession + 1, countChangeJudiciaryForHearingsRequestsContaining(singleSessionHearingId),
                 format("Expected one change-judiciary-for-hearings command for single-session hearing %s", singleSessionHearingId));
-        assertEquals(1, countChangeJudiciaryForHearingsRequestsContaining(sameJudiciaryHearingId),
+        assertEquals(baselineSameJudiciary + 1, countChangeJudiciaryForHearingsRequestsContaining(sameJudiciaryHearingId),
                 format("Expected one change-judiciary-for-hearings command for multi-session hearing %s", sameJudiciaryHearingId));
-        assertEquals(1, countSchemaShapedChangeJudiciaryForHearingsRequestsFor(sameJudiciaryHearingId),
+        assertEquals(baselineSameJudiciary + 1, countSchemaShapedChangeJudiciaryForHearingsRequestsFor(sameJudiciaryHearingId),
                 format("Expected a schema-shaped change-judiciary-for-hearings command for hearing %s", sameJudiciaryHearingId));
 
         // Multi-session hearing whose sessions have different judiciaries: no command
@@ -301,14 +349,14 @@ class NewRotaFileProcessorIT extends AbstractIT {
         courtSchedule.setSessionDate(sessionDate);
         // Keep the default session times expected by assertDefaultStartTimeAndEndTime
         if (PM_SESSION.equals(courtSchedule.getCourtSession())) {
-            courtSchedule.setSessionStartTime(DateUtils.combineDateAndTime(sessionDate, DateUtils.DEFAULT_AFTERNOON_START_TIME));
-            courtSchedule.setSessionEndTime(DateUtils.combineDateAndTime(sessionDate, DateUtils.DEFAULT_AFTERNOON_END_TIME));
+            courtSchedule.setSessionStartTime(DateUtils.combineDateAndTime(sessionDate, DateUtils.DEFAULT_AFTERNOON_START_TIME).toInstant());
+            courtSchedule.setSessionEndTime(DateUtils.combineDateAndTime(sessionDate, DateUtils.DEFAULT_AFTERNOON_END_TIME).toInstant());
         } else if (ALL_DAY.equals(courtSchedule.getCourtSession())) {
-            courtSchedule.setSessionStartTime(DateUtils.combineDateAndTime(sessionDate, DateUtils.DEFAULT_ALL_DAY_START_TIME));
-            courtSchedule.setSessionEndTime(DateUtils.combineDateAndTime(sessionDate, DateUtils.DEFAULT_ALL_DAY_END_TIME));
+            courtSchedule.setSessionStartTime(DateUtils.combineDateAndTime(sessionDate, DateUtils.DEFAULT_ALL_DAY_START_TIME).toInstant());
+            courtSchedule.setSessionEndTime(DateUtils.combineDateAndTime(sessionDate, DateUtils.DEFAULT_ALL_DAY_END_TIME).toInstant());
         } else {
-            courtSchedule.setSessionStartTime(DateUtils.combineDateAndTime(sessionDate, DateUtils.DEFAULT_MORNING_START_TIME));
-            courtSchedule.setSessionEndTime(DateUtils.combineDateAndTime(sessionDate, DateUtils.DEFAULT_MORNING_END_TIME));
+            courtSchedule.setSessionStartTime(DateUtils.combineDateAndTime(sessionDate, DateUtils.DEFAULT_MORNING_START_TIME).toInstant());
+            courtSchedule.setSessionEndTime(DateUtils.combineDateAndTime(sessionDate, DateUtils.DEFAULT_MORNING_END_TIME).toInstant());
         }
         courtSchedule.setNationalBreakTime(courtSchedule.getSessionStartTime());
         courtSchedule.setActive(true);
@@ -328,8 +376,8 @@ class NewRotaFileProcessorIT extends AbstractIT {
                 .withSurname(judiciary.getSurname())
                 .withEmail(judiciary.getEmail())
                 .withJudiciaryType(judiciary.getJudiciaryType())
-                .withIsBenchChairman(judiciary.getBenchChairman())
-                .withIsDeputy(judiciary.getDeputy())
+                .withIsBenchChairman(judiciary.isBenchChairman())
+                .withIsDeputy(judiciary.isDeputy())
                 .withPosition(judiciary.getPosition())
                 .withActive(true)
                 .build();
@@ -349,7 +397,7 @@ class NewRotaFileProcessorIT extends AbstractIT {
         logger.info("Seeded allocated listing for court schedule {} with hearing {}", courtScheduleId, hearingId);
     }
 
-    private void processFullRotaFile(final String payloadFileName,
+    private void verifyFullRotaFileProcessed(final String payloadFileName,
                                      final int expectedNumberOfSlots, final int expectedNumberOfJudiciaries) throws IOException, SQLException {
         final Stopwatch stopwatch = Stopwatch.createStarted();
         final String finalMasterRotaFileName = uploadRotaFile();
@@ -367,14 +415,18 @@ class NewRotaFileProcessorIT extends AbstractIT {
         
         final List<CourtSchedule> courtScheduleEntities = databaseReader.courtSchedules();
         assertDefaultStartTimeAndEndTime(courtScheduleEntities);
-        filesToBeDeletedFromOutputContainer.add(finalMasterRotaFileName);
+        FILES_TO_BE_DELETED_FROM_OUTPUT_CONTAINER.add(finalMasterRotaFileName);
     }
     
     private String uploadRotaFile() throws IOException {
+        return uploadRotaFile(BEDFORD_SHIRE_MASTER_FILE_BASE_NAME);
+    }
+
+    private String uploadRotaFile(final String rotaFileBaseName) throws IOException {
         final String generatedUniqueFileId = randomUUID().toString().substring(0, 8);
-        final String finalMasterRotaFileName = format("%s_%s.xml", NewRotaFileProcessorIT.BEDFORD_SHIRE_MASTER_FILE_BASE_NAME, generatedUniqueFileId);
-        final String resourcePath = format(ROTAFILEPROCESSOR_RESOURCE_PATH, NewRotaFileProcessorIT.BEDFORD_SHIRE_MASTER_FILE_BASE_NAME);
-        final InputStream rotaFileInputStream = getClass().getClassLoader().getResourceAsStream(resourcePath);
+        final String finalMasterRotaFileName = format("%s_%s.xml", rotaFileBaseName, generatedUniqueFileId);
+        final String resourcePath = format(ROTAFILEPROCESSOR_RESOURCE_PATH, rotaFileBaseName);
+        final InputStream rotaFileInputStream = Thread.currentThread().getContextClassLoader().getResourceAsStream(resourcePath);
 
         try (rotaFileInputStream) {
             if (isNull(rotaFileInputStream)) {
@@ -463,13 +515,15 @@ class NewRotaFileProcessorIT extends AbstractIT {
         courtSchedule.setMaxAdMorningDuration(entry.getInt(JSON_FIELD_MAX_AD_MORNING_DURATION));
         courtSchedule.setMaxAdAfternoonDuration(entry.getInt(JSON_FIELD_MAX_AD_AFTERNOON_DURATION));
         courtSchedule.setIsOverbookingAllowed(entry.getBoolean(JSON_FIELD_IS_OVERBOOKING_ALLOWED));
-        courtSchedule.setSessionStartTime(from(Instant.parse(entry.getString(JSON_FIELD_SESSION_START_TIME))));
-        courtSchedule.setSessionEndTime(from(Instant.parse(entry.getString(JSON_FIELD_SESSION_END_TIME))));
+        courtSchedule.setSessionStartTime(Instant.parse(entry.getString(JSON_FIELD_SESSION_START_TIME)));
+        courtSchedule.setSessionEndTime(Instant.parse(entry.getString(JSON_FIELD_SESSION_END_TIME)));
 
         if (entry.containsKey(JSON_FIELD_NATIONAL_BREAK_TIME) && !entry.isNull(JSON_FIELD_NATIONAL_BREAK_TIME)) {
-            courtSchedule.setNationalBreakTime(from(Instant.parse(entry.getString(JSON_FIELD_NATIONAL_BREAK_TIME))));
+            courtSchedule.setNationalBreakTime(Instant.parse(entry.getString(JSON_FIELD_NATIONAL_BREAK_TIME)));
         }
-        
+
+        courtSchedule.setIsDraft(false);
+
         return courtSchedule;
     }
     
@@ -489,12 +543,16 @@ class NewRotaFileProcessorIT extends AbstractIT {
     
     private void insertCourtSchedulerMigrationStatus(final List<String> ouCodes) throws SQLException {
         for (final String ouCode : ouCodes) {
-            final CourtSchedulerMigrationStatus courtSchedulerMigrationStatus = new CourtSchedulerMigrationStatus();
-            courtSchedulerMigrationStatus.setOuCode(ouCode);
-            courtSchedulerMigrationStatus.setCourtCentreId("000f36bc-f33a-42ea-8a6c-8103636c5341");
-            courtSchedulerMigrationStatus.setMigrated(false);
-            databaseSeeder.insertCourtScheduleMigrationStatus(courtSchedulerMigrationStatus);
+            databaseSeeder.insertCourtScheduleMigrationStatus(newMigrationStatus(ouCode));
         }
+    }
+
+    private static CourtSchedulerMigrationStatus newMigrationStatus(final String ouCode) {
+        final CourtSchedulerMigrationStatus courtSchedulerMigrationStatus = new CourtSchedulerMigrationStatus();
+        courtSchedulerMigrationStatus.setOuCode(ouCode);
+        courtSchedulerMigrationStatus.setCourtCentreId("000f36bc-f33a-42ea-8a6c-8103636c5341");
+        courtSchedulerMigrationStatus.setMigrated(false);
+        return courtSchedulerMigrationStatus;
     }
     
     private static void assertDefaultStartTimeAndEndTime(final List<CourtSchedule> courtSchedules) {
@@ -503,14 +561,14 @@ class NewRotaFileProcessorIT extends AbstractIT {
             assertNotNull(courtSchedule.getSessionEndTime());
 
             if (AM_SESSION.equals(courtSchedule.getCourtSession())) {
-                assertEquals(courtSchedule.getSessionStartTime(), DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), DateUtils.DEFAULT_MORNING_START_TIME));
-                assertEquals(courtSchedule.getSessionEndTime(), DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), DateUtils.DEFAULT_MORNING_END_TIME));
+                assertEquals(courtSchedule.getSessionStartTime(), DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), DateUtils.DEFAULT_MORNING_START_TIME).toInstant());
+                assertEquals(courtSchedule.getSessionEndTime(), DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), DateUtils.DEFAULT_MORNING_END_TIME).toInstant());
             } else if (PM_SESSION.equals(courtSchedule.getCourtSession())) {
-                assertEquals(courtSchedule.getSessionStartTime(), DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), DateUtils.DEFAULT_AFTERNOON_START_TIME));
-                assertEquals(courtSchedule.getSessionEndTime(), DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), DateUtils.DEFAULT_AFTERNOON_END_TIME));
+                assertEquals(courtSchedule.getSessionStartTime(), DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), DateUtils.DEFAULT_AFTERNOON_START_TIME).toInstant());
+                assertEquals(courtSchedule.getSessionEndTime(), DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), DateUtils.DEFAULT_AFTERNOON_END_TIME).toInstant());
             } else if (ALL_DAY.equals(courtSchedule.getCourtSession())) {
-                assertEquals(courtSchedule.getSessionStartTime(), DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), DateUtils.DEFAULT_ALL_DAY_START_TIME));
-                assertEquals(courtSchedule.getSessionEndTime(), DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), DateUtils.DEFAULT_ALL_DAY_END_TIME));
+                assertEquals(courtSchedule.getSessionStartTime(), DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), DateUtils.DEFAULT_ALL_DAY_START_TIME).toInstant());
+                assertEquals(courtSchedule.getSessionEndTime(), DateUtils.combineDateAndTime(courtSchedule.getSessionDate(), DateUtils.DEFAULT_ALL_DAY_END_TIME).toInstant());
             }
         });
     }
@@ -527,10 +585,10 @@ class NewRotaFileProcessorIT extends AbstractIT {
             final String position = judiciary.getPosition();
             final String rotaJudiciaryId = judiciary.getRotaJudiciaryId();
             
-            assertTrue(!position.trim().isEmpty(), 
+            assertTrue(!position.isBlank(),
                     format("%s: position should not be empty for judiciary with courtScheduleId=%s, judiciaryId=%s", 
                             runName, judiciary.getId().getCourtScheduleId(), judiciary.getId().getJudiciaryId()));
-            assertTrue(!rotaJudiciaryId.trim().isEmpty(), 
+            assertTrue(!rotaJudiciaryId.isBlank(),
                     format("%s: rotaJudiciaryId should not be empty for judiciary with courtScheduleId=%s, judiciaryId=%s", 
                             runName, judiciary.getId().getCourtScheduleId(), judiciary.getId().getJudiciaryId()));
         });

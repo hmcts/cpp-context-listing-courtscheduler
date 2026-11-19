@@ -17,14 +17,35 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 class AllocatedHearingsQueryBuilderTest extends uk.gov.moj.cpp.courtscheduler.repository.AbstractRepositoryTest {
+    private static final String LITERAL = "   ";
+    private static final String DATE_2024_01_01 = "2024-01-01";
+    private static final String VALUE_2024_01_15_T10_00_00_Z = "2024-01-15T10:00:00Z";
+    private static final String DATE_2024_01_31 = "2024-01-31";
+    private static final String CRIMINAL_2 = "CRIMINAL";
+    private static final String L2_CODE = "L2CODE";
+    private static final String MAGISTRATES_2 = "MAGISTRATES";
+    private static final String OU123_2 = "OU123";
+    private static final String ROOM123_2 = "ROOM123";
+    private static final String AND_CS_COURT_ROOM_ID_COURT_ROOM_ID = "and cs.court_room_id = :courtRoomId";
+    private static final String AND_CS_COURT_ROOM_NUMBER_COURT_ROOM_NUMBER = "and cs.court_room_number = :courtRoomNumber";
+    private static final String AND_CS_COURT_SESSION_COURT_SESSION = "and cs.court_session = :courtSession";
+    private static final String AND_CS_OPERATIONAL_UNIT_OUCODE_L2_CODE = "and cs.operational_unit = :oucodeL2Code";
+    private static final String AND_CS_OUCODE_OU_CODE = "and cs.oucode = :ouCode";
+    private static final String AND_CS_ROTA_BUSINESS_TYPE_BUSINESS_TYPE = "and cs.rota_business_type = :businessType";
+    private static final String OFFSET_2 = "offset";
+    private static final String PAGE_SIZE = "pageSize";
+    private static final String PANEL = "panel";
+    private static final String SESSION_END_DATE = "sessionEndDate";
+    private static final String SESSION_START_DATE = "sessionStartDate";
+
 
     @Test
-    public void testConstructorWithMinimalParameters() {
+    void testConstructorWithMinimalParameters() {
         // Given
-        HearingSlotRequestParam requestParam = new HearingSlotRequestParam(
-                "MAGISTRATES", // panel
-                "2024-01-01", // sessionStartDate
-                "2024-01-31", // sessionEndDate
+        final HearingSlotRequestParam requestParam = new HearingSlotRequestParam(
+                MAGISTRATES_2, // panel
+                DATE_2024_01_01, // sessionStartDate
+                DATE_2024_01_31, // sessionEndDate
                 null, // exactHearingStartDateTime
                 null, // oucodeL2Code
                 null, // ouCode
@@ -37,12 +58,13 @@ class AllocatedHearingsQueryBuilderTest extends uk.gov.moj.cpp.courtscheduler.re
                 null, // isSlotBased
                 null, // hearingStartTime
                 null, // showOverbookedSlots
-                null, // caseIdentifier
-                null // duration
+                null, // duration
+                null, // status
+                null // jurisdiction
         );
 
         // When
-        AllocatedHearingsQueryBuilder builder = new AllocatedHearingsQueryBuilder(requestParam);
+        final AllocatedHearingsQueryBuilder builder = new AllocatedHearingsQueryBuilder(requestParam);
 
         // Then
         assertThat(builder, notNullValue());
@@ -51,30 +73,31 @@ class AllocatedHearingsQueryBuilderTest extends uk.gov.moj.cpp.courtscheduler.re
     }
 
     @Test
-    public void testConstructorWithAllParameters() {
+    void testConstructorWithAllParameters() {
         // Given
-        HearingSlotRequestParam requestParam = new HearingSlotRequestParam(
+        final HearingSlotRequestParam requestParam = new HearingSlotRequestParam(
                 "MAGISTRATES,CRIMINAL", // panel
-                "2024-01-01", // sessionStartDate
-                "2024-01-31", // sessionEndDate
-                "2024-01-15T10:00:00Z", // exactHearingStartDateTime
-                "L2CODE", // oucodeL2Code
-                "OU123", // ouCode
+                DATE_2024_01_01, // sessionStartDate
+                DATE_2024_01_31, // sessionEndDate
+                VALUE_2024_01_15_T10_00_00_Z, // exactHearingStartDateTime
+                L2_CODE, // oucodeL2Code
+                OU123_2, // ouCode
                 "20", // pageSize
                 "2", // pageNumber
-                "ROOM123", // courtRoomId
+                ROOM123_2, // courtRoomId
                 "5", // courtRoomNumber
-                "CRIMINAL", // businessType
+                CRIMINAL_2, // businessType
                 "AD", // courtSession
                 true, // isSlotBased
-                "2024-01-15T10:00:00Z", // hearingStartTime
+                VALUE_2024_01_15_T10_00_00_Z, // hearingStartTime
                 null, // showOverbookedSlots
-                null, // caseIdentifier
-                null // duration
+                null, // duration
+                null, // status
+                null // jurisdiction
         );
 
         // When
-        AllocatedHearingsQueryBuilder builder = new AllocatedHearingsQueryBuilder(requestParam);
+        final AllocatedHearingsQueryBuilder builder = new AllocatedHearingsQueryBuilder(requestParam);
 
         // Then
         assertThat(builder, notNullValue());
@@ -83,13 +106,13 @@ class AllocatedHearingsQueryBuilderTest extends uk.gov.moj.cpp.courtscheduler.re
     }
 
     @Test
-    public void testQueryContainsBasicStructure() {
+    void testQueryContainsBasicStructure() {
         // Given
-        HearingSlotRequestParam requestParam = createBasicRequestParam();
+        final HearingSlotRequestParam requestParam = createBasicRequestParam();
 
         // When
-        AllocatedHearingsQueryBuilder builder = new AllocatedHearingsQueryBuilder(requestParam);
-        String query = builder.getAllocatedHearingsQuery();
+        final AllocatedHearingsQueryBuilder builder = new AllocatedHearingsQueryBuilder(requestParam);
+        final String query = builder.getAllocatedHearingsQuery();
 
         // Then
         assertThat(query, containsString("select al.hearing_id, al.court_schedule_id, cast(al.hearing_start_time as date)"));
@@ -104,13 +127,13 @@ class AllocatedHearingsQueryBuilderTest extends uk.gov.moj.cpp.courtscheduler.re
     }
 
     @Test
-    public void testQueryContainsDenseRankAndCount() {
+    void testQueryContainsDenseRankAndCount() {
         // Given
-        HearingSlotRequestParam requestParam = createBasicRequestParam();
+        final HearingSlotRequestParam requestParam = createBasicRequestParam();
 
         // When
-        AllocatedHearingsQueryBuilder builder = new AllocatedHearingsQueryBuilder(requestParam);
-        String query = builder.getAllocatedHearingsQuery();
+        final AllocatedHearingsQueryBuilder builder = new AllocatedHearingsQueryBuilder(requestParam);
+        final String query = builder.getAllocatedHearingsQuery();
 
         // Then
         assertThat(query, containsString("DENSE_RANK() OVER (  PARTITION BY al.hearing_id ORDER BY cast(al.hearing_start_time as date)) AS hearing_day_position"));
@@ -119,49 +142,50 @@ class AllocatedHearingsQueryBuilderTest extends uk.gov.moj.cpp.courtscheduler.re
     }
 
     @Test
-    public void testQueryWithOptionalParameters() {
+    void testQueryWithOptionalParameters() {
         // Given
-        HearingSlotRequestParam requestParam = new HearingSlotRequestParam(
-                "MAGISTRATES", // panel
-                "2024-01-01", // sessionStartDate
-                "2024-01-31", // sessionEndDate
-                "2024-01-15T10:00:00Z", // exactHearingStartDateTime
-                "L2CODE", // oucodeL2Code
-                "OU123", // ouCode
+        final HearingSlotRequestParam requestParam = new HearingSlotRequestParam(
+                MAGISTRATES_2, // panel
+                DATE_2024_01_01, // sessionStartDate
+                DATE_2024_01_31, // sessionEndDate
+                VALUE_2024_01_15_T10_00_00_Z, // exactHearingStartDateTime
+                L2_CODE, // oucodeL2Code
+                OU123_2, // ouCode
                 "10", // pageSize
                 "1", // pageNumber
-                "ROOM123", // courtRoomId
+                ROOM123_2, // courtRoomId
                 "5", // courtRoomNumber
-                "CRIMINAL", // businessType
+                CRIMINAL_2, // businessType
                 "AD", // courtSession
                 null, // isSlotBased
                 null, // hearingStartTime
                 null, // showOverbookedSlots
-                null, // caseIdentifier
-                null // duration
+                null, // duration
+                null, // status
+                null // jurisdiction
         );
 
         // When
-        AllocatedHearingsQueryBuilder builder = new AllocatedHearingsQueryBuilder(requestParam);
-        String query = builder.getAllocatedHearingsQuery();
+        final AllocatedHearingsQueryBuilder builder = new AllocatedHearingsQueryBuilder(requestParam);
+        final String query = builder.getAllocatedHearingsQuery();
 
         // Then
-        assertThat(query, containsString("and cs.operational_unit = :oucodeL2Code"));
-        assertThat(query, containsString("and cs.oucode = :ouCode"));
-        assertThat(query, containsString("and cs.court_room_id = :courtRoomId"));
-        assertThat(query, containsString("and cs.court_room_number = :courtRoomNumber"));
-        assertThat(query, containsString("and cs.rota_business_type = :businessType"));
-        assertThat(query, containsString("and cs.court_session = :courtSession"));
+        assertThat(query, containsString(AND_CS_OPERATIONAL_UNIT_OUCODE_L2_CODE));
+        assertThat(query, containsString(AND_CS_OUCODE_OU_CODE));
+        assertThat(query, containsString(AND_CS_COURT_ROOM_ID_COURT_ROOM_ID));
+        assertThat(query, containsString(AND_CS_COURT_ROOM_NUMBER_COURT_ROOM_NUMBER));
+        assertThat(query, containsString(AND_CS_ROTA_BUSINESS_TYPE_BUSINESS_TYPE));
+        assertThat(query, containsString(AND_CS_COURT_SESSION_COURT_SESSION));
         assertThat(query, containsString("and DATE_TRUNC('minute', al.hearing_start_time) = DATE_TRUNC('minute', CAST(:exactHearingStartDateTime as timestamptz))"));
     }
 
     @Test
-    public void testQueryWithoutOptionalParameters() {
+    void testQueryWithoutOptionalParameters() {
         // Given
-        HearingSlotRequestParam requestParam = new HearingSlotRequestParam(
-                "MAGISTRATES", // panel
-                "2024-01-01", // sessionStartDate
-                "2024-01-31", // sessionEndDate
+        final HearingSlotRequestParam requestParam = new HearingSlotRequestParam(
+                MAGISTRATES_2, // panel
+                DATE_2024_01_01, // sessionStartDate
+                DATE_2024_01_31, // sessionEndDate
                 null, // exactHearingStartDateTime
                 null, // oucodeL2Code
                 null, // ouCode
@@ -174,31 +198,32 @@ class AllocatedHearingsQueryBuilderTest extends uk.gov.moj.cpp.courtscheduler.re
                 null, // isSlotBased
                 null, // hearingStartTime
                 null, // showOverbookedSlots
-                null, // caseIdentifier
-                null // duration
+                null, // duration
+                null, // status
+                null // jurisdiction
         );
 
         // When
-        AllocatedHearingsQueryBuilder builder = new AllocatedHearingsQueryBuilder(requestParam);
-        String query = builder.getAllocatedHearingsQuery();
+        final AllocatedHearingsQueryBuilder builder = new AllocatedHearingsQueryBuilder(requestParam);
+        final String query = builder.getAllocatedHearingsQuery();
 
         // Then
-        assertThat(query, not(containsString("and cs.operational_unit = :oucodeL2Code")));
-        assertThat(query, not(containsString("and cs.oucode = :ouCode")));
-        assertThat(query, not(containsString("and cs.court_room_id = :courtRoomId")));
-        assertThat(query, not(containsString("and cs.court_room_number = :courtRoomNumber")));
-        assertThat(query, not(containsString("and cs.rota_business_type = :businessType")));
-        assertThat(query, not(containsString("and cs.court_session = :courtSession")));
+        assertThat(query, not(containsString(AND_CS_OPERATIONAL_UNIT_OUCODE_L2_CODE)));
+        assertThat(query, not(containsString(AND_CS_OUCODE_OU_CODE)));
+        assertThat(query, not(containsString(AND_CS_COURT_ROOM_ID_COURT_ROOM_ID)));
+        assertThat(query, not(containsString(AND_CS_COURT_ROOM_NUMBER_COURT_ROOM_NUMBER)));
+        assertThat(query, not(containsString(AND_CS_ROTA_BUSINESS_TYPE_BUSINESS_TYPE)));
+        assertThat(query, not(containsString(AND_CS_COURT_SESSION_COURT_SESSION)));
         assertThat(query, not(containsString("and al.hearing_start_time = :exactHearingStartDateTime")));
     }
 
     @Test
-    public void testQueryWithEmptyStringParameters() {
+    void testQueryWithEmptyStringParameters() {
         // Given
-        HearingSlotRequestParam requestParam = new HearingSlotRequestParam(
-                "MAGISTRATES", // panel
-                "2024-01-01", // sessionStartDate
-                "2024-01-31", // sessionEndDate
+        final HearingSlotRequestParam requestParam = new HearingSlotRequestParam(
+                MAGISTRATES_2, // panel
+                DATE_2024_01_01, // sessionStartDate
+                DATE_2024_01_31, // sessionEndDate
                 "", // exactHearingStartDateTime (empty string)
                 "", // oucodeL2Code (empty string)
                 "", // ouCode (empty string)
@@ -211,129 +236,132 @@ class AllocatedHearingsQueryBuilderTest extends uk.gov.moj.cpp.courtscheduler.re
                 null, // isSlotBased
                 null, // hearingStartTime
                 null, // showOverbookedSlots
-                null, // caseIdentifier
-                null // duration
+                null, // duration
+                null, // status
+                null // jurisdiction
         );
 
         // When
-        AllocatedHearingsQueryBuilder builder = new AllocatedHearingsQueryBuilder(requestParam);
-        String query = builder.getAllocatedHearingsQuery();
+        final AllocatedHearingsQueryBuilder builder = new AllocatedHearingsQueryBuilder(requestParam);
+        final String query = builder.getAllocatedHearingsQuery();
 
         // Then
-        assertThat(query, not(containsString("and cs.operational_unit = :oucodeL2Code")));
-        assertThat(query, not(containsString("and cs.oucode = :ouCode")));
-        assertThat(query, not(containsString("and cs.court_room_id = :courtRoomId")));
-        assertThat(query, not(containsString("and cs.court_room_number = :courtRoomNumber")));
-        assertThat(query, not(containsString("and cs.rota_business_type = :businessType")));
-        assertThat(query, not(containsString("and cs.court_session = :courtSession")));
+        assertThat(query, not(containsString(AND_CS_OPERATIONAL_UNIT_OUCODE_L2_CODE)));
+        assertThat(query, not(containsString(AND_CS_OUCODE_OU_CODE)));
+        assertThat(query, not(containsString(AND_CS_COURT_ROOM_ID_COURT_ROOM_ID)));
+        assertThat(query, not(containsString(AND_CS_COURT_ROOM_NUMBER_COURT_ROOM_NUMBER)));
+        assertThat(query, not(containsString(AND_CS_ROTA_BUSINESS_TYPE_BUSINESS_TYPE)));
+        assertThat(query, not(containsString(AND_CS_COURT_SESSION_COURT_SESSION)));
         assertThat(query, not(containsString("and al.hearing_start_time = :exactHearingStartDateTime")));
     }
 
     @Test
-    public void testQueryWithWhitespaceOnlyParameters() {
+    void testQueryWithWhitespaceOnlyParameters() {
         // Given
-        HearingSlotRequestParam requestParam = new HearingSlotRequestParam(
-                "MAGISTRATES", // panel
-                "2024-01-01", // sessionStartDate
-                "2024-01-31", // sessionEndDate
-                "   ", // exactHearingStartDateTime (whitespace only)
-                "   ", // oucodeL2Code (whitespace only)
-                "   ", // ouCode (whitespace only)
+        final HearingSlotRequestParam requestParam = new HearingSlotRequestParam(
+                MAGISTRATES_2, // panel
+                DATE_2024_01_01, // sessionStartDate
+                DATE_2024_01_31, // sessionEndDate
+                LITERAL, // exactHearingStartDateTime (whitespace only)
+                LITERAL, // oucodeL2Code (whitespace only)
+                LITERAL, // ouCode (whitespace only)
                 "10", // pageSize
                 "1", // pageNumber
-                "   ", // courtRoomId (whitespace only)
-                "   ", // courtRoomNumber (whitespace only)
-                "   ", // businessType (whitespace only)
-                "   ", // courtSession (whitespace only)
+                LITERAL, // courtRoomId (whitespace only)
+                LITERAL, // courtRoomNumber (whitespace only)
+                LITERAL, // businessType (whitespace only)
+                LITERAL, // courtSession (whitespace only)
                 null, // isSlotBased
                 null, // hearingStartTime
                 null, // showOverbookedSlots
-                null, // caseIdentifier
-                null // duration
+                null, // duration
+                null, // status
+                null // jurisdiction
         );
 
         // When
-        AllocatedHearingsQueryBuilder builder = new AllocatedHearingsQueryBuilder(requestParam);
-        String query = builder.getAllocatedHearingsQuery();
+        final AllocatedHearingsQueryBuilder builder = new AllocatedHearingsQueryBuilder(requestParam);
+        final String query = builder.getAllocatedHearingsQuery();
 
         // Then
-        assertThat(query, not(containsString("and cs.operational_unit = :oucodeL2Code")));
-        assertThat(query, not(containsString("and cs.oucode = :ouCode")));
-        assertThat(query, not(containsString("and cs.court_room_id = :courtRoomId")));
-        assertThat(query, not(containsString("and cs.court_room_number = :courtRoomNumber")));
-        assertThat(query, not(containsString("and cs.rota_business_type = :businessType")));
-        assertThat(query, not(containsString("and cs.court_session = :courtSession")));
+        assertThat(query, not(containsString(AND_CS_OPERATIONAL_UNIT_OUCODE_L2_CODE)));
+        assertThat(query, not(containsString(AND_CS_OUCODE_OU_CODE)));
+        assertThat(query, not(containsString(AND_CS_COURT_ROOM_ID_COURT_ROOM_ID)));
+        assertThat(query, not(containsString(AND_CS_COURT_ROOM_NUMBER_COURT_ROOM_NUMBER)));
+        assertThat(query, not(containsString(AND_CS_ROTA_BUSINESS_TYPE_BUSINESS_TYPE)));
+        assertThat(query, not(containsString(AND_CS_COURT_SESSION_COURT_SESSION)));
         assertThat(query, not(containsString("and al.hearing_start_time = :exactHearingStartDateTime")));
     }
 
     @Test
-    public void testPagedQueryParamMapWithMinimalParameters() {
+    void testPagedQueryParamMapWithMinimalParameters() {
         // Given
-        HearingSlotRequestParam requestParam = createBasicRequestParam();
+        final HearingSlotRequestParam requestParam = createBasicRequestParam();
 
         // When
-        AllocatedHearingsQueryBuilder builder = new AllocatedHearingsQueryBuilder(requestParam);
-        Map<String, Object> paramMap = builder.getPagedQueryParamMap();
+        final AllocatedHearingsQueryBuilder builder = new AllocatedHearingsQueryBuilder(requestParam);
+        final Map<String, Object> paramMap = builder.getPagedQueryParamMap();
 
         // Then
         assertThat(paramMap, notNullValue());
-        assertThat(paramMap.get("panel"), is(java.util.List.of("MAGISTRATES")));
-        assertThat(paramMap.get("sessionStartDate"), is(LocalDate.parse("2024-01-01")));
-        assertThat(paramMap.get("sessionEndDate"), is(LocalDate.parse("2024-01-31")));
-        assertThat(paramMap.get("pageSize"), is(10));
-        assertThat(paramMap.get("offset"), is(0)); // (1-1) * 10 = 0
+        assertThat(paramMap.get(PANEL), is(java.util.List.of(MAGISTRATES_2)));
+        assertThat(paramMap.get(SESSION_START_DATE), is(LocalDate.parse(DATE_2024_01_01)));
+        assertThat(paramMap.get(SESSION_END_DATE), is(LocalDate.parse(DATE_2024_01_31)));
+        assertThat(paramMap.get(PAGE_SIZE), is(10));
+        assertThat(paramMap.get(OFFSET_2), is(0)); // (1-1) * 10 = 0
     }
 
     @Test
-    public void testPagedQueryParamMapWithAllParameters() {
+    void testPagedQueryParamMapWithAllParameters() {
         // Given
-        HearingSlotRequestParam requestParam = new HearingSlotRequestParam(
+        final HearingSlotRequestParam requestParam = new HearingSlotRequestParam(
                 "MAGISTRATES,CRIMINAL", // panel
-                "2024-01-01", // sessionStartDate
-                "2024-01-31", // sessionEndDate
-                "2024-01-15T10:00:00Z", // exactHearingStartDateTime
-                "L2CODE", // oucodeL2Code
-                "OU123", // ouCode
+                DATE_2024_01_01, // sessionStartDate
+                DATE_2024_01_31, // sessionEndDate
+                VALUE_2024_01_15_T10_00_00_Z, // exactHearingStartDateTime
+                L2_CODE, // oucodeL2Code
+                OU123_2, // ouCode
                 "20", // pageSize
                 "3", // pageNumber
-                "ROOM123", // courtRoomId
+                ROOM123_2, // courtRoomId
                 "5", // courtRoomNumber
-                "CRIMINAL", // businessType
+                CRIMINAL_2, // businessType
                 "AD", // courtSession
                 true, // isSlotBased
-                "2024-01-15T10:00:00Z", // hearingStartTime
+                VALUE_2024_01_15_T10_00_00_Z, // hearingStartTime
                 null, // showOverbookedSlots
-                null, // caseIdentifier
-                null // duration
+                null, // duration
+                null, // status
+                null // jurisdiction
         );
 
         // When
-        AllocatedHearingsQueryBuilder builder = new AllocatedHearingsQueryBuilder(requestParam);
-        Map<String, Object> paramMap = builder.getPagedQueryParamMap();
+        final AllocatedHearingsQueryBuilder builder = new AllocatedHearingsQueryBuilder(requestParam);
+        final Map<String, Object> paramMap = builder.getPagedQueryParamMap();
 
         // Then
         assertThat(paramMap, notNullValue());
-        assertThat(paramMap.get("panel"), is(java.util.List.of("MAGISTRATES", "CRIMINAL")));
-        assertThat(paramMap.get("sessionStartDate"), is(LocalDate.parse("2024-01-01")));
-        assertThat(paramMap.get("sessionEndDate"), is(LocalDate.parse("2024-01-31")));
-        assertThat(paramMap.get("pageSize"), is(20));
-        assertThat(paramMap.get("offset"), is(40)); // (3-1) * 20 = 40
-        assertThat(paramMap.get("oucodeL2Code"), is("L2CODE"));
-        assertThat(paramMap.get("ouCode"), is("OU123"));
-        assertThat(paramMap.get("courtRoomId"), is("ROOM123"));
+        assertThat(paramMap.get(PANEL), is(java.util.List.of(MAGISTRATES_2, CRIMINAL_2)));
+        assertThat(paramMap.get(SESSION_START_DATE), is(LocalDate.parse(DATE_2024_01_01)));
+        assertThat(paramMap.get(SESSION_END_DATE), is(LocalDate.parse(DATE_2024_01_31)));
+        assertThat(paramMap.get(PAGE_SIZE), is(20));
+        assertThat(paramMap.get(OFFSET_2), is(40)); // (3-1) * 20 = 40
+        assertThat(paramMap.get("oucodeL2Code"), is(L2_CODE));
+        assertThat(paramMap.get("ouCode"), is(OU123_2));
+        assertThat(paramMap.get("courtRoomId"), is(ROOM123_2));
         assertThat(paramMap.get("courtRoomNumber"), is("5"));
-        assertThat(paramMap.get("businessType"), is("CRIMINAL"));
+        assertThat(paramMap.get("businessType"), is(CRIMINAL_2));
         assertThat(paramMap.get("courtSession"), is("AD"));
-        assertThat(paramMap.get("exactHearingStartDateTime"), is("2024-01-15T10:00:00Z"));
+        assertThat(paramMap.get("exactHearingStartDateTime"), is(VALUE_2024_01_15_T10_00_00_Z));
     }
 
     @Test
-    public void testPagedQueryParamMapWithEmptyStringParameters() {
+    void testPagedQueryParamMapWithEmptyStringParameters() {
         // Given
-        HearingSlotRequestParam requestParam = new HearingSlotRequestParam(
-                "MAGISTRATES", // panel
-                "2024-01-01", // sessionStartDate
-                "2024-01-31", // sessionEndDate
+        final HearingSlotRequestParam requestParam = new HearingSlotRequestParam(
+                MAGISTRATES_2, // panel
+                DATE_2024_01_01, // sessionStartDate
+                DATE_2024_01_31, // sessionEndDate
                 "", // exactHearingStartDateTime (empty string)
                 "", // oucodeL2Code (empty string)
                 "", // ouCode (empty string)
@@ -346,21 +374,22 @@ class AllocatedHearingsQueryBuilderTest extends uk.gov.moj.cpp.courtscheduler.re
                 null, // isSlotBased
                 null, // hearingStartTime
                 null, // showOverbookedSlots
-                null, // caseIdentifier
-                null // duration
+                null, // duration
+                null, // status
+                null // jurisdiction
         );
 
         // When
-        AllocatedHearingsQueryBuilder builder = new AllocatedHearingsQueryBuilder(requestParam);
-        Map<String, Object> paramMap = builder.getPagedQueryParamMap();
+        final AllocatedHearingsQueryBuilder builder = new AllocatedHearingsQueryBuilder(requestParam);
+        final Map<String, Object> paramMap = builder.getPagedQueryParamMap();
 
         // Then
         assertThat(paramMap, notNullValue());
-        assertThat(paramMap.get("panel"), is(java.util.List.of("MAGISTRATES")));
-        assertThat(paramMap.get("sessionStartDate"), is(LocalDate.parse("2024-01-01")));
-        assertThat(paramMap.get("sessionEndDate"), is(LocalDate.parse("2024-01-31")));
-        assertThat(paramMap.get("pageSize"), is(10));
-        assertThat(paramMap.get("offset"), is(0));
+        assertThat(paramMap.get(PANEL), is(java.util.List.of(MAGISTRATES_2)));
+        assertThat(paramMap.get(SESSION_START_DATE), is(LocalDate.parse(DATE_2024_01_01)));
+        assertThat(paramMap.get(SESSION_END_DATE), is(LocalDate.parse(DATE_2024_01_31)));
+        assertThat(paramMap.get(PAGE_SIZE), is(10));
+        assertThat(paramMap.get(OFFSET_2), is(0));
         
         // Empty strings should not be added to the parameter map
         assertFalse(paramMap.containsKey("oucodeL2Code"));
@@ -373,40 +402,40 @@ class AllocatedHearingsQueryBuilderTest extends uk.gov.moj.cpp.courtscheduler.re
     }
 
     @Test
-    public void testPagedQueryParamMapWithWhitespaceOnlyParameters() {
+    void testPagedQueryParamMapWithWhitespaceOnlyParameters() {
         // Given
-        HearingSlotRequestParam requestParam = new HearingSlotRequestParam(
-                "MAGISTRATES", // panel
-                "2024-01-01", // sessionStartDate
-                "2024-01-31", // sessionEndDate
-                "   ", // exactHearingStartDateTime (whitespace only)
-                "   ", // oucodeL2Code (whitespace only)
-                "   ", // ouCode (whitespace only)
+        final HearingSlotRequestParam requestParam = new HearingSlotRequestParam(
+                MAGISTRATES_2, // panel
+                DATE_2024_01_01, // sessionStartDate
+                DATE_2024_01_31, // sessionEndDate
+                LITERAL, // exactHearingStartDateTime (whitespace only)
+                LITERAL, // oucodeL2Code (whitespace only)
+                LITERAL, // ouCode (whitespace only)
                 "10", // pageSize
                 "1", // pageNumber
-                "   ", // courtRoomId (whitespace only)
-                "   ", // courtRoomNumber (whitespace only)
-                "   ", // businessType (whitespace only)
-                "   ", // courtSession (whitespace only)
+                LITERAL, // courtRoomId (whitespace only)
+                LITERAL, // courtRoomNumber (whitespace only)
+                LITERAL, // businessType (whitespace only)
+                LITERAL, // courtSession (whitespace only)
                 null, // isSlotBased
                 null, // hearingStartTime
                 null, // showOverbookedSlots
-                null, // caseIdentifier
-                null // duration
-
+                null, // duration
+                null, // status
+                null // jurisdiction
         );
 
         // When
-        AllocatedHearingsQueryBuilder builder = new AllocatedHearingsQueryBuilder(requestParam);
-        Map<String, Object> paramMap = builder.getPagedQueryParamMap();
+        final AllocatedHearingsQueryBuilder builder = new AllocatedHearingsQueryBuilder(requestParam);
+        final Map<String, Object> paramMap = builder.getPagedQueryParamMap();
 
         // Then
         assertThat(paramMap, notNullValue());
-        assertThat(paramMap.get("panel"), is(java.util.List.of("MAGISTRATES")));
-        assertThat(paramMap.get("sessionStartDate"), is(LocalDate.parse("2024-01-01")));
-        assertThat(paramMap.get("sessionEndDate"), is(LocalDate.parse("2024-01-31")));
-        assertThat(paramMap.get("pageSize"), is(10));
-        assertThat(paramMap.get("offset"), is(0));
+        assertThat(paramMap.get(PANEL), is(java.util.List.of(MAGISTRATES_2)));
+        assertThat(paramMap.get(SESSION_START_DATE), is(LocalDate.parse(DATE_2024_01_01)));
+        assertThat(paramMap.get(SESSION_END_DATE), is(LocalDate.parse(DATE_2024_01_31)));
+        assertThat(paramMap.get(PAGE_SIZE), is(10));
+        assertThat(paramMap.get(OFFSET_2), is(0));
         
         // Whitespace-only strings should not be added to the parameter map
         assertFalse(paramMap.containsKey("oucodeL2Code"));
@@ -419,12 +448,12 @@ class AllocatedHearingsQueryBuilderTest extends uk.gov.moj.cpp.courtscheduler.re
     }
 
     @Test
-    public void testPanelParameterWithMultipleValues() {
+    void testPanelParameterWithMultipleValues() {
         // Given
-        HearingSlotRequestParam requestParam = new HearingSlotRequestParam(
+        final HearingSlotRequestParam requestParam = new HearingSlotRequestParam(
                 "MAGISTRATES,CRIMINAL,FAMILY", // panel with multiple values
-                "2024-01-01", // sessionStartDate
-                "2024-01-31", // sessionEndDate
+                DATE_2024_01_01, // sessionStartDate
+                DATE_2024_01_31, // sessionEndDate
                 null, // exactHearingStartDateTime
                 null, // oucodeL2Code
                 null, // ouCode
@@ -437,25 +466,26 @@ class AllocatedHearingsQueryBuilderTest extends uk.gov.moj.cpp.courtscheduler.re
                 null, // isSlotBased
                 null, // hearingStartTime
                 null, // showOverbookedSlots
-                null, // caseIdentifier
-                null // duration
+                null, // duration
+                null, // status
+                null // jurisdiction
         );
 
         // When
-        AllocatedHearingsQueryBuilder builder = new AllocatedHearingsQueryBuilder(requestParam);
-        Map<String, Object> paramMap = builder.getPagedQueryParamMap();
+        final AllocatedHearingsQueryBuilder builder = new AllocatedHearingsQueryBuilder(requestParam);
+        final Map<String, Object> paramMap = builder.getPagedQueryParamMap();
 
         // Then
-        assertThat(paramMap.get("panel"), is(java.util.List.of("MAGISTRATES", "CRIMINAL", "FAMILY")));
+        assertThat(paramMap.get(PANEL), is(java.util.List.of(MAGISTRATES_2, CRIMINAL_2, "FAMILY")));
     }
 
     @Test
-    public void testPanelParameterWithSpaces() {
+    void testPanelParameterWithSpaces() {
         // Given
-        HearingSlotRequestParam requestParam = new HearingSlotRequestParam(
+        final HearingSlotRequestParam requestParam = new HearingSlotRequestParam(
                 "MAGISTRATES , CRIMINAL , FAMILY", // panel with spaces around commas
-                "2024-01-01", // sessionStartDate
-                "2024-01-31", // sessionEndDate
+                DATE_2024_01_01, // sessionStartDate
+                DATE_2024_01_31, // sessionEndDate
                 null, // exactHearingStartDateTime
                 null, // oucodeL2Code
                 null, // ouCode
@@ -468,33 +498,34 @@ class AllocatedHearingsQueryBuilderTest extends uk.gov.moj.cpp.courtscheduler.re
                 null, // isSlotBased
                 null, // hearingStartTime
                 null, // showOverbookedSlots
-                null, // caseIdentifier
-                null // duration
+                null, // duration
+                null, // status
+                null // jurisdiction
         );
 
         // When
-        AllocatedHearingsQueryBuilder builder = new AllocatedHearingsQueryBuilder(requestParam);
-        Map<String, Object> paramMap = builder.getPagedQueryParamMap();
+        final AllocatedHearingsQueryBuilder builder = new AllocatedHearingsQueryBuilder(requestParam);
+        final Map<String, Object> paramMap = builder.getPagedQueryParamMap();
 
         // Then
-        assertThat(paramMap.get("panel"), is(java.util.List.of("MAGISTRATES", "CRIMINAL", "FAMILY")));
+        assertThat(paramMap.get(PANEL), is(java.util.List.of(MAGISTRATES_2, CRIMINAL_2, "FAMILY")));
     }
 
     @Test
-    public void testPaginationCalculation() {
+    void testPaginationCalculation() {
         // Test various page numbers and sizes
-        testPaginationCalculation(1, 10, 0);   // First page
-        testPaginationCalculation(2, 10, 10);  // Second page
-        testPaginationCalculation(3, 20, 40);  // Third page with different size
-        testPaginationCalculation(5, 25, 100); // Fifth page with different size
+        assertPaginationCalculation(1, 10, 0);   // First page
+        assertPaginationCalculation(2, 10, 10);  // Second page
+        assertPaginationCalculation(3, 20, 40);  // Third page with different size
+        assertPaginationCalculation(5, 25, 100); // Fifth page with different size
     }
 
-    private void testPaginationCalculation(int pageNumber, int pageSize, int expectedOffset) {
+    private void assertPaginationCalculation(final int pageNumber, final int pageSize, final int expectedOffset) {
         // Given
-        HearingSlotRequestParam requestParam = new HearingSlotRequestParam(
-                "MAGISTRATES", // panel
-                "2024-01-01", // sessionStartDate
-                "2024-01-31", // sessionEndDate
+        final HearingSlotRequestParam requestParam = new HearingSlotRequestParam(
+                MAGISTRATES_2, // panel
+                DATE_2024_01_01, // sessionStartDate
+                DATE_2024_01_31, // sessionEndDate
                 null, // exactHearingStartDateTime
                 null, // oucodeL2Code
                 null, // ouCode
@@ -507,27 +538,28 @@ class AllocatedHearingsQueryBuilderTest extends uk.gov.moj.cpp.courtscheduler.re
                 null, // isSlotBased
                 null, // hearingStartTime
                 null, // showOverbookedSlots
-                null, // caseIdentifier
-                null // duration
+                null, // duration
+                null, // status
+                null // jurisdiction
         );
 
         // When
-        AllocatedHearingsQueryBuilder builder = new AllocatedHearingsQueryBuilder(requestParam);
-        Map<String, Object> paramMap = builder.getPagedQueryParamMap();
+        final AllocatedHearingsQueryBuilder builder = new AllocatedHearingsQueryBuilder(requestParam);
+        final Map<String, Object> paramMap = builder.getPagedQueryParamMap();
 
         // Then
-        assertThat(paramMap.get("pageSize"), is(pageSize));
-        assertThat(paramMap.get("offset"), is(expectedOffset));
+        assertThat(paramMap.get(PAGE_SIZE), is(pageSize));
+        assertThat(paramMap.get(OFFSET_2), is(expectedOffset));
     }
 
     @Test
-    public void testOrderByClause() {
+    void testOrderByClause() {
         // Given
-        HearingSlotRequestParam requestParam = createBasicRequestParam();
+        final HearingSlotRequestParam requestParam = createBasicRequestParam();
 
         // When
-        AllocatedHearingsQueryBuilder builder = new AllocatedHearingsQueryBuilder(requestParam);
-        String query = builder.getAllocatedHearingsQuery();
+        final AllocatedHearingsQueryBuilder builder = new AllocatedHearingsQueryBuilder(requestParam);
+        final String query = builder.getAllocatedHearingsQuery();
 
         // Then
         assertThat(query, containsString("order by cs.session_start, " +
@@ -538,13 +570,13 @@ class AllocatedHearingsQueryBuilderTest extends uk.gov.moj.cpp.courtscheduler.re
     }
 
     @Test
-    public void testQueryStructureIntegrity() {
+    void testQueryStructureIntegrity() {
         // Given
-        HearingSlotRequestParam requestParam = createBasicRequestParam();
+        final HearingSlotRequestParam requestParam = createBasicRequestParam();
 
         // When
-        AllocatedHearingsQueryBuilder builder = new AllocatedHearingsQueryBuilder(requestParam);
-        String query = builder.getAllocatedHearingsQuery();
+        final AllocatedHearingsQueryBuilder builder = new AllocatedHearingsQueryBuilder(requestParam);
+        final String query = builder.getAllocatedHearingsQuery();
 
         // Then
         // Verify the query has proper structure
@@ -554,21 +586,18 @@ class AllocatedHearingsQueryBuilderTest extends uk.gov.moj.cpp.courtscheduler.re
         assertTrue(query.contains("order by"));
         assertTrue(query.contains("LIMIT"));
         assertTrue(query.contains("OFFSET"));
-        
-        // Verify no duplicate keywords
-        long selectCount = query.toLowerCase().chars().filter(ch -> ch == 's').count();
         assertTrue(query.contains("select"), "Query should contain proper SQL structure");
     }
 
     @Test
-    public void testParameterMapImmutable() {
+    void testParameterMapImmutable() {
         // Given
-        HearingSlotRequestParam requestParam = createBasicRequestParam();
-        AllocatedHearingsQueryBuilder builder = new AllocatedHearingsQueryBuilder(requestParam);
+        final HearingSlotRequestParam requestParam = createBasicRequestParam();
+        final AllocatedHearingsQueryBuilder builder = new AllocatedHearingsQueryBuilder(requestParam);
 
         // When
-        Map<String, Object> paramMap1 = builder.getPagedQueryParamMap();
-        Map<String, Object> paramMap2 = builder.getPagedQueryParamMap();
+        final Map<String, Object> paramMap1 = builder.getPagedQueryParamMap();
+        final Map<String, Object> paramMap2 = builder.getPagedQueryParamMap();
 
         // Then
         // The maps should be equal but not necessarily the same instance
@@ -576,14 +605,14 @@ class AllocatedHearingsQueryBuilderTest extends uk.gov.moj.cpp.courtscheduler.re
     }
 
     @Test
-    public void testQueryStringImmutable() {
+    void testQueryStringImmutable() {
         // Given
-        HearingSlotRequestParam requestParam = createBasicRequestParam();
-        AllocatedHearingsQueryBuilder builder = new AllocatedHearingsQueryBuilder(requestParam);
+        final HearingSlotRequestParam requestParam = createBasicRequestParam();
+        final AllocatedHearingsQueryBuilder builder = new AllocatedHearingsQueryBuilder(requestParam);
 
         // When
-        String query1 = builder.getAllocatedHearingsQuery();
-        String query2 = builder.getAllocatedHearingsQuery();
+        final String query1 = builder.getAllocatedHearingsQuery();
+        final String query2 = builder.getAllocatedHearingsQuery();
 
         // Then
         assertEquals(query1, query2);
@@ -591,9 +620,9 @@ class AllocatedHearingsQueryBuilderTest extends uk.gov.moj.cpp.courtscheduler.re
 
     private HearingSlotRequestParam createBasicRequestParam() {
         return new HearingSlotRequestParam(
-                "MAGISTRATES", // panel
-                "2024-01-01", // sessionStartDate
-                "2024-01-31", // sessionEndDate
+                MAGISTRATES_2, // panel
+                DATE_2024_01_01, // sessionStartDate
+                DATE_2024_01_31, // sessionEndDate
                 null, // exactHearingStartDateTime
                 null, // oucodeL2Code
                 null, // ouCode
@@ -606,8 +635,71 @@ class AllocatedHearingsQueryBuilderTest extends uk.gov.moj.cpp.courtscheduler.re
                 null, // isSlotBased
                 null, // hearingStartTime
                 null, // showOverbookedSlots
-                null, // caseIdentifier
-                null // duration
+                null, // duration
+                null, // status
+                null // jurisdiction
         );
+    }
+
+    private HearingSlotRequestParam createBasicRequestParamWithStatus(final String status) {
+        return new HearingSlotRequestParam(
+                MAGISTRATES_2, // panel
+                DATE_2024_01_01, // sessionStartDate
+                DATE_2024_01_31, // sessionEndDate
+                null, // exactHearingStartDateTime
+                null, // oucodeL2Code
+                null, // ouCode
+                "10", // pageSize
+                "1", // pageNumber
+                null, // courtRoomId
+                null, // courtRoomNumber
+                null, // businessType
+                null, // courtSession
+                null, // isSlotBased
+                null, // hearingStartTime
+                null, // showOverbookedSlots
+                null, // duration
+                status, // status
+                null // jurisdiction
+        );
+    }
+
+    @Test
+    void testQueryWithStatusFinalAddsNonDraftClause() {
+        // Given
+        final HearingSlotRequestParam requestParam = createBasicRequestParamWithStatus("FINAL");
+
+        // When
+        final AllocatedHearingsQueryBuilder builder = new AllocatedHearingsQueryBuilder(requestParam);
+        final String query = builder.getAllocatedHearingsQuery();
+
+        // Then
+        assertThat(query, containsString("cs.is_draft = false"));
+    }
+
+    @Test
+    void testQueryWithStatusDraftAddsDraftClause() {
+        // Given
+        final HearingSlotRequestParam requestParam = createBasicRequestParamWithStatus("DRAFT");
+
+        // When
+        final AllocatedHearingsQueryBuilder builder = new AllocatedHearingsQueryBuilder(requestParam);
+        final String query = builder.getAllocatedHearingsQuery();
+
+        // Then
+        assertThat(query, containsString("cs.is_draft = true"));
+    }
+
+    @Test
+    void testQueryWithStatusAbsentOrAllAppliesNoFilter() {
+        // Given / When / Then: null status
+        final HearingSlotRequestParam requestParamNull = createBasicRequestParamWithStatus(null);
+        final AllocatedHearingsQueryBuilder builderNull = new AllocatedHearingsQueryBuilder(requestParamNull);
+        assertThat(builderNull.getAllocatedHearingsQuery(), not(containsString("is_draft")));
+
+        // "ALL" status
+        final HearingSlotRequestParam requestParamAll = createBasicRequestParamWithStatus("ALL");
+        final AllocatedHearingsQueryBuilder builderAll = new AllocatedHearingsQueryBuilder(requestParamAll);
+        assertThat(builderAll.getAllocatedHearingsQuery(), not(containsString("is_draft")));
     }
 }

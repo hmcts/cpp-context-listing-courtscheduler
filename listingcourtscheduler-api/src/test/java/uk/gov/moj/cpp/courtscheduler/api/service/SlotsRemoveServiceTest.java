@@ -15,7 +15,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
-public class SlotsRemoveServiceTest {
+class SlotsRemoveServiceTest {
 
     @Mock
     private CourtScheduleRepository courtScheduleRepository;
@@ -29,7 +29,7 @@ public class SlotsRemoveServiceTest {
     }
 
     @Test
-    public void shouldRemoveSlots() {
+    void shouldRemoveSlots() {
         final String hearingId = randomUUID().toString();
 
         slotsRemoveService.remove(hearingId);

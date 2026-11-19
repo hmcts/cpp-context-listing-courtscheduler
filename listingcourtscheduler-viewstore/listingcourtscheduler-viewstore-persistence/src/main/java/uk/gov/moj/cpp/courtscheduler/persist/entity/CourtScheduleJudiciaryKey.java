@@ -21,7 +21,7 @@ public class CourtScheduleJudiciaryKey implements Serializable {
         //For JPA
     }
 
-    public CourtScheduleJudiciaryKey(String courtScheduleId, String judiciaryId) {
+    public CourtScheduleJudiciaryKey(final String courtScheduleId, final String judiciaryId) {
         this.courtScheduleId = courtScheduleId;
         this.judiciaryId = judiciaryId;
     }
@@ -30,7 +30,7 @@ public class CourtScheduleJudiciaryKey implements Serializable {
         return courtScheduleId;
     }
 
-    public void setCourtScheduleId(String courtScheduleId) {
+    public void setCourtScheduleId(final String courtScheduleId) {
         this.courtScheduleId = courtScheduleId;
     }
 
@@ -38,12 +38,12 @@ public class CourtScheduleJudiciaryKey implements Serializable {
         return judiciaryId;
     }
 
-    public void setJudiciaryId(String judiciaryId) {
+    public void setJudiciaryId(final String judiciaryId) {
         this.judiciaryId = judiciaryId;
     }
 
     @Override
-    public boolean equals(Object o) {
+    public boolean equals(final Object o) {
         if (this == o) {
             return true;
         }

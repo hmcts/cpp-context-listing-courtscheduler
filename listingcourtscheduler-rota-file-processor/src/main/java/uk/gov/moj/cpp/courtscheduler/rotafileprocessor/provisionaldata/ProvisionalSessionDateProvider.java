@@ -11,9 +11,9 @@ public class ProvisionalSessionDateProvider {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ProvisionalSessionDateProvider.class.getName());
 
-    private Map<ProvisionalDataLookUpKey, LocalDate> provisionalDataLookUp = new TreeMap();
-    private ProvisionalDataExtractDateInfoProvider provisionalDataExtractDateInfoProvider;
-    private ProvisionalDataDateInfoProvider provisionalDataDateInfoProvider;
+    private final Map<ProvisionalDataLookUpKey, LocalDate> provisionalDataLookUp = new TreeMap<>();
+    private final ProvisionalDataExtractDateInfoProvider provisionalDataExtractDateInfoProvider;
+    private final ProvisionalDataDateInfoProvider provisionalDataDateInfoProvider;
 
     public ProvisionalSessionDateProvider(final ProvisionalDataExtractDateInfoProvider provisionalDataExtractDateInfoProvider,
                                           final ProvisionalDataDateInfoProvider provisionalDataDateInfoProvider,
@@ -31,7 +31,7 @@ public class ProvisionalSessionDateProvider {
     private void populateProvisionalDataLookUp(final int rotaFileCycleLength) {
         final LocalDate provisionalDataStartDate = provisionalDataDateInfoProvider.getProvisionalDataStartDate();
         final LocalDate provisionalDataEndDate = provisionalDataDateInfoProvider.getProvisionalDataEndDate();
-        final long cyclesToPopulate = provisionalDataDateInfoProvider.getCyclesToPopulate();
+        final int cyclesToPopulate = provisionalDataDateInfoProvider.getCyclesToPopulate();
         final LocalDate extractStartDate = provisionalDataExtractDateInfoProvider.getProvisionalDataExtractStartDate();
         LocalDate nextProvisionalDataStartDate = provisionalDataStartDate;
 
@@ -40,6 +40,10 @@ public class ProvisionalSessionDateProvider {
                 if (nextProvisionalDataStartDate.isBefore(provisionalDataEndDate) ||
                         nextProvisionalDataStartDate.isEqual(provisionalDataEndDate)) {
                     final LocalDate extractDate = extractStartDate.plusDays(j);
+                    // A fresh key is required per (cycle, date) pair: each instance is stored as a
+                    // distinct Map key below, so reusing/hoisting one would corrupt every entry
+                    // already put into provisionalDataLookUp.
+                    @SuppressWarnings("PMD.AvoidInstantiatingObjectsInLoops")
                     final ProvisionalDataLookUpKey key = new ProvisionalDataLookUpKey(i, extractDate);
                     provisionalDataLookUp.putIfAbsent(key, nextProvisionalDataStartDate);
                     nextProvisionalDataStartDate = nextProvisionalDataStartDate.plusDays(1);

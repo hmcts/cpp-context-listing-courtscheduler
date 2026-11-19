@@ -1,7 +1,8 @@
 {
-  "courtCentreId": "f8254db1-1683-483e-afb3-b87fde5a0a26",
-  "courtRoomId": "9e4932f7-97b2-3010-b942-ddd2624e4dd8",
-  "jurisdiction": "MAGISTRATES",
-  "startTime": "2026-07-20T10:30:00.000Z",
-  "endTime": "2026-07-24T17:00:00.000Z"
+  "courtCentreId": "07e45c88-9e5d-3e44-b664-d5345bb13be2",
+  "courtRoomId": "b7a1c2d3-9e5d-3e44-b664-d5345bb13be2",
+  "jurisdiction": "CROWN",
+  "startTime": "2026-05-01T10:30:00.000Z",
+  "endTime": "2026-05-05T13:30:00.000Z",
+  "courtScheduleId": "c0ffee00-1111-2222-3333-444455556666"
 }

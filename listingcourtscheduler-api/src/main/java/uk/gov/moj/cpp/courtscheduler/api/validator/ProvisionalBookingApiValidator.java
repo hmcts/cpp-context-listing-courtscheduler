@@ -15,14 +15,15 @@ import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.PAYLOAD_CANNOT_EMPT
 import static uk.gov.moj.cpp.courtscheduler.api.ApiConstants.PAYLOAD_NOT_CORRECT;
 
 import uk.gov.moj.cpp.courtscheduler.api.converter.ConverterException;
-import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalBookingSlots;
-import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalSlot;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.ProvisionalBookingSlots;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.ProvisionalSlot;
 
 import java.util.List;
 import java.util.Optional;
 
 import jakarta.json.JsonObject;
 
+import org.owasp.encoder.Encode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,7 +32,7 @@ import org.slf4j.LoggerFactory;
 public class ProvisionalBookingApiValidator {
     private static final Logger LOGGER = LoggerFactory.getLogger(ProvisionalBookingApiValidator.class.getName());
 
-    public JsonObject createProvisionalBookingValidation(ProvisionalBookingSlots provisionalBookingSlots) {
+    public JsonObject createProvisionalBookingValidation(final ProvisionalBookingSlots provisionalBookingSlots) {
 
         if (provisionalBookingSlots != null
                 && provisionalBookingSlots.getProvisionalSlots() != null
@@ -43,7 +44,7 @@ public class ProvisionalBookingApiValidator {
                     return EMPTY_JSON_OBJECT;
                 }
             } catch (ConverterException converterException) {
-                LOGGER.error("provisionalSlot payload is incorrect : {}", converterException.getMessage());
+                LOGGER.error("provisionalSlot payload is incorrect : {}", Encode.forJava(converterException.getMessage()));
                 return getMessage(PAYLOAD_NOT_CORRECT);
             }
             LOGGER.info("Mandatory data missing on Provisional Booking Payload : {}", provisionalBookingSlots);
@@ -73,7 +74,7 @@ public class ProvisionalBookingApiValidator {
         return buildErrorResponse(MANDATORY_SEARCH_CRITERIA + value + CANNOT_BE_NULL);
     }
 
-    private JsonObject buildErrorResponse(String errorMessage) {
+    private JsonObject buildErrorResponse(final String errorMessage) {
         return createObjectBuilder()
                 .add(ERROR_MESSAGE, errorMessage)
                 .build();
