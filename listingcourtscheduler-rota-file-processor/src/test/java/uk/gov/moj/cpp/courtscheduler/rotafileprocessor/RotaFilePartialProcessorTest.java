@@ -55,6 +55,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class RotaFilePartialProcessorTest {
+
     private static final String B01_KR00 = "B01KR00";
     private static final String B53_DJ00 = "B53DJ00";
     private static final String CABC90_2 = "CABC90";
@@ -257,6 +258,33 @@ class RotaFilePartialProcessorTest {
         return objectMapper.readValue(slotsForMigratedJsonStr, new TypeReference<Map<String, CourtSchedule>>(){});
     }
 
+    // A session the rota no longer contains is deleted only if nothing is booked on it. "Booked" is
+    // what allocated_listings holds, not court_schedule.available_slot / available_duration_mins:
+    // those counters are no longer kept up to date by bookings.
+    @Test
+    void confirmSlotsToDeleteKeepsASessionWithAllocatedListingsWhateverItsCountersSay() {
+        org.springframework.test.util.ReflectionTestUtils.setField(rotaFilePartialProcessor, "migratedMap",
+                new java.util.concurrent.ConcurrentHashMap<>(Map.of(CABC90_2, false)));
+        final CourtSchedule booked = courtSchedule("2026-11-02", "cs-booked", "p-1", "REM", 120, 10, 120, 10, true);
+
+        final List<String> toDelete = rotaFilePartialProcessor.confirmSlotsToDelete(
+                List.of(booked), List.of("cs-booked"), Map.of("cs-booked", 1));
+
+        org.hamcrest.MatcherAssert.assertThat(toDelete, org.hamcrest.Matchers.empty());
+    }
+
+    @Test
+    void confirmSlotsToDeleteDeletesASessionWithNoAllocatedListingsWhateverItsCountersSay() {
+        org.springframework.test.util.ReflectionTestUtils.setField(rotaFilePartialProcessor, "migratedMap",
+                new java.util.concurrent.ConcurrentHashMap<>(Map.of(CABC90_2, false)));
+        final CourtSchedule empty = courtSchedule("2026-11-02", "cs-empty", "p-2", "REM", 120, 3, 40, 10, false);
+
+        final List<String> toDelete = rotaFilePartialProcessor.confirmSlotsToDelete(
+                List.of(empty), List.of("cs-empty"), emptyMap());
+
+        org.hamcrest.MatcherAssert.assertThat(toDelete, org.hamcrest.Matchers.contains("cs-empty"));
+    }
+
     private CourtSchedule courtSchedule(final String sessionDate, final String businessType, final Boolean slotBased) {
         return courtSchedule(sessionDate, null, random(10), businessType, null, null, null, null, slotBased);
     }
@@ -282,7 +310,7 @@ class RotaFilePartialProcessorTest {
                 .courtScheduleId(scheduleId)
                 .listingProfileId(profileId)
                 .sessionDate(parse(sessionDate))
-                .ouCode("CABC90")
+                .ouCode(CABC90_2)
                 .courtRoomId("001c067d-eaca-4ce5-ad90-a366ef3e4bb6")
                 .courtRoomNumber(1234)
                 .courtHouseName("Liverpool Mags Court")

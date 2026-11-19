@@ -121,6 +121,14 @@ totalbookedformorning = SUM of durations before national_break_time
 totalbookedforafternoon = SUM of durations after national_break_time
 ```
 
+`allocated_listings` is the only source of availability: nothing decides from the stored
+`court_schedule.available_slot` / `available_duration_mins` columns. They are still maintained by the
+paths that predate reserve-a-slot (saving and listing a confirmed booking, the hearing-keyed releases,
+session create/edit) because the MI export (`GET /mi/court_schedules`) returns them, until SPRDT-1406
+drops them. Reserve-a-slot holds never touch them: not when taken, released, purged or re-booked.
+So the counters reflect confirmed listings only, while capacity checks also count unconfirmed holds
+(`expires_at` set).
+
 #### Overbooking
 - Configurable per court schedule via `isOverbookingAllowed` flag
 - Allows allocation beyond available capacity
@@ -414,23 +422,54 @@ Supports complex filtering:
 
 ### Provisional Booking Endpoints
 
-#### POST `/provisionalBooking`
+#### POST `/unconfirmedBooking`
 **Purpose:** Create provisional booking
 
-**Request:** `application/vnd.courtscheduler.create.provisional.booking+json`
+**Request:** `application/vnd.courtscheduler.create.unconfirmed.booking+json`
 
 **Key Fields:**
 - `courtScheduleIds`: Array of court schedule IDs to book provisionally
 
 **Response:** Provisional booking details with booking IDs
 
-#### GET `/provisionalBooking`
+#### GET `/unconfirmedBooking`
 **Purpose:** Get provisional booking details
 
 **Query Parameters:**
 - `bookingIds`: Comma-separated booking IDs
 
-**Response:** `application/vnd.courtscheduler.get.provisional.booking+json`
+**Response:** `application/vnd.courtscheduler.get.unconfirmed.booking+json`
+
+#### POST `/unconfirmedBooking/status`
+**Purpose:** The pre-share check: is each booking still safe to share? Called by listing on behalf of
+the results UI.
+
+**Request:** `application/vnd.courtscheduler.query.booking.status+json`
+- `bookingIds`: booking ids to report on (non-empty)
+- `reserveIfExpired` (optional): when true, a booking that would answer `EXPIRED` is first
+  re-reserved under the same booking id on the session(s) its hold expired on, if they still have
+  room (LPT-2611)
+
+**Response:** `application/vnd.courtscheduler.query.booking.status.response+json` -
+`{"bookings":[{"bookingId","safeToShare","status"}]}`. `safeToShare` is the decision; `status` says
+where the booking is: `RESERVED` (a hold is live), `SHARED` (already confirmed), `REBOOKED`
+(re-reserved by this call), or, with nothing held, why - read from `booking_log`: `SURPLUS` (a share
+merged its line onto another booking's session), `UNLISTED` (its listing was freed, e.g. by a
+re-share), `EXPIRED` (the hold lapsed and could not be re-booked), `RELEASED` (dropped from the draft,
+or released without a reason) or `NOT_FOUND` (nothing recorded). Safe to share: `RESERVED`,
+`REBOOKED`, `SHARED`, `SURPLUS`, `UNLISTED`. Without `reserveIfExpired` the call only reads. (This
+replaces an unreleased `GET` form, removed.)
+
+#### POST `/unconfirmedBooking/release`
+**Purpose:** Release the unconfirmed holds of the given bookings; a confirmed listing under the same
+booking id is never touched. Called by hearing (a draft save dropped the booking) and progression
+(a share made the hold surplus).
+
+**Request:** `application/vnd.courtscheduler.release.unconfirmed.bookings+json`
+- `bookingIds`: booking ids to release (non-empty)
+- `reason` (optional): `DROPPED_FROM_DRAFT` or `SURPLUS`, recorded in the booking log
+
+**Response:** 202, no body
 
 ### Management Information (MI) Endpoints
 
@@ -498,7 +537,9 @@ Supports complex filtering:
 **Response:** 202 Accepted
 
 **Business Logic:**
-- Deletes court schedules older than configured retention period
+- Deletes court schedules older than `numberOfPreviousMonthsAndOlder` months (default 6, counted as
+  30 days each), with their allocated listings and judiciaries, and old rota process logs
+- Last, deletes the `booking_log` rows whose session no longer exists
 
 ### Validation Endpoints
 
@@ -735,6 +776,30 @@ Represents a hearing allocated to a court schedule.
 - `source`: Source of allocation (SPI/Online/API)
 - `createdOn`: Creation timestamp
 - `updatedOn`: Update timestamp
+
+#### BookingLog (`booking_log`)
+Append-only history of every booking reference (LPT-2611): one row per allocated_listings row each
+time the booking enters a state. Rows written together for one booking (one state change, e.g.
+every day of a multi-day hold expiring) share an `eventId`; `recordedAt` orders them, and a
+booking's latest event is its current state.
+
+**Key Fields:**
+- `id`: random UUID
+- `bookingId`, `eventId`, `state`: `RESERVED`, `REPICK_RELEASED`, `DRAFT_RELEASED`,
+  `SURPLUS_RELEASED`, `RELEASED` (no reason given), `EXPIRED`, `CONFIRMED`, `REBOOKED`
+- `courtScheduleId`, `hearingId`, `oucode`, `courtRoomId`, `rotaBusinessType`
+- `hearingStartTime`, `duration`, `expiresAt`: the row as it was
+- `recordedAt`: when the row was appended; strictly increasing within a service instance, at the
+  microsecond precision Postgres stores, so two events never share a timestamp
+
+The pre-share check re-books a booking only when its latest state is `EXPIRED`, onto that event's
+rows.
+
+Rows are kept for as long as their session exists. `CONFIRMED`, `UNLISTED` and `SURPLUS_RELEASED`
+are what lets a re-share go ahead once the booking's listing rows are gone, and a lapsed hold on a
+session still to come can be re-booked. The only deletion is the last step of
+`POST /rotasl/clean-redundant-rota-data`: once old sessions are deleted, every log row left without
+its session goes, latest events included (`BookingLogPurgeService`).
 
 #### CourtScheduleJudiciary
 Represents a judge/magistrate assigned to a court schedule.

@@ -2,6 +2,7 @@
   "hearingSlots": [
     {
       "hearingId": "5771a96b-1c5a-45d1-b647-1bec5212cafc",
+      "bookingId": "3771a96b-1c5a-45d1-b647-1bec5212cafc",
       "courtScheduleIds": [
         {
           "courtScheduleId": "1771a96b-1c5a-45d1-b647-1bec5212cafc",

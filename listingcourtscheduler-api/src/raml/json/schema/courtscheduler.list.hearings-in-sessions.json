@@ -11,6 +11,10 @@
           "hearingId": {
             "type": "string"
           },
+          "bookingId": {
+            "description": "The booking whose reservation this listing confirms. Optional: callers that never reserved (Crown fallback, search-and-book, rota) omit it.",
+            "type": "string"
+          },
           "courtScheduleIds": {
             "type": "array",
             "minItems": 1,
