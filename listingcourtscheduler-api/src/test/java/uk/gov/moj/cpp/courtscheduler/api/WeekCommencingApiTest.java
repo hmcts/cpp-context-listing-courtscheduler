@@ -14,7 +14,6 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static uk.gov.moj.cpp.courtscheduler.common.CommonUtils.buildErrorResponse;
 
-import uk.gov.moj.cpp.courtscheduler.api.service.WeekCommencingEditSessionService;
 import uk.gov.moj.cpp.courtscheduler.api.service.WeekCommencingSessionService;
 import uk.gov.moj.cpp.courtscheduler.api.validator.CourtScheduleApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.SessionsApiValidator;
@@ -55,6 +54,8 @@ class WeekCommencingApiTest {
 
     private static final String BUSINESS_TYPE = "TRL";
     private static final String FIRST_MONDAY = "2027-01-04";
+    private static final String COURT_SCHEDULE_ID = "cs-1";
+    private static final String ERROR_MESSAGE = "errorMessage";
 
     @Mock
     private SessionsService sessionsService;
@@ -66,8 +67,6 @@ class WeekCommencingApiTest {
     private WeekCommencingSessionService weekCommencingSessionService;
     @Mock
     private WeekCommencingApiValidator weekCommencingApiValidator;
-    @Mock
-    private WeekCommencingEditSessionService weekCommencingEditSessionService;
     @Captor
     private ArgumentCaptor<CreateSessionRequestParam> createCaptor;
     @Captor
@@ -101,7 +100,7 @@ class WeekCommencingApiTest {
         final CourtSchedulerApi api = api();
         final ValidationException exception = assertThrows(ValidationException.class, () -> api.postWeekCommencingSession(body));
 
-        assertThat(exception.getErrors().getString("errorMessage"), is(ErrorMessages.DUPLICATE_SESSIONS));
+        assertThat(exception.getErrors().getString(ERROR_MESSAGE), is(ErrorMessages.DUPLICATE_SESSIONS));
         verifyNoInteractions(weekCommencingSessionService, sessionsService);
     }
 
@@ -117,7 +116,7 @@ class WeekCommencingApiTest {
         final CourtSchedulerApi api = api();
         final ValidationException exception = assertThrows(ValidationException.class, () -> api.postWeekCommencingSession(body));
 
-        assertThat(exception.getErrors().getString("errorMessage"), is(ErrorMessages.WEEK_COMMENCING_SLOT_BASED_NOT_ALLOWED));
+        assertThat(exception.getErrors().getString(ERROR_MESSAGE), is(ErrorMessages.WEEK_COMMENCING_SLOT_BASED_NOT_ALLOWED));
         verify(sessionsService, never()).create(any());
     }
 
@@ -159,49 +158,49 @@ class WeekCommencingApiTest {
 
     @Test
     void shouldValidateEnrichUpdateAndReturn202ForWeekCommencingEdit() {
-        final WeekCommencingUpdateRequest body = new WeekCommencingUpdateRequest().courtScheduleId("cs-1").capacityInMinutes(1800);
-        final UpdateCourtSchedule updateRequest = new UpdateCourtSchedule().courtScheduleId("cs-1");
+        final WeekCommencingUpdateRequest body = new WeekCommencingUpdateRequest().courtScheduleId(COURT_SCHEDULE_ID).capacityInMinutes(1800);
+        final UpdateCourtSchedule updateRequest = new UpdateCourtSchedule().courtScheduleId(COURT_SCHEDULE_ID);
         when(weekCommencingApiValidator.getWeekCommencingUpdateValidation(body)).thenReturn(EMPTY_JSON_OBJECT);
-        when(weekCommencingEditSessionService.enrichUpdateSessionRequest(body)).thenReturn(updateRequest);
+        when(weekCommencingSessionService.enrichUpdateSessionRequest(body)).thenReturn(updateRequest);
         when(sessionsApiValidator.getSessionsUpdateValidation(updateRequest)).thenReturn(EMPTY_JSON_OBJECT);
         when(sessionsService.update(updateRequest)).thenReturn(new Result().success(true));
 
         final ResponseEntity<Void> response = api().putWeekCommencingSession(body);
 
         assertThat(response.getStatusCode(), is(HttpStatus.ACCEPTED));
-        final InOrder inOrder = inOrder(weekCommencingApiValidator, weekCommencingEditSessionService, sessionsApiValidator, sessionsService);
+        final InOrder inOrder = inOrder(weekCommencingApiValidator, weekCommencingSessionService, sessionsApiValidator, sessionsService);
         inOrder.verify(weekCommencingApiValidator).getWeekCommencingUpdateValidation(body);
-        inOrder.verify(weekCommencingEditSessionService).enrichUpdateSessionRequest(body);
+        inOrder.verify(weekCommencingSessionService).enrichUpdateSessionRequest(body);
         inOrder.verify(sessionsApiValidator).getSessionsUpdateValidation(updateRequest);
         inOrder.verify(sessionsService).update(updateRequest);
     }
 
     @Test
     void shouldRejectEditWhenSessionIsNotWeekCommencing() {
-        final WeekCommencingUpdateRequest body = new WeekCommencingUpdateRequest().courtScheduleId("cs-1").capacityInMinutes(1800);
+        final WeekCommencingUpdateRequest body = new WeekCommencingUpdateRequest().courtScheduleId(COURT_SCHEDULE_ID).capacityInMinutes(1800);
         when(weekCommencingApiValidator.getWeekCommencingUpdateValidation(body))
                 .thenReturn(buildErrorResponse(ErrorMessages.WEEK_COMMENCING_SESSION_NOT_WC));
 
         final CourtSchedulerApi api = api();
         final ValidationException exception = assertThrows(ValidationException.class, () -> api.putWeekCommencingSession(body));
 
-        assertThat(exception.getErrors().getString("errorMessage"), is(ErrorMessages.WEEK_COMMENCING_SESSION_NOT_WC));
-        verifyNoInteractions(weekCommencingEditSessionService, sessionsService);
+        assertThat(exception.getErrors().getString(ERROR_MESSAGE), is(ErrorMessages.WEEK_COMMENCING_SESSION_NOT_WC));
+        verifyNoInteractions(weekCommencingSessionService, sessionsService);
     }
 
     @Test
     void shouldReturnUpdateValidationErrorForWeekCommencingEdit() {
-        final WeekCommencingUpdateRequest body = new WeekCommencingUpdateRequest().courtScheduleId("cs-1").capacityInMinutes(10);
-        final UpdateCourtSchedule updateRequest = new UpdateCourtSchedule().courtScheduleId("cs-1");
+        final WeekCommencingUpdateRequest body = new WeekCommencingUpdateRequest().courtScheduleId(COURT_SCHEDULE_ID).capacityInMinutes(10);
+        final UpdateCourtSchedule updateRequest = new UpdateCourtSchedule().courtScheduleId(COURT_SCHEDULE_ID);
         when(weekCommencingApiValidator.getWeekCommencingUpdateValidation(body)).thenReturn(EMPTY_JSON_OBJECT);
-        when(weekCommencingEditSessionService.enrichUpdateSessionRequest(body)).thenReturn(updateRequest);
+        when(weekCommencingSessionService.enrichUpdateSessionRequest(body)).thenReturn(updateRequest);
         when(sessionsApiValidator.getSessionsUpdateValidation(updateRequest))
                 .thenReturn(buildErrorResponse(ErrorMessages.MAX_DURATION_LESS_THAN_TOTAL_BOOKED));
 
         final CourtSchedulerApi api = api();
         final ValidationException exception = assertThrows(ValidationException.class, () -> api.putWeekCommencingSession(body));
 
-        assertThat(exception.getErrors().getString("errorMessage"), is(ErrorMessages.MAX_DURATION_LESS_THAN_TOTAL_BOOKED));
+        assertThat(exception.getErrors().getString(ERROR_MESSAGE), is(ErrorMessages.MAX_DURATION_LESS_THAN_TOTAL_BOOKED));
         verify(sessionsService, never()).update(any());
     }
 
@@ -221,6 +220,6 @@ class WeekCommencingApiTest {
         // the week commencing service, validator and edit service last
         return new CourtSchedulerApi(new ObjectMapper().findAndRegisterModules(), mock(HttpServletRequest.class), sessionsService, null,
                 sessionsApiValidator, courtScheduleApiValidator, null, null, null, null, null, null, null, null, null, null, null,
-                null, null, null, null, weekCommencingSessionService, weekCommencingApiValidator, weekCommencingEditSessionService);
+                null, null, null, null, weekCommencingSessionService, weekCommencingApiValidator);
     }
 }

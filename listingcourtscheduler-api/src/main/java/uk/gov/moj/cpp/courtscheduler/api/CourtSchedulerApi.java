@@ -42,7 +42,6 @@ import uk.gov.moj.cpp.courtscheduler.api.service.MiService;
 import uk.gov.moj.cpp.courtscheduler.api.service.ProvisionalBookingService;
 import uk.gov.moj.cpp.courtscheduler.api.service.SlotsRemoveService;
 import uk.gov.moj.cpp.courtscheduler.api.service.SlotsUpdateService;
-import uk.gov.moj.cpp.courtscheduler.api.service.WeekCommencingEditSessionService;
 import uk.gov.moj.cpp.courtscheduler.api.service.WeekCommencingSessionService;
 import uk.gov.moj.cpp.courtscheduler.api.validator.AssignJudiciariesApiValidator;
 import uk.gov.moj.cpp.courtscheduler.api.validator.CourtScheduleApiValidator;
@@ -191,7 +190,6 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
     private final BookingLogPurgeService bookingLogPurgeService;
     private final WeekCommencingSessionService weekCommencingSessionService;
     private final WeekCommencingApiValidator weekCommencingApiValidator;
-    private final WeekCommencingEditSessionService weekCommencingEditSessionService;
 
     public CourtSchedulerApi(final ObjectMapper objectMapper,
                              final HttpServletRequest request,
@@ -215,8 +213,7 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
                              final ProvisionalSlotConverter provisionalSlotConverter,
                              final BookingLogPurgeService bookingLogPurgeService,
                              final WeekCommencingSessionService weekCommencingSessionService,
-                             final WeekCommencingApiValidator weekCommencingApiValidator,
-                             final WeekCommencingEditSessionService weekCommencingEditSessionService) {
+                             final WeekCommencingApiValidator weekCommencingApiValidator) {
         this.objectMapper = objectMapper;
         this.lenientObjectMapper = objectMapper.copy()
                 .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
@@ -242,7 +239,6 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
         this.bookingLogPurgeService = bookingLogPurgeService;
         this.weekCommencingSessionService = weekCommencingSessionService;
         this.weekCommencingApiValidator = weekCommencingApiValidator;
-        this.weekCommencingEditSessionService = weekCommencingEditSessionService;
     }
 
     /* ============================================================
@@ -304,14 +300,15 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
 
     @Override
     public ResponseEntity<Void> putWeekCommencingSession(final WeekCommencingUpdateRequest body) {
-        LOG.info("courtscheduler.update-week-commencing.sessions requested: {}", body);
+        final String sanitizedBodyForLog = StringUtils.replaceChars(String.valueOf(body), "\r\n", "  ");
+        LOG.info("courtscheduler.update-week-commencing.sessions requested: {}", sanitizedBodyForLog);
 
         final JsonObject preValidation = weekCommencingApiValidator.getWeekCommencingUpdateValidation(body);
         if (!preValidation.isEmpty()) {
             throw new ValidationException(preValidation);
         }
 
-        final UpdateCourtSchedule updateRequest = weekCommencingEditSessionService.enrichUpdateSessionRequest(body);
+        final UpdateCourtSchedule updateRequest = weekCommencingSessionService.enrichUpdateSessionRequest(body);
 
         final JsonObject validate = sessionsApiValidator.getSessionsUpdateValidation(updateRequest);
         if (!validate.isEmpty()) {
