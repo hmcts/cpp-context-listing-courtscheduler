@@ -140,6 +140,92 @@ class CrownFallbackSearchAndBookIT extends AbstractIT {
     }
 
     @Test
+    void shouldMoveHearingToOtherDateAndRoomWhenSingleDayRequestDiffersFromHeldBooking() throws Exception {
+        // SPRDT-1539 (H23): the single-day path MOVEs. The hearing holds day1/roomA; a request for
+        // day2/roomB releases the old row (payback) and books ONE row stamped source=MOVE, with the
+        // full single-day answer. A replay of the move is then idempotent, again with full fields.
+        final String centreId = UUID.randomUUID().toString();
+        final String roomA = UUID.randomUUID().toString();
+        final String roomB = UUID.randomUUID().toString();
+        final String hearingId = UUID.randomUUID().toString();
+        final LocalDate day1 = LocalDate.now().plusDays(14);
+        final LocalDate day2 = day1.plusDays(1);
+
+        final String session1 = seedSession(day1, roomA, "CR", centreId, C01_CY00, false, false, 360);
+        final String session2 = seedSession(day2, roomB, "CR", centreId, C01_CY00, false, false, 360);
+
+        final Response first = callFallback(hearingId, centreId, roomA, day1, 100, CROWN_FB_LIST_2);
+        assertThat(first.getStatus(), is(OK.getStatusCode()));
+        assertThat(parse(body(first)).getString(COURT_SCHEDULE_ID), is(session1));
+
+        final Response moved = callFallback(hearingId, centreId, roomB, day2, 100, "CROWN_FB_UPDATE");
+        assertThat(moved.getStatus(), is(OK.getStatusCode()));
+        final JsonObject movedBody = parse(body(moved));
+        assertThat(movedBody.getString(COURT_SCHEDULE_ID), is(session2));
+        assertThat(movedBody.getString(SOURCE), is("MOVE"));
+        assertThat(movedBody.getString(COURT_ROOM_ID), is(roomB));
+        assertThat(movedBody.getString("sessionDate"), is(day2.toString()));
+        assertThat(movedBody.getInt(DURATION_IN_MINUTES), is(100));
+        assertThat(movedBody.getBoolean(IS_DRAFT), is(false));
+
+        final List<AllocatedListing> rows = databaseReader.allocatedListings().stream()
+                .filter(al -> hearingId.equals(al.getHearingId()))
+                .collect(Collectors.toList());
+        assertThat("old row released, one new row booked", rows.size(), is(1));
+        assertThat(rows.get(0).getCourtScheduleId(), is(session2));
+        assertThat("the persisted row carries source=MOVE", rows.get(0).getSource(), is("MOVE"));
+        assertThat("old session's capacity restored by the release",
+                databaseReader.courtScheduleById(session1).getAvailableDuration(), is(360));
+        assertThat("new session charged once",
+                databaseReader.courtScheduleById(session2).getAvailableDuration(), is(260));
+
+        final Response replay = callFallback(hearingId, centreId, roomB, day2, 100, "CROWN_FB_UPDATE");
+        assertThat(replay.getStatus(), is(OK.getStatusCode()));
+        final JsonObject replayBody = parse(body(replay));
+        assertThat("replay is idempotent", replayBody.getString(COURT_SCHEDULE_ID), is(session2));
+        assertThat("replay carries the full single-day fields", replayBody.getString(COURT_ROOM_ID), is(roomB));
+        assertThat(replayBody.getString("sessionDate"), is(day2.toString()));
+        assertThat(replayBody.getBoolean(IS_DRAFT), is(false));
+        assertThat("no extra row on replay",
+                databaseReader.allocatedListings().stream()
+                        .filter(al -> hearingId.equals(al.getHearingId())).count(), is(1L));
+        assertThat("replay does not charge the session again",
+                databaseReader.courtScheduleById(session2).getAvailableDuration(), is(260));
+    }
+
+    @Test
+    void shouldReturn422NoAvailabilityAndKeepHeldBookingWhenMoveFindsNoSessionAndCannotAutoCreate() throws Exception {
+        // SPRDT-1539 (H23): search runs BEFORE release. A centre with no session and no ouCode on the
+        // request cannot auto-create, so the move answers 422 NO_AVAILABILITY [date] and the hearing
+        // keeps its existing allocation.
+        final String centreId = UUID.randomUUID().toString();
+        final String roomId = UUID.randomUUID().toString();
+        final String hearingId = UUID.randomUUID().toString();
+        final LocalDate day1 = LocalDate.now().plusDays(14);
+        final LocalDate day2 = day1.plusDays(1);
+
+        final String session1 = seedSession(day1, roomId, "CR", centreId, C01_CY00, false, false, 360);
+        final Response first = callFallback(hearingId, centreId, roomId, day1, 100, CROWN_FB_LIST_2);
+        assertThat(first.getStatus(), is(OK.getStatusCode()));
+
+        final String emptyCentreId = UUID.randomUUID().toString();
+        final Response rejected = callFallback(hearingId, emptyCentreId, roomId, day2, 100, "CROWN_FB_UPDATE");
+
+        assertThat(rejected.getStatus(), is(422));
+        final JsonObject error = parse(body(rejected));
+        assertThat(error.getString("errorCode"), is("NO_AVAILABILITY"));
+        assertThat(error.getJsonArray("unavailableDates").getString(0), is(day2.toString()));
+
+        final List<AllocatedListing> rows = databaseReader.allocatedListings().stream()
+                .filter(al -> hearingId.equals(al.getHearingId()))
+                .collect(Collectors.toList());
+        assertThat("existing allocation untouched", rows.size(), is(1));
+        assertThat(rows.get(0).getCourtScheduleId(), is(session1));
+        assertThat("existing session still charged",
+                databaseReader.courtScheduleById(session1).getAvailableDuration(), is(260));
+    }
+
+    @Test
     void shouldIgnoreBusinessTypeAndPickAnySessionOnCentrePlusDate() throws Exception {
         // Relaxed matching: a CR session at the centre+date should be picked even when the caller
         // doesn't mention businessType at all. The MAGS search-and-book would have a tighter predicate.

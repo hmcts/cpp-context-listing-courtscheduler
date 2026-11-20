@@ -75,6 +75,7 @@ class RotaFileProcessorTest {
     private static final String CHAIR_2 = "CHAIR";
     private static final String PANEL1_2 = "PANEL1";
     private static final String JUDGE_1 = "judge-1";
+    private static final String JUD_1 = "jud-1";
     private static final String LISTING_1 = "listing-1";
     private static final String MAG_1 = "mag-1";
     private static final String MAGISTRATE_EXAMPLE_COM = "magistrate@example.com";
