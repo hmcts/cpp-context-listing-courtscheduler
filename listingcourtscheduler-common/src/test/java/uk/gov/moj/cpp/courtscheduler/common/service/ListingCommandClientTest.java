@@ -10,8 +10,6 @@ import uk.gov.moj.cpp.courtscheduler.common.config.CourtSchedulerSystemUserConfi
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetSocketAddress;
-import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 

@@ -42,7 +42,6 @@ public class ListingCommandClient {
     private final String listingBaseUrl;
     private final HttpClient httpClient;
 
-    @SuppressWarnings("PMD.CloseResource")
     public ListingCommandClient(final CourtSchedulerSystemUserConfig systemUserConfig,
                                 @Value("${listing.base-url:}") final String listingBaseUrl,
                                 @Value("${courtscheduler.http.connect-timeout-seconds:5}") final int connectTimeoutSeconds,
