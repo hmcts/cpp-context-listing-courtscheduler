@@ -146,23 +146,55 @@ class WeekCommencingApiValidatorTest {
     }
 
     @Test
-    void updateValidationShouldPassWhenSessionExistsAndIsWeekCommencing() {
+    void rejectIfWeekCommencingShouldRejectAWeekCommencingSession() {
         final String courtScheduleId = randomUUID().toString();
         final CourtSchedule persisted = new CourtSchedule();
         persisted.setWeekCommencing(true);
         when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId)).thenReturn(persisted);
 
-        final JsonObject result = validator.getWeekCommencingUpdateValidation(updateRequest(courtScheduleId));
+        final JsonObject result = validator.rejectIfWeekCommencingSession(courtScheduleId);
+
+        assertThat(result.getString(ERROR_MESSAGE), is(ErrorMessages.WEEK_COMMENCING_USE_WC_ENDPOINT));
+    }
+
+    @Test
+    void rejectIfWeekCommencingShouldPassForANonWeekCommencingSession() {
+        final String courtScheduleId = randomUUID().toString();
+        final CourtSchedule persisted = new CourtSchedule();
+        persisted.setWeekCommencing(false);
+        when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId)).thenReturn(persisted);
+
+        assertThat(validator.rejectIfWeekCommencingSession(courtScheduleId).isEmpty(), is(true));
+    }
+
+    @Test
+    void rejectIfWeekCommencingShouldPassWhenSessionNotFound() {
+        final String courtScheduleId = randomUUID().toString();
+        when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId)).thenReturn(null);
+
+        assertThat(validator.rejectIfWeekCommencingSession(courtScheduleId).isEmpty(), is(true));
+    }
+
+    @Test
+    void updateValidationShouldPassWhenSessionExistsAndIsWeekCommencing() {
+        final String courtScheduleId = randomUUID().toString();
+        final CourtSchedule persisted = new CourtSchedule();
+        persisted.setWeekCommencing(true);
+        persisted.setBusinessType(BUSINESS_TYPE);
+        when(referenceDataCache.getRotaBusinessTypeByCode(BUSINESS_TYPE))
+                .thenReturn(Optional.of(new BusinessType().typeCode(BUSINESS_TYPE).slot(false)));
+
+        final JsonObject result = validator.getWeekCommencingUpdateValidation(updateRequest(courtScheduleId, BUSINESS_TYPE), persisted);
 
         assertThat(result.isEmpty(), is(true));
+        verifyNoInteractions(sessionsService);
     }
 
     @Test
     void updateValidationShouldReturnErrorWhenSessionNotFound() {
         final String courtScheduleId = randomUUID().toString();
-        when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId)).thenReturn(null);
 
-        final JsonObject result = validator.getWeekCommencingUpdateValidation(updateRequest(courtScheduleId));
+        final JsonObject result = validator.getWeekCommencingUpdateValidation(updateRequest(courtScheduleId, BUSINESS_TYPE), null);
 
         assertThat(result.getString(ERROR_MESSAGE), is(ErrorMessages.SESSION_NOT_FOUND));
     }
@@ -172,11 +204,61 @@ class WeekCommencingApiValidatorTest {
         final String courtScheduleId = randomUUID().toString();
         final CourtSchedule persisted = new CourtSchedule();
         persisted.setWeekCommencing(false);
-        when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId)).thenReturn(persisted);
 
-        final JsonObject result = validator.getWeekCommencingUpdateValidation(updateRequest(courtScheduleId));
+        final JsonObject result = validator.getWeekCommencingUpdateValidation(updateRequest(courtScheduleId, BUSINESS_TYPE), persisted);
 
         assertThat(result.getString(ERROR_MESSAGE), is(ErrorMessages.WEEK_COMMENCING_SESSION_NOT_WC));
+    }
+
+    @Test
+    void updateValidationShouldRejectSlotBasedBusinessType() {
+        final String courtScheduleId = randomUUID().toString();
+        final String slotBasedType = "DVLA";
+        final CourtSchedule persisted = new CourtSchedule();
+        persisted.setWeekCommencing(true);
+        persisted.setBusinessType(BUSINESS_TYPE);
+        when(referenceDataCache.getRotaBusinessTypeByCode(slotBasedType))
+                .thenReturn(Optional.of(new BusinessType().typeCode(slotBasedType).slot(true)));
+
+        final JsonObject result = validator.getWeekCommencingUpdateValidation(updateRequest(courtScheduleId, slotBasedType), persisted);
+
+        assertThat(result.getString(ERROR_MESSAGE), is(ErrorMessages.WEEK_COMMENCING_SLOT_BASED_NOT_ALLOWED));
+        verifyNoInteractions(sessionsService);
+    }
+
+    @Test
+    void updateValidationShouldRejectDuplicateWhenChangingToExistingBusinessType() {
+        final String courtScheduleId = randomUUID().toString();
+        final String newBusinessType = "LGT";
+        final LocalDate sessionDate = LocalDate.of(2027, 1, 4);
+        final CourtSchedule persisted = new CourtSchedule();
+        persisted.setWeekCommencing(true);
+        persisted.setBusinessType(BUSINESS_TYPE);
+        persisted.setCourtHouseId(COURT_CENTRE_ID);
+        persisted.setSessionDate(sessionDate);
+        when(referenceDataCache.getRotaBusinessTypeByCode(newBusinessType))
+                .thenReturn(Optional.of(new BusinessType().typeCode(newBusinessType).slot(false)));
+        when(sessionsService.validateWeekCommencingIntegrity(COURT_CENTRE_ID, newBusinessType, sessionDate, sessionDate))
+                .thenReturn(buildErrorResponse(ErrorMessages.DUPLICATE_SESSIONS));
+
+        final JsonObject result = validator.getWeekCommencingUpdateValidation(updateRequest(courtScheduleId, newBusinessType), persisted);
+
+        assertThat(result.getString(ERROR_MESSAGE), is(ErrorMessages.DUPLICATE_SESSIONS));
+    }
+
+    @Test
+    void updateValidationShouldSkipDuplicateCheckWhenBusinessTypeIsUnchanged() {
+        final String courtScheduleId = randomUUID().toString();
+        final CourtSchedule persisted = new CourtSchedule();
+        persisted.setWeekCommencing(true);
+        persisted.setBusinessType(BUSINESS_TYPE);
+        when(referenceDataCache.getRotaBusinessTypeByCode(BUSINESS_TYPE))
+                .thenReturn(Optional.of(new BusinessType().typeCode(BUSINESS_TYPE).slot(false)));
+
+        final JsonObject result = validator.getWeekCommencingUpdateValidation(updateRequest(courtScheduleId, BUSINESS_TYPE), persisted);
+
+        assertThat(result.isEmpty(), is(true));
+        verifyNoInteractions(sessionsService);
     }
 
     private void givenValidAndDurationBased() {
@@ -198,9 +280,10 @@ class WeekCommencingApiValidatorTest {
                 .capacityInMinutes(1800);
     }
 
-    private static WeekCommencingUpdateRequest updateRequest(final String courtScheduleId) {
+    private static WeekCommencingUpdateRequest updateRequest(final String courtScheduleId, final String businessType) {
         return new WeekCommencingUpdateRequest()
                 .courtScheduleId(courtScheduleId)
+                .businessType(businessType)
                 .capacityInMinutes(1800);
     }
 }

@@ -28,6 +28,7 @@ import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.WEEK_
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.WEEK_COMMENCING_NO_MONDAY;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.WEEK_COMMENCING_SESSION_NOT_WC;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.WEEK_COMMENCING_SLOT_BASED_NOT_ALLOWED;
+import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.WEEK_COMMENCING_USE_WC_ENDPOINT;
 
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
@@ -61,7 +62,7 @@ class WeekCommencingSessionIT extends AbstractIT {
 
     private static final String URL = "/session/weekCommencing";
     private static final String CONTENT_TYPE = "application/vnd.courtscheduler.create-week-commencing.sessions+json";
-    private static final String UPDATE_CONTENT_TYPE = "application/vnd.courtscheduler.update-week-commencing.sessions+json";
+    private static final String UPDATE_CONTENT_TYPE = "application/vnd.courtscheduler.update-week-commencing.session+json";
     private static final int UPDATED_CAPACITY = 2160;
     private static final String COURT_SCHEDULE_URL = "/courtschedule";
     private static final String GET_COURT_SCHEDULE_ACCEPT = "application/vnd.courtscheduler.get+json";
@@ -78,10 +79,14 @@ class WeekCommencingSessionIT extends AbstractIT {
     private static final String GET_HEARING_SLOTS_ACCEPT = "application/vnd.courtscheduler.get.hearing.slots+json";
     private static final String GET_HEARING_IDS_ACCEPT = "application/vnd.courtscheduler.get.hearing.ids+json";
     private static final String COURT_CENTRE_ID = "785339c1-af71-3322-a55b-ba255e0db1c2";
+    private static final String COURT_CENTRE_OUCODE = "B40IM00";
     private static final String FIRST_LISTED_COURT_ROOM_ID = "3fc02c0f-f92e-31da-9686-d626ac8ccdc3";
     private static final String CREATE_CONTENT_TYPE = "application/vnd.courtscheduler.create+json";
+    private static final String UPDATE_SESSION_URL = "/courtschedule/edit";
+    private static final String UPDATE_SESSION_CONTENT_TYPE = "application/vnd.courtscheduler.update+json";
     private static final String VALIDATE_URL = "/validate";
     private static final String VALIDATE_CREATE_CONTENT_TYPE = "application/vnd.courtscheduler.validate.create+json";
+    private static final String VALIDATE_UPDATE_CONTENT_TYPE = "application/vnd.courtscheduler.validate.update+json";
     private static final String DURATION_BASED_BUSINESS_TYPE = "TRL";
     private static final String OTHER_DURATION_BASED_BUSINESS_TYPE = "LGT";
     private static final String SLOT_BASED_BUSINESS_TYPE = "DVLA";
@@ -526,17 +531,7 @@ class WeekCommencingSessionIT extends AbstractIT {
     void shouldRecalculateAvailableDurationWithExistingBookings() throws SQLException {
         assertCreated(request(DURATION_BASED_BUSINESS_TYPE, startDate, endDate));
         final CourtSchedule first = databaseReader.courtSchedules().getFirst();
-        final AllocatedListing booking = new AllocatedListing();
-        booking.setId(UUID.randomUUID().toString());
-        booking.setBookingId(UUID.randomUUID().toString());
-        booking.setCourtScheduleId(first.getCourtScheduleId());
-        booking.setHearingId(UUID.randomUUID().toString());
-        booking.setCourtRoomId(1);
-        booking.setHearingStartTime(first.getSessionDate().atTime(10, 0).toInstant(ZoneOffset.UTC));
-        booking.setDuration(MINUTES_PER_DAY);
-        booking.setOucode(first.getOuCode());
-        booking.setRotaBusinessType(DURATION_BASED_BUSINESS_TYPE);
-        databaseSeeder.insertAllocatedListing(booking);
+        seedBooking(first, MINUTES_PER_DAY);
 
         try (Response response = update(updateRequest(first.getCourtScheduleId(), DURATION_BASED_BUSINESS_TYPE, UPDATED_CAPACITY, true))) {
             assertThat(response.readEntity(String.class), response.getStatus(), is(ACCEPTED.getStatusCode()));
@@ -553,17 +548,7 @@ class WeekCommencingSessionIT extends AbstractIT {
     void shouldRejectUpdateWhenCapacityLessThanTotalBooked() throws SQLException {
         assertCreated(request(DURATION_BASED_BUSINESS_TYPE, startDate, endDate));
         final CourtSchedule first = databaseReader.courtSchedules().getFirst();
-        final AllocatedListing booking = new AllocatedListing();
-        booking.setId(UUID.randomUUID().toString());
-        booking.setBookingId(UUID.randomUUID().toString());
-        booking.setCourtScheduleId(first.getCourtScheduleId());
-        booking.setHearingId(UUID.randomUUID().toString());
-        booking.setCourtRoomId(1);
-        booking.setHearingStartTime(first.getSessionDate().atTime(10, 0).toInstant(ZoneOffset.UTC));
-        booking.setDuration(MINUTES_PER_DAY);
-        booking.setOucode(first.getOuCode());
-        booking.setRotaBusinessType(DURATION_BASED_BUSINESS_TYPE);
-        databaseSeeder.insertAllocatedListing(booking);
+        seedBooking(first, MINUTES_PER_DAY);
 
         try (Response response = update(updateRequest(first.getCourtScheduleId(), DURATION_BASED_BUSINESS_TYPE, MINUTES_PER_DAY / 2, true))) {
             assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
@@ -573,12 +558,36 @@ class WeekCommencingSessionIT extends AbstractIT {
 
     @Test
     void shouldRejectUpdateOfNonWeekCommencingSession() throws SQLException {
-        assertCreated(request(DURATION_BASED_BUSINESS_TYPE, startDate, endDate));
-        final String ordinarySessionId = seedOrdinaryDraftSession(startDate.with(next(TUESDAY)));
+        final String ordinarySessionId = seedOrdinaryDraftSession(startDate.with(next(TUESDAY)), COURT_CENTRE_OUCODE);
 
         try (Response response = update(updateRequest(ordinarySessionId, DURATION_BASED_BUSINESS_TYPE, UPDATED_CAPACITY, false))) {
             assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
             assertThat(response.readEntity(String.class), containsString(WEEK_COMMENCING_SESSION_NOT_WC));
+        }
+    }
+
+    @Test
+    void shouldRejectUpdateWithSlotBasedBusinessType() {
+        assertCreated(request(DURATION_BASED_BUSINESS_TYPE, startDate, endDate));
+        final CourtSchedule first = databaseReader.courtSchedules().getFirst();
+
+        try (Response response = update(updateRequest(first.getCourtScheduleId(), SLOT_BASED_BUSINESS_TYPE, CAPACITY_FIVE_DAYS, false))) {
+            assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
+            assertThat(response.readEntity(String.class), containsString(WEEK_COMMENCING_SLOT_BASED_NOT_ALLOWED));
+        }
+    }
+
+    @Test
+    void shouldRejectUpdateWhenChangingToABusinessTypeThatAlreadyHasAWeekCommencingSessionOnTheSameMonday() {
+        assertCreated(request(DURATION_BASED_BUSINESS_TYPE, startDate, endDate));
+        assertCreated(request(OTHER_DURATION_BASED_BUSINESS_TYPE, startDate, endDate));
+        final CourtSchedule trlSession = databaseReader.courtSchedules().stream()
+                .filter(cs -> DURATION_BASED_BUSINESS_TYPE.equals(cs.getBusinessType()))
+                .findFirst().orElseThrow();
+
+        try (Response response = update(updateRequest(trlSession.getCourtScheduleId(), OTHER_DURATION_BASED_BUSINESS_TYPE, CAPACITY_FIVE_DAYS, false))) {
+            assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
+            assertThat(response.readEntity(String.class), containsString(DUPLICATE_SESSIONS));
         }
     }
 
@@ -599,18 +608,58 @@ class WeekCommencingSessionIT extends AbstractIT {
                 .build().toString();
         try (Response response = putCommand(URL, UPDATE_CONTENT_TYPE, USER_ID, missingBusinessType)) {
             assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
-            assertThat(databaseReader.courtSchedules(), hasSize(0));
+            assertThat(response.readEntity(String.class), containsString("businessType"));
         }
     }
 
     @Test
-    void shouldRefuseAUserWithoutUpdateCourtSchedulePermission() {
+    void shouldRefuseAUserWithoutCreateCourtSchedulePermissionOnWeekCommencingUpdate() {
         assertCreated(request(DURATION_BASED_BUSINESS_TYPE, startDate, endDate));
         final CourtSchedule first = databaseReader.courtSchedules().getFirst();
 
         try (Response response = putCommand(URL, UPDATE_CONTENT_TYPE, IntegrationTestBase.DENIED_USER_ID,
                 updateRequest(first.getCourtScheduleId(), DURATION_BASED_BUSINESS_TYPE, UPDATED_CAPACITY, false).build().toString())) {
             assertThat(response.getStatus(), is(FORBIDDEN.getStatusCode()));
+        }
+    }
+
+    @Test
+    void shouldRejectStandardUpdateOfAWeekCommencingSession() {
+        assertCreated(request(DURATION_BASED_BUSINESS_TYPE, startDate, endDate));
+        final CourtSchedule first = databaseReader.courtSchedules().getFirst();
+
+        final String payload = createObjectBuilder()
+                .add(COURT_SCHEDULE_ID, first.getCourtScheduleId())
+                .add("courtRoomId", first.getCourtRoomId())
+                .add("courtSession", ALL_DAY)
+                .add("businessType", DURATION_BASED_BUSINESS_TYPE)
+                .add("jurisdiction", CROWN)
+                .add("isDraft", true)
+                .build().toString();
+
+        try (Response response = postCommand(UPDATE_SESSION_URL, UPDATE_SESSION_CONTENT_TYPE, USER_ID, payload)) {
+            assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
+            assertThat(response.readEntity(String.class), containsString(WEEK_COMMENCING_USE_WC_ENDPOINT));
+        }
+    }
+
+    @Test
+    void shouldRejectValidateUpdateOfAWeekCommencingSession() {
+        assertCreated(request(DURATION_BASED_BUSINESS_TYPE, startDate, endDate));
+        final CourtSchedule first = databaseReader.courtSchedules().getFirst();
+
+        final String payload = createObjectBuilder()
+                .add(COURT_SCHEDULE_ID, first.getCourtScheduleId())
+                .add("courtRoomId", first.getCourtRoomId())
+                .add("courtSession", ALL_DAY)
+                .add("businessType", DURATION_BASED_BUSINESS_TYPE)
+                .add("panel", ADULT)
+                .add("maxDuration", UPDATED_CAPACITY)
+                .build().toString();
+
+        try (Response response = postCommand(VALIDATE_URL, VALIDATE_UPDATE_CONTENT_TYPE, USER_ID, payload)) {
+            assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
+            assertThat(response.readEntity(String.class), containsString(WEEK_COMMENCING_USE_WC_ENDPOINT));
         }
     }
 
@@ -701,11 +750,15 @@ class WeekCommencingSessionIT extends AbstractIT {
     }
 
     private String seedOrdinaryDraftSession(final LocalDate sessionDate) throws SQLException {
+        return seedOrdinaryDraftSession(sessionDate, weekCommencingOuCode());
+    }
+
+    private String seedOrdinaryDraftSession(final LocalDate sessionDate, final String ouCode) throws SQLException {
         final String id = UUID.randomUUID().toString();
         final CourtSchedule session = new CourtSchedule();
         session.setCourtScheduleId(id);
         session.setListingProfileId(UUID.randomUUID().toString());
-        session.setOuCode(weekCommencingOuCode());
+        session.setOuCode(ouCode);
         session.setCourtRoomId(FIRST_LISTED_COURT_ROOM_ID);
         session.setCourtRoomNumber(1);
         session.setCourtHouseId(COURT_CENTRE_ID);
@@ -733,6 +786,20 @@ class WeekCommencingSessionIT extends AbstractIT {
         session.setJurisdiction(CROWN);
         databaseSeeder.insertCourtSchedule(session);
         return id;
+    }
+
+    private void seedBooking(final CourtSchedule session, final int durationMinutes) throws SQLException {
+        final AllocatedListing booking = new AllocatedListing();
+        booking.setId(UUID.randomUUID().toString());
+        booking.setBookingId(UUID.randomUUID().toString());
+        booking.setCourtScheduleId(session.getCourtScheduleId());
+        booking.setHearingId(UUID.randomUUID().toString());
+        booking.setCourtRoomId(1);
+        booking.setHearingStartTime(session.getSessionDate().atTime(10, 0).toInstant(ZoneOffset.UTC));
+        booking.setDuration(durationMinutes);
+        booking.setOucode(session.getOuCode());
+        booking.setRotaBusinessType(DURATION_BASED_BUSINESS_TYPE);
+        databaseSeeder.insertAllocatedListing(booking);
     }
 
     private static List<LocalDate> mondaysBetween(final LocalDate start, final LocalDate end) {

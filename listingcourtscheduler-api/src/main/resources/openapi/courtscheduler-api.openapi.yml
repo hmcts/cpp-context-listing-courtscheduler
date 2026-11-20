@@ -175,7 +175,7 @@ paths:
       requestBody:
         required: true
         content:
-          application/vnd.courtscheduler.update-week-commencing.sessions+json:
+          application/vnd.courtscheduler.update-week-commencing.session+json:
             schema:
               $ref: '#/components/schemas/WeekCommencingUpdateRequest'
       responses:

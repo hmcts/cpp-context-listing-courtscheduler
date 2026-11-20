@@ -152,13 +152,13 @@ protocols: [ HTTP, HTTPS ]
       immutable and taken from the persisted session.
       ...
       (mapping):
-          requestType: application/vnd.courtscheduler.update-week-commencing.sessions+json
-          name: courtscheduler.update-week-commencing.sessions
+          requestType: application/vnd.courtscheduler.update-week-commencing.session+json
+          name: courtscheduler.update-week-commencing.session
       ...
     body:
-      application/vnd.courtscheduler.update-week-commencing.sessions+json:
-        schema: !include json/schema/courtscheduler.update-week-commencing.sessions.json
-        example: !include json/courtscheduler.update-week-commencing.sessions.json
+      application/vnd.courtscheduler.update-week-commencing.session+json:
+        schema: !include json/schema/courtscheduler.update-week-commencing.session.json
+        example: !include json/courtscheduler.update-week-commencing.session.json
     responses:
       202:
         description: OK

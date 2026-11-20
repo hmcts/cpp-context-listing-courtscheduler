@@ -9,6 +9,7 @@ import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.WEEK_
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.WEEK_COMMENCING_NO_MONDAY;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.WEEK_COMMENCING_SESSION_NOT_WC;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.WEEK_COMMENCING_SLOT_BASED_NOT_ALLOWED;
+import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.WEEK_COMMENCING_USE_WC_ENDPOINT;
 
 import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataCache;
 import uk.gov.moj.cpp.courtscheduler.common.service.SessionsService;
@@ -24,6 +25,7 @@ import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.time.temporal.TemporalAdjusters;
+import java.util.Objects;
 import java.util.Optional;
 
 import jakarta.json.JsonObject;
@@ -93,17 +95,45 @@ public class WeekCommencingApiValidator {
     }
 
     /**
-     * Validates that the session identified by the request exists and is a week commencing session.
-     * Returns the first error found, or an empty object when the request is valid.
+     * Rejects the request if the session is a week commencing row, so that the standard
+     * courtscheduler.update and validate.update endpoints cannot modify week commencing sessions.
+     * Returns an error when the session exists and is week commencing; returns empty otherwise
+     * (non-existent or non-WC sessions fall through to the standard update validation).
      */
-    public JsonObject getWeekCommencingUpdateValidation(final WeekCommencingUpdateRequest request) {
-        final CourtSchedule persisted = courtScheduleRepository.retrieveCourtScheduleWithListingById(
-                request.getCourtScheduleId());
+    public JsonObject rejectIfWeekCommencingSession(final String courtScheduleId) {
+        final CourtSchedule persisted = courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId);
+        if (persisted != null && TRUE.equals(persisted.isWeekCommencing())) {
+            return buildErrorResponse(WEEK_COMMENCING_USE_WC_ENDPOINT);
+        }
+        return EMPTY_JSON_OBJECT;
+    }
+
+    /**
+     * Validates that the session exists, is a week commencing session, uses a duration-based
+     * business type, and — when the business type is changing — that no other week commencing
+     * session already exists for the same court centre and new business type on the same Monday.
+     * The caller is responsible for loading {@code persisted} via
+     * {@link uk.gov.moj.cpp.courtscheduler.api.service.WeekCommencingSessionService#loadPersistedSession}
+     * so the row is fetched only once per request.
+     */
+    public JsonObject getWeekCommencingUpdateValidation(final WeekCommencingUpdateRequest request,
+                                                        final CourtSchedule persisted) {
         if (isNull(persisted)) {
             return buildErrorResponse(SESSION_NOT_FOUND);
         }
         if (!TRUE.equals(persisted.isWeekCommencing())) {
             return buildErrorResponse(WEEK_COMMENCING_SESSION_NOT_WC);
+        }
+        if (isSlotBased(request.getBusinessType())) {
+            return buildErrorResponse(WEEK_COMMENCING_SLOT_BASED_NOT_ALLOWED);
+        }
+        if (!Objects.equals(persisted.getBusinessType(), request.getBusinessType())) {
+            final JsonObject duplicate = sessionsService.validateWeekCommencingIntegrity(
+                    persisted.getCourtHouseId(), request.getBusinessType(),
+                    persisted.getSessionDate(), persisted.getSessionDate());
+            if (!duplicate.isEmpty()) {
+                return duplicate;
+            }
         }
         return EMPTY_JSON_OBJECT;
     }

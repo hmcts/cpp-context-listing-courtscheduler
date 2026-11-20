@@ -14,11 +14,11 @@ import uk.gov.moj.cpp.courtscheduler.openapi.model.Session;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.UpdateCourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.WeekCommencingCreateRequest;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.WeekCommencingUpdateRequest;
+import uk.gov.moj.cpp.courtscheduler.domain.utils.TimezoneUtils;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 
 import java.time.DayOfWeek;
-import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Locale;
@@ -32,8 +32,8 @@ public class WeekCommencingSessionService {
 
     private static final String MONDAY = StringUtils.capitalize(DayOfWeek.MONDAY.name().toLowerCase(Locale.ROOT));
     private static final int EVERY_WEEK_REPEAT = 1;
-    private static final DateTimeFormatter UTC_HH_MM =
-            DateTimeFormatter.ofPattern("HH:mm").withZone(ZoneOffset.UTC);
+    private static final DateTimeFormatter LONDON_HH_MM =
+            DateTimeFormatter.ofPattern("HH:mm").withZone(TimezoneUtils.LONDON_ZONE);
 
     private final ReferenceDataCache referenceDataCache;
     private final CourtScheduleRepository courtScheduleRepository;
@@ -92,10 +92,12 @@ public class WeekCommencingSessionService {
                 .orElse(null);
     }
 
-    public UpdateCourtSchedule enrichUpdateSessionRequest(final WeekCommencingUpdateRequest request) {
-        final CourtSchedule persisted = courtScheduleRepository.retrieveCourtScheduleWithListingById(
-                request.getCourtScheduleId());
+    public CourtSchedule loadPersistedSession(final String courtScheduleId) {
+        return courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId);
+    }
 
+    public UpdateCourtSchedule enrichUpdateSessionRequest(final WeekCommencingUpdateRequest request,
+                                                          final CourtSchedule persisted) {
         return new UpdateCourtSchedule()
                 .courtScheduleId(request.getCourtScheduleId())
                 .courtRoomId(persisted.getCourtRoomId())
@@ -108,9 +110,9 @@ public class WeekCommencingSessionService {
                 .maxDurationForMorning(0)
                 .maxDurationForAfternoon(0)
                 .sessionStartTime(persisted.getSessionStartTime() != null
-                        ? UTC_HH_MM.format(persisted.getSessionStartTime()) : null)
+                        ? LONDON_HH_MM.format(persisted.getSessionStartTime()) : null)
                 .sessionEndTime(persisted.getSessionEndTime() != null
-                        ? UTC_HH_MM.format(persisted.getSessionEndTime()) : null)
+                        ? LONDON_HH_MM.format(persisted.getSessionEndTime()) : null)
                 .isOverbookingAllowed(TRUE.equals(request.getIsOverbookingAllowed()))
                 .jurisdiction(persisted.getJurisdiction())
                 .isDraft(persisted.isDraft());

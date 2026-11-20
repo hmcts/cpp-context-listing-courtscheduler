@@ -126,14 +126,14 @@ class WeekCommencingSessionServiceTest {
     void shouldBuildUpdateCourtScheduleFromRequestAndPersistedSession() {
         final CourtSchedule persisted = persistedSession(COURT_ROOM_ID, BUSINESS_TYPE, "AD", ADULT,
                 CROWN, true, null, null);
-        when(courtScheduleRepository.retrieveCourtScheduleWithListingById(COURT_SCHEDULE_ID)).thenReturn(persisted);
 
         final UpdateCourtSchedule result = service.enrichUpdateSessionRequest(
                 new WeekCommencingUpdateRequest()
                         .courtScheduleId(COURT_SCHEDULE_ID)
                         .businessType(BUSINESS_TYPE)
                         .capacityInMinutes(CAPACITY_IN_MINUTES)
-                        .isOverbookingAllowed(true));
+                        .isOverbookingAllowed(true),
+                persisted);
 
         assertThat(result.getCourtScheduleId(), is(COURT_SCHEDULE_ID));
         assertThat(result.getCourtRoomId(), is(COURT_ROOM_ID));
@@ -154,32 +154,51 @@ class WeekCommencingSessionServiceTest {
     void businessTypeShouldComeFromRequestNotPersistedEntity() {
         final CourtSchedule persisted = persistedSession(COURT_ROOM_ID, "TRL", "AD", ADULT,
                 CROWN, true, null, null);
-        when(courtScheduleRepository.retrieveCourtScheduleWithListingById(COURT_SCHEDULE_ID)).thenReturn(persisted);
 
         final UpdateCourtSchedule result = service.enrichUpdateSessionRequest(
                 new WeekCommencingUpdateRequest()
                         .courtScheduleId(COURT_SCHEDULE_ID)
                         .businessType("FWT")
                         .capacityInMinutes(CAPACITY_IN_MINUTES)
-                        .isOverbookingAllowed(false));
+                        .isOverbookingAllowed(false),
+                persisted);
 
         assertThat(result.getBusinessType(), is("FWT"));
     }
 
     @Test
-    void shouldFormatSessionStartAndEndTimesAsHhMmUtc() {
+    void shouldFormatSessionStartAndEndTimesAsHhMmLondon() {
         final Instant startTime = Instant.parse("2027-01-04T10:00:00Z");
         final Instant endTime = Instant.parse("2027-01-04T17:00:00Z");
         final CourtSchedule persisted = persistedSession(COURT_ROOM_ID, BUSINESS_TYPE, "AD", ADULT,
                 CROWN, true, startTime, endTime);
-        when(courtScheduleRepository.retrieveCourtScheduleWithListingById(COURT_SCHEDULE_ID)).thenReturn(persisted);
 
         final UpdateCourtSchedule result = service.enrichUpdateSessionRequest(
                 new WeekCommencingUpdateRequest()
                         .courtScheduleId(COURT_SCHEDULE_ID)
                         .businessType(BUSINESS_TYPE)
                         .capacityInMinutes(CAPACITY_IN_MINUTES)
-                        .isOverbookingAllowed(false));
+                        .isOverbookingAllowed(false),
+                persisted);
+
+        assertThat(result.getSessionStartTime(), is("10:00"));
+        assertThat(result.getSessionEndTime(), is("17:00"));
+    }
+
+    @Test
+    void shouldApplyBstOffsetInSummer() {
+        final Instant startTime = Instant.parse("2027-06-07T09:00:00Z");
+        final Instant endTime = Instant.parse("2027-06-07T16:00:00Z");
+        final CourtSchedule persisted = persistedSession(COURT_ROOM_ID, BUSINESS_TYPE, "AD", ADULT,
+                CROWN, true, startTime, endTime);
+
+        final UpdateCourtSchedule result = service.enrichUpdateSessionRequest(
+                new WeekCommencingUpdateRequest()
+                        .courtScheduleId(COURT_SCHEDULE_ID)
+                        .businessType(BUSINESS_TYPE)
+                        .capacityInMinutes(CAPACITY_IN_MINUTES)
+                        .isOverbookingAllowed(false),
+                persisted);
 
         assertThat(result.getSessionStartTime(), is("10:00"));
         assertThat(result.getSessionEndTime(), is("17:00"));
@@ -189,14 +208,14 @@ class WeekCommencingSessionServiceTest {
     void shouldSetSessionTimesToNullWhenPersistedTimesAreNull() {
         final CourtSchedule persisted = persistedSession(COURT_ROOM_ID, BUSINESS_TYPE, "AD", ADULT,
                 CROWN, true, null, null);
-        when(courtScheduleRepository.retrieveCourtScheduleWithListingById(COURT_SCHEDULE_ID)).thenReturn(persisted);
 
         final UpdateCourtSchedule result = service.enrichUpdateSessionRequest(
                 new WeekCommencingUpdateRequest()
                         .courtScheduleId(COURT_SCHEDULE_ID)
                         .businessType(BUSINESS_TYPE)
                         .capacityInMinutes(CAPACITY_IN_MINUTES)
-                        .isOverbookingAllowed(false));
+                        .isOverbookingAllowed(false),
+                persisted);
 
         assertThat(result.getSessionStartTime(), is(nullValue()));
         assertThat(result.getSessionEndTime(), is(nullValue()));

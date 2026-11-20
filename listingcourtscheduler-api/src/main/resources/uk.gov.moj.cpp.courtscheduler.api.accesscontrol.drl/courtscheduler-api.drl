@@ -25,10 +25,10 @@ rule "API - Action - courtscheduler.create-week-commencing.sessions"
     $outcome.setSuccess(true);
 end
 
-rule "API - Action - courtscheduler.update-week-commencing.sessions"
+rule "API - Action - courtscheduler.update-week-commencing.session"
   when
     $outcome: Outcome();
-    $action: Action(name == "courtscheduler.update-week-commencing.sessions");
+    $action: Action(name == "courtscheduler.update-week-commencing.session");
         eval(userAndGroupProvider.hasPermission($action, PermissionConstants.createCourtSchedulePermission()));
   then
     $outcome.setSuccess(true);
