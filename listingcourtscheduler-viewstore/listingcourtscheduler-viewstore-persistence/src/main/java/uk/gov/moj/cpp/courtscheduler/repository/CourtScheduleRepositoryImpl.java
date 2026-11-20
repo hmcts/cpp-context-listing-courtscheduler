@@ -110,6 +110,12 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
     private static final int SEARCH_QUERY_INITIAL_CAPACITY = 700;
     private static final String STATUS_DRAFT = "DRAFT";
     private static final String STATUS_FINAL = "FINAL";
+    /**
+     * SPRDT-1572 / LPT-2608: a CROWN multiday block books duration-based AD sessions only — the same
+     * rule the multiday hearing-slots search already forces (SlotsSearchService MULTIDAY_IS_SLOT_BASED).
+     * is_slot_based is NOT NULL (changeset 019), so no null handling is needed.
+     */
+    private static final String DURATION_BASED_ONLY_PREDICATE = "  AND s.is_slot_based = false\n";
     private static final int SINGLE_RESULT_COUNT = 1;
     // Returns one row per court_schedule. Aggregates fold allocated_listings into the group so
     // availability (available_slot, available_duration_mins, totalbooked{,formorning,forafternoon})
@@ -1145,6 +1151,14 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
             LOGGER.info("findConsecutiveSessions: anchor {} not found or inactive", anchorCourtScheduleId);
             return Collections.emptyList();
         }
+        // SPRDT-1572: a CROWN multiday block books duration-based AD sessions only. A slot-based
+        // anchor is refused here: the run query below excludes slot-based rows, so without this
+        // guard the run would silently start on the day AFTER the anchor.
+        if (anchor.isSlotBased()) {
+            LOGGER.info("findConsecutiveSessions: anchor {} is slot-based; multiday needs duration-based AD sessions",
+                    anchorCourtScheduleId);
+            return Collections.emptyList();
+        }
 
         final LocalDate startDate = anchor.getSessionDate();
         final int weekendBuffer = 2 * ((daysNeeded / 5) + 1);
@@ -1160,23 +1174,38 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
     /**
      * CROWN no-anchor consecutive search (SPRDT-1089, AC3). Finds a single room in the court centre
      * (filtered on {@code court_house_id}, the canonical court-centre id — same mapping as
-     * {@link #findCrownFallbackCandidate}) that has {@code daysNeeded} consecutive AD weekday sessions
-     * of one business type starting from {@code fromDate}, skipping weekends. Returns the run for the
-     * first qualifying (room, business type), or empty if none qualifies.
+     * {@link #findCrownFallbackCandidate}) that has {@code daysNeeded} consecutive duration-based AD
+     * weekday sessions of one business type starting from {@code fromDate}, skipping weekends. Returns
+     * the run for the first qualifying (room, business type), or empty if none qualifies.
      *
      * <p>Mirrors {@link #queryAdWeekdaySessions}: {@code active = true}, {@code court_session = 'AD'},
      * {@code EXTRACT(DOW) NOT IN (0,6)}. Consecutiveness across weekends is asserted by the caller
      * ({@code areConsecutiveBusinessDays}); here we provide a generous window and let the caller trim.</p>
      */
     @Override
-    public List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> findConsecutiveSessionsForCentre(
+    public List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> findConsecutiveDurationBasedSessionsForCentre(
             final String courtCentreId, final LocalDate fromDate, final int daysNeeded) {
-        return findConsecutiveSessionsForCentre(courtCentreId, fromDate, daysNeeded, null);
+        return findConsecutiveAdSessionsForCentre(courtCentreId, fromDate, daysNeeded, null, true);
     }
 
     @Override
-    public List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> findConsecutiveSessionsForCentre(
-            final String courtCentreId, final LocalDate fromDate, final int daysNeeded, final String courtRoomId) {
+    public List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> findConsecutiveDurationBasedSessionsInCourtRoom(
+            final String courtCentreId, final LocalDate fromDate, final int daysNeeded, final String courtRoomId,
+            final boolean finalSessionsOnly) {
+        return findConsecutiveAdSessionsForCentre(courtCentreId, fromDate, daysNeeded, courtRoomId, true,
+                finalSessionsOnly ? Boolean.FALSE : null);
+    }
+
+    private List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> findConsecutiveAdSessionsForCentre(
+            final String courtCentreId, final LocalDate fromDate, final int daysNeeded, final String courtRoomId,
+            final boolean durationBasedOnly) {
+        return findConsecutiveAdSessionsForCentre(courtCentreId, fromDate, daysNeeded, courtRoomId, durationBasedOnly, null);
+    }
+
+    /** @param isDraft {@code null} for any draft state, else only sessions with that {@code is_draft}. */
+    private List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> findConsecutiveAdSessionsForCentre(
+            final String courtCentreId, final LocalDate fromDate, final int daysNeeded, final String courtRoomId,
+            final boolean durationBasedOnly, final Boolean isDraft) {
         final StringBuilder roomQuery = new StringBuilder(512).append("""
                 SELECT s.court_room_id, s.rota_business_type
                 FROM court_schedule s
@@ -1189,6 +1218,12 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
         if (courtRoomId != null) {
             roomQuery.append("  AND s.court_room_id = :courtRoomId\n");
         }
+        if (durationBasedOnly) {
+            roomQuery.append(DURATION_BASED_ONLY_PREDICATE);
+        }
+        if (isDraft != null) {
+            roomQuery.append("  AND s.is_draft = :isDraft\n");
+        }
         roomQuery.append("""
                 GROUP BY s.court_room_id, s.rota_business_type
                 ORDER BY s.court_room_id, s.rota_business_type
@@ -1198,6 +1233,9 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
         roomJpaQuery.setParameter("fromDate", java.sql.Date.valueOf(fromDate));
         if (courtRoomId != null) {
             roomJpaQuery.setParameter("courtRoomId", courtRoomId);
+        }
+        if (isDraft != null) {
+            roomJpaQuery.setParameter(IS_DRAFT, isDraft);
         }
 
         @SuppressWarnings(UNCHECKED_WARNING)
@@ -1214,7 +1252,7 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
             final String candidateRoomId = (String) room[0];
             final String businessType = (String) room[1];
             final List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> run = queryAdWeekdaySessionsInCentre(
-                    courtCentreId, candidateRoomId, businessType, fromDate, toInclusive);
+                    courtCentreId, candidateRoomId, businessType, fromDate, toInclusive, durationBasedOnly, isDraft);
             if (run.size() >= daysNeeded) {
                 return run;
             }
@@ -1224,8 +1262,9 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
 
     private List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> queryAdWeekdaySessionsInCentre(
             final String courtCentreId, final String courtRoomId, final String businessType,
-            final LocalDate fromInclusive, final LocalDate toInclusive) {
-        final String queryStr = """
+            final LocalDate fromInclusive, final LocalDate toInclusive, final boolean durationBasedOnly,
+            final Boolean isDraft) {
+        final StringBuilder queryStr = new StringBuilder(512).append("""
                 SELECT s.id
                 FROM court_schedule s
                 WHERE s.active = true
@@ -1236,14 +1275,23 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
                   AND EXTRACT(DOW FROM s.session_start) NOT IN (0, 6)
                   AND s.session_start >= :startDate
                   AND s.session_start <= :endDate
-                ORDER BY s.session_start
-                """;
-        final jakarta.persistence.Query query = entityManager.createNativeQuery(queryStr);
+                """);
+        if (durationBasedOnly) {
+            queryStr.append(DURATION_BASED_ONLY_PREDICATE);
+        }
+        if (isDraft != null) {
+            queryStr.append("  AND s.is_draft = :isDraft\n");
+        }
+        queryStr.append("ORDER BY s.session_start");
+        final jakarta.persistence.Query query = entityManager.createNativeQuery(queryStr.toString());
         query.setParameter(COURT_CENTRE_ID, courtCentreId);
         query.setParameter(COURT_ROOM_ID, courtRoomId);
         query.setParameter(BUSINESS_TYPE, businessType);
         query.setParameter(START_DATE, java.sql.Date.valueOf(fromInclusive));
         query.setParameter(END_DATE, java.sql.Date.valueOf(toInclusive));
+        if (isDraft != null) {
+            query.setParameter(IS_DRAFT, isDraft);
+        }
 
         @SuppressWarnings(UNCHECKED_WARNING)
         final List<String> ids = query.getResultList();
@@ -1278,7 +1326,10 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
                   AND EXTRACT(DOW FROM s.session_start) NOT IN (0, 6)
                   AND s.session_start >= :startDate
                   AND s.session_start <= :endDate
-                """);
+                """)
+                // SPRDT-1572: both callers (anchored consecutive search, extend tail) build CROWN
+                // multiday blocks, which book duration-based AD sessions only.
+                .append(DURATION_BASED_ONLY_PREDICATE);
         // Every session of a CROWN multiday block shares one business type: the anchored consecutive
         // search passes the anchor's and the extend tail passes the block's last day's (SPRDT-1475).
         // null is kept only for the findAdSessionsInRange contract.

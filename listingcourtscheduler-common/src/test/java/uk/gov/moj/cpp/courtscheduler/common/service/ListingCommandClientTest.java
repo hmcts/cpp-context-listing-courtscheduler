@@ -18,6 +18,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import jakarta.json.Json;
 import jakarta.json.JsonObject;
 
+import com.sun.net.httpserver.Headers;
 import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -35,7 +36,8 @@ class ListingCommandClientTest {
     private HttpServer server;
     private final AtomicReference<String> receivedPath = new AtomicReference<>();
     private final AtomicReference<String> receivedMethod = new AtomicReference<>();
-    private final AtomicReference<Map<String, List<String>>> receivedHeaders = new AtomicReference<>();
+    @SuppressWarnings("PMD.LooseCoupling")
+    private final AtomicReference<Headers> receivedHeaders = new AtomicReference<>();
     private final AtomicReference<String> receivedBody = new AtomicReference<>();
     private int responseStatus = 202;
 

@@ -6,6 +6,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.time.Duration;
 
+import jakarta.annotation.PreDestroy;
 import jakarta.json.JsonObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,6 +40,7 @@ public class ListingCommandClient {
     private final RestClient restClient;
     private final CourtSchedulerSystemUserConfig systemUserConfig;
     private final String listingBaseUrl;
+    private final HttpClient httpClient;
 
     @SuppressWarnings("PMD.CloseResource")
     public ListingCommandClient(final CourtSchedulerSystemUserConfig systemUserConfig,
@@ -50,12 +52,17 @@ public class ListingCommandClient {
 
         // Same timeout rationale as CommonPlatformQueryClient: a hung listing peer must not
         // wedge the @Async rota pipeline indefinitely.
-        final HttpClient httpClient = HttpClient.newBuilder()
+        this.httpClient = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(connectTimeoutSeconds))
                 .build();
         final JdkClientHttpRequestFactory factory = new JdkClientHttpRequestFactory(httpClient);
         factory.setReadTimeout(Duration.ofSeconds(readTimeoutSeconds));
         this.restClient = RestClient.builder().requestFactory(factory).build();
+    }
+
+    @PreDestroy
+    public void close() {
+        httpClient.close();
     }
 
     /**

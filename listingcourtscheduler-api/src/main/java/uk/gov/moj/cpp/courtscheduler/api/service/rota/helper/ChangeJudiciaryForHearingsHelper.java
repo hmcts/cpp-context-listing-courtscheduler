@@ -3,8 +3,9 @@ package uk.gov.moj.cpp.courtscheduler.api.service.rota.helper;
 import uk.gov.moj.cpp.courtscheduler.common.service.CourtScheduleJudiciaryService;
 import uk.gov.moj.cpp.courtscheduler.common.service.ListingCommandClient;
 
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -22,6 +23,10 @@ import org.springframework.stereotype.Service;
  * Helper class for building {@code listing.command.change-judiciary-for-hearings} payloads
  * for the listing context, from the court schedules whose judiciaries changed during rota
  * file processing.
+ *
+ * <p>Listing holds one judiciary per hearing, while a hearing may be allocated to several
+ * sessions (court schedules). A hearing is therefore only sent to listing when every one of
+ * its sessions has the same judiciary; hearings whose sessions differ are skipped.</p>
  */
 @Service
 public class ChangeJudiciaryForHearingsHelper {
@@ -30,13 +35,14 @@ public class ChangeJudiciaryForHearingsHelper {
 
     private static final Logger logger = LoggerFactory.getLogger(ChangeJudiciaryForHearingsHelper.class);
 
-    // Column positions of the rows returned by getJudiciaryHearingInfoForCourtSchedules
-    private static final int COURT_SCHEDULE_ID = 0;
-    private static final int HEARING_ID = 1;
+    // Column positions of the rows returned by getHearingSessionJudiciariesForCourtSchedules
+    private static final int HEARING_ID = 0;
+    private static final int COURT_SCHEDULE_ID = 1;
     private static final int JUDICIARY_ID = 2;
     private static final int JUDICIARY_TYPE = 3;
     private static final int IS_BENCH_CHAIRMAN = 4;
     private static final int IS_DEPUTY = 5;
+    private static final int SINGLE_DISTINCT_JUDICIARY_SET = 1;
 
     @Inject
     private CourtScheduleJudiciaryService courtScheduleJudiciaryService;
@@ -45,16 +51,18 @@ public class ChangeJudiciaryForHearingsHelper {
     private ListingCommandClient listingCommandClient;
 
     /**
-     * Queries court_schedule, court_schedule_judiciary and allocated_listings for the supplied
-     * court schedule IDs and builds one {@code listing.command.change-judiciary-for-hearings}
-     * payload per court schedule: the hearing IDs allocated to that schedule, and the judiciaries
-     * currently assigned to it (judicialId, judicialRoleType, isBenchChairman, isDeputy).
-     * A changed court schedule whose judiciaries were all removed still produces a payload, with
-     * an empty {@code judiciary} array, so listing clears the judiciary from its hearings.
-     * Court schedules without an allocated hearing produce no payload.
+     * Finds the hearings allocated to the supplied court schedule IDs, along with the judiciaries
+     * of every session each hearing is allocated to, and groups hearings that share an identical
+     * judiciary set into one {@code listing.command.change-judiciary-for-hearings} payload.
+     * A hearing is only included when every one of its sessions has the same judiciaries
+     * (judicialId, judicialRoleType, isBenchChairman, isDeputy). A hearing whose sessions have no
+     * judiciaries at all still produces a payload, with an empty {@code judiciary} array, so listing
+     * clears the judiciary from the hearing. A hearing whose sessions have different judiciaries
+     * produces no payload.
      *
      * @param changedCourtScheduleIds the court schedule IDs whose judiciaries changed
-     * @return the change-judiciary-for-hearings payloads, one per court schedule with data
+     * @return one payload per distinct judiciary set, each containing all hearing IDs whose sessions
+     *         share that set
      */
     public List<JsonObject> createChangeJudiciaryForHearingsPayloads(final List<String> changedCourtScheduleIds) {
         if (changedCourtScheduleIds == null || changedCourtScheduleIds.isEmpty()) {
@@ -62,20 +70,34 @@ public class ChangeJudiciaryForHearingsHelper {
             return List.of();
         }
 
-        final List<Object[]> judiciaryHearingRows =
-                courtScheduleJudiciaryService.getJudiciaryHearingInfoForCourtSchedules(changedCourtScheduleIds);
-        logger.info("Retrieved {} judiciary/hearing rows for {} changed court schedule IDs",
-                judiciaryHearingRows.size(), changedCourtScheduleIds.size());
+        final List<Object[]> hearingSessionJudiciaryRows =
+                courtScheduleJudiciaryService.getHearingSessionJudiciariesForCourtSchedules(changedCourtScheduleIds);
+        logger.info("Retrieved {} hearing/session/judiciary rows for {} changed court schedule IDs",
+                hearingSessionJudiciaryRows.size(), changedCourtScheduleIds.size());
 
-        final Map<String, ScheduleJudiciaryHearings> scheduleDataByCourtScheduleId =
-                groupRowsByCourtScheduleId(judiciaryHearingRows);
+        final Map<String, Map<String, Map<String, JsonObject>>> sessionJudiciariesByHearingId =
+                groupRowsByHearingIdAndSession(hearingSessionJudiciaryRows);
 
-        final List<JsonObject> payloads = scheduleDataByCourtScheduleId.values().stream()
-                .map(this::buildChangeJudiciaryForHearingsPayload)
-                .toList();
+        final Map<Map<String, JsonObject>, List<String>> hearingIdsByJudiciarySet = new LinkedHashMap<>();
+        sessionJudiciariesByHearingId.forEach((hearingId, judiciariesBySession) -> {
+            final Set<Map<String, JsonObject>> distinctSessionJudiciaries = new HashSet<>(judiciariesBySession.values());
+            if (distinctSessionJudiciaries.size() == SINGLE_DISTINCT_JUDICIARY_SET) {
+                hearingIdsByJudiciarySet
+                        .computeIfAbsent(distinctSessionJudiciaries.iterator().next(), k -> new ArrayList<>())
+                        .add(hearingId);
+            } else {
+                logger.info("Skipping change-judiciary-for-hearings for hearing {} - its {} sessions {} do not all have the same judiciaries",
+                        hearingId, judiciariesBySession.size(), judiciariesBySession.keySet());
+            }
+        });
 
-        logger.info("Built {} change-judiciary-for-hearings payloads from {} changed court schedule IDs",
-                payloads.size(), changedCourtScheduleIds.size());
+        final List<JsonObject> payloads = new ArrayList<>();
+        hearingIdsByJudiciarySet.forEach((judiciarySet, hearingIds) ->
+                payloads.add(buildChangeJudiciaryForHearingsPayload(hearingIds, judiciarySet)));
+
+        final int sentHearingCount = hearingIdsByJudiciarySet.values().stream().mapToInt(List::size).sum();
+        logger.info("Built {} change-judiciary-for-hearings payloads covering {} hearings ({} evaluated) from {} changed court schedule IDs",
+                payloads.size(), sentHearingCount, sessionJudiciariesByHearingId.size(), changedCourtScheduleIds.size());
         return payloads;
     }
 
@@ -111,27 +133,25 @@ public class ChangeJudiciaryForHearingsHelper {
     }
 
     /**
-     * Groups the (hearing, judiciary) rows by court schedule ID, de-duplicating the hearing IDs
-     * and judiciaries that the join repeats for every combination. Rows with a null judiciary ID
-     * (a changed court schedule whose active judiciaries were all removed) still register the
-     * hearing, so the schedule produces a payload with an empty judiciary array.
+     * Groups the rows by hearing ID and then by session (court schedule ID), de-duplicating the
+     * judiciaries per session. Rows with a null judiciary ID (a session without active judiciaries)
+     * still register the session, with no judiciaries.
      */
-    private Map<String, ScheduleJudiciaryHearings> groupRowsByCourtScheduleId(final List<Object[]> judiciaryHearingRows) {
-        final Map<String, ScheduleJudiciaryHearings> scheduleDataByCourtScheduleId = new LinkedHashMap<>();
+    private Map<String, Map<String, Map<String, JsonObject>>> groupRowsByHearingIdAndSession(final List<Object[]> hearingSessionJudiciaryRows) {
+        final Map<String, Map<String, Map<String, JsonObject>>> sessionJudiciariesByHearingId = new LinkedHashMap<>();
 
-        judiciaryHearingRows.forEach(row -> {
-            final String courtScheduleId = (String) row[COURT_SCHEDULE_ID];
-            final ScheduleJudiciaryHearings scheduleData = scheduleDataByCourtScheduleId
-                    .computeIfAbsent(courtScheduleId, key -> new ScheduleJudiciaryHearings(new LinkedHashSet<>(), new LinkedHashMap<>()));
+        hearingSessionJudiciaryRows.forEach(row -> {
+            final Map<String, JsonObject> sessionJudiciariesByJudiciaryId = sessionJudiciariesByHearingId
+                    .computeIfAbsent((String) row[HEARING_ID], key -> new LinkedHashMap<>())
+                    .computeIfAbsent((String) row[COURT_SCHEDULE_ID], key -> new LinkedHashMap<>());
 
-            scheduleData.hearingIds().add((String) row[HEARING_ID]);
             final String judiciaryId = (String) row[JUDICIARY_ID];
             if (judiciaryId != null) {
-                scheduleData.judiciariesByJudiciaryId().computeIfAbsent(judiciaryId, id -> buildJudicialRole(id, row));
+                sessionJudiciariesByJudiciaryId.computeIfAbsent(judiciaryId, id -> buildJudicialRole(id, row));
             }
         });
 
-        return scheduleDataByCourtScheduleId;
+        return sessionJudiciariesByHearingId;
     }
 
     private JsonObject buildJudicialRole(final String judiciaryId, final Object... row) {
@@ -151,26 +171,17 @@ public class ChangeJudiciaryForHearingsHelper {
         return judicialRoleBuilder.build();
     }
 
-    private JsonObject buildChangeJudiciaryForHearingsPayload(final ScheduleJudiciaryHearings scheduleData) {
+    private JsonObject buildChangeJudiciaryForHearingsPayload(final List<String> hearingIds, final Map<String, JsonObject> judiciariesByJudiciaryId) {
         final JsonArrayBuilder hearingsBuilder = Json.createArrayBuilder();
-        scheduleData.hearingIds().forEach(hearingsBuilder::add);
+        hearingIds.forEach(hearingsBuilder::add);
 
         final JsonArrayBuilder judiciaryBuilder = Json.createArrayBuilder();
-        scheduleData.judiciariesByJudiciaryId().values().forEach(judiciaryBuilder::add);
+        judiciariesByJudiciaryId.values().forEach(judiciaryBuilder::add);
 
         return Json.createObjectBuilder()
                 .add("hearings", hearingsBuilder)
                 .add("judiciary", judiciaryBuilder)
                 .add("judiciaryAssignmentSource", JUDICIARY_ASSIGNMENT_SOURCE_AUTO)
                 .build();
-    }
-
-    /**
-     * The de-duplicated hearing IDs and judiciaries for one court schedule.
-     *
-     * @param hearingIds               the hearing IDs allocated to the court schedule
-     * @param judiciariesByJudiciaryId the judicialRole payload fragments, keyed by judiciary ID
-     */
-    private record ScheduleJudiciaryHearings(Set<String> hearingIds, Map<String, JsonObject> judiciariesByJudiciaryId) {
     }
 }
