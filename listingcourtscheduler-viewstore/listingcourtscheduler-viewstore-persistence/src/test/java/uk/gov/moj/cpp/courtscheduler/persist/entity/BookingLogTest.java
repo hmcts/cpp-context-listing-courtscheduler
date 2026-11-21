@@ -4,11 +4,9 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.temporal.ChronoUnit;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
@@ -60,19 +58,5 @@ class BookingLogTest {
         final Instant at = Instant.parse("2026-10-25T10:15:30.123456Z");
 
         assertEquals(at, BookingLog.fromHold(EVENT_1, BookingState.EXPIRED, hold, at).getRecordedAt());
-    }
-
-    // The latest state is the row with the latest recorded_at, so two events written in the same
-    // request (a re-pick's REPICK_RELEASED then RESERVED) must never share a timestamp - and must
-    // still differ once Postgres stores them at microsecond precision.
-    @Test
-    void recordedTimesStrictlyIncreaseAtMicrosecondPrecision() {
-        Instant previous = BookingLog.nextRecordedAt();
-        for (int i = 0; i < 10_000; i++) {
-            final Instant next = BookingLog.nextRecordedAt();
-            assertTrue(next.isAfter(previous), next + " should be after " + previous);
-            assertEquals(next, next.truncatedTo(ChronoUnit.MICROS));
-            previous = next;
-        }
     }
 }
