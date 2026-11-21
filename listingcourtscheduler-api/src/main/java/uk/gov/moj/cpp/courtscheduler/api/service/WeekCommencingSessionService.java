@@ -11,9 +11,15 @@ import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtRoom;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.CreateSessionRequestParam;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.RepeatPattern;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.Session;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.UpdateCourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.WeekCommencingCreateRequest;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.WeekCommencingUpdateRequest;
+import uk.gov.moj.cpp.courtscheduler.domain.utils.TimezoneUtils;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 
 import java.time.DayOfWeek;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
@@ -26,11 +32,16 @@ public class WeekCommencingSessionService {
 
     private static final String MONDAY = StringUtils.capitalize(DayOfWeek.MONDAY.name().toLowerCase(Locale.ROOT));
     private static final int EVERY_WEEK_REPEAT = 1;
+    private static final DateTimeFormatter LONDON_HH_MM =
+            DateTimeFormatter.ofPattern("HH:mm").withZone(TimezoneUtils.LONDON_ZONE);
 
     private final ReferenceDataCache referenceDataCache;
+    private final CourtScheduleRepository courtScheduleRepository;
 
-    public WeekCommencingSessionService(final ReferenceDataCache referenceDataCache) {
+    public WeekCommencingSessionService(final ReferenceDataCache referenceDataCache,
+                                        final CourtScheduleRepository courtScheduleRepository) {
         this.referenceDataCache = referenceDataCache;
+        this.courtScheduleRepository = courtScheduleRepository;
     }
 
     /**
@@ -79,5 +90,33 @@ public class WeekCommencingSessionService {
                 .filter(Objects::nonNull)
                 .findFirst()
                 .orElse(null);
+    }
+
+    public CourtSchedule loadPersistedSession(final String courtScheduleId) {
+        return courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId);
+    }
+
+    public UpdateCourtSchedule enrichUpdateSessionRequest(final WeekCommencingUpdateRequest request,
+                                                          final CourtSchedule persisted) {
+        return new UpdateCourtSchedule()
+                .courtScheduleId(request.getCourtScheduleId())
+                .courtRoomId(persisted.getCourtRoomId())
+                .courtSession(persisted.getCourtSession())
+                .businessType(request.getBusinessType())
+                .panel(persisted.getPanel())
+                .maxDuration(request.getCapacityInMinutes())
+                .maxSlots(persisted.getMaxSlots())
+                .allDaySplit(TRUE.equals(persisted.isSupportAdSplit()))
+                .maxDurationForMorning(persisted.getMaxAdMorningDuration())
+                .maxDurationForAfternoon(persisted.getMaxAdAfternoonDuration())
+                .sessionStartTime(persisted.getSessionStartTime() != null
+                        ? LONDON_HH_MM.format(persisted.getSessionStartTime()) : null)
+                .sessionEndTime(persisted.getSessionEndTime() != null
+                        ? LONDON_HH_MM.format(persisted.getSessionEndTime()) : null)
+                .isOverbookingAllowed(request.getIsOverbookingAllowed() != null
+                        ? TRUE.equals(request.getIsOverbookingAllowed())
+                        : TRUE.equals(persisted.isOverbookingAllowed()))
+                .jurisdiction(persisted.getJurisdiction())
+                .isDraft(persisted.isDraft());
     }
 }

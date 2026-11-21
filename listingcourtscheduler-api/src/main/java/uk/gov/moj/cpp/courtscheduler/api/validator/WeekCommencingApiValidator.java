@@ -4,9 +4,13 @@ import static jakarta.json.JsonValue.EMPTY_JSON_OBJECT;
 import static java.lang.Boolean.TRUE;
 import static java.util.Objects.isNull;
 import static uk.gov.moj.cpp.courtscheduler.common.CommonUtils.buildErrorResponse;
+import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.SESSION_IN_PAST_CANNOT_BE_EDITED;
+import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.SESSION_NOT_FOUND;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.WEEK_COMMENCING_NO_COURTROOM;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.WEEK_COMMENCING_NO_MONDAY;
+import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.WEEK_COMMENCING_SESSION_NOT_WC;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.WEEK_COMMENCING_SLOT_BASED_NOT_ALLOWED;
+import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.WEEK_COMMENCING_USE_WC_ENDPOINT;
 
 import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataCache;
 import uk.gov.moj.cpp.courtscheduler.common.service.SessionsService;
@@ -14,11 +18,15 @@ import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.BusinessType;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.CreateSessionRequestParam;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.WeekCommencingCreateRequest;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.WeekCommencingUpdateRequest;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.time.temporal.TemporalAdjusters;
+import java.util.Objects;
 import java.util.Optional;
 
 import jakarta.json.JsonObject;
@@ -31,13 +39,16 @@ public class WeekCommencingApiValidator {
     private final SessionsApiValidator sessionsApiValidator;
     private final ReferenceDataCache referenceDataCache;
     private final SessionsService sessionsService;
+    private final CourtScheduleRepository courtScheduleRepository;
 
     public WeekCommencingApiValidator(final SessionsApiValidator sessionsApiValidator,
                                       final ReferenceDataCache referenceDataCache,
-                                      final SessionsService sessionsService) {
+                                      final SessionsService sessionsService,
+                                      final CourtScheduleRepository courtScheduleRepository) {
         this.sessionsApiValidator = sessionsApiValidator;
         this.referenceDataCache = referenceDataCache;
         this.sessionsService = sessionsService;
+        this.courtScheduleRepository = courtScheduleRepository;
     }
 
     /**
@@ -81,6 +92,53 @@ public class WeekCommencingApiValidator {
             return buildErrorResponse(WEEK_COMMENCING_NO_MONDAY);
         }
 
+        return EMPTY_JSON_OBJECT;
+    }
+
+    /**
+     * Rejects the request if the session is a week commencing row, so that the standard
+     * courtscheduler.update and validate.update endpoints cannot modify week commencing sessions.
+     * Returns an error when the session exists and is week commencing; returns empty otherwise
+     * (non-existent or non-WC sessions fall through to the standard update validation).
+     */
+    public JsonObject rejectIfWeekCommencingSession(final String courtScheduleId) {
+        final CourtSchedule persisted = courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId);
+        if (persisted != null && TRUE.equals(persisted.isWeekCommencing())) {
+            return buildErrorResponse(WEEK_COMMENCING_USE_WC_ENDPOINT);
+        }
+        return EMPTY_JSON_OBJECT;
+    }
+
+    /**
+     * Validates that the session exists, is a week commencing session, uses a duration-based
+     * business type, and — when the business type is changing — that no other week commencing
+     * session already exists for the same court centre and new business type on the same Monday.
+     * The caller is responsible for loading {@code persisted} via
+     * {@link uk.gov.moj.cpp.courtscheduler.api.service.WeekCommencingSessionService#loadPersistedSession}
+     * so the row is fetched only once per request.
+     */
+    public JsonObject getWeekCommencingUpdateValidation(final WeekCommencingUpdateRequest request,
+                                                        final CourtSchedule persisted) {
+        if (isNull(persisted)) {
+            return buildErrorResponse(SESSION_NOT_FOUND);
+        }
+        if (!TRUE.equals(persisted.isWeekCommencing())) {
+            return buildErrorResponse(WEEK_COMMENCING_SESSION_NOT_WC);
+        }
+        if (persisted.getSessionDate() != null && persisted.getSessionDate().isBefore(LocalDate.now())) {
+            return buildErrorResponse(SESSION_IN_PAST_CANNOT_BE_EDITED);
+        }
+        if (isSlotBased(request.getBusinessType())) {
+            return buildErrorResponse(WEEK_COMMENCING_SLOT_BASED_NOT_ALLOWED);
+        }
+        if (!Objects.equals(persisted.getBusinessType(), request.getBusinessType())) {
+            final JsonObject duplicate = sessionsService.validateWeekCommencingIntegrity(
+                    persisted.getCourtHouseId(), request.getBusinessType(),
+                    persisted.getSessionDate(), persisted.getSessionDate());
+            if (!duplicate.isEmpty()) {
+                return duplicate;
+            }
+        }
         return EMPTY_JSON_OBJECT;
     }
 
