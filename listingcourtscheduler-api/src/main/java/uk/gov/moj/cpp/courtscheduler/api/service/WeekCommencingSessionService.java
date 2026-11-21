@@ -105,15 +105,17 @@ public class WeekCommencingSessionService {
                 .businessType(request.getBusinessType())
                 .panel(persisted.getPanel())
                 .maxDuration(request.getCapacityInMinutes())
-                .maxSlots(0)
-                .allDaySplit(false)
-                .maxDurationForMorning(0)
-                .maxDurationForAfternoon(0)
+                .maxSlots(persisted.getMaxSlots())
+                .allDaySplit(TRUE.equals(persisted.isSupportAdSplit()))
+                .maxDurationForMorning(persisted.getMaxAdMorningDuration())
+                .maxDurationForAfternoon(persisted.getMaxAdAfternoonDuration())
                 .sessionStartTime(persisted.getSessionStartTime() != null
                         ? LONDON_HH_MM.format(persisted.getSessionStartTime()) : null)
                 .sessionEndTime(persisted.getSessionEndTime() != null
                         ? LONDON_HH_MM.format(persisted.getSessionEndTime()) : null)
-                .isOverbookingAllowed(TRUE.equals(request.getIsOverbookingAllowed()))
+                .isOverbookingAllowed(request.getIsOverbookingAllowed() != null
+                        ? TRUE.equals(request.getIsOverbookingAllowed())
+                        : TRUE.equals(persisted.isOverbookingAllowed()))
                 .jurisdiction(persisted.getJurisdiction())
                 .isDraft(persisted.isDraft());
     }

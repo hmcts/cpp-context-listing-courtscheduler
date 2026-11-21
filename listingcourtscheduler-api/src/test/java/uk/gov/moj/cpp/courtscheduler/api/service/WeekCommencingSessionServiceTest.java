@@ -221,6 +221,21 @@ class WeekCommencingSessionServiceTest {
         assertThat(result.getSessionEndTime(), is(nullValue()));
     }
 
+    @Test
+    void shouldPreservePersistedOverbookingWhenRequestOmitsTheField() {
+        final CourtSchedule persisted = persistedSession(COURT_ROOM_ID, BUSINESS_TYPE, "AD", ADULT, CROWN, true, null, null);
+        persisted.setIsOverbookingAllowed(true);
+
+        final UpdateCourtSchedule result = service.enrichUpdateSessionRequest(
+                new WeekCommencingUpdateRequest()
+                        .courtScheduleId(COURT_SCHEDULE_ID)
+                        .businessType(BUSINESS_TYPE)
+                        .capacityInMinutes(CAPACITY_IN_MINUTES),
+                persisted);
+
+        assertThat(result.getIsOverbookingAllowed(), is(true));
+    }
+
     private static CourtSchedule persistedSession(final String courtRoomId, final String businessType,
                                                    final String courtSession, final String panel,
                                                    final String jurisdiction, final boolean isDraft,
@@ -235,6 +250,10 @@ class WeekCommencingSessionServiceTest {
         cs.setSessionStartTime(sessionStartTime);
         cs.setSessionEndTime(sessionEndTime);
         cs.setSessionDate(LocalDate.of(2027, 1, 4));
+        cs.setMaxSlots(0);
+        cs.setSupportAdSplit(false);
+        cs.setMaxAdMorningDuration(0);
+        cs.setMaxAdAfternoonDuration(0);
         return cs;
     }
 }

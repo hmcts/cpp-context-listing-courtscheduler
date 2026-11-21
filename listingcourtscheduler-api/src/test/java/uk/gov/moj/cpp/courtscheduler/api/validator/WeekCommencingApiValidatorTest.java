@@ -211,6 +211,20 @@ class WeekCommencingApiValidatorTest {
     }
 
     @Test
+    void updateValidationShouldRejectSessionInThePast() {
+        final String courtScheduleId = randomUUID().toString();
+        final CourtSchedule persisted = new CourtSchedule();
+        persisted.setWeekCommencing(true);
+        persisted.setSessionDate(LocalDate.of(2020, 1, 6));
+        persisted.setBusinessType(BUSINESS_TYPE);
+
+        final JsonObject result = validator.getWeekCommencingUpdateValidation(updateRequest(courtScheduleId, BUSINESS_TYPE), persisted);
+
+        assertThat(result.getString(ERROR_MESSAGE), is(ErrorMessages.SESSION_IN_PAST_CANNOT_BE_EDITED));
+        verifyNoInteractions(referenceDataCache, sessionsService);
+    }
+
+    @Test
     void updateValidationShouldRejectSlotBasedBusinessType() {
         final String courtScheduleId = randomUUID().toString();
         final String slotBasedType = "DVLA";

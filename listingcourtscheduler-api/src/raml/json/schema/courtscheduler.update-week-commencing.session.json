@@ -12,7 +12,7 @@
     },
     "isOverbookingAllowed": {"type": "boolean"}
   },
-  "required": ["courtScheduleId", "businessType", "capacityInMinutes", "isOverbookingAllowed"],
+  "required": ["courtScheduleId", "businessType", "capacityInMinutes"],
   "additionalProperties": false,
   "definitions": {
     "uuid": {

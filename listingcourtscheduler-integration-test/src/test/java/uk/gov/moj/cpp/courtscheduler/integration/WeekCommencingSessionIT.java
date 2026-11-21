@@ -90,6 +90,9 @@ class WeekCommencingSessionIT extends AbstractIT {
     private static final String DURATION_BASED_BUSINESS_TYPE = "TRL";
     private static final String OTHER_DURATION_BASED_BUSINESS_TYPE = "LGT";
     private static final String SLOT_BASED_BUSINESS_TYPE = "DVLA";
+    private static final String BUSINESS_TYPE = "businessType";
+    private static final String COURT_ROOM_ID = "courtRoomId";
+    private static final String IS_DRAFT = "isDraft";
     private static final int CAPACITY_FIVE_DAYS = 1800;
     private static final int MINUTES_PER_DAY = 6 * 60;
     private static final int MAX_CAPACITY_IN_MINUTES = 999 * MINUTES_PER_DAY;
@@ -144,7 +147,7 @@ class WeekCommencingSessionIT extends AbstractIT {
 
         assertThat(sessions.stream().map(session -> session.getString(COURT_SCHEDULE_ID)).toList(), is(List.of(ordinarySessionId)));
         assertThat(sessions.getFirst().getBoolean(IS_WEEK_COMMENCING), is(false));
-        assertThat(sessions.getFirst().getBoolean("isDraft"), is(true));
+        assertThat(sessions.getFirst().getBoolean(IS_DRAFT), is(true));
     }
 
     @Test
@@ -159,7 +162,7 @@ class WeekCommencingSessionIT extends AbstractIT {
         assertThat(sessions.stream().map(session -> LocalDate.parse(session.getString(SESSION_DATE))).sorted().toList(),
                 is(mondaysBetween(startDate, endDate)));
         assertThat(sessions.stream().map(session -> session.getBoolean(IS_WEEK_COMMENCING)).toList(), everyItem(is(true)));
-        assertThat(sessions.stream().map(session -> session.getBoolean("isDraft")).toList(), everyItem(is(true)));
+        assertThat(sessions.stream().map(session -> session.getBoolean(IS_DRAFT)).toList(), everyItem(is(true)));
     }
 
     @Test
@@ -438,16 +441,16 @@ class WeekCommencingSessionIT extends AbstractIT {
     private static JsonObjectBuilder ordinarySession(final String courtRoomId, final boolean isDraft) {
         return createObjectBuilder()
                 .add(COURT_CENTRE_ID_FIELD, COURT_CENTRE_ID)
-                .add("courtRoomId", courtRoomId)
+                .add(COURT_ROOM_ID, courtRoomId)
                 .add("jurisdiction", CROWN)
                 .add("sessionType", ALL_DAY)
-                .add("businessType", DURATION_BASED_BUSINESS_TYPE)
+                .add(BUSINESS_TYPE, DURATION_BASED_BUSINESS_TYPE)
                 .add("duration", MINUTES_PER_DAY)
                 .add("allDaySplit", false)
                 .add("panel", ADULT)
                 .add(IS_OVERBOOKING_ALLOWED, true)
                 .add("repeatDays", createArrayBuilder().add("Monday"))
-                .add("isDraft", isDraft);
+                .add(IS_DRAFT, isDraft);
     }
 
     private JsonObjectBuilder everyWeek() {
@@ -578,6 +581,27 @@ class WeekCommencingSessionIT extends AbstractIT {
     }
 
     @Test
+    void shouldPreserveOverbookingFlagWhenUpdateRequestOmitsTheField() {
+        assertCreated(request(DURATION_BASED_BUSINESS_TYPE, startDate, endDate));
+        final CourtSchedule first = databaseReader.courtSchedules().getFirst();
+        assertThat(first.isOverbookingAllowed(), is(true));
+
+        final String payloadWithoutOverbooking = createObjectBuilder()
+                .add(COURT_SCHEDULE_ID, first.getCourtScheduleId())
+                .add(BUSINESS_TYPE, DURATION_BASED_BUSINESS_TYPE)
+                .add(CAPACITY_IN_MINUTES, UPDATED_CAPACITY)
+                .build().toString();
+        try (Response response = putCommand(URL, UPDATE_CONTENT_TYPE, USER_ID, payloadWithoutOverbooking)) {
+            assertThat(response.readEntity(String.class), response.getStatus(), is(ACCEPTED.getStatusCode()));
+        }
+
+        final CourtSchedule updated = databaseReader.courtSchedules().stream()
+                .filter(cs -> cs.getCourtScheduleId().equals(first.getCourtScheduleId()))
+                .findFirst().orElseThrow();
+        assertThat(updated.isOverbookingAllowed(), is(true));
+    }
+
+    @Test
     void shouldRejectUpdateWhenChangingToABusinessTypeThatAlreadyHasAWeekCommencingSessionOnTheSameMonday() {
         assertCreated(request(DURATION_BASED_BUSINESS_TYPE, startDate, endDate));
         assertCreated(request(OTHER_DURATION_BASED_BUSINESS_TYPE, startDate, endDate));
@@ -602,13 +626,13 @@ class WeekCommencingSessionIT extends AbstractIT {
     @Test
     void shouldRejectUpdateWithMissingRequiredField() {
         final String missingBusinessType = createObjectBuilder()
-                .add("courtScheduleId", UUID.randomUUID().toString())
+                .add(COURT_SCHEDULE_ID, UUID.randomUUID().toString())
                 .add(CAPACITY_IN_MINUTES, CAPACITY_FIVE_DAYS)
                 .add(IS_OVERBOOKING_ALLOWED, false)
                 .build().toString();
         try (Response response = putCommand(URL, UPDATE_CONTENT_TYPE, USER_ID, missingBusinessType)) {
             assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
-            assertThat(response.readEntity(String.class), containsString("businessType"));
+            assertThat(response.readEntity(String.class), containsString(BUSINESS_TYPE));
         }
     }
 
@@ -630,11 +654,11 @@ class WeekCommencingSessionIT extends AbstractIT {
 
         final String payload = createObjectBuilder()
                 .add(COURT_SCHEDULE_ID, first.getCourtScheduleId())
-                .add("courtRoomId", first.getCourtRoomId())
+                .add(COURT_ROOM_ID, first.getCourtRoomId())
                 .add("courtSession", ALL_DAY)
-                .add("businessType", DURATION_BASED_BUSINESS_TYPE)
+                .add(BUSINESS_TYPE, DURATION_BASED_BUSINESS_TYPE)
                 .add("jurisdiction", CROWN)
-                .add("isDraft", true)
+                .add(IS_DRAFT, true)
                 .build().toString();
 
         try (Response response = postCommand(UPDATE_SESSION_URL, UPDATE_SESSION_CONTENT_TYPE, USER_ID, payload)) {
@@ -650,9 +674,9 @@ class WeekCommencingSessionIT extends AbstractIT {
 
         final String payload = createObjectBuilder()
                 .add(COURT_SCHEDULE_ID, first.getCourtScheduleId())
-                .add("courtRoomId", first.getCourtRoomId())
+                .add(COURT_ROOM_ID, first.getCourtRoomId())
                 .add("courtSession", ALL_DAY)
-                .add("businessType", DURATION_BASED_BUSINESS_TYPE)
+                .add(BUSINESS_TYPE, DURATION_BASED_BUSINESS_TYPE)
                 .add("panel", ADULT)
                 .add("maxDuration", UPDATED_CAPACITY)
                 .build().toString();
@@ -680,8 +704,8 @@ class WeekCommencingSessionIT extends AbstractIT {
     private static JsonObjectBuilder updateRequest(final String courtScheduleId, final String businessType,
                                                    final int capacityInMinutes, final boolean isOverbookingAllowed) {
         return createObjectBuilder()
-                .add("courtScheduleId", courtScheduleId)
-                .add("businessType", businessType)
+                .add(COURT_SCHEDULE_ID, courtScheduleId)
+                .add(BUSINESS_TYPE, businessType)
                 .add(CAPACITY_IN_MINUTES, capacityInMinutes)
                 .add(IS_OVERBOOKING_ALLOWED, isOverbookingAllowed);
     }
@@ -689,7 +713,7 @@ class WeekCommencingSessionIT extends AbstractIT {
     private static JsonObjectBuilder request(final String businessType, final LocalDate start, final LocalDate end) {
         return createObjectBuilder()
                 .add(COURT_CENTRE_ID_FIELD, COURT_CENTRE_ID)
-                .add("businessType", businessType)
+                .add(BUSINESS_TYPE, businessType)
                 .add("startDate", start.toString())
                 .add("endDate", end.toString())
                 .add(CAPACITY_IN_MINUTES, CAPACITY_FIVE_DAYS)
@@ -731,7 +755,7 @@ class WeekCommencingSessionIT extends AbstractIT {
         query.put("sessionStartDate", startDate.toString());
         query.put("sessionEndDate", endDate.toString());
         query.put("ouCode", weekCommencingOuCode());
-        query.put("courtRoomId", FIRST_LISTED_COURT_ROOM_ID);
+        query.put(COURT_ROOM_ID, FIRST_LISTED_COURT_ROOM_ID);
         query.put("jurisdiction", CROWN);
         query.put("showOverbookedSlots", "true");
         query.put("pageSize", "50");

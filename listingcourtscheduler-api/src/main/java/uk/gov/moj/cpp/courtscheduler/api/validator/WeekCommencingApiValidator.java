@@ -4,6 +4,7 @@ import static jakarta.json.JsonValue.EMPTY_JSON_OBJECT;
 import static java.lang.Boolean.TRUE;
 import static java.util.Objects.isNull;
 import static uk.gov.moj.cpp.courtscheduler.common.CommonUtils.buildErrorResponse;
+import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.SESSION_IN_PAST_CANNOT_BE_EDITED;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.SESSION_NOT_FOUND;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.WEEK_COMMENCING_NO_COURTROOM;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.WEEK_COMMENCING_NO_MONDAY;
@@ -123,6 +124,9 @@ public class WeekCommencingApiValidator {
         }
         if (!TRUE.equals(persisted.isWeekCommencing())) {
             return buildErrorResponse(WEEK_COMMENCING_SESSION_NOT_WC);
+        }
+        if (persisted.getSessionDate() != null && persisted.getSessionDate().isBefore(LocalDate.now())) {
+            return buildErrorResponse(SESSION_IN_PAST_CANNOT_BE_EDITED);
         }
         if (isSlotBased(request.getBusinessType())) {
             return buildErrorResponse(WEEK_COMMENCING_SLOT_BASED_NOT_ALLOWED);
