@@ -2,9 +2,7 @@ package uk.gov.moj.cpp.courtscheduler.persist.entity;
 
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.temporal.ChronoUnit;
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicReference;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -21,8 +19,6 @@ import jakarta.persistence.Table;
 @Entity
 @Table(name = "booking_log")
 public class BookingLog {
-
-    private static final AtomicReference<Instant> LAST_RECORDED_AT = new AtomicReference<>(Instant.EPOCH);
 
     @Id
     private String id;
@@ -63,9 +59,15 @@ public class BookingLog {
     @Column(name = "expires_at")
     private LocalDate expiresAt;
 
-    // When the row was appended; orders a booking's events.
+    // When the row was appended; orders a booking's events. Set by the database on insert
+    // (BookingLogRepository.insert).
     @Column(name = "recorded_at", nullable = false)
     private Instant recordedAt;
+
+    /** The log row for {@code row}; recorded_at is left to the database (BookingLogRepository.insert). */
+    public static BookingLog fromHold(final String eventId, final BookingState state, final AllocatedListing row) {
+        return fromHold(eventId, state, row, null);
+    }
 
     public static BookingLog fromHold(final String eventId, final BookingState state, final AllocatedListing row, final Instant recordedAt) {
         final BookingLog log = new BookingLog();
@@ -83,19 +85,6 @@ public class BookingLog {
         log.expiresAt = row.getExpiresAt();
         log.recordedAt = recordedAt;
         return log;
-    }
-
-    /**
-     * The time to record an event at: now, at the microsecond precision Postgres stores, and
-     * strictly after the last one this instance handed out. Two events written in the same request
-     * (a re-pick's REPICK_RELEASED then RESERVED) therefore never share a timestamp, so "the
-     * latest event" is always one event.
-     */
-    public static Instant nextRecordedAt() {
-        return LAST_RECORDED_AT.updateAndGet(last -> {
-            final Instant now = Instant.now().truncatedTo(ChronoUnit.MICROS);
-            return now.isAfter(last) ? now : last.plus(1, ChronoUnit.MICROS);
-        });
     }
 
     public String getId() {
