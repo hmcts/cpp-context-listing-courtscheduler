@@ -73,6 +73,12 @@ class ProvisionalBookingServiceTest {
     private static final String BK_RACE = "bk-race";
     private static final String BK_NPE = "bk-npe";
 
+    private static final String CS_9 = "cs-9";
+    private static final String CS_DAY_1 = "cs-day-1";
+    private static final String CS_DAY_2 = "cs-day-2";
+    private static final String BK_UNLISTED = "bk-unlisted";
+    private static final String DAY_1_LISTED_AT = "2026-12-07T14:30:00Z";
+
     private static final String JUDICIARIES = "judiciaries";
     private static final String IS_BENCH_CHAIRMAN = "isBenchChairman";
     private static final String IS_DEPUTY = "isDeputy";
@@ -195,12 +201,92 @@ class ProvisionalBookingServiceTest {
     void shouldFallBackToLegacyProvisionalBookingWhenNoReservationExists() {
         when(allocatedListingRepository.findByBookingId(LEGACY_BK)).thenReturn(List.of());
         when(provisionalBookingRepository.findByBookingIdIn(List.of(LEGACY_BK)))
-                .thenReturn(List.of(aLegacyProvisionalBooking(LEGACY_BK, "cs-9")));
+                .thenReturn(List.of(aLegacyProvisionalBooking(LEGACY_BK, CS_9)));
 
         final JsonObject response = provisionalBookingService.fetchProvisionalSlots(LEGACY_BK);
 
         assertThat(response.getJsonArray(PROVISIONALSLOTS).size(), is(1));
-        assertThat(response.getJsonArray(PROVISIONALSLOTS).getJsonObject(0).getString(COURTSCHEDULEID), is("cs-9"));
+        assertThat(response.getJsonArray(PROVISIONALSLOTS).getJsonObject(0).getString(COURTSCHEDULEID), is(CS_9));
+    }
+
+    // A re-share frees the listing before listing it again; the UNLISTED event keeps its
+    // sessions and the time each was listed at.
+    @Test
+    void shouldResolveABookingAReShareJustUnlistedToItsSessionsAtTheTimesTheyWereListedAt() {
+        when(courtScheduleRepository.findBy(CS_DAY_1)).thenReturn(aCourtSchedule(CS_DAY_1));
+        when(courtScheduleRepository.findBy(CS_DAY_2)).thenReturn(aCourtSchedule(CS_DAY_2));
+        loggedOn(BK_UNLISTED, BookingState.UNLISTED,
+                listedRow(BK_UNLISTED, CS_DAY_1, DAY_1_LISTED_AT),
+                listedRow(BK_UNLISTED, CS_DAY_2, "2026-12-08T10:00:00Z"));
+
+        final JsonArray slots = provisionalBookingService.fetchProvisionalSlots(BK_UNLISTED).getJsonArray(PROVISIONALSLOTS);
+
+        assertThat(slots.size(), is(2));
+        assertThat(slots.getJsonObject(0).getString(COURTSCHEDULEID), is(CS_DAY_1));
+        assertThat(slots.getJsonObject(0).getString(BOOKINGID), is(BK_UNLISTED));
+        assertThat(Instant.parse(slots.getJsonObject(0).getString("hearingStartTime")), is(Instant.parse(DAY_1_LISTED_AT)));
+        assertThat(slots.getJsonObject(1).getString(COURTSCHEDULEID), is(CS_DAY_2));
+        assertThat(Instant.parse(slots.getJsonObject(1).getString("hearingStartTime")), is(Instant.parse("2026-12-08T10:00:00Z")));
+    }
+
+    @Test
+    void shouldNotResolveABookingWhoseLatestEventIsNotUnlisted() {
+        for (final BookingState state : BookingState.values()) {
+            if (state == BookingState.UNLISTED) {
+                continue;
+            }
+            final String bookingId = "bk-" + state;
+            loggedOn(bookingId, state, listedRow(bookingId, CS_1, DAY_1_LISTED_AT));
+
+            assertThat(state.name(), provisionalBookingService.fetchProvisionalSlots(bookingId)
+                    .getJsonArray(PROVISIONALSLOTS).size(), is(0));
+        }
+        verify(courtScheduleRepository, never()).findBy(anyString());
+    }
+
+    @Test
+    void shouldLeaveOutAnUnlistedSessionThatNoLongerExists() {
+        when(courtScheduleRepository.findBy(CS_1)).thenReturn(aCourtSchedule(CS_1));
+        when(courtScheduleRepository.findBy("cs-deleted")).thenReturn(null);
+        loggedOn(BK_UNLISTED, BookingState.UNLISTED,
+                listedRow(BK_UNLISTED, "cs-deleted", DAY_1_LISTED_AT),
+                listedRow(BK_UNLISTED, CS_1, "2026-12-08T10:00:00Z"));
+
+        final JsonArray slots = provisionalBookingService.fetchProvisionalSlots(BK_UNLISTED).getJsonArray(PROVISIONALSLOTS);
+
+        assertThat(slots.size(), is(1));
+        assertThat(slots.getJsonObject(0).getString(COURTSCHEDULEID), is(CS_1));
+    }
+
+    @Test
+    void shouldNotResolveABookingNeverLogged() {
+        assertThat(provisionalBookingService.fetchProvisionalSlots("bk-unknown").getJsonArray(PROVISIONALSLOTS).size(), is(0));
+    }
+
+    @Test
+    void shouldPreferALegacyRowToTheBookingLog() {
+        when(provisionalBookingRepository.findByBookingIdIn(List.of(LEGACY_BK)))
+                .thenReturn(List.of(aLegacyProvisionalBooking(LEGACY_BK, CS_9)));
+
+        final JsonArray slots = provisionalBookingService.fetchProvisionalSlots(LEGACY_BK).getJsonArray(PROVISIONALSLOTS);
+
+        assertThat(slots.size(), is(1));
+        assertThat(slots.getJsonObject(0).getString(COURTSCHEDULEID), is(CS_9));
+        verify(bookingLogRepository, never()).findLatestEvent(anyString());
+    }
+
+    @Test
+    void shouldPreferALiveHoldToTheBookingLog() {
+        final AllocatedListing reservation = new AllocatedListing();
+        reservation.setCourtScheduleId(CS_1);
+        reservation.setBookingId(BK_1);
+        reservation.setExpiresAt(LocalDate.now(ZoneOffset.UTC));
+        when(allocatedListingRepository.findByBookingId(BK_1)).thenReturn(List.of(reservation));
+        when(courtScheduleRepository.findBy(CS_1)).thenReturn(aCourtSchedule(CS_1));
+
+        provisionalBookingService.fetchProvisionalSlots(BK_1);
+
+        verify(bookingLogRepository, never()).findLatestEvent(anyString());
     }
 
     @Test
@@ -411,10 +497,10 @@ class ProvisionalBookingServiceTest {
 
     @Test
     void aBookingWhoseListingWasFreedIsSafeToShare() {
-        when(allocatedListingRepository.findByBookingId("bk-unlisted")).thenReturn(List.of());
-        loggedAs("bk-unlisted", BookingState.UNLISTED);
+        when(allocatedListingRepository.findByBookingId(BK_UNLISTED)).thenReturn(List.of());
+        loggedAs(BK_UNLISTED, BookingState.UNLISTED);
 
-        final JsonObject booking = statusOf("bk-unlisted", true);
+        final JsonObject booking = statusOf(BK_UNLISTED, true);
 
         assertThat(booking.getString(STATUS), is("UNLISTED"));
         assertThat(booking.getBoolean(SAFETOSHARE), is(true));
@@ -497,6 +583,21 @@ class ProvisionalBookingServiceTest {
         assertThat(bookings.getJsonObject(0).getString(STATUS), is(STATUS_RESERVED));
         assertThat(bookings.getJsonObject(1).getString(STATUS), is("SHARED"));
         verify(reservationService, never()).rebookExpired(anyString());
+    }
+
+    private void loggedOn(final String bookingId, final BookingState state, final AllocatedListing... rows) {
+        final String eventId = randomUUID().toString();
+        when(bookingLogRepository.findLatestEvent(bookingId)).thenReturn(java.util.Arrays.stream(rows)
+                .map(row -> BookingLog.fromHold(eventId, state, row, Instant.now()))
+                .toList());
+    }
+
+    private static AllocatedListing listedRow(final String bookingId, final String courtScheduleId, final String hearingStartTime) {
+        final AllocatedListing row = new AllocatedListing();
+        row.setBookingId(bookingId);
+        row.setCourtScheduleId(courtScheduleId);
+        row.setHearingStartTime(Instant.parse(hearingStartTime));
+        return row;
     }
 
     private JsonObject statusOf(final String bookingId, final boolean reserveIfExpired) {

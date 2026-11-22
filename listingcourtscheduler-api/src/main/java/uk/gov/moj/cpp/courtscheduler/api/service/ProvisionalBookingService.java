@@ -8,6 +8,7 @@ import uk.gov.moj.cpp.courtscheduler.common.converter.ListToJsonArrayConverter;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.ProvisionalBookingInfo;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.ProvisionalBookingSlots;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.BookingLog;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.ProvisionalBooking;
@@ -16,7 +17,9 @@ import uk.gov.moj.cpp.courtscheduler.repository.BookingLogRepository;
 import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 import uk.gov.moj.cpp.courtscheduler.repository.ProvisionalBookingRepository;
 
+import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -138,8 +141,14 @@ public class ProvisionalBookingService {
         }
 
         if (!unresolved.isEmpty()) {
-            provisionalBookingRepository.findByBookingIdIn(unresolved)
-                    .forEach(legacy -> infos.add(buildProvisionalInfo(legacy)));
+            final Set<String> resolvedByLegacy = new HashSet<>();
+            provisionalBookingRepository.findByBookingIdIn(unresolved).forEach(legacy -> {
+                infos.add(buildProvisionalInfo(legacy));
+                resolvedByLegacy.add(legacy.getProvisionalBookingKey().getBookingId());
+            });
+            unresolved.stream()
+                    .filter(bookingId -> !resolvedByLegacy.contains(bookingId))
+                    .forEach(bookingId -> infos.addAll(sessionsLastListedFor(bookingId)));
         }
 
         attachJudiciaries(infos);
@@ -331,7 +340,34 @@ public class ProvisionalBookingService {
      * dead code that would mask a broken constraint if the FK were ever dropped.
      */
     private ProvisionalBookingInfo buildInfoFromReservation(final AllocatedListing reservation) {
-        final CourtSchedule courtSchedule = courtScheduleRepository.findBy(reservation.getCourtScheduleId());
+        return buildInfo(courtScheduleRepository.findBy(reservation.getCourtScheduleId()),
+                reservation.getBookingId(), reservation.getHearingStartTime());
+    }
+
+    /**
+     * The sessions a re-share has just unlisted, with the time each was listed at. The re-share
+     * frees the booking's listing before listing it again, so it holds nothing, but its UNLISTED
+     * event keeps every row. Only UNLISTED: an expired, released or surplus booking must keep
+     * resolving to nothing, or it would be listed. A session deleted since is left out.
+     */
+    private List<ProvisionalBookingInfo> sessionsLastListedFor(final String bookingId) {
+        final List<BookingLog> latest = bookingLogRepository.findLatestEvent(bookingId);
+        // Every row of an event carries the event's state.
+        final boolean unlisted = latest.stream().findFirst()
+                .map(event -> event.getState() == BookingState.UNLISTED)
+                .orElse(false);
+        if (!unlisted) {
+            return List.of();
+        }
+        return latest.stream()
+                .flatMap(row -> Optional.ofNullable(courtScheduleRepository.findBy(row.getCourtScheduleId()))
+                        .map(session -> buildInfo(session, bookingId, row.getHearingStartTime()))
+                        .stream())
+                .toList();
+    }
+
+    private static ProvisionalBookingInfo buildInfo(final CourtSchedule courtSchedule, final String bookingId,
+                                                    final Instant hearingStartTime) {
         return new ProvisionalBookingInfo()
                 .courtScheduleId(courtSchedule.getCourtScheduleId())
                 .listingProfileId(courtSchedule.getListingProfileId())
@@ -350,9 +386,9 @@ public class ProvisionalBookingService {
                 .availableDuration(courtSchedule.getAvailableDuration())
                 .maxSlots(courtSchedule.getMaxSlots())
                 .maxDuration(courtSchedule.getMaxDuration())
-                .bookingId(reservation.getBookingId())
-                .hearingStartTime(reservation.getHearingStartTime() == null ? null
-                        : reservation.getHearingStartTime().atOffset(java.time.ZoneOffset.UTC));
+                .bookingId(bookingId)
+                .hearingStartTime(hearingStartTime == null ? null
+                        : hearingStartTime.atOffset(java.time.ZoneOffset.UTC));
     }
 
     private ProvisionalBookingInfo buildProvisionalInfo(final ProvisionalBooking provisionalBooking) {
