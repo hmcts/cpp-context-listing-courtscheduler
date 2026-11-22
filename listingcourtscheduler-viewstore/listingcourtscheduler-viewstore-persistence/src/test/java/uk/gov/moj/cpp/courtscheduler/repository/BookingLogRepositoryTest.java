@@ -5,10 +5,12 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static uk.gov.moj.cpp.courtscheduler.persist.entity.BookingState.CONFIRMED;
+import static uk.gov.moj.cpp.courtscheduler.persist.entity.BookingState.DRAFT_RELEASED;
 import static uk.gov.moj.cpp.courtscheduler.persist.entity.BookingState.EXPIRED;
 import static uk.gov.moj.cpp.courtscheduler.persist.entity.BookingState.REBOOKED;
 import static uk.gov.moj.cpp.courtscheduler.persist.entity.BookingState.REPICK_RELEASED;
 import static uk.gov.moj.cpp.courtscheduler.persist.entity.BookingState.RESERVED;
+import static uk.gov.moj.cpp.courtscheduler.persist.entity.BookingState.SURPLUS_RELEASED;
 
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.BookingLog;
@@ -99,6 +101,29 @@ class BookingLogRepositoryTest extends AbstractRepositoryTest {
         assertEquals(List.of(), bookingLogRepository.findLatestEvent(BOOKING_A));
         assertEquals(CONFIRMED, bookingLogRepository.findLatestEvent(BOOKING_B).get(0).getState());
         assertEquals(EXPIRED, bookingLogRepository.findLatestEvent("booking-no-session").get(0).getState());
+    }
+
+    @Test
+    void deleteRowsOfDeletedSessionsRemovesAReleaseWithoutASessionWithTheBookingsDeletedSessions() {
+        bookingLogRepository.record(EXPIRED, List.of(hold(BOOKING_A, DELETED_SESSION)));
+        bookingLogRepository.record(DRAFT_RELEASED, List.of(hold(BOOKING_A, null)));
+
+        assertEquals(2, bookingLogRepository.deleteRowsOfDeletedSessions());
+        assertEquals(List.of(), bookingLogRepository.findLatestEvent(BOOKING_A));
+    }
+
+    // A surplus booking stays on the clerk's draft and is checked at every later share, so its
+    // release must outlive the purge for as long as the booking has a session.
+    @Test
+    void deleteRowsOfDeletedSessionsKeepsAReleaseWithoutASessionWhileTheBookingHasALiveSession() {
+        final String liveSession = persistSessionOn(LocalDate.now().plusDays(90));
+        bookingLogRepository.record(EXPIRED, List.of(hold(BOOKING_A, liveSession), hold(BOOKING_A, DELETED_SESSION)));
+        bookingLogRepository.record(SURPLUS_RELEASED, List.of(hold(BOOKING_A, null)));
+
+        assertEquals(1, bookingLogRepository.deleteRowsOfDeletedSessions());
+        final List<BookingLog> latest = bookingLogRepository.findLatestEvent(BOOKING_A);
+        assertEquals(SURPLUS_RELEASED, latest.get(0).getState());
+        assertNull(latest.get(0).getCourtScheduleId());
     }
 
     // ─── the native insert writes every column ─────────────────────────────────

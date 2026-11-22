@@ -98,14 +98,24 @@ public interface BookingLogRepository extends JpaRepository<BookingLog, String> 
     List<BookingLog> findLatestEvent(@Param("bookingId") String bookingId);
 
     /**
-     * Deletes the rows of sessions that no longer exist, latest events included: a hearing day on a
-     * deleted session is broken anyway. Run by the rota clean-up once it has deleted old sessions.
+     * Deletes the rows on sessions that no longer exist, a booking's latest event included. A row
+     * without a session (the release of a booking that held nothing any more) is deleted with the
+     * booking's rows on sessions, once none of those sessions exists. Run by the rota clean-up once
+     * it has deleted old sessions.
      */
     @Modifying
     @Query(value = """
             DELETE FROM booking_log b
-             WHERE b.court_schedule_id IS NOT NULL
-               AND NOT EXISTS (SELECT 1 FROM court_schedule cs WHERE cs.id = b.court_schedule_id)
+             WHERE (b.court_schedule_id IS NOT NULL
+                    AND NOT EXISTS (SELECT 1 FROM court_schedule cs
+                                     WHERE cs.id = b.court_schedule_id))
+                OR (b.court_schedule_id IS NULL
+                    AND EXISTS (SELECT 1 FROM booking_log o
+                                 WHERE o.booking_id = b.booking_id
+                                   AND o.court_schedule_id IS NOT NULL)
+                    AND NOT EXISTS (SELECT 1 FROM booking_log o
+                                      JOIN court_schedule cs ON (cs.id = o.court_schedule_id
+                                                                 AND o.booking_id = b.booking_id)))
             """, nativeQuery = true)
     int deleteRowsOfDeletedSessions();
 }
