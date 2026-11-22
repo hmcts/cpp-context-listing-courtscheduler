@@ -271,6 +271,50 @@ class ExtendMultidayHearingServiceTest {
         verify(allocatedListingRepository, never()).save(any());
     }
 
+    // SPRDT-1572: the extend tail follows the court-calendar always-assign rule — a full tail session
+    // is booked beyond its capacity; only a tail day with NO session is NO_AVAILABILITY (above).
+
+    @Test
+    void extendBooksAFullTailSessionBeyondCapacity_when_overbookingIsNotAllowed() {
+        final CourtSchedule fullDay5 = adSession(LocalDate.of(2026, 3, 5), 359).overbookingAllowed(false);
+        final AllocatedListing savedTail = extendByOneDayOnto(List.of(fullDay5));
+
+        assertEquals(fullDay5.getCourtScheduleId(), savedTail.getCourtScheduleId());
+        assertEquals(360, savedTail.getDuration());
+    }
+
+    @Test
+    void extendPrefersTheTailSessionWithCapacity_when_aTailDayHasTwoCandidates() {
+        final CourtSchedule full = adSession(LocalDate.of(2026, 3, 5), 120).courtScheduleId("cs-full");
+        final CourtSchedule fits = adSession(LocalDate.of(2026, 3, 5), 360).courtScheduleId("cs-fits");
+
+        assertEquals("cs-fits", extendByOneDayOnto(List.of(full, fits)).getCourtScheduleId());
+    }
+
+    /** Extends the 3-day block (2..4 Mar 2026) to 5 Mar onto the given candidates; returns the saved tail row. */
+    private AllocatedListing extendByOneDayOnto(final List<CourtSchedule> day5Candidates) {
+        final List<AllocatedListing> postExtend = new ArrayList<>(existingAllocations);
+        postExtend.add(allocation(LocalDate.of(2026, 3, 5)));
+        when(allocatedListingRepository.findByHearingIdOrderBySessionDateAsc(HEARING_ID))
+                .thenReturn(existingAllocations)
+                .thenReturn(postExtend);
+        when(courtScheduleRepository.getCourtSchedulesByIdList(any()))
+                .thenReturn(buildHydratedSchedules(existingAllocations))
+                .thenReturn(buildHydratedSchedules(postExtend));
+        when(courtScheduleRepository.findAdSessionsInRange(
+                eq(OU_CODE), eq(String.valueOf(COURT_ROOM_ID)), eq(BUSINESS_TYPE),
+                eq(LocalDate.of(2026, 3, 5)), eq(LocalDate.of(2026, 3, 5)), any()))
+                .thenReturn(day5Candidates);
+
+        final List<CourtSchedule> result = service.extend(HEARING_ID,
+                LocalDate.of(2026, 3, 2), LocalDate.of(2026, 3, 5), 1440);
+
+        assertEquals(4, result.size());
+        final org.mockito.ArgumentCaptor<AllocatedListing> saved = org.mockito.ArgumentCaptor.forClass(AllocatedListing.class);
+        verify(allocatedListingRepository, times(1)).save(saved.capture());
+        return saved.getValue();
+    }
+
     private static AllocatedListing allocation(final LocalDate sessionDate) {
         final AllocatedListing al = new AllocatedListing();
         al.setId(UUID.randomUUID().toString());

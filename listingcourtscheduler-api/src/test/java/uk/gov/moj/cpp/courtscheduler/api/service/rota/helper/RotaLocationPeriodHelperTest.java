@@ -393,10 +393,9 @@ class RotaLocationPeriodHelperTest {
             final LocalDate endDate = LocalDate.parse("2024-12-31");
             final List<String> ouCodes = List.of("OU001");
             final String courtScheduleId = UUID.randomUUID().toString();
-            final CourtScheduleJudiciary judiciary =
-                    new CourtScheduleJudiciary()
-                            .courtScheduleId(courtScheduleId)
-                            .id("jud-1");
+            final CourtScheduleJudiciary judiciary = new CourtScheduleJudiciary()
+                    .courtScheduleId(courtScheduleId)
+                    .id("jud-1");
             final Map<String, List<CourtScheduleJudiciary>> serviceResult =
                     Map.of(courtScheduleId, List.of(judiciary));
             when(courtScheduleJudiciaryService.getCourtScheduleJudiciariesForRotaPeriod(
