@@ -35,7 +35,6 @@ import uk.gov.moj.cpp.courtscheduler.openapi.model.WeekCommencingUpdateRequest;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
