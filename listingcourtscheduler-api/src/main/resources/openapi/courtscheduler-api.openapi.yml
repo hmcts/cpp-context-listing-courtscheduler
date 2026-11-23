@@ -171,7 +171,7 @@ paths:
       tags: [session]
       operationId: putWeekCommencingSession
       summary: >-
-        Edit the capacity of a CROWN draft week commencing session
+        Edit a CROWN draft week commencing session (capacity, business type or overbooking flag)
       requestBody:
         required: true
         content:
@@ -955,7 +955,7 @@ components:
         courtScheduleId: { type: string }
         businessType: { type: string }
         capacityInMinutes: { type: integer }
-        isOverbookingAllowed: { type: boolean }
+        isOverbookingAllowed: { type: boolean, nullable: true }
 
     # startDate/endDate deliberately plain strings (no format:date) — preserves the legacy
     # END_DATE-placeholder-as-null quirk and custom bad-format error messages, which automatic

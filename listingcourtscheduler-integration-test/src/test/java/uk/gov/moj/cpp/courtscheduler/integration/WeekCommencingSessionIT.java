@@ -28,7 +28,6 @@ import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.WEEK_
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.WEEK_COMMENCING_NO_MONDAY;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.WEEK_COMMENCING_SESSION_NOT_WC;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.WEEK_COMMENCING_SLOT_BASED_NOT_ALLOWED;
-import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.WEEK_COMMENCING_USE_WC_ENDPOINT;
 
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
@@ -82,11 +81,8 @@ class WeekCommencingSessionIT extends AbstractIT {
     private static final String COURT_CENTRE_OUCODE = "B40IM00";
     private static final String FIRST_LISTED_COURT_ROOM_ID = "3fc02c0f-f92e-31da-9686-d626ac8ccdc3";
     private static final String CREATE_CONTENT_TYPE = "application/vnd.courtscheduler.create+json";
-    private static final String UPDATE_SESSION_URL = "/courtschedule/edit";
-    private static final String UPDATE_SESSION_CONTENT_TYPE = "application/vnd.courtscheduler.update+json";
     private static final String VALIDATE_URL = "/validate";
     private static final String VALIDATE_CREATE_CONTENT_TYPE = "application/vnd.courtscheduler.validate.create+json";
-    private static final String VALIDATE_UPDATE_CONTENT_TYPE = "application/vnd.courtscheduler.validate.update+json";
     private static final String DURATION_BASED_BUSINESS_TYPE = "TRL";
     private static final String OTHER_DURATION_BASED_BUSINESS_TYPE = "LGT";
     private static final String SLOT_BASED_BUSINESS_TYPE = "DVLA";
@@ -581,7 +577,7 @@ class WeekCommencingSessionIT extends AbstractIT {
     }
 
     @Test
-    void shouldPreserveOverbookingFlagWhenUpdateRequestOmitsTheField() {
+    void shouldDefaultOverbookingToFalseWhenUpdateRequestOmitsTheField() {
         assertCreated(request(DURATION_BASED_BUSINESS_TYPE, startDate, endDate));
         final CourtSchedule first = databaseReader.courtSchedules().getFirst();
         assertThat(first.isOverbookingAllowed(), is(true));
@@ -598,7 +594,7 @@ class WeekCommencingSessionIT extends AbstractIT {
         final CourtSchedule updated = databaseReader.courtSchedules().stream()
                 .filter(cs -> cs.getCourtScheduleId().equals(first.getCourtScheduleId()))
                 .findFirst().orElseThrow();
-        assertThat(updated.isOverbookingAllowed(), is(true));
+        assertThat(updated.isOverbookingAllowed(), is(false));
     }
 
     @Test
@@ -644,46 +640,6 @@ class WeekCommencingSessionIT extends AbstractIT {
         try (Response response = putCommand(URL, UPDATE_CONTENT_TYPE, IntegrationTestBase.DENIED_USER_ID,
                 updateRequest(first.getCourtScheduleId(), DURATION_BASED_BUSINESS_TYPE, UPDATED_CAPACITY, false).build().toString())) {
             assertThat(response.getStatus(), is(FORBIDDEN.getStatusCode()));
-        }
-    }
-
-    @Test
-    void shouldRejectStandardUpdateOfAWeekCommencingSession() {
-        assertCreated(request(DURATION_BASED_BUSINESS_TYPE, startDate, endDate));
-        final CourtSchedule first = databaseReader.courtSchedules().getFirst();
-
-        final String payload = createObjectBuilder()
-                .add(COURT_SCHEDULE_ID, first.getCourtScheduleId())
-                .add(COURT_ROOM_ID, first.getCourtRoomId())
-                .add("courtSession", ALL_DAY)
-                .add(BUSINESS_TYPE, DURATION_BASED_BUSINESS_TYPE)
-                .add("jurisdiction", CROWN)
-                .add(IS_DRAFT, true)
-                .build().toString();
-
-        try (Response response = postCommand(UPDATE_SESSION_URL, UPDATE_SESSION_CONTENT_TYPE, USER_ID, payload)) {
-            assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
-            assertThat(response.readEntity(String.class), containsString(WEEK_COMMENCING_USE_WC_ENDPOINT));
-        }
-    }
-
-    @Test
-    void shouldRejectValidateUpdateOfAWeekCommencingSession() {
-        assertCreated(request(DURATION_BASED_BUSINESS_TYPE, startDate, endDate));
-        final CourtSchedule first = databaseReader.courtSchedules().getFirst();
-
-        final String payload = createObjectBuilder()
-                .add(COURT_SCHEDULE_ID, first.getCourtScheduleId())
-                .add(COURT_ROOM_ID, first.getCourtRoomId())
-                .add("courtSession", ALL_DAY)
-                .add(BUSINESS_TYPE, DURATION_BASED_BUSINESS_TYPE)
-                .add("panel", ADULT)
-                .add("maxDuration", UPDATED_CAPACITY)
-                .build().toString();
-
-        try (Response response = postCommand(VALIDATE_URL, VALIDATE_UPDATE_CONTENT_TYPE, USER_ID, payload)) {
-            assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
-            assertThat(response.readEntity(String.class), containsString(WEEK_COMMENCING_USE_WC_ENDPOINT));
         }
     }
 

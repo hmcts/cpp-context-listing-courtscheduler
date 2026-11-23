@@ -280,7 +280,8 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
 
     @Override
     public ResponseEntity<Void> postWeekCommencingSession(final WeekCommencingCreateRequest body) {
-        LOG.info("courtscheduler.create-week-commencing.sessions requested: {}", body);
+        final String sanitizedBodyForLog = StringUtils.replaceChars(String.valueOf(body), "\r\n", "  ");
+        LOG.info("courtscheduler.create-week-commencing.sessions requested: {}", sanitizedBodyForLog);
 
         final JsonObject duplicate = weekCommencingApiValidator.getWeekCommencingDuplicateValidation(body);
         if (!duplicate.isEmpty()) {
@@ -311,7 +312,7 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
 
         final UpdateCourtSchedule updateRequest = weekCommencingSessionService.enrichUpdateSessionRequest(body, persisted);
 
-        final JsonObject validate = sessionsApiValidator.getSessionsUpdateValidation(updateRequest);
+        final JsonObject validate = sessionsApiValidator.getWeekCommencingSessionsUpdateValidation(updateRequest);
         if (!validate.isEmpty()) {
             throw new ValidationException(validate);
         }
@@ -489,11 +490,6 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
     @Override
     public ResponseEntity<Void> postCourtschedulerUpdateCourtscheduleEdit(final UpdateCourtSchedule body) {
         LOG.info("courtscheduler.update requested: {}", body);
-
-        final JsonObject wcGuard = weekCommencingApiValidator.rejectIfWeekCommencingSession(body.getCourtScheduleId());
-        if (!wcGuard.isEmpty()) {
-            throw new ValidationException(wcGuard);
-        }
 
         final JsonObject validate = sessionsApiValidator.getSessionsUpdateValidation(body);
         if (!validate.isEmpty()) {
@@ -957,10 +953,6 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
                     applyLegacyCreateDefaults(lenientObjectMapper.convertValue(body, CreateSessionRequestParam.class)));
         } else if (contentType.startsWith(UPDATE_MT.substring(0, UPDATE_MT.indexOf('+')))) {
             final UpdateCourtSchedule updateRequest = lenientObjectMapper.convertValue(body, UpdateCourtSchedule.class);
-            final JsonObject wcGuard = weekCommencingApiValidator.rejectIfWeekCommencingSession(updateRequest.getCourtScheduleId());
-            if (!wcGuard.isEmpty()) {
-                throw new ValidationException(wcGuard);
-            }
             validate = sessionsApiValidator.getSessionsUpdateValidation(updateRequest);
         } else if (contentType.startsWith(DELETE_MT.substring(0, DELETE_MT.indexOf('+')))) {
             // Jackson deserialization into SessionsParam is the "well-formed" check.

@@ -10,17 +10,16 @@ import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.WEEK_
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.WEEK_COMMENCING_NO_MONDAY;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.WEEK_COMMENCING_SESSION_NOT_WC;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.WEEK_COMMENCING_SLOT_BASED_NOT_ALLOWED;
-import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.WEEK_COMMENCING_USE_WC_ENDPOINT;
 
 import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataCache;
 import uk.gov.moj.cpp.courtscheduler.common.service.SessionsService;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
+import uk.gov.moj.cpp.courtscheduler.domain.utils.TimezoneUtils;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.BusinessType;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.CreateSessionRequestParam;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.WeekCommencingCreateRequest;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.WeekCommencingUpdateRequest;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
-import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
@@ -39,16 +38,13 @@ public class WeekCommencingApiValidator {
     private final SessionsApiValidator sessionsApiValidator;
     private final ReferenceDataCache referenceDataCache;
     private final SessionsService sessionsService;
-    private final CourtScheduleRepository courtScheduleRepository;
 
     public WeekCommencingApiValidator(final SessionsApiValidator sessionsApiValidator,
                                       final ReferenceDataCache referenceDataCache,
-                                      final SessionsService sessionsService,
-                                      final CourtScheduleRepository courtScheduleRepository) {
+                                      final SessionsService sessionsService) {
         this.sessionsApiValidator = sessionsApiValidator;
         this.referenceDataCache = referenceDataCache;
         this.sessionsService = sessionsService;
-        this.courtScheduleRepository = courtScheduleRepository;
     }
 
     /**
@@ -96,20 +92,6 @@ public class WeekCommencingApiValidator {
     }
 
     /**
-     * Rejects the request if the session is a week commencing row, so that the standard
-     * courtscheduler.update and validate.update endpoints cannot modify week commencing sessions.
-     * Returns an error when the session exists and is week commencing; returns empty otherwise
-     * (non-existent or non-WC sessions fall through to the standard update validation).
-     */
-    public JsonObject rejectIfWeekCommencingSession(final String courtScheduleId) {
-        final CourtSchedule persisted = courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId);
-        if (persisted != null && TRUE.equals(persisted.isWeekCommencing())) {
-            return buildErrorResponse(WEEK_COMMENCING_USE_WC_ENDPOINT);
-        }
-        return EMPTY_JSON_OBJECT;
-    }
-
-    /**
      * Validates that the session exists, is a week commencing session, uses a duration-based
      * business type, and — when the business type is changing — that no other week commencing
      * session already exists for the same court centre and new business type on the same Monday.
@@ -125,7 +107,8 @@ public class WeekCommencingApiValidator {
         if (!TRUE.equals(persisted.isWeekCommencing())) {
             return buildErrorResponse(WEEK_COMMENCING_SESSION_NOT_WC);
         }
-        if (persisted.getSessionDate() != null && persisted.getSessionDate().isBefore(LocalDate.now())) {
+        final LocalDate weekStart = LocalDate.now(TimezoneUtils.LONDON_ZONE).with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+        if (persisted.getSessionDate() != null && persisted.getSessionDate().isBefore(weekStart)) {
             return buildErrorResponse(SESSION_IN_PAST_CANNOT_BE_EDITED);
         }
         if (isSlotBased(request.getBusinessType())) {

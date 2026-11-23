@@ -810,8 +810,20 @@ public class SessionsApiValidator {
                 .build();
     }
 
-    public JsonObject getSessionsUpdateValidation (final UpdateCourtSchedule
-                                                           updateCourtSchedule){
+    public JsonObject getSessionsUpdateValidation(final UpdateCourtSchedule updateCourtSchedule) {
+        return validateSessionUpdate(updateCourtSchedule, true);
+    }
+
+    /**
+     * Used by the week commencing PUT handler, which enforces its own week-based past-date cutoff via
+     * {@link WeekCommencingApiValidator#getWeekCommencingUpdateValidation}.
+     */
+    public JsonObject getWeekCommencingSessionsUpdateValidation(final UpdateCourtSchedule updateCourtSchedule) {
+        return validateSessionUpdate(updateCourtSchedule, false);
+    }
+
+    private JsonObject validateSessionUpdate(final UpdateCourtSchedule updateCourtSchedule,
+                                             final boolean checkPastDate) {
         final String jurisdiction = updateCourtSchedule.getJurisdiction();
         final JsonObject jurisdictionValidation = validateUpdateJurisdiction(jurisdiction);
         if (jurisdictionValidation != EMPTY_JSON_OBJECT) {
@@ -828,9 +840,11 @@ public class SessionsApiValidator {
             return courtHouseValidation;
         }
 
-        final JsonObject pastSessionValidation = validateSessionNotInPast(updateCourtSchedule);
-        if (!pastSessionValidation.isEmpty()) {
-            return pastSessionValidation;
+        if (checkPastDate) {
+            final JsonObject pastSessionValidation = validateSessionNotInPast(updateCourtSchedule);
+            if (!pastSessionValidation.isEmpty()) {
+                return pastSessionValidation;
+            }
         }
 
         final JsonObject draftValidation = validateUpdateIsDraft(updateCourtSchedule, jurisdiction);

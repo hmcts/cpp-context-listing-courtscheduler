@@ -18,11 +18,14 @@ import uk.gov.moj.cpp.courtscheduler.openapi.model.Session;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.WeekCommencingCreateRequest;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.WeekCommencingUpdateRequest;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
-import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.temporal.TemporalAdjusters;
 import java.util.List;
 import java.util.Optional;
+
+import uk.gov.moj.cpp.courtscheduler.domain.utils.TimezoneUtils;
 
 import jakarta.json.JsonObject;
 
@@ -46,14 +49,12 @@ class WeekCommencingApiValidatorTest {
     private ReferenceDataCache referenceDataCache;
     @Mock
     private SessionsService sessionsService;
-    @Mock
-    private CourtScheduleRepository courtScheduleRepository;
 
     private WeekCommencingApiValidator validator;
 
     @BeforeEach
     void setUp() {
-        validator = new WeekCommencingApiValidator(sessionsApiValidator, referenceDataCache, sessionsService, courtScheduleRepository);
+        validator = new WeekCommencingApiValidator(sessionsApiValidator, referenceDataCache, sessionsService);
     }
 
     @Test
@@ -146,36 +147,6 @@ class WeekCommencingApiValidatorTest {
     }
 
     @Test
-    void rejectIfWeekCommencingShouldRejectAWeekCommencingSession() {
-        final String courtScheduleId = randomUUID().toString();
-        final CourtSchedule persisted = new CourtSchedule();
-        persisted.setWeekCommencing(true);
-        when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId)).thenReturn(persisted);
-
-        final JsonObject result = validator.rejectIfWeekCommencingSession(courtScheduleId);
-
-        assertThat(result.getString(ERROR_MESSAGE), is(ErrorMessages.WEEK_COMMENCING_USE_WC_ENDPOINT));
-    }
-
-    @Test
-    void rejectIfWeekCommencingShouldPassForANonWeekCommencingSession() {
-        final String courtScheduleId = randomUUID().toString();
-        final CourtSchedule persisted = new CourtSchedule();
-        persisted.setWeekCommencing(false);
-        when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId)).thenReturn(persisted);
-
-        assertThat(validator.rejectIfWeekCommencingSession(courtScheduleId).isEmpty(), is(true));
-    }
-
-    @Test
-    void rejectIfWeekCommencingShouldPassWhenSessionNotFound() {
-        final String courtScheduleId = randomUUID().toString();
-        when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId)).thenReturn(null);
-
-        assertThat(validator.rejectIfWeekCommencingSession(courtScheduleId).isEmpty(), is(true));
-    }
-
-    @Test
     void updateValidationShouldPassWhenSessionExistsAndIsWeekCommencing() {
         final String courtScheduleId = randomUUID().toString();
         final CourtSchedule persisted = new CourtSchedule();
@@ -216,6 +187,40 @@ class WeekCommencingApiValidatorTest {
         final CourtSchedule persisted = new CourtSchedule();
         persisted.setWeekCommencing(true);
         persisted.setSessionDate(LocalDate.of(2020, 1, 6));
+        persisted.setBusinessType(BUSINESS_TYPE);
+
+        final JsonObject result = validator.getWeekCommencingUpdateValidation(updateRequest(courtScheduleId, BUSINESS_TYPE), persisted);
+
+        assertThat(result.getString(ERROR_MESSAGE), is(ErrorMessages.SESSION_IN_PAST_CANNOT_BE_EDITED));
+        verifyNoInteractions(referenceDataCache, sessionsService);
+    }
+
+    @Test
+    void updateValidationShouldAllowEditForCurrentWeekAfterMonday() {
+        final String courtScheduleId = randomUUID().toString();
+        final LocalDate thisMonday = LocalDate.now(TimezoneUtils.LONDON_ZONE)
+                .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+        final CourtSchedule persisted = new CourtSchedule();
+        persisted.setWeekCommencing(true);
+        persisted.setSessionDate(thisMonday);
+        persisted.setBusinessType(BUSINESS_TYPE);
+        when(referenceDataCache.getRotaBusinessTypeByCode(BUSINESS_TYPE))
+                .thenReturn(Optional.of(new BusinessType().typeCode(BUSINESS_TYPE).slot(false)));
+
+        final JsonObject result = validator.getWeekCommencingUpdateValidation(updateRequest(courtScheduleId, BUSINESS_TYPE), persisted);
+
+        assertThat(result.isEmpty(), is(true));
+    }
+
+    @Test
+    void updateValidationShouldRejectSessionFromPreviousWeek() {
+        final String courtScheduleId = randomUUID().toString();
+        final LocalDate lastMonday = LocalDate.now(TimezoneUtils.LONDON_ZONE)
+                .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+                .minusWeeks(1);
+        final CourtSchedule persisted = new CourtSchedule();
+        persisted.setWeekCommencing(true);
+        persisted.setSessionDate(lastMonday);
         persisted.setBusinessType(BUSINESS_TYPE);
 
         final JsonObject result = validator.getWeekCommencingUpdateValidation(updateRequest(courtScheduleId, BUSINESS_TYPE), persisted);

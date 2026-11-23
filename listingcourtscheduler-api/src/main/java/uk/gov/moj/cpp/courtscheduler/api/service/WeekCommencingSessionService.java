@@ -113,9 +113,7 @@ public class WeekCommencingSessionService {
                         ? LONDON_HH_MM.format(persisted.getSessionStartTime()) : null)
                 .sessionEndTime(persisted.getSessionEndTime() != null
                         ? LONDON_HH_MM.format(persisted.getSessionEndTime()) : null)
-                .isOverbookingAllowed(request.getIsOverbookingAllowed() != null
-                        ? TRUE.equals(request.getIsOverbookingAllowed())
-                        : TRUE.equals(persisted.isOverbookingAllowed()))
+                .isOverbookingAllowed(TRUE.equals(request.getIsOverbookingAllowed()))
                 .jurisdiction(persisted.getJurisdiction())
                 .isDraft(persisted.isDraft());
     }

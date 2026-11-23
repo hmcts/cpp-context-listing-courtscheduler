@@ -222,7 +222,7 @@ class WeekCommencingSessionServiceTest {
     }
 
     @Test
-    void shouldPreservePersistedOverbookingWhenRequestOmitsTheField() {
+    void shouldDefaultOverbookingToFalseWhenRequestOmitsTheField() {
         final CourtSchedule persisted = persistedSession(COURT_ROOM_ID, BUSINESS_TYPE, "AD", ADULT, CROWN, true, null, null);
         persisted.setIsOverbookingAllowed(true);
 
@@ -233,7 +233,7 @@ class WeekCommencingSessionServiceTest {
                         .capacityInMinutes(CAPACITY_IN_MINUTES),
                 persisted);
 
-        assertThat(result.getIsOverbookingAllowed(), is(true));
+        assertThat(result.getIsOverbookingAllowed(), is(false));
     }
 
     private static CourtSchedule persistedSession(final String courtRoomId, final String businessType,
