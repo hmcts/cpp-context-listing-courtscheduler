@@ -167,8 +167,9 @@ protocols: [ HTTP, HTTPS ]
         description: |
           Schema violation, session not found, session is not a week commencing row, the session's
           week has already ended (the Monday is before the current week), business type is slot-based,
-          new capacity is less than total booked duration, or the new business type already has a
-          week commencing session on the same Monday
+          business type change is requested when hearings are already booked, new capacity is less than
+          total booked duration, or the new business type already has a week commencing session on the
+          same Monday
 
 /sessions:
   description: |

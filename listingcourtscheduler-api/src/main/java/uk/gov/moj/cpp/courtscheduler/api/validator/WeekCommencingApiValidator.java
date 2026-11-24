@@ -9,6 +9,7 @@ import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.SESSI
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.WEEK_COMMENCING_NO_COURTROOM;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.WEEK_COMMENCING_NO_MONDAY;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.WEEK_COMMENCING_SESSION_NOT_WC;
+import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.WEEK_COMMENCING_BUSINESS_TYPE_CHANGE_WITH_HEARINGS;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.WEEK_COMMENCING_SLOT_BASED_NOT_ALLOWED;
 
 import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataCache;
@@ -115,6 +116,9 @@ public class WeekCommencingApiValidator {
             return buildErrorResponse(WEEK_COMMENCING_SLOT_BASED_NOT_ALLOWED);
         }
         if (!Objects.equals(persisted.getBusinessType(), request.getBusinessType())) {
+            if (TRUE.equals(persisted.hasHearingsBooked())) {
+                return buildErrorResponse(WEEK_COMMENCING_BUSINESS_TYPE_CHANGE_WITH_HEARINGS);
+            }
             final JsonObject duplicate = sessionsService.validateWeekCommencingIntegrity(
                     persisted.getCourtHouseId(), request.getBusinessType(),
                     persisted.getSessionDate(), persisted.getSessionDate());

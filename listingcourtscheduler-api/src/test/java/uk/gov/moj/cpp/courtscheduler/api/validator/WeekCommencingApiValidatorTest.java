@@ -230,6 +230,41 @@ class WeekCommencingApiValidatorTest {
     }
 
     @Test
+    void updateValidationShouldRejectBusinessTypeChangeWhenHearingsAreBooked() {
+        final String courtScheduleId = randomUUID().toString();
+        final String newBusinessType = "HGH";
+        final CourtSchedule persisted = new CourtSchedule();
+        persisted.setWeekCommencing(true);
+        persisted.setBusinessType(BUSINESS_TYPE);
+        persisted.setSessionDate(LocalDate.now(TimezoneUtils.LONDON_ZONE).plusWeeks(1));
+        persisted.setHasHearingsBooked(true);
+
+        final JsonObject result = validator.getWeekCommencingUpdateValidation(updateRequest(courtScheduleId, newBusinessType), persisted);
+
+        assertThat(result.getString(ERROR_MESSAGE), is(ErrorMessages.WEEK_COMMENCING_BUSINESS_TYPE_CHANGE_WITH_HEARINGS));
+        verifyNoInteractions(referenceDataCache, sessionsService);
+    }
+
+    @Test
+    void updateValidationShouldAllowBusinessTypeChangeWhenNoHearingsAreBooked() {
+        final String courtScheduleId = randomUUID().toString();
+        final String newBusinessType = "HGH";
+        final CourtSchedule persisted = new CourtSchedule();
+        persisted.setWeekCommencing(true);
+        persisted.setBusinessType(BUSINESS_TYPE);
+        persisted.setSessionDate(LocalDate.now(TimezoneUtils.LONDON_ZONE).plusWeeks(1));
+        persisted.setHasHearingsBooked(false);
+        when(referenceDataCache.getRotaBusinessTypeByCode(newBusinessType))
+                .thenReturn(Optional.of(new BusinessType().typeCode(newBusinessType).slot(false)));
+        when(sessionsService.validateWeekCommencingIntegrity(any(), any(), any(), any()))
+                .thenReturn(EMPTY_JSON_OBJECT);
+
+        final JsonObject result = validator.getWeekCommencingUpdateValidation(updateRequest(courtScheduleId, newBusinessType), persisted);
+
+        assertThat(result.isEmpty(), is(true));
+    }
+
+    @Test
     void updateValidationShouldRejectSlotBasedBusinessType() {
         final String courtScheduleId = randomUUID().toString();
         final String slotBasedType = "DVLA";
