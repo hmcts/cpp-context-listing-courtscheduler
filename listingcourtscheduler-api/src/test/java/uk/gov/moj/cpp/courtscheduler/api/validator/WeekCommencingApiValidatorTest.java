@@ -238,11 +238,13 @@ class WeekCommencingApiValidatorTest {
         persisted.setBusinessType(BUSINESS_TYPE);
         persisted.setSessionDate(LocalDate.now(TimezoneUtils.LONDON_ZONE).plusWeeks(1));
         persisted.setHasHearingsBooked(true);
+        when(referenceDataCache.getRotaBusinessTypeByCode(newBusinessType))
+                .thenReturn(Optional.of(new BusinessType().typeCode(newBusinessType).slot(false)));
 
         final JsonObject result = validator.getWeekCommencingUpdateValidation(updateRequest(courtScheduleId, newBusinessType), persisted);
 
         assertThat(result.getString(ERROR_MESSAGE), is(ErrorMessages.WEEK_COMMENCING_BUSINESS_TYPE_CHANGE_WITH_HEARINGS));
-        verifyNoInteractions(referenceDataCache, sessionsService);
+        verifyNoInteractions(sessionsService);
     }
 
     @Test
