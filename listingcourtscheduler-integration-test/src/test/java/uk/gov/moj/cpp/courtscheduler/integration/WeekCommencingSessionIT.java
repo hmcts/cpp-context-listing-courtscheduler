@@ -22,8 +22,11 @@ import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.oneOf;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.DUPLICATE_SESSIONS;
+import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.MAX_DURATION_LESS_THAN_TOTAL_BOOKED;
+import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.SESSION_NOT_FOUND;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.WEEK_COMMENCING_NO_COURTROOM;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.WEEK_COMMENCING_NO_MONDAY;
+import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.WEEK_COMMENCING_SESSION_NOT_WC;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.WEEK_COMMENCING_SLOT_BASED_NOT_ALLOWED;
 
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
@@ -58,8 +61,12 @@ class WeekCommencingSessionIT extends AbstractIT {
 
     private static final String URL = "/session/weekCommencing";
     private static final String CONTENT_TYPE = "application/vnd.courtscheduler.create-week-commencing.sessions+json";
+    private static final String UPDATE_CONTENT_TYPE = "application/vnd.courtscheduler.update-week-commencing.session+json";
+    private static final int UPDATED_CAPACITY = 2160;
     private static final String COURT_SCHEDULE_URL = "/courtschedule";
     private static final String GET_COURT_SCHEDULE_ACCEPT = "application/vnd.courtscheduler.get+json";
+    private static final String CAPACITY_IN_MINUTES = "capacityInMinutes";
+    private static final String IS_OVERBOOKING_ALLOWED = "isOverbookingAllowed";
     private static final String CROWN = "CROWN";
     private static final String ALL_DAY = "AD";
     private static final String COURT_CENTRE_ID_FIELD = "courtCentreId";
@@ -71,6 +78,7 @@ class WeekCommencingSessionIT extends AbstractIT {
     private static final String GET_HEARING_SLOTS_ACCEPT = "application/vnd.courtscheduler.get.hearing.slots+json";
     private static final String GET_HEARING_IDS_ACCEPT = "application/vnd.courtscheduler.get.hearing.ids+json";
     private static final String COURT_CENTRE_ID = "785339c1-af71-3322-a55b-ba255e0db1c2";
+    private static final String COURT_CENTRE_OUCODE = "B40IM00";
     private static final String FIRST_LISTED_COURT_ROOM_ID = "3fc02c0f-f92e-31da-9686-d626ac8ccdc3";
     private static final String CREATE_CONTENT_TYPE = "application/vnd.courtscheduler.create+json";
     private static final String VALIDATE_URL = "/validate";
@@ -78,6 +86,9 @@ class WeekCommencingSessionIT extends AbstractIT {
     private static final String DURATION_BASED_BUSINESS_TYPE = "TRL";
     private static final String OTHER_DURATION_BASED_BUSINESS_TYPE = "LGT";
     private static final String SLOT_BASED_BUSINESS_TYPE = "DVLA";
+    private static final String BUSINESS_TYPE = "businessType";
+    private static final String COURT_ROOM_ID = "courtRoomId";
+    private static final String IS_DRAFT = "isDraft";
     private static final int CAPACITY_FIVE_DAYS = 1800;
     private static final int MINUTES_PER_DAY = 6 * 60;
     private static final int MAX_CAPACITY_IN_MINUTES = 999 * MINUTES_PER_DAY;
@@ -132,7 +143,7 @@ class WeekCommencingSessionIT extends AbstractIT {
 
         assertThat(sessions.stream().map(session -> session.getString(COURT_SCHEDULE_ID)).toList(), is(List.of(ordinarySessionId)));
         assertThat(sessions.getFirst().getBoolean(IS_WEEK_COMMENCING), is(false));
-        assertThat(sessions.getFirst().getBoolean("isDraft"), is(true));
+        assertThat(sessions.getFirst().getBoolean(IS_DRAFT), is(true));
     }
 
     @Test
@@ -147,7 +158,7 @@ class WeekCommencingSessionIT extends AbstractIT {
         assertThat(sessions.stream().map(session -> LocalDate.parse(session.getString(SESSION_DATE))).sorted().toList(),
                 is(mondaysBetween(startDate, endDate)));
         assertThat(sessions.stream().map(session -> session.getBoolean(IS_WEEK_COMMENCING)).toList(), everyItem(is(true)));
-        assertThat(sessions.stream().map(session -> session.getBoolean("isDraft")).toList(), everyItem(is(true)));
+        assertThat(sessions.stream().map(session -> session.getBoolean(IS_DRAFT)).toList(), everyItem(is(true)));
     }
 
     @Test
@@ -269,7 +280,7 @@ class WeekCommencingSessionIT extends AbstractIT {
     void shouldStoreTheMaximumCapacityOfNineHundredAndNinetyNineDaysOnEveryMondayOfAThreeYearRange() {
         final LocalDate threeYearsLater = startDate.plusYears(3);
         try (Response response = create(request(DURATION_BASED_BUSINESS_TYPE, startDate, threeYearsLater)
-                .add("capacityInMinutes", MAX_CAPACITY_IN_MINUTES))) {
+                .add(CAPACITY_IN_MINUTES, MAX_CAPACITY_IN_MINUTES))) {
             assertThat(response.readEntity(String.class), response.getStatus(), is(ACCEPTED.getStatusCode()));
             final List<CourtSchedule> rows = databaseReader.courtSchedules();
             assertThat(rows.stream().map(CourtSchedule::getSessionDate).toList(), is(mondaysBetween(startDate, threeYearsLater)));
@@ -280,7 +291,7 @@ class WeekCommencingSessionIT extends AbstractIT {
 
     @Test
     void shouldRejectCapacityAboveNineHundredAndNinetyNineDays() {
-        try (Response response = create(request(DURATION_BASED_BUSINESS_TYPE, startDate, endDate).add("capacityInMinutes", MAX_CAPACITY_IN_MINUTES + 1))) {
+        try (Response response = create(request(DURATION_BASED_BUSINESS_TYPE, startDate, endDate).add(CAPACITY_IN_MINUTES, MAX_CAPACITY_IN_MINUTES + 1))) {
             assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
             assertThat(databaseReader.courtSchedules(), hasSize(0));
         }
@@ -426,16 +437,16 @@ class WeekCommencingSessionIT extends AbstractIT {
     private static JsonObjectBuilder ordinarySession(final String courtRoomId, final boolean isDraft) {
         return createObjectBuilder()
                 .add(COURT_CENTRE_ID_FIELD, COURT_CENTRE_ID)
-                .add("courtRoomId", courtRoomId)
+                .add(COURT_ROOM_ID, courtRoomId)
                 .add("jurisdiction", CROWN)
                 .add("sessionType", ALL_DAY)
-                .add("businessType", DURATION_BASED_BUSINESS_TYPE)
+                .add(BUSINESS_TYPE, DURATION_BASED_BUSINESS_TYPE)
                 .add("duration", MINUTES_PER_DAY)
                 .add("allDaySplit", false)
                 .add("panel", ADULT)
-                .add("isOverbookingAllowed", true)
+                .add(IS_OVERBOOKING_ALLOWED, true)
                 .add("repeatDays", createArrayBuilder().add("Monday"))
-                .add("isDraft", isDraft);
+                .add(IS_DRAFT, isDraft);
     }
 
     private JsonObjectBuilder everyWeek() {
@@ -444,6 +455,192 @@ class WeekCommencingSessionIT extends AbstractIT {
                 .add("endDate", endDate.toString())
                 .add("repeatFor", 1)
                 .add("frequency", "EVERY_WEEK");
+    }
+
+    @Test
+    void shouldUpdateCapacityAndAvailableDurationForAWeekCommencingSession() {
+        assertCreated(request(DURATION_BASED_BUSINESS_TYPE, startDate, endDate));
+        final CourtSchedule first = databaseReader.courtSchedules().getFirst();
+
+        try (Response response = update(updateRequest(first.getCourtScheduleId(), DURATION_BASED_BUSINESS_TYPE, UPDATED_CAPACITY, true))) {
+            assertThat(response.readEntity(String.class), response.getStatus(), is(ACCEPTED.getStatusCode()));
+        }
+
+        final CourtSchedule updated = databaseReader.courtSchedules().stream()
+                .filter(cs -> cs.getCourtScheduleId().equals(first.getCourtScheduleId()))
+                .findFirst().orElseThrow();
+        assertThat(updated.getMaxDuration(), is(UPDATED_CAPACITY));
+        assertThat(updated.getAvailableDuration(), is(UPDATED_CAPACITY));
+    }
+
+    @Test
+    void shouldUpdateBusinessTypeForAWeekCommencingSession() {
+        assertCreated(request(DURATION_BASED_BUSINESS_TYPE, startDate, endDate));
+        final CourtSchedule first = databaseReader.courtSchedules().getFirst();
+
+        try (Response response = update(updateRequest(first.getCourtScheduleId(), OTHER_DURATION_BASED_BUSINESS_TYPE, CAPACITY_FIVE_DAYS, false))) {
+            assertThat(response.readEntity(String.class), response.getStatus(), is(ACCEPTED.getStatusCode()));
+        }
+
+        final CourtSchedule updated = databaseReader.courtSchedules().stream()
+                .filter(cs -> cs.getCourtScheduleId().equals(first.getCourtScheduleId()))
+                .findFirst().orElseThrow();
+        assertThat(updated.getBusinessType(), is(OTHER_DURATION_BASED_BUSINESS_TYPE));
+    }
+
+    @Test
+    void shouldUpdateOverbookingAllowedForAWeekCommencingSession() {
+        assertCreated(request(DURATION_BASED_BUSINESS_TYPE, startDate, endDate));
+        final CourtSchedule first = databaseReader.courtSchedules().getFirst();
+        assertThat(first.isOverbookingAllowed(), is(true));
+
+        try (Response response = update(updateRequest(first.getCourtScheduleId(), DURATION_BASED_BUSINESS_TYPE, CAPACITY_FIVE_DAYS, false))) {
+            assertThat(response.readEntity(String.class), response.getStatus(), is(ACCEPTED.getStatusCode()));
+        }
+
+        final CourtSchedule updated = databaseReader.courtSchedules().stream()
+                .filter(cs -> cs.getCourtScheduleId().equals(first.getCourtScheduleId()))
+                .findFirst().orElseThrow();
+        assertThat(updated.isOverbookingAllowed(), is(false));
+    }
+
+    @Test
+    void shouldPreserveImmutableFieldsOnUpdate() {
+        assertCreated(request(DURATION_BASED_BUSINESS_TYPE, startDate, endDate));
+        final CourtSchedule before = databaseReader.courtSchedules().getFirst();
+
+        try (Response response = update(updateRequest(before.getCourtScheduleId(), OTHER_DURATION_BASED_BUSINESS_TYPE, UPDATED_CAPACITY, false))) {
+            assertThat(response.readEntity(String.class), response.getStatus(), is(ACCEPTED.getStatusCode()));
+        }
+
+        final CourtSchedule after = databaseReader.courtSchedules().stream()
+                .filter(cs -> cs.getCourtScheduleId().equals(before.getCourtScheduleId()))
+                .findFirst().orElseThrow();
+        assertThat(after.getCourtRoomId(), is(before.getCourtRoomId()));
+        assertThat(after.getCourtSession(), is(before.getCourtSession()));
+        assertThat(after.getPanel(), is(before.getPanel()));
+        assertThat(after.getJurisdiction(), is(before.getJurisdiction()));
+        assertThat(after.getSessionDate(), is(before.getSessionDate()));
+        assertThat(after.getCourtHouseId(), is(before.getCourtHouseId()));
+        assertThat(after.isDraft(), is(before.isDraft()));
+        assertThat(after.isWeekCommencing(), is(before.isWeekCommencing()));
+    }
+
+    @Test
+    void shouldRecalculateAvailableDurationWithExistingBookings() throws SQLException {
+        assertCreated(request(DURATION_BASED_BUSINESS_TYPE, startDate, endDate));
+        final CourtSchedule first = databaseReader.courtSchedules().getFirst();
+        seedBooking(first, MINUTES_PER_DAY);
+
+        try (Response response = update(updateRequest(first.getCourtScheduleId(), DURATION_BASED_BUSINESS_TYPE, UPDATED_CAPACITY, true))) {
+            assertThat(response.readEntity(String.class), response.getStatus(), is(ACCEPTED.getStatusCode()));
+        }
+
+        final CourtSchedule updated = databaseReader.courtSchedules().stream()
+                .filter(cs -> cs.getCourtScheduleId().equals(first.getCourtScheduleId()))
+                .findFirst().orElseThrow();
+        assertThat(updated.getMaxDuration(), is(UPDATED_CAPACITY));
+        assertThat(updated.getAvailableDuration(), is(UPDATED_CAPACITY - MINUTES_PER_DAY));
+    }
+
+    @Test
+    void shouldRejectUpdateWhenCapacityLessThanTotalBooked() throws SQLException {
+        assertCreated(request(DURATION_BASED_BUSINESS_TYPE, startDate, endDate));
+        final CourtSchedule first = databaseReader.courtSchedules().getFirst();
+        seedBooking(first, MINUTES_PER_DAY);
+
+        try (Response response = update(updateRequest(first.getCourtScheduleId(), DURATION_BASED_BUSINESS_TYPE, MINUTES_PER_DAY / 2, true))) {
+            assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
+            assertThat(response.readEntity(String.class), containsString(MAX_DURATION_LESS_THAN_TOTAL_BOOKED));
+        }
+    }
+
+    @Test
+    void shouldRejectUpdateOfNonWeekCommencingSession() throws SQLException {
+        final String ordinarySessionId = seedOrdinaryDraftSession(startDate.with(next(TUESDAY)), COURT_CENTRE_OUCODE);
+
+        try (Response response = update(updateRequest(ordinarySessionId, DURATION_BASED_BUSINESS_TYPE, UPDATED_CAPACITY, false))) {
+            assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
+            assertThat(response.readEntity(String.class), containsString(WEEK_COMMENCING_SESSION_NOT_WC));
+        }
+    }
+
+    @Test
+    void shouldRejectUpdateWithSlotBasedBusinessType() {
+        assertCreated(request(DURATION_BASED_BUSINESS_TYPE, startDate, endDate));
+        final CourtSchedule first = databaseReader.courtSchedules().getFirst();
+
+        try (Response response = update(updateRequest(first.getCourtScheduleId(), SLOT_BASED_BUSINESS_TYPE, CAPACITY_FIVE_DAYS, false))) {
+            assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
+            assertThat(response.readEntity(String.class), containsString(WEEK_COMMENCING_SLOT_BASED_NOT_ALLOWED));
+        }
+    }
+
+    @Test
+    void shouldDefaultOverbookingToFalseWhenUpdateRequestOmitsTheField() {
+        assertCreated(request(DURATION_BASED_BUSINESS_TYPE, startDate, endDate));
+        final CourtSchedule first = databaseReader.courtSchedules().getFirst();
+        assertThat(first.isOverbookingAllowed(), is(true));
+
+        final String payloadWithoutOverbooking = createObjectBuilder()
+                .add(COURT_SCHEDULE_ID, first.getCourtScheduleId())
+                .add(BUSINESS_TYPE, DURATION_BASED_BUSINESS_TYPE)
+                .add(CAPACITY_IN_MINUTES, UPDATED_CAPACITY)
+                .build().toString();
+        try (Response response = putCommand(URL, UPDATE_CONTENT_TYPE, USER_ID, payloadWithoutOverbooking)) {
+            assertThat(response.readEntity(String.class), response.getStatus(), is(ACCEPTED.getStatusCode()));
+        }
+
+        final CourtSchedule updated = databaseReader.courtSchedules().stream()
+                .filter(cs -> cs.getCourtScheduleId().equals(first.getCourtScheduleId()))
+                .findFirst().orElseThrow();
+        assertThat(updated.isOverbookingAllowed(), is(false));
+    }
+
+    @Test
+    void shouldRejectUpdateWhenChangingToABusinessTypeThatAlreadyHasAWeekCommencingSessionOnTheSameMonday() {
+        assertCreated(request(DURATION_BASED_BUSINESS_TYPE, startDate, endDate));
+        assertCreated(request(OTHER_DURATION_BASED_BUSINESS_TYPE, startDate, endDate));
+        final CourtSchedule trlSession = databaseReader.courtSchedules().stream()
+                .filter(cs -> DURATION_BASED_BUSINESS_TYPE.equals(cs.getBusinessType()))
+                .findFirst().orElseThrow();
+
+        try (Response response = update(updateRequest(trlSession.getCourtScheduleId(), OTHER_DURATION_BASED_BUSINESS_TYPE, CAPACITY_FIVE_DAYS, false))) {
+            assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
+            assertThat(response.readEntity(String.class), containsString(DUPLICATE_SESSIONS));
+        }
+    }
+
+    @Test
+    void shouldRejectUpdateForNonExistentSession() {
+        try (Response response = update(updateRequest(UUID.randomUUID().toString(), DURATION_BASED_BUSINESS_TYPE, UPDATED_CAPACITY, false))) {
+            assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
+            assertThat(response.readEntity(String.class), containsString(SESSION_NOT_FOUND));
+        }
+    }
+
+    @Test
+    void shouldRejectUpdateWithMissingRequiredField() {
+        final String missingBusinessType = createObjectBuilder()
+                .add(COURT_SCHEDULE_ID, UUID.randomUUID().toString())
+                .add(CAPACITY_IN_MINUTES, CAPACITY_FIVE_DAYS)
+                .add(IS_OVERBOOKING_ALLOWED, false)
+                .build().toString();
+        try (Response response = putCommand(URL, UPDATE_CONTENT_TYPE, USER_ID, missingBusinessType)) {
+            assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
+            assertThat(response.readEntity(String.class), containsString(BUSINESS_TYPE));
+        }
+    }
+
+    @Test
+    void shouldRefuseAUserWithoutCreateCourtSchedulePermissionOnWeekCommencingUpdate() {
+        assertCreated(request(DURATION_BASED_BUSINESS_TYPE, startDate, endDate));
+        final CourtSchedule first = databaseReader.courtSchedules().getFirst();
+
+        try (Response response = putCommand(URL, UPDATE_CONTENT_TYPE, IntegrationTestBase.DENIED_USER_ID,
+                updateRequest(first.getCourtScheduleId(), DURATION_BASED_BUSINESS_TYPE, UPDATED_CAPACITY, false).build().toString())) {
+            assertThat(response.getStatus(), is(FORBIDDEN.getStatusCode()));
+        }
     }
 
     private void assertCreated(final JsonObjectBuilder body) {
@@ -456,14 +653,27 @@ class WeekCommencingSessionIT extends AbstractIT {
         return postCommand(URL, CONTENT_TYPE, USER_ID, body.build().toString());
     }
 
+    private Response update(final JsonObjectBuilder body) {
+        return putCommand(URL, UPDATE_CONTENT_TYPE, USER_ID, body.build().toString());
+    }
+
+    private static JsonObjectBuilder updateRequest(final String courtScheduleId, final String businessType,
+                                                   final int capacityInMinutes, final boolean isOverbookingAllowed) {
+        return createObjectBuilder()
+                .add(COURT_SCHEDULE_ID, courtScheduleId)
+                .add(BUSINESS_TYPE, businessType)
+                .add(CAPACITY_IN_MINUTES, capacityInMinutes)
+                .add(IS_OVERBOOKING_ALLOWED, isOverbookingAllowed);
+    }
+
     private static JsonObjectBuilder request(final String businessType, final LocalDate start, final LocalDate end) {
         return createObjectBuilder()
                 .add(COURT_CENTRE_ID_FIELD, COURT_CENTRE_ID)
-                .add("businessType", businessType)
+                .add(BUSINESS_TYPE, businessType)
                 .add("startDate", start.toString())
                 .add("endDate", end.toString())
-                .add("capacityInMinutes", CAPACITY_FIVE_DAYS)
-                .add("isOverbookingAllowed", true);
+                .add(CAPACITY_IN_MINUTES, CAPACITY_FIVE_DAYS)
+                .add(IS_OVERBOOKING_ALLOWED, true);
     }
 
     private List<JsonObject> courtScheduleSessions(final Boolean isWeekCommencing) {
@@ -501,7 +711,7 @@ class WeekCommencingSessionIT extends AbstractIT {
         query.put("sessionStartDate", startDate.toString());
         query.put("sessionEndDate", endDate.toString());
         query.put("ouCode", weekCommencingOuCode());
-        query.put("courtRoomId", FIRST_LISTED_COURT_ROOM_ID);
+        query.put(COURT_ROOM_ID, FIRST_LISTED_COURT_ROOM_ID);
         query.put("jurisdiction", CROWN);
         query.put("showOverbookedSlots", "true");
         query.put("pageSize", "50");
@@ -520,11 +730,15 @@ class WeekCommencingSessionIT extends AbstractIT {
     }
 
     private String seedOrdinaryDraftSession(final LocalDate sessionDate) throws SQLException {
+        return seedOrdinaryDraftSession(sessionDate, weekCommencingOuCode());
+    }
+
+    private String seedOrdinaryDraftSession(final LocalDate sessionDate, final String ouCode) throws SQLException {
         final String id = UUID.randomUUID().toString();
         final CourtSchedule session = new CourtSchedule();
         session.setCourtScheduleId(id);
         session.setListingProfileId(UUID.randomUUID().toString());
-        session.setOuCode(weekCommencingOuCode());
+        session.setOuCode(ouCode);
         session.setCourtRoomId(FIRST_LISTED_COURT_ROOM_ID);
         session.setCourtRoomNumber(1);
         session.setCourtHouseId(COURT_CENTRE_ID);
@@ -552,6 +766,20 @@ class WeekCommencingSessionIT extends AbstractIT {
         session.setJurisdiction(CROWN);
         databaseSeeder.insertCourtSchedule(session);
         return id;
+    }
+
+    private void seedBooking(final CourtSchedule session, final int durationMinutes) throws SQLException {
+        final AllocatedListing booking = new AllocatedListing();
+        booking.setId(UUID.randomUUID().toString());
+        booking.setBookingId(UUID.randomUUID().toString());
+        booking.setCourtScheduleId(session.getCourtScheduleId());
+        booking.setHearingId(UUID.randomUUID().toString());
+        booking.setCourtRoomId(1);
+        booking.setHearingStartTime(session.getSessionDate().atTime(10, 0).toInstant(ZoneOffset.UTC));
+        booking.setDuration(durationMinutes);
+        booking.setOucode(session.getOuCode());
+        booking.setRotaBusinessType(DURATION_BASED_BUSINESS_TYPE);
+        databaseSeeder.insertAllocatedListing(booking);
     }
 
     private static List<LocalDate> mondaysBetween(final LocalDate start, final LocalDate end) {

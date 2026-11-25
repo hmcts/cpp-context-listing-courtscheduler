@@ -31,6 +31,9 @@ public class ErrorMessages {
     public static final String WEEK_COMMENCING_SLOT_BASED_NOT_ALLOWED = "Week commencing sessions can only be created for duration-based business types";
     public static final String WEEK_COMMENCING_NO_COURTROOM = "No courtroom found for court centre ";
     public static final String WEEK_COMMENCING_NO_MONDAY = "There is no Monday between the start date and the end date";
+    public static final String WEEK_COMMENCING_SESSION_NOT_WC = "Session is not a week commencing session";
+    public static final String WEEK_COMMENCING_USE_WC_ENDPOINT = "Week commencing sessions must be edited via the week commencing endpoint";
+    public static final String WEEK_COMMENCING_BUSINESS_TYPE_CHANGE_WITH_HEARINGS = "Business type cannot be changed when hearings are already booked on the week commencing session";
 
     private ErrorMessages() {
     }

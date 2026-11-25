@@ -4,21 +4,29 @@ import static jakarta.json.JsonValue.EMPTY_JSON_OBJECT;
 import static java.lang.Boolean.TRUE;
 import static java.util.Objects.isNull;
 import static uk.gov.moj.cpp.courtscheduler.common.CommonUtils.buildErrorResponse;
+import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.SESSION_IN_PAST_CANNOT_BE_EDITED;
+import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.SESSION_NOT_FOUND;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.WEEK_COMMENCING_NO_COURTROOM;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.WEEK_COMMENCING_NO_MONDAY;
+import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.WEEK_COMMENCING_SESSION_NOT_WC;
+import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.WEEK_COMMENCING_BUSINESS_TYPE_CHANGE_WITH_HEARINGS;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.WEEK_COMMENCING_SLOT_BASED_NOT_ALLOWED;
 
 import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataCache;
 import uk.gov.moj.cpp.courtscheduler.common.service.SessionsService;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
+import uk.gov.moj.cpp.courtscheduler.domain.utils.TimezoneUtils;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.BusinessType;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.CreateSessionRequestParam;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.WeekCommencingCreateRequest;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.WeekCommencingUpdateRequest;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.time.temporal.TemporalAdjusters;
+import java.util.Objects;
 import java.util.Optional;
 
 import jakarta.json.JsonObject;
@@ -81,6 +89,43 @@ public class WeekCommencingApiValidator {
             return buildErrorResponse(WEEK_COMMENCING_NO_MONDAY);
         }
 
+        return EMPTY_JSON_OBJECT;
+    }
+
+    /**
+     * Validates that the session exists, is a week commencing session, uses a duration-based
+     * business type, and — when the business type is changing — that no other week commencing
+     * session already exists for the same court centre and new business type on the same Monday.
+     * The caller is responsible for loading {@code persisted} via
+     * {@link uk.gov.moj.cpp.courtscheduler.api.service.WeekCommencingSessionService#loadPersistedSession}
+     * so the row is fetched only once per request.
+     */
+    public JsonObject getWeekCommencingUpdateValidation(final WeekCommencingUpdateRequest request,
+                                                        final CourtSchedule persisted) {
+        if (isNull(persisted)) {
+            return buildErrorResponse(SESSION_NOT_FOUND);
+        }
+        if (!TRUE.equals(persisted.isWeekCommencing())) {
+            return buildErrorResponse(WEEK_COMMENCING_SESSION_NOT_WC);
+        }
+        final LocalDate weekStart = LocalDate.now(TimezoneUtils.LONDON_ZONE).with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+        if (persisted.getSessionDate() != null && persisted.getSessionDate().isBefore(weekStart)) {
+            return buildErrorResponse(SESSION_IN_PAST_CANNOT_BE_EDITED);
+        }
+        if (isSlotBased(request.getBusinessType())) {
+            return buildErrorResponse(WEEK_COMMENCING_SLOT_BASED_NOT_ALLOWED);
+        }
+        if (!Objects.equals(persisted.getBusinessType(), request.getBusinessType())) {
+            if (TRUE.equals(persisted.hasHearingsBooked())) {
+                return buildErrorResponse(WEEK_COMMENCING_BUSINESS_TYPE_CHANGE_WITH_HEARINGS);
+            }
+            final JsonObject duplicate = sessionsService.validateWeekCommencingIntegrity(
+                    persisted.getCourtHouseId(), request.getBusinessType(),
+                    persisted.getSessionDate(), persisted.getSessionDate());
+            if (!duplicate.isEmpty()) {
+                return duplicate;
+            }
+        }
         return EMPTY_JSON_OBJECT;
     }
 

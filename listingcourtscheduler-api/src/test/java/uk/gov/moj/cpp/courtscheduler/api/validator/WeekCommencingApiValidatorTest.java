@@ -16,10 +16,16 @@ import uk.gov.moj.cpp.courtscheduler.openapi.model.BusinessType;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.CreateSessionRequestParam;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.Session;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.WeekCommencingCreateRequest;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.WeekCommencingUpdateRequest;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.temporal.TemporalAdjusters;
 import java.util.List;
 import java.util.Optional;
+
+import uk.gov.moj.cpp.courtscheduler.domain.utils.TimezoneUtils;
 
 import jakarta.json.JsonObject;
 
@@ -140,6 +146,177 @@ class WeekCommencingApiValidatorTest {
         verifyNoInteractions(sessionsService);
     }
 
+    @Test
+    void updateValidationShouldPassWhenSessionExistsAndIsWeekCommencing() {
+        final String courtScheduleId = randomUUID().toString();
+        final CourtSchedule persisted = new CourtSchedule();
+        persisted.setWeekCommencing(true);
+        persisted.setBusinessType(BUSINESS_TYPE);
+        when(referenceDataCache.getRotaBusinessTypeByCode(BUSINESS_TYPE))
+                .thenReturn(Optional.of(new BusinessType().typeCode(BUSINESS_TYPE).slot(false)));
+
+        final JsonObject result = validator.getWeekCommencingUpdateValidation(updateRequest(courtScheduleId, BUSINESS_TYPE), persisted);
+
+        assertThat(result.isEmpty(), is(true));
+        verifyNoInteractions(sessionsService);
+    }
+
+    @Test
+    void updateValidationShouldReturnErrorWhenSessionNotFound() {
+        final String courtScheduleId = randomUUID().toString();
+
+        final JsonObject result = validator.getWeekCommencingUpdateValidation(updateRequest(courtScheduleId, BUSINESS_TYPE), null);
+
+        assertThat(result.getString(ERROR_MESSAGE), is(ErrorMessages.SESSION_NOT_FOUND));
+    }
+
+    @Test
+    void updateValidationShouldReturnErrorWhenSessionIsNotWeekCommencing() {
+        final String courtScheduleId = randomUUID().toString();
+        final CourtSchedule persisted = new CourtSchedule();
+        persisted.setWeekCommencing(false);
+
+        final JsonObject result = validator.getWeekCommencingUpdateValidation(updateRequest(courtScheduleId, BUSINESS_TYPE), persisted);
+
+        assertThat(result.getString(ERROR_MESSAGE), is(ErrorMessages.WEEK_COMMENCING_SESSION_NOT_WC));
+    }
+
+    @Test
+    void updateValidationShouldRejectSessionInThePast() {
+        final String courtScheduleId = randomUUID().toString();
+        final CourtSchedule persisted = new CourtSchedule();
+        persisted.setWeekCommencing(true);
+        persisted.setSessionDate(LocalDate.of(2020, 1, 6));
+        persisted.setBusinessType(BUSINESS_TYPE);
+
+        final JsonObject result = validator.getWeekCommencingUpdateValidation(updateRequest(courtScheduleId, BUSINESS_TYPE), persisted);
+
+        assertThat(result.getString(ERROR_MESSAGE), is(ErrorMessages.SESSION_IN_PAST_CANNOT_BE_EDITED));
+        verifyNoInteractions(referenceDataCache, sessionsService);
+    }
+
+    @Test
+    void updateValidationShouldAllowEditForCurrentWeekAfterMonday() {
+        final String courtScheduleId = randomUUID().toString();
+        final LocalDate thisMonday = LocalDate.now(TimezoneUtils.LONDON_ZONE)
+                .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+        final CourtSchedule persisted = new CourtSchedule();
+        persisted.setWeekCommencing(true);
+        persisted.setSessionDate(thisMonday);
+        persisted.setBusinessType(BUSINESS_TYPE);
+        when(referenceDataCache.getRotaBusinessTypeByCode(BUSINESS_TYPE))
+                .thenReturn(Optional.of(new BusinessType().typeCode(BUSINESS_TYPE).slot(false)));
+
+        final JsonObject result = validator.getWeekCommencingUpdateValidation(updateRequest(courtScheduleId, BUSINESS_TYPE), persisted);
+
+        assertThat(result.isEmpty(), is(true));
+    }
+
+    @Test
+    void updateValidationShouldRejectSessionFromPreviousWeek() {
+        final String courtScheduleId = randomUUID().toString();
+        final LocalDate lastMonday = LocalDate.now(TimezoneUtils.LONDON_ZONE)
+                .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+                .minusWeeks(1);
+        final CourtSchedule persisted = new CourtSchedule();
+        persisted.setWeekCommencing(true);
+        persisted.setSessionDate(lastMonday);
+        persisted.setBusinessType(BUSINESS_TYPE);
+
+        final JsonObject result = validator.getWeekCommencingUpdateValidation(updateRequest(courtScheduleId, BUSINESS_TYPE), persisted);
+
+        assertThat(result.getString(ERROR_MESSAGE), is(ErrorMessages.SESSION_IN_PAST_CANNOT_BE_EDITED));
+        verifyNoInteractions(referenceDataCache, sessionsService);
+    }
+
+    @Test
+    void updateValidationShouldRejectBusinessTypeChangeWhenHearingsAreBooked() {
+        final String courtScheduleId = randomUUID().toString();
+        final String newBusinessType = "HGH";
+        final CourtSchedule persisted = new CourtSchedule();
+        persisted.setWeekCommencing(true);
+        persisted.setBusinessType(BUSINESS_TYPE);
+        persisted.setSessionDate(LocalDate.now(TimezoneUtils.LONDON_ZONE).plusWeeks(1));
+        persisted.setHasHearingsBooked(true);
+        when(referenceDataCache.getRotaBusinessTypeByCode(newBusinessType))
+                .thenReturn(Optional.of(new BusinessType().typeCode(newBusinessType).slot(false)));
+
+        final JsonObject result = validator.getWeekCommencingUpdateValidation(updateRequest(courtScheduleId, newBusinessType), persisted);
+
+        assertThat(result.getString(ERROR_MESSAGE), is(ErrorMessages.WEEK_COMMENCING_BUSINESS_TYPE_CHANGE_WITH_HEARINGS));
+        verifyNoInteractions(sessionsService);
+    }
+
+    @Test
+    void updateValidationShouldAllowBusinessTypeChangeWhenNoHearingsAreBooked() {
+        final String courtScheduleId = randomUUID().toString();
+        final String newBusinessType = "HGH";
+        final CourtSchedule persisted = new CourtSchedule();
+        persisted.setWeekCommencing(true);
+        persisted.setBusinessType(BUSINESS_TYPE);
+        persisted.setSessionDate(LocalDate.now(TimezoneUtils.LONDON_ZONE).plusWeeks(1));
+        persisted.setHasHearingsBooked(false);
+        when(referenceDataCache.getRotaBusinessTypeByCode(newBusinessType))
+                .thenReturn(Optional.of(new BusinessType().typeCode(newBusinessType).slot(false)));
+        when(sessionsService.validateWeekCommencingIntegrity(any(), any(), any(), any()))
+                .thenReturn(EMPTY_JSON_OBJECT);
+
+        final JsonObject result = validator.getWeekCommencingUpdateValidation(updateRequest(courtScheduleId, newBusinessType), persisted);
+
+        assertThat(result.isEmpty(), is(true));
+    }
+
+    @Test
+    void updateValidationShouldRejectSlotBasedBusinessType() {
+        final String courtScheduleId = randomUUID().toString();
+        final String slotBasedType = "DVLA";
+        final CourtSchedule persisted = new CourtSchedule();
+        persisted.setWeekCommencing(true);
+        persisted.setBusinessType(BUSINESS_TYPE);
+        when(referenceDataCache.getRotaBusinessTypeByCode(slotBasedType))
+                .thenReturn(Optional.of(new BusinessType().typeCode(slotBasedType).slot(true)));
+
+        final JsonObject result = validator.getWeekCommencingUpdateValidation(updateRequest(courtScheduleId, slotBasedType), persisted);
+
+        assertThat(result.getString(ERROR_MESSAGE), is(ErrorMessages.WEEK_COMMENCING_SLOT_BASED_NOT_ALLOWED));
+        verifyNoInteractions(sessionsService);
+    }
+
+    @Test
+    void updateValidationShouldRejectDuplicateWhenChangingToExistingBusinessType() {
+        final String courtScheduleId = randomUUID().toString();
+        final String newBusinessType = "LGT";
+        final LocalDate sessionDate = LocalDate.of(2027, 1, 4);
+        final CourtSchedule persisted = new CourtSchedule();
+        persisted.setWeekCommencing(true);
+        persisted.setBusinessType(BUSINESS_TYPE);
+        persisted.setCourtHouseId(COURT_CENTRE_ID);
+        persisted.setSessionDate(sessionDate);
+        when(referenceDataCache.getRotaBusinessTypeByCode(newBusinessType))
+                .thenReturn(Optional.of(new BusinessType().typeCode(newBusinessType).slot(false)));
+        when(sessionsService.validateWeekCommencingIntegrity(COURT_CENTRE_ID, newBusinessType, sessionDate, sessionDate))
+                .thenReturn(buildErrorResponse(ErrorMessages.DUPLICATE_SESSIONS));
+
+        final JsonObject result = validator.getWeekCommencingUpdateValidation(updateRequest(courtScheduleId, newBusinessType), persisted);
+
+        assertThat(result.getString(ERROR_MESSAGE), is(ErrorMessages.DUPLICATE_SESSIONS));
+    }
+
+    @Test
+    void updateValidationShouldSkipDuplicateCheckWhenBusinessTypeIsUnchanged() {
+        final String courtScheduleId = randomUUID().toString();
+        final CourtSchedule persisted = new CourtSchedule();
+        persisted.setWeekCommencing(true);
+        persisted.setBusinessType(BUSINESS_TYPE);
+        when(referenceDataCache.getRotaBusinessTypeByCode(BUSINESS_TYPE))
+                .thenReturn(Optional.of(new BusinessType().typeCode(BUSINESS_TYPE).slot(false)));
+
+        final JsonObject result = validator.getWeekCommencingUpdateValidation(updateRequest(courtScheduleId, BUSINESS_TYPE), persisted);
+
+        assertThat(result.isEmpty(), is(true));
+        verifyNoInteractions(sessionsService);
+    }
+
     private void givenValidAndDurationBased() {
         when(sessionsApiValidator.getSessionsCreateValidation(any())).thenReturn(EMPTY_JSON_OBJECT);
         when(referenceDataCache.getRotaBusinessTypeByCode(BUSINESS_TYPE))
@@ -156,6 +333,13 @@ class WeekCommencingApiValidatorTest {
                 .businessType(BUSINESS_TYPE)
                 .startDate("2027-01-06")
                 .endDate("2027-02-01")
+                .capacityInMinutes(1800);
+    }
+
+    private static WeekCommencingUpdateRequest updateRequest(final String courtScheduleId, final String businessType) {
+        return new WeekCommencingUpdateRequest()
+                .courtScheduleId(courtScheduleId)
+                .businessType(businessType)
                 .capacityInMinutes(1800);
     }
 }

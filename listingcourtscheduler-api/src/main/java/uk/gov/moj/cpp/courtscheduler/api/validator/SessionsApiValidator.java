@@ -810,8 +810,7 @@ public class SessionsApiValidator {
                 .build();
     }
 
-    public JsonObject getSessionsUpdateValidation (final UpdateCourtSchedule
-                                                           updateCourtSchedule){
+    public JsonObject getSessionsUpdateValidation(final UpdateCourtSchedule updateCourtSchedule) {
         final String jurisdiction = updateCourtSchedule.getJurisdiction();
         final JsonObject jurisdictionValidation = validateUpdateJurisdiction(jurisdiction);
         if (jurisdictionValidation != EMPTY_JSON_OBJECT) {
@@ -843,6 +842,16 @@ public class SessionsApiValidator {
             return panelValidation;
         }
 
+        final SessionValidationParams params = getSessionValidationParams(updateCourtSchedule);
+        return validateSession(params, false);
+    }
+
+    /**
+     * Week commencing updates only vary in capacity — all other fields (courtroom, jurisdiction,
+     * draft state, panel) are taken from the persisted row and were validated at creation time.
+     * Only the capacity check is meaningful here; all other standard update validations are no-ops.
+     */
+    public JsonObject getWeekCommencingSessionsUpdateValidation(final UpdateCourtSchedule updateCourtSchedule) {
         final SessionValidationParams params = getSessionValidationParams(updateCourtSchedule);
         return validateSession(params, false);
     }

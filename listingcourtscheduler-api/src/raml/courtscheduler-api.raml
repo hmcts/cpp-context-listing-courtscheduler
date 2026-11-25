@@ -126,7 +126,7 @@ protocols: [ HTTP, HTTPS ]
 
 /session/weekCommencing:
   description: |
-    Create a CROWN draft week commencing session
+    Create or edit a CROWN draft week commencing session.
   post:
     description: |
       One all-day draft session is created on each Monday of the date range, in the court centre's
@@ -145,6 +145,31 @@ protocols: [ HTTP, HTTPS ]
         description: OK
       400:
         description: Schema violation, validation failure or duplicate week commencing session
+  put:
+    description: |
+      Updates an existing week commencing session. The fields businessType, capacityInMinutes and
+      isOverbookingAllowed can be changed. isOverbookingAllowed is optional; if left out it is saved
+      as false. All other attributes (courtroom, session type, panel, jurisdiction) are immutable
+      and taken from the persisted session.
+      ...
+      (mapping):
+          requestType: application/vnd.courtscheduler.update-week-commencing.session+json
+          name: courtscheduler.update-week-commencing.session
+      ...
+    body:
+      application/vnd.courtscheduler.update-week-commencing.session+json:
+        schema: !include json/schema/courtscheduler.update-week-commencing.session.json
+        example: !include json/courtscheduler.update-week-commencing.session.json
+    responses:
+      202:
+        description: OK
+      400:
+        description: |
+          Schema violation, session not found, session is not a week commencing row, the session's
+          week has already ended (the Monday is before the current week), business type is slot-based,
+          business type change is requested when hearings are already booked, new capacity is less than
+          total booked duration, or the new business type already has a week commencing session on the
+          same Monday
 
 /sessions:
   description: |

@@ -88,6 +88,7 @@ import uk.gov.moj.cpp.courtscheduler.openapi.model.RequestedSlots;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.Result;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.UpdateCourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.openapi.model.WeekCommencingCreateRequest;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.WeekCommencingUpdateRequest;
 import uk.gov.moj.cpp.courtscheduler.exception.CrownFallbackInvalidRequestException;
 import uk.gov.moj.cpp.courtscheduler.exception.CrownFallbackNoSessionException;
 import uk.gov.moj.cpp.courtscheduler.exception.ExtendMultidayHearingException;
@@ -278,8 +279,9 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
     }
 
     @Override
-    public ResponseEntity<Void> postCreateWeekCommencingSession(final WeekCommencingCreateRequest body) {
-        LOG.info("courtscheduler.create-week-commencing.sessions requested: {}", body);
+    public ResponseEntity<Void> postWeekCommencingSession(final WeekCommencingCreateRequest body) {
+        final String sanitizedBodyForLog = StringUtils.replaceChars(String.valueOf(body), "\r\n", "  ");
+        LOG.info("courtscheduler.create-week-commencing.sessions requested: {}", sanitizedBodyForLog);
 
         final JsonObject duplicate = weekCommencingApiValidator.getWeekCommencingDuplicateValidation(body);
         if (!duplicate.isEmpty()) {
@@ -294,6 +296,32 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
         }
 
         sessionsService.create(createRequest);
+        return ResponseEntity.status(HttpStatus.ACCEPTED).build();
+    }
+
+    @Override
+    public ResponseEntity<Void> putWeekCommencingSession(final WeekCommencingUpdateRequest body) {
+        final String sanitizedBodyForLog = StringUtils.replaceChars(String.valueOf(body), "\r\n", "  ");
+        LOG.info("courtscheduler.update-week-commencing.session requested: {}", sanitizedBodyForLog);
+
+        final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule persisted = weekCommencingSessionService.loadPersistedSession(body.getCourtScheduleId());
+        final JsonObject preValidation = weekCommencingApiValidator.getWeekCommencingUpdateValidation(body, persisted);
+        if (!preValidation.isEmpty()) {
+            throw new ValidationException(preValidation);
+        }
+
+        final UpdateCourtSchedule updateRequest = weekCommencingSessionService.enrichUpdateSessionRequest(body, persisted);
+
+        final JsonObject validate = sessionsApiValidator.getWeekCommencingSessionsUpdateValidation(updateRequest);
+        if (!validate.isEmpty()) {
+            throw new ValidationException(validate);
+        }
+
+        final Result result = sessionsService.update(updateRequest);
+        if (!Boolean.TRUE.equals(result.getSuccess())) {
+            throw new ValidationException(
+                    Json.createObjectBuilder().add(ERROR_MESSAGE, result.getMsg()).build());
+        }
         return ResponseEntity.status(HttpStatus.ACCEPTED).build();
     }
 
@@ -924,8 +952,8 @@ public class CourtSchedulerApi implements CourtscheduleOpenApi,
             validate = sessionsApiValidator.getSessionsCreateValidation(
                     applyLegacyCreateDefaults(lenientObjectMapper.convertValue(body, CreateSessionRequestParam.class)));
         } else if (contentType.startsWith(UPDATE_MT.substring(0, UPDATE_MT.indexOf('+')))) {
-            validate = sessionsApiValidator.getSessionsUpdateValidation(
-                    lenientObjectMapper.convertValue(body, UpdateCourtSchedule.class));
+            final UpdateCourtSchedule updateRequest = lenientObjectMapper.convertValue(body, UpdateCourtSchedule.class);
+            validate = sessionsApiValidator.getSessionsUpdateValidation(updateRequest);
         } else if (contentType.startsWith(DELETE_MT.substring(0, DELETE_MT.indexOf('+')))) {
             // Jackson deserialization into SessionsParam is the "well-formed" check.
             // Empty JsonObject indicates pass.

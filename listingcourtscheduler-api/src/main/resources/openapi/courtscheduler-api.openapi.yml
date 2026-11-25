@@ -148,7 +148,7 @@ paths:
   /session/weekCommencing:
     post:
       tags: [session]
-      operationId: postCreateWeekCommencingSession
+      operationId: postWeekCommencingSession
       summary: >-
         Create a CROWN draft week commencing session (one all-day row on each Monday of the date
         range, in the court centre's default courtroom)
@@ -163,6 +163,26 @@ paths:
           description: Accepted
         '400':
           description: Bad Request — schema violation, validation failure or duplicate week commencing session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      tags: [session]
+      operationId: putWeekCommencingSession
+      summary: >-
+        Edit a CROWN draft week commencing session (capacity, business type or overbooking flag)
+      requestBody:
+        required: true
+        content:
+          application/vnd.courtscheduler.update-week-commencing.session+json:
+            schema:
+              $ref: '#/components/schemas/WeekCommencingUpdateRequest'
+      responses:
+        '202':
+          description: Accepted
+        '400':
+          description: Bad Request — schema violation, validation failure or session not found
           content:
             application/json:
               schema:
@@ -926,6 +946,14 @@ components:
         businessType: { type: string }
         startDate: { type: string }
         endDate: { type: string }
+        capacityInMinutes: { type: integer }
+        isOverbookingAllowed: { type: boolean, nullable: true }
+
+    WeekCommencingUpdateRequest:
+      type: object
+      properties:
+        courtScheduleId: { type: string }
+        businessType: { type: string }
         capacityInMinutes: { type: integer }
         isOverbookingAllowed: { type: boolean, nullable: true }
 
