@@ -4,8 +4,8 @@
                    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
          http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.3.xsd">
 
-    <changeSet id="051" author="ragubalan.durairaj"
-               logicalFilePath="051-update_index_court_schedule_ampm_ad_add_is_draft.xml">
+    <changeSet id="052" author="ragubalan.durairaj"
+               logicalFilePath="052-update_index_court_schedule_ampm_ad_add_is_draft.xml">
         <sql>
             DROP INDEX IF EXISTS court_act_business_date_session_idx_am;
             DROP INDEX IF EXISTS court_act_business_date_session_idx_pm;
