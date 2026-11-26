@@ -27,8 +27,8 @@ import uk.gov.moj.cpp.courtscheduler.common.service.CourtScheduleJudiciaryServic
 import uk.gov.moj.cpp.courtscheduler.common.service.CourtScheduleService;
 import uk.gov.moj.cpp.courtscheduler.common.service.RotaFileProcessHistoryService;
 import uk.gov.moj.cpp.courtscheduler.common.service.SessionsService;
-import uk.gov.moj.cpp.courtscheduler.domain.BusinessType;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.BusinessType;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.RotaFileProcessHistory;
 import uk.gov.moj.cpp.courtscheduler.domain.rota.SlotAndScheduleInfo;
 import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.enricher.BusinessTypeMatchingLogger;
@@ -55,6 +55,12 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class RotaFilePartialProcessorTest {
+
+    private static final String B01_KR00 = "B01KR00";
+    private static final String B53_DJ00 = "B53DJ00";
+    private static final String CABC90_2 = "CABC90";
+    private static final String OU1_2 = "OU1";
+
 
     @InjectMocks
     private RotaFilePartialProcessor rotaFilePartialProcessor;
@@ -92,10 +98,10 @@ class RotaFilePartialProcessorTest {
         final Map<String, CourtSchedule> slotsForMigrated = getSlotsForMigrated();
         final LocalDate partialStartDate = LocalDate.of(2019, 10, 1);
         final LocalDate partialEndDate = LocalDate.of(2019, 10, 7);
-        final List<String> ouCodes = List.of("B01KR00", "B53DJ00");
-        final List<String> nonMigratedOuCodes = List.of("B01KR00", "B53DJ00");
+        final List<String> ouCodes = List.of(B01_KR00, B53_DJ00);
+        final List<String> nonMigratedOuCodes = List.of(B01_KR00, B53_DJ00);
         final Map<String, BusinessType> businessTypeMap = getRotaBusinessTypes().stream().collect(Collectors.toMap(BusinessType::getTypeCode, b -> b));
-        final Map<String, Boolean> migratedMap = Map.of("CABC90", false);
+        final Map<String, Boolean> migratedMap = Map.of(CABC90_2, false);
 
         final LocalDate extractStartDate = LocalDate.of(2019, 10, 1);
         final List<CourtSchedule> extractedSchedules = new ArrayList<>();
@@ -135,9 +141,9 @@ class RotaFilePartialProcessorTest {
         final Map<String, CourtSchedule> slotsForMigrated = getSlotsForMigratedDurationBased();
         final LocalDate partialStartDate = LocalDate.of(2019, 10, 1);
         final LocalDate partialEndDate = LocalDate.of(2019, 10, 7);
-        final List<String> ouCodes = List.of("B01KR00", "B53DJ00");
+        final List<String> ouCodes = List.of(B01_KR00, B53_DJ00);
         final Map<String, BusinessType> businessTypeMap = getRotaBusinessTypes().stream().collect(Collectors.toMap(BusinessType::getTypeCode, b -> b));
-        final Map<String, Boolean> migratedMap = Map.of("CABC90", false);
+        final Map<String, Boolean> migratedMap = Map.of(CABC90_2, false);
 
         final LocalDate extractStartDate = LocalDate.of(2019, 10, 1);
         final List<CourtSchedule> extractedSchedules = new ArrayList<>();
@@ -174,9 +180,9 @@ class RotaFilePartialProcessorTest {
         final Map<String, LocalDate> startAndEndDate = new HashMap<>();
         startAndEndDate.put(START_DATE.getLabel(), partialStartDate);
         startAndEndDate.put(END_DATE.getLabel(), partialEndDate);
-        final List<String> ouCodes = List.of("B01KR00", "B53DJ00");
+        final List<String> ouCodes = List.of(B01_KR00, B53_DJ00);
         final Map<String, BusinessType> businessTypeMap = getRotaBusinessTypes().stream().collect(Collectors.toMap(BusinessType::getTypeCode, b -> b));
-        final Map<String, Boolean> migratedMap = Map.of("CABC90", false);
+        final Map<String, Boolean> migratedMap = Map.of(CABC90_2, false);
 
         final LocalDate rotaPeriodStartDate = LocalDate.of(2019, 10, 1);
         final LocalDate rotaPeriodEndDate = LocalDate.of(2020, 3, 31);
@@ -199,9 +205,9 @@ class RotaFilePartialProcessorTest {
         final Map<String, CourtSchedule> slotsForMigrated = new HashMap<>();
         final LocalDate startDate = LocalDate.of(2024, 1, 1);
         final LocalDate endDate = startDate.plusDays(6);
-        final List<String> ouCodes = List.of("OU1");
+        final List<String> ouCodes = List.of(OU1_2);
         final Map<String, BusinessType> businessTypeMap = new HashMap<>();
-        final Map<String, Boolean> migratedMap = Map.of("OU1", false);
+        final Map<String, Boolean> migratedMap = Map.of(OU1_2, false);
         final RotaFileProcessHistory history = new RotaFileProcessHistory();
 
         when(courtScheduleJudiciaryService.deleteCourtScheduleJudiciariesEntriesForRotaPeriod(eq(startDate), eq(endDate), anyList())).thenReturn(0);
@@ -222,9 +228,9 @@ class RotaFilePartialProcessorTest {
                 START_DATE.getLabel(), LocalDate.of(2024, 1, 1),
                 END_DATE.getLabel(), LocalDate.of(2024, 1, 7)
         );
-        final List<String> ouCodes = List.of("OU1");
+        final List<String> ouCodes = List.of(OU1_2);
         final Map<String, BusinessType> businessTypeMap = new HashMap<>();
-        final Map<String, Boolean> migratedMap = Map.of("OU1", false);
+        final Map<String, Boolean> migratedMap = Map.of(OU1_2, false);
         final RotaFileProcessHistory history = new RotaFileProcessHistory();
 
         when(courtScheduleJudiciaryService.deleteCourtScheduleJudiciariesEntriesForRotaPeriod(any(LocalDate.class), any(LocalDate.class), anyList())).thenReturn(0);
@@ -252,6 +258,33 @@ class RotaFilePartialProcessorTest {
         return objectMapper.readValue(slotsForMigratedJsonStr, new TypeReference<Map<String, CourtSchedule>>(){});
     }
 
+    // A session the rota no longer contains is deleted only if nothing is booked on it. "Booked" is
+    // what allocated_listings holds, not court_schedule.available_slot / available_duration_mins:
+    // those counters are no longer kept up to date by bookings.
+    @Test
+    void confirmSlotsToDeleteKeepsASessionWithAllocatedListingsWhateverItsCountersSay() {
+        org.springframework.test.util.ReflectionTestUtils.setField(rotaFilePartialProcessor, "migratedMap",
+                new java.util.concurrent.ConcurrentHashMap<>(Map.of(CABC90_2, false)));
+        final CourtSchedule booked = courtSchedule("2026-11-02", "cs-booked", "p-1", "REM", 120, 10, 120, 10, true);
+
+        final List<String> toDelete = rotaFilePartialProcessor.confirmSlotsToDelete(
+                List.of(booked), List.of("cs-booked"), Map.of("cs-booked", 1));
+
+        org.hamcrest.MatcherAssert.assertThat(toDelete, org.hamcrest.Matchers.empty());
+    }
+
+    @Test
+    void confirmSlotsToDeleteDeletesASessionWithNoAllocatedListingsWhateverItsCountersSay() {
+        org.springframework.test.util.ReflectionTestUtils.setField(rotaFilePartialProcessor, "migratedMap",
+                new java.util.concurrent.ConcurrentHashMap<>(Map.of(CABC90_2, false)));
+        final CourtSchedule empty = courtSchedule("2026-11-02", "cs-empty", "p-2", "REM", 120, 3, 40, 10, false);
+
+        final List<String> toDelete = rotaFilePartialProcessor.confirmSlotsToDelete(
+                List.of(empty), List.of("cs-empty"), emptyMap());
+
+        org.hamcrest.MatcherAssert.assertThat(toDelete, org.hamcrest.Matchers.contains("cs-empty"));
+    }
+
     private CourtSchedule courtSchedule(final String sessionDate, final String businessType, final Boolean slotBased) {
         return courtSchedule(sessionDate, null, random(10), businessType, null, null, null, null, slotBased);
     }
@@ -273,25 +306,24 @@ class RotaFilePartialProcessorTest {
         final Integer avDuration = availableDuration != null ? availableDuration : 182;
         final Integer mSlots = maxSlots != null ? maxSlots : 125;
 
-        return new CourtSchedule.CourtScheduleBuilder()
-                .withCourtScheduleId(scheduleId)
-                .withListingProfileId(profileId)
-                .withSessionDate(parse(sessionDate))
-                .withOuCode("CABC90")
-                .withCourtRoomId("001c067d-eaca-4ce5-ad90-a366ef3e4bb6")
-                .withCourtRoomNumber(1234)
-                .withCourtHouseName("Liverpool Mags Court")
-                .withCourtHouseId("0b9417b8-91b4-385d-9e01-069855777c4f")
-                .withCourtRoomName("Court name1")
-                .withOperationalUnit("ANC")
-                .withBusinessType(businessType)
-                .withPanel("PANEL")
-                .withCourtSession("AM")
-                .withMaxDuration(mDuration)
-                .withAvailableSlots(avSlots)
-                .withAvailableDuration(avDuration)
-                .withMaxSlots(mSlots)
-                .withSlotBased(slotBased)
-                .build();
+        return new CourtSchedule()
+                .courtScheduleId(scheduleId)
+                .listingProfileId(profileId)
+                .sessionDate(parse(sessionDate))
+                .ouCode(CABC90_2)
+                .courtRoomId("001c067d-eaca-4ce5-ad90-a366ef3e4bb6")
+                .courtRoomNumber(1234)
+                .courtHouseName("Liverpool Mags Court")
+                .courtHouseId("0b9417b8-91b4-385d-9e01-069855777c4f")
+                .courtRoomName("Court name1")
+                .operationalUnit("ANC")
+                .businessType(businessType)
+                .panel("PANEL")
+                .courtSession("AM")
+                .maxDuration(mDuration)
+                .availableSlots(avSlots)
+                .availableDuration(avDuration)
+                .maxSlots(mSlots)
+                .slotBased(slotBased);
     }
 }

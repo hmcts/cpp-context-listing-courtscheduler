@@ -1,0 +1,52 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "courtScheduleIds": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+      }
+    },
+    "judiciary": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "judicialId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "judicialRoleType": {
+            "type": "object",
+            "properties": {
+              "judiciaryType": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": ["judiciaryType"],
+            "additionalProperties": false
+          },
+          "isDeputy": {
+            "type": "boolean"
+          },
+          "isBenchChairman": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "judicialId",
+          "judicialRoleType"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "courtScheduleIds"
+  ],
+  "additionalProperties": false
+}

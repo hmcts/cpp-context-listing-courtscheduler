@@ -1,0 +1,9 @@
+{
+  "hearingId": "7755fb96-e90a-4df2-8575-47841d8fbdd0",
+  "courtCentreId": "07e45c88-9e5d-3e44-b664-d5345bb13be2",
+  "courtRoomId": "731816c1-5ee4-373a-9bda-840e13a5bcb0",
+  "hearingDate": "2026-04-21",
+  "earliestHearingTime": "2026-04-21T09:00:00Z",
+  "durationInMinutes": 10,
+  "source": "CROWN_FB_LIST"
+}

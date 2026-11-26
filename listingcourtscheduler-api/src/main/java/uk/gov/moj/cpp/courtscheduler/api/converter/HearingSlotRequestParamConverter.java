@@ -42,17 +42,32 @@ public class HearingSlotRequestParamConverter implements Converter<JsonObject, H
         final String hearingStartTime = jsonObject.containsKey(RequestParameterConstant.HEARING_START_TIME.getLabel()) ?
                 jsonObject.getString(RequestParameterConstant.HEARING_START_TIME.getLabel()) : null;
         // HearingSlotsApi.getHearingSlots writes Boolean fields into the qp map via
-        // .toString(), so they arrive here as JsonString("true"/"false") — not JsonValue.TRUE/FALSE.
-        // getBoolean() would ClassCast on a JsonString → HTTP 500; read as string and parse,
-        // matching the isSlotBased path above.
-        final boolean showOverbookingSlots = jsonObject.containsKey(RequestParameterConstant.SHOW_OVERBOOKING_SLOTS.getLabel()) &&
-                valueOf(jsonObject.getString(RequestParameterConstant.SHOW_OVERBOOKING_SLOTS.getLabel()));
-        final String caseIdentifier = jsonObject.containsKey(RequestParameterConstant.CASE_IDENTIFIER.getLabel()) ?
-                jsonObject.getString(RequestParameterConstant.CASE_IDENTIFIER.getLabel()) : null;
-        final String duration = jsonObject.containsKey(RequestParameterConstant.DURATION.getLabel()) ?
-                jsonObject.getString(RequestParameterConstant.DURATION.getLabel()) : null;
+        // .toString(), so they arrive here as JsonString("true"/"false") — not JsonValue.TRUE/FALSE —
+        // while direct JSON payloads (and the ccsph2-era fixtures) carry a real JSON boolean.
+        // Accept both shapes; getBoolean()/getString() alone each ClassCast on the other → HTTP 500.
+        final boolean showOverbookingSlots = readFlexibleBoolean(jsonObject, RequestParameterConstant.SHOW_OVERBOOKING_SLOTS.getLabel());
+        final String duration = jsonObject.containsKey(RequestParameterConstant.AVAILABLE_DURATION_MINS.getLabel()) ?
+                jsonObject.getString(RequestParameterConstant.AVAILABLE_DURATION_MINS.getLabel()) : null;
+        final String status = jsonObject.containsKey(RequestParameterConstant.STATUS.getLabel()) ?
+                jsonObject.getString(RequestParameterConstant.STATUS.getLabel()) : null;
+        final String jurisdiction = jsonObject.containsKey(RequestParameterConstant.JURISDICTION.getLabel()) ?
+                jsonObject.getString(RequestParameterConstant.JURISDICTION.getLabel()) : null;
 
         return new HearingSlotRequestParam(panel, startDate, endDate, exactHearingStartDateTime, ouLevel, ouCode, pageSize,
-                pageNumber, courtRoomId, courtRoomNumber, businessType, courtSession, isSlotBased, hearingStartTime, showOverbookingSlots, caseIdentifier, duration);
+                pageNumber, courtRoomId, courtRoomNumber, businessType, courtSession, isSlotBased, hearingStartTime, showOverbookingSlots, duration, status, jurisdiction);
+    }
+
+    private static boolean readFlexibleBoolean(final JsonObject jsonObject, final String key) {
+        if (!jsonObject.containsKey(key) || jsonObject.isNull(key)) {
+            return false;
+        }
+        final jakarta.json.JsonValue value = jsonObject.get(key);
+        if (value.getValueType() == jakarta.json.JsonValue.ValueType.TRUE) {
+            return true;
+        }
+        if (value.getValueType() == jakarta.json.JsonValue.ValueType.FALSE) {
+            return false;
+        }
+        return Boolean.parseBoolean(jsonObject.getString(key));
     }
 }

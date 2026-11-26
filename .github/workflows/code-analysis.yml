@@ -20,24 +20,19 @@ jobs:
         id: pmd
         continue-on-error: true
         with:
+          # Pinned to match build.gradle's pmd.toolVersion so local and CI results agree.
+          version: '7.28.0'
           rulesets: '.github/pmd-ruleset.xml'
           # Multi-module build — let PMD recurse from repo root and scan every
           # module's src/main/java. The ruleset filters to the rules we care about.
           sourcePath: '.'
           analyzeModifiedFilesOnly: false
 
-      # TEMPORARY (LPT-2318): PMD currently reports ~6344 violations carried over
-      # from the WildFly→Spring Boot migration. We do NOT want to block the initial
-      # release on this backlog, so the gate below WARNS instead of failing.
-      # The scan still runs and the PMD Report artifact is still uploaded, so the
-      # violation count stays visible and we can track it down.
-      # RE-ENABLE: under LPT-2318, restore the `exit 1` (delete this block's `||`
-      # softening) once the violations are driven to an acceptable threshold.
-      - name: Report PMD violations (non-blocking until LPT-2318)
+      - name: Fail build if there are violations
         if: always()
         run: |
           VIOLATIONS="${{ steps.pmd.outputs.violations }}"
           if [ -n "$VIOLATIONS" ] && [ "$VIOLATIONS" != "0" ]; then
-            echo "::warning::PMD found $VIOLATIONS violations — non-blocking until LPT-2318 (https://tools.hmcts.net/jira/browse/LPT-2318)"
-            # exit 1   # <-- LPT-2318: re-enable to fail the build on PMD violations
+            echo "PMD found $VIOLATIONS violations"
+            exit 1
           fi

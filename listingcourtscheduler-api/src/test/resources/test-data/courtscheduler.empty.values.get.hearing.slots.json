@@ -9,5 +9,6 @@
   "courtRoomId": "",
   "courtRoomNumber": "",
   "businessType": "",
-  "courtSession": ""
+  "courtSession": "",
+  "jurisdiction": ""
 }

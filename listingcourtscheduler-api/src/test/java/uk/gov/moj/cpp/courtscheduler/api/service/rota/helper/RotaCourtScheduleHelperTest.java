@@ -28,8 +28,8 @@ import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload.COURT_LISTIN
 
 import uk.gov.moj.cpp.courtscheduler.common.service.RotaProcessLogService;
 import uk.gov.moj.cpp.courtscheduler.common.service.SessionsService;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtRoom;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload;
 
 import java.time.LocalDate;
@@ -51,6 +51,21 @@ import uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog;
 
 @ExtendWith(MockitoExtension.class)
 class RotaCourtScheduleHelperTest {
+    private static final String VALUE_100 = "100";
+    private static final String VALUE_200 = "200";
+    private static final String DATE_2024_01_15 = "2024-01-15";
+    private static final String DATE_2024_01_16 = "2024-01-16";
+    private static final String CIVIL_2 = "CIVIL";
+    private static final String OU001_2 = "OU001";
+    private static final String PANEL1_2 = "PANEL1";
+    private static final String PANEL2_2 = "PANEL2";
+    private static final String TEST_VENUE = "Test Venue";
+    private static final String COURTROOM_1 = "courtroom-1";
+    private static final String LISTING_1 = "listing-1";
+    private static final String LOCATION_ID = "locationId";
+    private static final String VENUE_ID = "venueId";
+    private static final String VENUE_NAME = "venueName";
+
 
     @Mock
     private DateParsingUtility dateParsingUtility;
@@ -77,22 +92,21 @@ class RotaCourtScheduleHelperTest {
     void setUp() {
         executionId = "execution-123";
         records = new HashMap<>();
-        sessionDate = LocalDate.parse("2024-01-15");
+        sessionDate = LocalDate.parse(DATE_2024_01_15);
 
-        courtRoom = CourtRoom.CourtRoomBuilder.aCourtRoom()
-                .withCourtRoomId("courtroom-1")
-                .withOucode("OU001")
-                .withOucodeL3Name("Test Courthouse")
-                .withCourtRoomName("Court Room 1")
-                .build();
+        courtRoom = new CourtRoom()
+                .courtroomId(COURTROOM_1)
+                .oucode("OU001")
+                .oucodeL3Name("Test Courthouse")
+                .courtroomName("Court Room 1")
+                ;
 
-        courtSchedule = new CourtSchedule.CourtScheduleBuilder()
-                .withCourtScheduleId(UUID.randomUUID().toString())
-                .withCourtRoomId("courtroom-1")
-                .withPanel("PANEL1")
-                .withSessionDate(sessionDate)
-                .withCourtSession("AM")
-                .build();
+        courtSchedule = new CourtSchedule()
+                .courtScheduleId(UUID.randomUUID().toString())
+                .courtRoomId(COURTROOM_1)
+                .panel(PANEL1_2)
+                .sessionDate(sessionDate)
+                .courtSession("AM");
     }
 
     // ============================================================================
@@ -102,18 +116,18 @@ class RotaCourtScheduleHelperTest {
     @Test
     void shouldCreateCourtScheduleMap_WhenValidCourtListing() {
         // given
-        final String listingProfileId = "listing-1";
-        final String panel = "PANEL1";
+        final String listingProfileId = LISTING_1;
+        final String panel = PANEL1_2;
         final String session = "AM";
-        final String sessionDateStr = "2024-01-15";
+        final String sessionDateStr = DATE_2024_01_15;
 
         final Map<String, String> listingProfile = new HashMap<>();
         listingProfile.put(PANEL, panel);
         listingProfile.put(SESSION_DATE, sessionDateStr);
         listingProfile.put(SESSION, session);
-        listingProfile.put("locationId", "100");
-        listingProfile.put("venueId", "200");
-        listingProfile.put("venueName", "Test Venue");
+        listingProfile.put(LOCATION_ID, VALUE_100);
+        listingProfile.put(VENUE_ID, VALUE_200);
+        listingProfile.put(VENUE_NAME, TEST_VENUE);
 
         final Map<String, Map<String, String>> courtListings = new HashMap<>();
         courtListings.put(listingProfileId, listingProfile);
@@ -122,7 +136,7 @@ class RotaCourtScheduleHelperTest {
         when(dateParsingUtility.parseSessionDate(sessionDateStr)).thenReturn(sessionDate);
         when(venueCourtRoomHelper.getCourtRoom(eq(listingProfile), eq(executionId), anyMap()))
                 .thenReturn(courtRoom);
-        when(sessionsService.getExtractedCourtSchedules(eq(List.of("OU001")), eq(sessionDate), eq(sessionDate)))
+        when(sessionsService.getExtractedCourtSchedules(eq(List.of(OU001_2)), eq(sessionDate), eq(sessionDate)))
                 .thenReturn(List.of(courtSchedule));
 
         // when
@@ -172,9 +186,9 @@ class RotaCourtScheduleHelperTest {
     @Test
     void shouldSkipListing_WhenPanelIsMissing() {
         // given
-        final String listingProfileId = "listing-1";
+        final String listingProfileId = LISTING_1;
         final Map<String, String> listingProfile = new HashMap<>();
-        listingProfile.put(SESSION_DATE, "2024-01-15");
+        listingProfile.put(SESSION_DATE, DATE_2024_01_15);
         listingProfile.put(SESSION, "AM");
 
         final Map<String, Map<String, String>> courtListings = new HashMap<>();
@@ -192,9 +206,9 @@ class RotaCourtScheduleHelperTest {
     @Test
     void shouldSkipListing_WhenSessionDateIsMissing() {
         // given
-        final String listingProfileId = "listing-1";
+        final String listingProfileId = LISTING_1;
         final Map<String, String> listingProfile = new HashMap<>();
-        listingProfile.put(PANEL, "PANEL1");
+        listingProfile.put(PANEL, PANEL1_2);
         listingProfile.put(SESSION, "AM");
 
         final Map<String, Map<String, String>> courtListings = new HashMap<>();
@@ -212,10 +226,10 @@ class RotaCourtScheduleHelperTest {
     @Test
     void shouldSkipListing_WhenSessionDateIsInvalid() {
         // given
-        final String listingProfileId = "listing-1";
+        final String listingProfileId = LISTING_1;
         final String sessionDateStr = "invalid-date";
         final Map<String, String> listingProfile = new HashMap<>();
-        listingProfile.put(PANEL, "PANEL1");
+        listingProfile.put(PANEL, PANEL1_2);
         listingProfile.put(SESSION_DATE, sessionDateStr);
         listingProfile.put(SESSION, "AM");
 
@@ -236,10 +250,10 @@ class RotaCourtScheduleHelperTest {
     @Test
     void shouldSkipListing_WhenCourtRoomIsNull() {
         // given
-        final String listingProfileId = "listing-1";
-        final String sessionDateStr = "2024-01-15";
+        final String listingProfileId = LISTING_1;
+        final String sessionDateStr = DATE_2024_01_15;
         final Map<String, String> listingProfile = new HashMap<>();
-        listingProfile.put(PANEL, "PANEL1");
+        listingProfile.put(PANEL, PANEL1_2);
         listingProfile.put(SESSION_DATE, sessionDateStr);
         listingProfile.put(SESSION, "AM");
 
@@ -262,15 +276,15 @@ class RotaCourtScheduleHelperTest {
     @Test
     void shouldReturnEmptyList_WhenNoMatchingCourtSchedules() {
         // given
-        final String listingProfileId = "listing-1";
-        final String sessionDateStr = "2024-01-15";
+        final String listingProfileId = LISTING_1;
+        final String sessionDateStr = DATE_2024_01_15;
         final Map<String, String> listingProfile = new HashMap<>();
-        listingProfile.put(PANEL, "PANEL1");
+        listingProfile.put(PANEL, PANEL1_2);
         listingProfile.put(SESSION_DATE, sessionDateStr);
         listingProfile.put(SESSION, "AM");
-        listingProfile.put("locationId", "100");
-        listingProfile.put("venueId", "200");
-        listingProfile.put("venueName", "Test Venue");
+        listingProfile.put(LOCATION_ID, VALUE_100);
+        listingProfile.put(VENUE_ID, VALUE_200);
+        listingProfile.put(VENUE_NAME, TEST_VENUE);
 
         final Map<String, Map<String, String>> courtListings = new HashMap<>();
         courtListings.put(listingProfileId, listingProfile);
@@ -279,7 +293,7 @@ class RotaCourtScheduleHelperTest {
         when(dateParsingUtility.parseSessionDate(sessionDateStr)).thenReturn(sessionDate);
         when(venueCourtRoomHelper.getCourtRoom(eq(listingProfile), eq(executionId), anyMap()))
                 .thenReturn(courtRoom);
-        when(sessionsService.getExtractedCourtSchedules(eq(List.of("OU001")), eq(sessionDate), eq(sessionDate)))
+        when(sessionsService.getExtractedCourtSchedules(eq(List.of(OU001_2)), eq(sessionDate), eq(sessionDate)))
                 .thenReturn(Collections.emptyList());
 
         // when
@@ -292,40 +306,38 @@ class RotaCourtScheduleHelperTest {
     @Test
     void shouldFilterCourtSchedules_ByPanelAndSession() {
         // given
-        final String listingProfileId = "listing-1";
-        final String sessionDateStr = "2024-01-15";
+        final String listingProfileId = LISTING_1;
+        final String sessionDateStr = DATE_2024_01_15;
         final Map<String, String> listingProfile = new HashMap<>();
-        listingProfile.put(PANEL, "PANEL1");
+        listingProfile.put(PANEL, PANEL1_2);
         listingProfile.put(SESSION_DATE, sessionDateStr);
         listingProfile.put(SESSION, "AM");
-        listingProfile.put("locationId", "100");
-        listingProfile.put("venueId", "200");
-        listingProfile.put("venueName", "Test Venue");
+        listingProfile.put(LOCATION_ID, VALUE_100);
+        listingProfile.put(VENUE_ID, VALUE_200);
+        listingProfile.put(VENUE_NAME, TEST_VENUE);
 
         final Map<String, Map<String, String>> courtListings = new HashMap<>();
         courtListings.put(listingProfileId, listingProfile);
         records.put(COURT_LISTING, courtListings);
 
-        final CourtSchedule matchingSchedule = new CourtSchedule.CourtScheduleBuilder()
-                .withCourtScheduleId(UUID.randomUUID().toString())
-                .withCourtRoomId("courtroom-1")
-                .withPanel("PANEL1")
-                .withSessionDate(sessionDate)
-                .withCourtSession("AM")
-                .build();
+        final CourtSchedule matchingSchedule = new CourtSchedule()
+                .courtScheduleId(UUID.randomUUID().toString())
+                .courtRoomId(COURTROOM_1)
+                .panel(PANEL1_2)
+                .sessionDate(sessionDate)
+                .courtSession("AM");
 
-        final CourtSchedule nonMatchingSchedule = new CourtSchedule.CourtScheduleBuilder()
-                .withCourtScheduleId(UUID.randomUUID().toString())
-                .withCourtRoomId("courtroom-1")
-                .withPanel("PANEL2")
-                .withSessionDate(sessionDate)
-                .withCourtSession("AM")
-                .build();
+        final CourtSchedule nonMatchingSchedule = new CourtSchedule()
+                .courtScheduleId(UUID.randomUUID().toString())
+                .courtRoomId(COURTROOM_1)
+                .panel("PANEL2")
+                .sessionDate(sessionDate)
+                .courtSession("AM");
 
         when(dateParsingUtility.parseSessionDate(sessionDateStr)).thenReturn(sessionDate);
         when(venueCourtRoomHelper.getCourtRoom(eq(listingProfile), eq(executionId), anyMap()))
                 .thenReturn(courtRoom);
-        when(sessionsService.getExtractedCourtSchedules(eq(List.of("OU001")), eq(sessionDate), eq(sessionDate)))
+        when(sessionsService.getExtractedCourtSchedules(eq(List.of(OU001_2)), eq(sessionDate), eq(sessionDate)))
                 .thenReturn(List.of(matchingSchedule, nonMatchingSchedule));
 
         // when
@@ -340,32 +352,31 @@ class RotaCourtScheduleHelperTest {
     @Test
     void shouldMatchADSession_WhenRequestedSessionIsAM() {
         // given
-        final String listingProfileId = "listing-1";
-        final String sessionDateStr = "2024-01-15";
+        final String listingProfileId = LISTING_1;
+        final String sessionDateStr = DATE_2024_01_15;
         final Map<String, String> listingProfile = new HashMap<>();
-        listingProfile.put(PANEL, "PANEL1");
+        listingProfile.put(PANEL, PANEL1_2);
         listingProfile.put(SESSION_DATE, sessionDateStr);
         listingProfile.put(SESSION, AM_SESSION);
-        listingProfile.put("locationId", "100");
-        listingProfile.put("venueId", "200");
-        listingProfile.put("venueName", "Test Venue");
+        listingProfile.put(LOCATION_ID, VALUE_100);
+        listingProfile.put(VENUE_ID, VALUE_200);
+        listingProfile.put(VENUE_NAME, TEST_VENUE);
 
         final Map<String, Map<String, String>> courtListings = new HashMap<>();
         courtListings.put(listingProfileId, listingProfile);
         records.put(COURT_LISTING, courtListings);
 
-        final CourtSchedule adSchedule = new CourtSchedule.CourtScheduleBuilder()
-                .withCourtScheduleId(UUID.randomUUID().toString())
-                .withCourtRoomId("courtroom-1")
-                .withPanel("PANEL1")
-                .withSessionDate(sessionDate)
-                .withCourtSession(ALL_DAY)
-                .build();
+        final CourtSchedule adSchedule = new CourtSchedule()
+                .courtScheduleId(UUID.randomUUID().toString())
+                .courtRoomId(COURTROOM_1)
+                .panel(PANEL1_2)
+                .sessionDate(sessionDate)
+                .courtSession(ALL_DAY);
 
         when(dateParsingUtility.parseSessionDate(sessionDateStr)).thenReturn(sessionDate);
         when(venueCourtRoomHelper.getCourtRoom(eq(listingProfile), eq(executionId), anyMap()))
                 .thenReturn(courtRoom);
-        when(sessionsService.getExtractedCourtSchedules(eq(List.of("OU001")), eq(sessionDate), eq(sessionDate)))
+        when(sessionsService.getExtractedCourtSchedules(eq(List.of(OU001_2)), eq(sessionDate), eq(sessionDate)))
                 .thenReturn(List.of(adSchedule));
 
         // when
@@ -380,32 +391,31 @@ class RotaCourtScheduleHelperTest {
     @Test
     void shouldMatchADSession_WhenRequestedSessionIsPM() {
         // given
-        final String listingProfileId = "listing-1";
-        final String sessionDateStr = "2024-01-15";
+        final String listingProfileId = LISTING_1;
+        final String sessionDateStr = DATE_2024_01_15;
         final Map<String, String> listingProfile = new HashMap<>();
-        listingProfile.put(PANEL, "PANEL1");
+        listingProfile.put(PANEL, PANEL1_2);
         listingProfile.put(SESSION_DATE, sessionDateStr);
         listingProfile.put(SESSION, PM_SESSION);
-        listingProfile.put("locationId", "100");
-        listingProfile.put("venueId", "200");
-        listingProfile.put("venueName", "Test Venue");
+        listingProfile.put(LOCATION_ID, VALUE_100);
+        listingProfile.put(VENUE_ID, VALUE_200);
+        listingProfile.put(VENUE_NAME, TEST_VENUE);
 
         final Map<String, Map<String, String>> courtListings = new HashMap<>();
         courtListings.put(listingProfileId, listingProfile);
         records.put(COURT_LISTING, courtListings);
 
-        final CourtSchedule adSchedule = new CourtSchedule.CourtScheduleBuilder()
-                .withCourtScheduleId(UUID.randomUUID().toString())
-                .withCourtRoomId("courtroom-1")
-                .withPanel("PANEL1")
-                .withSessionDate(sessionDate)
-                .withCourtSession(ALL_DAY)
-                .build();
+        final CourtSchedule adSchedule = new CourtSchedule()
+                .courtScheduleId(UUID.randomUUID().toString())
+                .courtRoomId(COURTROOM_1)
+                .panel(PANEL1_2)
+                .sessionDate(sessionDate)
+                .courtSession(ALL_DAY);
 
         when(dateParsingUtility.parseSessionDate(sessionDateStr)).thenReturn(sessionDate);
         when(venueCourtRoomHelper.getCourtRoom(eq(listingProfile), eq(executionId), anyMap()))
                 .thenReturn(courtRoom);
-        when(sessionsService.getExtractedCourtSchedules(eq(List.of("OU001")), eq(sessionDate), eq(sessionDate)))
+        when(sessionsService.getExtractedCourtSchedules(eq(List.of(OU001_2)), eq(sessionDate), eq(sessionDate)))
                 .thenReturn(List.of(adSchedule));
 
         // when
@@ -420,32 +430,31 @@ class RotaCourtScheduleHelperTest {
     @Test
     void shouldNotMatchAMSession_WhenRequestedSessionIsPM() {
         // given
-        final String listingProfileId = "listing-1";
-        final String sessionDateStr = "2024-01-15";
+        final String listingProfileId = LISTING_1;
+        final String sessionDateStr = DATE_2024_01_15;
         final Map<String, String> listingProfile = new HashMap<>();
-        listingProfile.put(PANEL, "PANEL1");
+        listingProfile.put(PANEL, PANEL1_2);
         listingProfile.put(SESSION_DATE, sessionDateStr);
         listingProfile.put(SESSION, PM_SESSION);
-        listingProfile.put("locationId", "100");
-        listingProfile.put("venueId", "200");
-        listingProfile.put("venueName", "Test Venue");
+        listingProfile.put(LOCATION_ID, VALUE_100);
+        listingProfile.put(VENUE_ID, VALUE_200);
+        listingProfile.put(VENUE_NAME, TEST_VENUE);
 
         final Map<String, Map<String, String>> courtListings = new HashMap<>();
         courtListings.put(listingProfileId, listingProfile);
         records.put(COURT_LISTING, courtListings);
 
-        final CourtSchedule amSchedule = new CourtSchedule.CourtScheduleBuilder()
-                .withCourtScheduleId(UUID.randomUUID().toString())
-                .withCourtRoomId("courtroom-1")
-                .withPanel("PANEL1")
-                .withSessionDate(sessionDate)
-                .withCourtSession(AM_SESSION)
-                .build();
+        final CourtSchedule amSchedule = new CourtSchedule()
+                .courtScheduleId(UUID.randomUUID().toString())
+                .courtRoomId(COURTROOM_1)
+                .panel(PANEL1_2)
+                .sessionDate(sessionDate)
+                .courtSession(AM_SESSION);
 
         when(dateParsingUtility.parseSessionDate(sessionDateStr)).thenReturn(sessionDate);
         when(venueCourtRoomHelper.getCourtRoom(eq(listingProfile), eq(executionId), anyMap()))
                 .thenReturn(courtRoom);
-        when(sessionsService.getExtractedCourtSchedules(eq(List.of("OU001")), eq(sessionDate), eq(sessionDate)))
+        when(sessionsService.getExtractedCourtSchedules(eq(List.of(OU001_2)), eq(sessionDate), eq(sessionDate)))
                 .thenReturn(List.of(amSchedule));
 
         // when
@@ -458,32 +467,31 @@ class RotaCourtScheduleHelperTest {
     @Test
     void shouldMatchExactSession_WhenRequestedSessionIsAD() {
         // given
-        final String listingProfileId = "listing-1";
-        final String sessionDateStr = "2024-01-15";
+        final String listingProfileId = LISTING_1;
+        final String sessionDateStr = DATE_2024_01_15;
         final Map<String, String> listingProfile = new HashMap<>();
-        listingProfile.put(PANEL, "PANEL1");
+        listingProfile.put(PANEL, PANEL1_2);
         listingProfile.put(SESSION_DATE, sessionDateStr);
         listingProfile.put(SESSION, ALL_DAY);
-        listingProfile.put("locationId", "100");
-        listingProfile.put("venueId", "200");
-        listingProfile.put("venueName", "Test Venue");
+        listingProfile.put(LOCATION_ID, VALUE_100);
+        listingProfile.put(VENUE_ID, VALUE_200);
+        listingProfile.put(VENUE_NAME, TEST_VENUE);
 
         final Map<String, Map<String, String>> courtListings = new HashMap<>();
         courtListings.put(listingProfileId, listingProfile);
         records.put(COURT_LISTING, courtListings);
 
-        final CourtSchedule adSchedule = new CourtSchedule.CourtScheduleBuilder()
-                .withCourtScheduleId(UUID.randomUUID().toString())
-                .withCourtRoomId("courtroom-1")
-                .withPanel("PANEL1")
-                .withSessionDate(sessionDate)
-                .withCourtSession(ALL_DAY)
-                .build();
+        final CourtSchedule adSchedule = new CourtSchedule()
+                .courtScheduleId(UUID.randomUUID().toString())
+                .courtRoomId(COURTROOM_1)
+                .panel(PANEL1_2)
+                .sessionDate(sessionDate)
+                .courtSession(ALL_DAY);
 
         when(dateParsingUtility.parseSessionDate(sessionDateStr)).thenReturn(sessionDate);
         when(venueCourtRoomHelper.getCourtRoom(eq(listingProfile), eq(executionId), anyMap()))
                 .thenReturn(courtRoom);
-        when(sessionsService.getExtractedCourtSchedules(eq(List.of("OU001")), eq(sessionDate), eq(sessionDate)))
+        when(sessionsService.getExtractedCourtSchedules(eq(List.of(OU001_2)), eq(sessionDate), eq(sessionDate)))
                 .thenReturn(List.of(adSchedule));
 
         // when
@@ -498,32 +506,31 @@ class RotaCourtScheduleHelperTest {
     @Test
     void shouldNotMatchAMOrPM_WhenRequestedSessionIsAD() {
         // given
-        final String listingProfileId = "listing-1";
-        final String sessionDateStr = "2024-01-15";
+        final String listingProfileId = LISTING_1;
+        final String sessionDateStr = DATE_2024_01_15;
         final Map<String, String> listingProfile = new HashMap<>();
-        listingProfile.put(PANEL, "PANEL1");
+        listingProfile.put(PANEL, PANEL1_2);
         listingProfile.put(SESSION_DATE, sessionDateStr);
         listingProfile.put(SESSION, ALL_DAY);
-        listingProfile.put("locationId", "100");
-        listingProfile.put("venueId", "200");
-        listingProfile.put("venueName", "Test Venue");
+        listingProfile.put(LOCATION_ID, VALUE_100);
+        listingProfile.put(VENUE_ID, VALUE_200);
+        listingProfile.put(VENUE_NAME, TEST_VENUE);
 
         final Map<String, Map<String, String>> courtListings = new HashMap<>();
         courtListings.put(listingProfileId, listingProfile);
         records.put(COURT_LISTING, courtListings);
 
-        final CourtSchedule amSchedule = new CourtSchedule.CourtScheduleBuilder()
-                .withCourtScheduleId(UUID.randomUUID().toString())
-                .withCourtRoomId("courtroom-1")
-                .withPanel("PANEL1")
-                .withSessionDate(sessionDate)
-                .withCourtSession(AM_SESSION)
-                .build();
+        final CourtSchedule amSchedule = new CourtSchedule()
+                .courtScheduleId(UUID.randomUUID().toString())
+                .courtRoomId(COURTROOM_1)
+                .panel(PANEL1_2)
+                .sessionDate(sessionDate)
+                .courtSession(AM_SESSION);
 
         when(dateParsingUtility.parseSessionDate(sessionDateStr)).thenReturn(sessionDate);
         when(venueCourtRoomHelper.getCourtRoom(eq(listingProfile), eq(executionId), anyMap()))
                 .thenReturn(courtRoom);
-        when(sessionsService.getExtractedCourtSchedules(eq(List.of("OU001")), eq(sessionDate), eq(sessionDate)))
+        when(sessionsService.getExtractedCourtSchedules(eq(List.of(OU001_2)), eq(sessionDate), eq(sessionDate)))
                 .thenReturn(List.of(amSchedule));
 
         // when
@@ -540,20 +547,20 @@ class RotaCourtScheduleHelperTest {
     @Test
     void shouldLogMissingCourtSession_WhenNoCourtScheduleFound() {
         // given
-        final String listingProfileId = "listing-1";
-        final String sessionDateStr = "2024-01-15";
-        final String panel = "PANEL1";
+        final String listingProfileId = LISTING_1;
+        final String sessionDateStr = DATE_2024_01_15;
+        final String panel = PANEL1_2;
         final String session = "AM";
-        final String businessType = "CIVIL";
+        final String businessType = CIVIL_2;
 
         final Map<String, String> listingProfile = new HashMap<>();
         listingProfile.put(PANEL, panel);
         listingProfile.put(SESSION_DATE, sessionDateStr);
         listingProfile.put(SESSION, session);
         listingProfile.put(BUSINESS_TYPE, businessType);
-        listingProfile.put("locationId", "100");
-        listingProfile.put("venueId", "200");
-        listingProfile.put("venueName", "Test Venue");
+        listingProfile.put(LOCATION_ID, VALUE_100);
+        listingProfile.put(VENUE_ID, VALUE_200);
+        listingProfile.put(VENUE_NAME, TEST_VENUE);
 
         final Map<String, Map<String, String>> courtListings = new HashMap<>();
         courtListings.put(listingProfileId, listingProfile);
@@ -562,7 +569,7 @@ class RotaCourtScheduleHelperTest {
         when(dateParsingUtility.parseSessionDate(sessionDateStr)).thenReturn(sessionDate);
         when(venueCourtRoomHelper.getCourtRoom(eq(listingProfile), eq(executionId), anyMap()))
                 .thenReturn(courtRoom);
-        when(sessionsService.getExtractedCourtSchedules(eq(List.of("OU001")), eq(sessionDate), eq(sessionDate)))
+        when(sessionsService.getExtractedCourtSchedules(eq(List.of(OU001_2)), eq(sessionDate), eq(sessionDate)))
                 .thenReturn(Collections.emptyList());
 
         // when
@@ -571,14 +578,14 @@ class RotaCourtScheduleHelperTest {
         // then
         assertThat(result, is(emptyMap()));
 
-        ArgumentCaptor<RotaProcessLog> logCaptor = ArgumentCaptor.forClass(RotaProcessLog.class);
+        final ArgumentCaptor<RotaProcessLog> logCaptor = ArgumentCaptor.forClass(RotaProcessLog.class);
         verify(rotaProcessLogService).saveRotaProcessLog(logCaptor.capture());
 
         final RotaProcessLog log = logCaptor.getValue();
         assertThat(log.getExecutionId(), is(executionId));
         assertThat(log.getErrorCode(), is(MISSING_COURT_SESSION.code()));
-        assertThat(log.getErrorText(), containsString("OU001"));
-        assertThat(log.getErrorText(), containsString("2024-01-15"));
+        assertThat(log.getErrorText(), containsString(OU001_2));
+        assertThat(log.getErrorText(), containsString(DATE_2024_01_15));
         assertThat(log.getErrorText(), containsString("Test Courthouse"));
         assertThat(log.getErrorText(), containsString("Court Room 1"));
         assertThat(log.getErrorText(), containsString(businessType));
@@ -589,29 +596,29 @@ class RotaCourtScheduleHelperTest {
     @Test
     void shouldGroupMultipleMissingSessions_ForSameOuCode() {
         // given
-        final String listingProfileId1 = "listing-1";
+        final String listingProfileId1 = LISTING_1;
         final String listingProfileId2 = "listing-2";
-        final String sessionDateStr1 = "2024-01-15";
-        final String sessionDateStr2 = "2024-01-16";
-        final LocalDate sessionDate2 = LocalDate.parse("2024-01-16");
+        final String sessionDateStr1 = DATE_2024_01_15;
+        final String sessionDateStr2 = DATE_2024_01_16;
+        final LocalDate sessionDate2 = LocalDate.parse(DATE_2024_01_16);
 
         final Map<String, String> listingProfile1 = new HashMap<>();
-        listingProfile1.put(PANEL, "PANEL1");
+        listingProfile1.put(PANEL, PANEL1_2);
         listingProfile1.put(SESSION_DATE, sessionDateStr1);
         listingProfile1.put(SESSION, "AM");
-        listingProfile1.put(BUSINESS_TYPE, "CIVIL");
-        listingProfile1.put("locationId", "100");
-        listingProfile1.put("venueId", "200");
-        listingProfile1.put("venueName", "Test Venue");
+        listingProfile1.put(BUSINESS_TYPE, CIVIL_2);
+        listingProfile1.put(LOCATION_ID, VALUE_100);
+        listingProfile1.put(VENUE_ID, VALUE_200);
+        listingProfile1.put(VENUE_NAME, TEST_VENUE);
 
         final Map<String, String> listingProfile2 = new HashMap<>();
-        listingProfile2.put(PANEL, "PANEL2");
+        listingProfile2.put(PANEL, PANEL2_2);
         listingProfile2.put(SESSION_DATE, sessionDateStr2);
         listingProfile2.put(SESSION, "PM");
         listingProfile2.put(BUSINESS_TYPE, "CRIMINAL");
-        listingProfile2.put("locationId", "100");
-        listingProfile2.put("venueId", "200");
-        listingProfile2.put("venueName", "Test Venue");
+        listingProfile2.put(LOCATION_ID, VALUE_100);
+        listingProfile2.put(VENUE_ID, VALUE_200);
+        listingProfile2.put(VENUE_NAME, TEST_VENUE);
 
         final Map<String, Map<String, String>> courtListings = new HashMap<>();
         courtListings.put(listingProfileId1, listingProfile1);
@@ -622,7 +629,7 @@ class RotaCourtScheduleHelperTest {
         when(dateParsingUtility.parseSessionDate(sessionDateStr2)).thenReturn(sessionDate2);
         when(venueCourtRoomHelper.getCourtRoom(anyMap(), eq(executionId), anyMap()))
                 .thenReturn(courtRoom);
-        when(sessionsService.getExtractedCourtSchedules(eq(List.of("OU001")), any(), any()))
+        when(sessionsService.getExtractedCourtSchedules(eq(List.of(OU001_2)), any(), any()))
                 .thenReturn(Collections.emptyList());
 
         // when
@@ -631,51 +638,51 @@ class RotaCourtScheduleHelperTest {
         // then
         assertThat(result, is(emptyMap()));
 
-        ArgumentCaptor<RotaProcessLog> logCaptor = ArgumentCaptor.forClass(RotaProcessLog.class);
+        final ArgumentCaptor<RotaProcessLog> logCaptor = ArgumentCaptor.forClass(RotaProcessLog.class);
         verify(rotaProcessLogService).saveRotaProcessLog(logCaptor.capture());
 
         final RotaProcessLog log = logCaptor.getValue();
         assertThat(log.getExecutionId(), is(executionId));
         assertThat(log.getErrorCode(), is(MISSING_COURT_SESSION.code()));
-        assertThat(log.getErrorText(), containsString("OU001"));
+        assertThat(log.getErrorText(), containsString(OU001_2));
         // Both sessions should be in the error text
-        assertThat(log.getErrorText(), containsString("2024-01-15"));
-        assertThat(log.getErrorText(), containsString("2024-01-16"));
-        assertThat(log.getErrorText(), containsString("PANEL1"));
-        assertThat(log.getErrorText(), containsString("PANEL2"));
+        assertThat(log.getErrorText(), containsString(DATE_2024_01_15));
+        assertThat(log.getErrorText(), containsString(DATE_2024_01_16));
+        assertThat(log.getErrorText(), containsString(PANEL1_2));
+        assertThat(log.getErrorText(), containsString(PANEL2_2));
     }
 
     @Test
     void shouldLogSeparately_ForDifferentOuCodes() {
         // given
-        final String listingProfileId1 = "listing-1";
+        final String listingProfileId1 = LISTING_1;
         final String listingProfileId2 = "listing-2";
-        final String sessionDateStr = "2024-01-15";
+        final String sessionDateStr = DATE_2024_01_15;
 
-        final CourtRoom courtRoom2 = CourtRoom.CourtRoomBuilder.aCourtRoom()
-                .withCourtRoomId("courtroom-2")
-                .withOucode("OU002")
-                .withOucodeL3Name("Another Courthouse")
-                .withCourtRoomName("Court Room 2")
-                .build();
+        final CourtRoom courtRoom2 = new CourtRoom()
+                .courtroomId("courtroom-2")
+                .oucode("OU002")
+                .oucodeL3Name("Another Courthouse")
+                .courtroomName("Court Room 2")
+                ;
 
         final Map<String, String> listingProfile1 = new HashMap<>();
-        listingProfile1.put(PANEL, "PANEL1");
+        listingProfile1.put(PANEL, PANEL1_2);
         listingProfile1.put(SESSION_DATE, sessionDateStr);
         listingProfile1.put(SESSION, "AM");
-        listingProfile1.put(BUSINESS_TYPE, "CIVIL");
-        listingProfile1.put("locationId", "100");
-        listingProfile1.put("venueId", "200");
-        listingProfile1.put("venueName", "Test Venue");
+        listingProfile1.put(BUSINESS_TYPE, CIVIL_2);
+        listingProfile1.put(LOCATION_ID, VALUE_100);
+        listingProfile1.put(VENUE_ID, VALUE_200);
+        listingProfile1.put(VENUE_NAME, TEST_VENUE);
 
         final Map<String, String> listingProfile2 = new HashMap<>();
-        listingProfile2.put(PANEL, "PANEL2");
+        listingProfile2.put(PANEL, PANEL2_2);
         listingProfile2.put(SESSION_DATE, sessionDateStr);
         listingProfile2.put(SESSION, "PM");
         listingProfile2.put(BUSINESS_TYPE, "CRIMINAL");
-        listingProfile2.put("locationId", "101");
-        listingProfile2.put("venueId", "201");
-        listingProfile2.put("venueName", "Another Venue");
+        listingProfile2.put(LOCATION_ID, "101");
+        listingProfile2.put(VENUE_ID, "201");
+        listingProfile2.put(VENUE_NAME, "Another Venue");
 
         final Map<String, Map<String, String>> courtListings = new HashMap<>();
         courtListings.put(listingProfileId1, listingProfile1);
@@ -687,7 +694,7 @@ class RotaCourtScheduleHelperTest {
                 .thenReturn(courtRoom);
         when(venueCourtRoomHelper.getCourtRoom(eq(listingProfile2), eq(executionId), anyMap()))
                 .thenReturn(courtRoom2);
-        when(sessionsService.getExtractedCourtSchedules(eq(List.of("OU001")), eq(sessionDate), eq(sessionDate)))
+        when(sessionsService.getExtractedCourtSchedules(eq(List.of(OU001_2)), eq(sessionDate), eq(sessionDate)))
                 .thenReturn(Collections.emptyList());
         when(sessionsService.getExtractedCourtSchedules(eq(List.of("OU002")), eq(sessionDate), eq(sessionDate)))
                 .thenReturn(Collections.emptyList());
@@ -698,7 +705,7 @@ class RotaCourtScheduleHelperTest {
         // then
         assertThat(result, is(emptyMap()));
 
-        ArgumentCaptor<RotaProcessLog> logCaptor = ArgumentCaptor.forClass(RotaProcessLog.class);
+        final ArgumentCaptor<RotaProcessLog> logCaptor = ArgumentCaptor.forClass(RotaProcessLog.class);
         verify(rotaProcessLogService, times(2)).saveRotaProcessLog(logCaptor.capture());
 
         final List<RotaProcessLog> logs = logCaptor.getAllValues();
@@ -708,7 +715,7 @@ class RotaCourtScheduleHelperTest {
         final RotaProcessLog log1 = logs.get(0);
         assertThat(log1.getExecutionId(), is(executionId));
         assertThat(log1.getErrorCode(), is(MISSING_COURT_SESSION.code()));
-        assertThat(log1.getErrorText(), containsString("OU001"));
+        assertThat(log1.getErrorText(), containsString(OU001_2));
         assertThat(log1.getErrorText(), containsString("Test Courthouse"));
 
         // Verify second log for OU002
@@ -722,16 +729,16 @@ class RotaCourtScheduleHelperTest {
     @Test
     void shouldNotLogMissingCourtSession_WhenExecutionIdIsNull() {
         // given
-        final String listingProfileId = "listing-1";
-        final String sessionDateStr = "2024-01-15";
+        final String listingProfileId = LISTING_1;
+        final String sessionDateStr = DATE_2024_01_15;
         final Map<String, String> listingProfile = new HashMap<>();
-        listingProfile.put(PANEL, "PANEL1");
+        listingProfile.put(PANEL, PANEL1_2);
         listingProfile.put(SESSION_DATE, sessionDateStr);
         listingProfile.put(SESSION, "AM");
-        listingProfile.put(BUSINESS_TYPE, "CIVIL");
-        listingProfile.put("locationId", "100");
-        listingProfile.put("venueId", "200");
-        listingProfile.put("venueName", "Test Venue");
+        listingProfile.put(BUSINESS_TYPE, CIVIL_2);
+        listingProfile.put(LOCATION_ID, VALUE_100);
+        listingProfile.put(VENUE_ID, VALUE_200);
+        listingProfile.put(VENUE_NAME, TEST_VENUE);
 
         final Map<String, Map<String, String>> courtListings = new HashMap<>();
         courtListings.put(listingProfileId, listingProfile);
@@ -740,7 +747,7 @@ class RotaCourtScheduleHelperTest {
         when(dateParsingUtility.parseSessionDate(sessionDateStr)).thenReturn(sessionDate);
         when(venueCourtRoomHelper.getCourtRoom(eq(listingProfile), eq(null), anyMap()))
                 .thenReturn(courtRoom);
-        when(sessionsService.getExtractedCourtSchedules(eq(List.of("OU001")), eq(sessionDate), eq(sessionDate)))
+        when(sessionsService.getExtractedCourtSchedules(eq(List.of(OU001_2)), eq(sessionDate), eq(sessionDate)))
                 .thenReturn(Collections.emptyList());
 
         // when
@@ -754,16 +761,16 @@ class RotaCourtScheduleHelperTest {
     @Test
     void shouldNotLogMissingCourtSession_WhenExecutionIdIsEmpty() {
         // given
-        final String listingProfileId = "listing-1";
-        final String sessionDateStr = "2024-01-15";
+        final String listingProfileId = LISTING_1;
+        final String sessionDateStr = DATE_2024_01_15;
         final Map<String, String> listingProfile = new HashMap<>();
-        listingProfile.put(PANEL, "PANEL1");
+        listingProfile.put(PANEL, PANEL1_2);
         listingProfile.put(SESSION_DATE, sessionDateStr);
         listingProfile.put(SESSION, "AM");
-        listingProfile.put(BUSINESS_TYPE, "CIVIL");
-        listingProfile.put("locationId", "100");
-        listingProfile.put("venueId", "200");
-        listingProfile.put("venueName", "Test Venue");
+        listingProfile.put(BUSINESS_TYPE, CIVIL_2);
+        listingProfile.put(LOCATION_ID, VALUE_100);
+        listingProfile.put(VENUE_ID, VALUE_200);
+        listingProfile.put(VENUE_NAME, TEST_VENUE);
 
         final Map<String, Map<String, String>> courtListings = new HashMap<>();
         courtListings.put(listingProfileId, listingProfile);
@@ -772,7 +779,7 @@ class RotaCourtScheduleHelperTest {
         when(dateParsingUtility.parseSessionDate(sessionDateStr)).thenReturn(sessionDate);
         when(venueCourtRoomHelper.getCourtRoom(eq(listingProfile), eq(""), anyMap()))
                 .thenReturn(courtRoom);
-        when(sessionsService.getExtractedCourtSchedules(eq(List.of("OU001")), eq(sessionDate), eq(sessionDate)))
+        when(sessionsService.getExtractedCourtSchedules(eq(List.of(OU001_2)), eq(sessionDate), eq(sessionDate)))
                 .thenReturn(Collections.emptyList());
 
         // when
@@ -786,16 +793,16 @@ class RotaCourtScheduleHelperTest {
     @Test
     void shouldNotLogMissingCourtSession_WhenCourtScheduleIsFound() {
         // given
-        final String listingProfileId = "listing-1";
-        final String sessionDateStr = "2024-01-15";
+        final String listingProfileId = LISTING_1;
+        final String sessionDateStr = DATE_2024_01_15;
         final Map<String, String> listingProfile = new HashMap<>();
-        listingProfile.put(PANEL, "PANEL1");
+        listingProfile.put(PANEL, PANEL1_2);
         listingProfile.put(SESSION_DATE, sessionDateStr);
         listingProfile.put(SESSION, "AM");
-        listingProfile.put(BUSINESS_TYPE, "CIVIL");
-        listingProfile.put("locationId", "100");
-        listingProfile.put("venueId", "200");
-        listingProfile.put("venueName", "Test Venue");
+        listingProfile.put(BUSINESS_TYPE, CIVIL_2);
+        listingProfile.put(LOCATION_ID, VALUE_100);
+        listingProfile.put(VENUE_ID, VALUE_200);
+        listingProfile.put(VENUE_NAME, TEST_VENUE);
 
         final Map<String, Map<String, String>> courtListings = new HashMap<>();
         courtListings.put(listingProfileId, listingProfile);
@@ -804,7 +811,7 @@ class RotaCourtScheduleHelperTest {
         when(dateParsingUtility.parseSessionDate(sessionDateStr)).thenReturn(sessionDate);
         when(venueCourtRoomHelper.getCourtRoom(eq(listingProfile), eq(executionId), anyMap()))
                 .thenReturn(courtRoom);
-        when(sessionsService.getExtractedCourtSchedules(eq(List.of("OU001")), eq(sessionDate), eq(sessionDate)))
+        when(sessionsService.getExtractedCourtSchedules(eq(List.of(OU001_2)), eq(sessionDate), eq(sessionDate)))
                 .thenReturn(List.of(courtSchedule));
 
         // when
@@ -820,22 +827,22 @@ class RotaCourtScheduleHelperTest {
     @Test
     void shouldUseUnknownValues_WhenCourtRoomFieldsAreMissing() {
         // given
-        final String listingProfileId = "listing-1";
-        final String sessionDateStr = "2024-01-15";
+        final String listingProfileId = LISTING_1;
+        final String sessionDateStr = DATE_2024_01_15;
         final Map<String, String> listingProfile = new HashMap<>();
-        listingProfile.put(PANEL, "PANEL1");
+        listingProfile.put(PANEL, PANEL1_2);
         listingProfile.put(SESSION_DATE, sessionDateStr);
         listingProfile.put(SESSION, "AM");
-        listingProfile.put("locationId", "100");
-        listingProfile.put("venueId", "200");
-        listingProfile.put("venueName", "Test Venue");
+        listingProfile.put(LOCATION_ID, VALUE_100);
+        listingProfile.put(VENUE_ID, VALUE_200);
+        listingProfile.put(VENUE_NAME, TEST_VENUE);
 
-        final CourtRoom courtRoomWithMissingFields = CourtRoom.CourtRoomBuilder.aCourtRoom()
-                .withCourtRoomId("courtroom-1")
-                .withOucode(null)  // Missing OU code
-                .withOucodeL3Name(null)  // Missing court house name
-                .withCourtRoomName(null)  // Missing court room name
-                .build();
+        final CourtRoom courtRoomWithMissingFields = new CourtRoom()
+                .courtroomId(COURTROOM_1)
+                .oucode(null)  // Missing OU code
+                .oucodeL3Name(null)  // Missing court house name
+                .courtroomName(null)  // Missing court room name
+                ;
 
         final Map<String, Map<String, String>> courtListings = new HashMap<>();
         courtListings.put(listingProfileId, listingProfile);
@@ -851,7 +858,7 @@ class RotaCourtScheduleHelperTest {
         // then
         assertThat(result, is(emptyMap()));
 
-        ArgumentCaptor<RotaProcessLog> logCaptor = ArgumentCaptor.forClass(RotaProcessLog.class);
+        final ArgumentCaptor<RotaProcessLog> logCaptor = ArgumentCaptor.forClass(RotaProcessLog.class);
         verify(rotaProcessLogService).saveRotaProcessLog(logCaptor.capture());
 
         final RotaProcessLog log = logCaptor.getValue();
@@ -868,15 +875,15 @@ class RotaCourtScheduleHelperTest {
     @Test
     void shouldLogMissingReferenceData_WhenVenueNotFound() {
         // given
-        final String listingProfileId = "listing-1";
-        final String sessionDateStr = "2024-01-15";
+        final String listingProfileId = LISTING_1;
+        final String sessionDateStr = DATE_2024_01_15;
         final Map<String, String> listingProfile = new HashMap<>();
-        listingProfile.put(PANEL, "PANEL1");
+        listingProfile.put(PANEL, PANEL1_2);
         listingProfile.put(SESSION_DATE, sessionDateStr);
         listingProfile.put(SESSION, "AM");
-        listingProfile.put("locationId", "100");
-        listingProfile.put("venueId", "200");
-        listingProfile.put("venueName", "Test Venue");
+        listingProfile.put(LOCATION_ID, VALUE_100);
+        listingProfile.put(VENUE_ID, VALUE_200);
+        listingProfile.put(VENUE_NAME, TEST_VENUE);
 
         final Map<String, Map<String, String>> courtListings = new HashMap<>();
         courtListings.put(listingProfileId, listingProfile);
@@ -886,7 +893,7 @@ class RotaCourtScheduleHelperTest {
         // Venue not found - getCourtRoom returns null and populates missingReferenceDataMappingMap
         when(venueCourtRoomHelper.getCourtRoom(eq(listingProfile), eq(executionId), anyMap()))
                 .thenAnswer(invocation -> {
-                    Map<String, String> missingRefDataMap = invocation.getArgument(2);
+                    final Map<String, String> missingRefDataMap = invocation.getArgument(2);
                     missingRefDataMap.put("100 - Test Venue - 200", REF_DATA_VENUE_NOT_FOUND.code());
                     return null;
                 });
@@ -897,7 +904,7 @@ class RotaCourtScheduleHelperTest {
         // then
         assertThat(result, is(emptyMap()));
 
-        ArgumentCaptor<RotaProcessLog> logCaptor = ArgumentCaptor.forClass(RotaProcessLog.class);
+        final ArgumentCaptor<RotaProcessLog> logCaptor = ArgumentCaptor.forClass(RotaProcessLog.class);
         verify(rotaProcessLogService).saveRotaProcessLog(logCaptor.capture());
 
         final RotaProcessLog log = logCaptor.getValue();
@@ -909,15 +916,15 @@ class RotaCourtScheduleHelperTest {
     @Test
     void shouldNotLogMissingReferenceData_WhenExecutionIdIsNull() {
         // given
-        final String listingProfileId = "listing-1";
-        final String sessionDateStr = "2024-01-15";
+        final String listingProfileId = LISTING_1;
+        final String sessionDateStr = DATE_2024_01_15;
         final Map<String, String> listingProfile = new HashMap<>();
-        listingProfile.put(PANEL, "PANEL1");
+        listingProfile.put(PANEL, PANEL1_2);
         listingProfile.put(SESSION_DATE, sessionDateStr);
         listingProfile.put(SESSION, "AM");
-        listingProfile.put("locationId", "100");
-        listingProfile.put("venueId", "200");
-        listingProfile.put("venueName", "Test Venue");
+        listingProfile.put(LOCATION_ID, VALUE_100);
+        listingProfile.put(VENUE_ID, VALUE_200);
+        listingProfile.put(VENUE_NAME, TEST_VENUE);
 
         final Map<String, Map<String, String>> courtListings = new HashMap<>();
         courtListings.put(listingProfileId, listingProfile);
@@ -926,7 +933,7 @@ class RotaCourtScheduleHelperTest {
         when(dateParsingUtility.parseSessionDate(sessionDateStr)).thenReturn(sessionDate);
         when(venueCourtRoomHelper.getCourtRoom(eq(listingProfile), eq(null), anyMap()))
                 .thenAnswer(invocation -> {
-                    Map<String, String> missingRefDataMap = invocation.getArgument(2);
+                    final Map<String, String> missingRefDataMap = invocation.getArgument(2);
                     missingRefDataMap.put("100 - Test Venue - 200", REF_DATA_VENUE_NOT_FOUND.code());
                     return null;
                 });
@@ -943,15 +950,15 @@ class RotaCourtScheduleHelperTest {
     @Test
     void shouldNotLogMissingReferenceData_WhenMapIsEmpty() {
         // given
-        final String listingProfileId = "listing-1";
-        final String sessionDateStr = "2024-01-15";
+        final String listingProfileId = LISTING_1;
+        final String sessionDateStr = DATE_2024_01_15;
         final Map<String, String> listingProfile = new HashMap<>();
-        listingProfile.put(PANEL, "PANEL1");
+        listingProfile.put(PANEL, PANEL1_2);
         listingProfile.put(SESSION_DATE, sessionDateStr);
         listingProfile.put(SESSION, "AM");
-        listingProfile.put("locationId", "100");
-        listingProfile.put("venueId", "200");
-        listingProfile.put("venueName", "Test Venue");
+        listingProfile.put(LOCATION_ID, VALUE_100);
+        listingProfile.put(VENUE_ID, VALUE_200);
+        listingProfile.put(VENUE_NAME, TEST_VENUE);
 
         final Map<String, Map<String, String>> courtListings = new HashMap<>();
         courtListings.put(listingProfileId, listingProfile);
@@ -960,7 +967,7 @@ class RotaCourtScheduleHelperTest {
         when(dateParsingUtility.parseSessionDate(sessionDateStr)).thenReturn(sessionDate);
         when(venueCourtRoomHelper.getCourtRoom(eq(listingProfile), eq(executionId), anyMap()))
                 .thenReturn(courtRoom);
-        when(sessionsService.getExtractedCourtSchedules(eq(List.of("OU001")), eq(sessionDate), eq(sessionDate)))
+        when(sessionsService.getExtractedCourtSchedules(eq(List.of(OU001_2)), eq(sessionDate), eq(sessionDate)))
                 .thenReturn(List.of(courtSchedule));
 
         // when
@@ -979,10 +986,10 @@ class RotaCourtScheduleHelperTest {
     @Test
     void shouldHandleException_WhenProcessCourtListingThrowsException() {
         // given
-        final String listingProfileId = "listing-1";
-        final String sessionDateStr = "2024-01-15";
+        final String listingProfileId = LISTING_1;
+        final String sessionDateStr = DATE_2024_01_15;
         final Map<String, String> listingProfile = new HashMap<>();
-        listingProfile.put(PANEL, "PANEL1");
+        listingProfile.put(PANEL, PANEL1_2);
         listingProfile.put(SESSION_DATE, sessionDateStr);
         listingProfile.put(SESSION, "AM");
 
@@ -1004,20 +1011,20 @@ class RotaCourtScheduleHelperTest {
     @Test
     void shouldReturnEmptyList_WhenOuCodeIsMissing() {
         // given
-        final String listingProfileId = "listing-1";
-        final String sessionDateStr = "2024-01-15";
+        final String listingProfileId = LISTING_1;
+        final String sessionDateStr = DATE_2024_01_15;
         final Map<String, String> listingProfile = new HashMap<>();
-        listingProfile.put(PANEL, "PANEL1");
+        listingProfile.put(PANEL, PANEL1_2);
         listingProfile.put(SESSION_DATE, sessionDateStr);
         listingProfile.put(SESSION, "AM");
-        listingProfile.put("locationId", "100");
-        listingProfile.put("venueId", "200");
-        listingProfile.put("venueName", "Test Venue");
+        listingProfile.put(LOCATION_ID, VALUE_100);
+        listingProfile.put(VENUE_ID, VALUE_200);
+        listingProfile.put(VENUE_NAME, TEST_VENUE);
 
-        final CourtRoom courtRoomWithoutOuCode = CourtRoom.CourtRoomBuilder.aCourtRoom()
-                .withCourtRoomId("courtroom-1")
-                .withOucode(null)  // Missing OU code
-                .build();
+        final CourtRoom courtRoomWithoutOuCode = new CourtRoom()
+                .courtroomId(COURTROOM_1)
+                .oucode(null)  // Missing OU code
+                ;
 
         final Map<String, Map<String, String>> courtListings = new HashMap<>();
         courtListings.put(listingProfileId, listingProfile);
@@ -1038,20 +1045,20 @@ class RotaCourtScheduleHelperTest {
     @Test
     void shouldReturnEmptyList_WhenCourtRoomIdIsMissing() {
         // given
-        final String listingProfileId = "listing-1";
-        final String sessionDateStr = "2024-01-15";
+        final String listingProfileId = LISTING_1;
+        final String sessionDateStr = DATE_2024_01_15;
         final Map<String, String> listingProfile = new HashMap<>();
-        listingProfile.put(PANEL, "PANEL1");
+        listingProfile.put(PANEL, PANEL1_2);
         listingProfile.put(SESSION_DATE, sessionDateStr);
         listingProfile.put(SESSION, "AM");
-        listingProfile.put("locationId", "100");
-        listingProfile.put("venueId", "200");
-        listingProfile.put("venueName", "Test Venue");
+        listingProfile.put(LOCATION_ID, VALUE_100);
+        listingProfile.put(VENUE_ID, VALUE_200);
+        listingProfile.put(VENUE_NAME, TEST_VENUE);
 
-        final CourtRoom courtRoomWithoutId = CourtRoom.CourtRoomBuilder.aCourtRoom()
-                .withCourtRoomId(null)  // Missing court room ID
-                .withOucode("OU001")
-                .build();
+        final CourtRoom courtRoomWithoutId = new CourtRoom()
+                .courtroomId(null)  // Missing court room ID
+                .oucode("OU001")
+                ;
 
         final Map<String, Map<String, String>> courtListings = new HashMap<>();
         courtListings.put(listingProfileId, listingProfile);
@@ -1072,15 +1079,15 @@ class RotaCourtScheduleHelperTest {
     @Test
     void shouldHandleException_WhenFindCourtScheduleThrowsException() {
         // given
-        final String listingProfileId = "listing-1";
-        final String sessionDateStr = "2024-01-15";
+        final String listingProfileId = LISTING_1;
+        final String sessionDateStr = DATE_2024_01_15;
         final Map<String, String> listingProfile = new HashMap<>();
-        listingProfile.put(PANEL, "PANEL1");
+        listingProfile.put(PANEL, PANEL1_2);
         listingProfile.put(SESSION_DATE, sessionDateStr);
         listingProfile.put(SESSION, "AM");
-        listingProfile.put("locationId", "100");
-        listingProfile.put("venueId", "200");
-        listingProfile.put("venueName", "Test Venue");
+        listingProfile.put(LOCATION_ID, VALUE_100);
+        listingProfile.put(VENUE_ID, VALUE_200);
+        listingProfile.put(VENUE_NAME, TEST_VENUE);
 
         final Map<String, Map<String, String>> courtListings = new HashMap<>();
         courtListings.put(listingProfileId, listingProfile);
@@ -1089,7 +1096,7 @@ class RotaCourtScheduleHelperTest {
         when(dateParsingUtility.parseSessionDate(sessionDateStr)).thenReturn(sessionDate);
         when(venueCourtRoomHelper.getCourtRoom(eq(listingProfile), eq(executionId), anyMap()))
                 .thenReturn(courtRoom);
-        when(sessionsService.getExtractedCourtSchedules(eq(List.of("OU001")), eq(sessionDate), eq(sessionDate)))
+        when(sessionsService.getExtractedCourtSchedules(eq(List.of(OU001_2)), eq(sessionDate), eq(sessionDate)))
                 .thenThrow(new RuntimeException("Service error"));
 
         // when
@@ -1103,40 +1110,38 @@ class RotaCourtScheduleHelperTest {
     @Test
     void shouldMapMultipleCourtSchedules_WhenMultipleMatch() {
         // given
-        final String listingProfileId = "listing-1";
-        final String sessionDateStr = "2024-01-15";
+        final String listingProfileId = LISTING_1;
+        final String sessionDateStr = DATE_2024_01_15;
         final Map<String, String> listingProfile = new HashMap<>();
-        listingProfile.put(PANEL, "PANEL1");
+        listingProfile.put(PANEL, PANEL1_2);
         listingProfile.put(SESSION_DATE, sessionDateStr);
         listingProfile.put(SESSION, "AM");
-        listingProfile.put("locationId", "100");
-        listingProfile.put("venueId", "200");
-        listingProfile.put("venueName", "Test Venue");
+        listingProfile.put(LOCATION_ID, VALUE_100);
+        listingProfile.put(VENUE_ID, VALUE_200);
+        listingProfile.put(VENUE_NAME, TEST_VENUE);
 
         final Map<String, Map<String, String>> courtListings = new HashMap<>();
         courtListings.put(listingProfileId, listingProfile);
         records.put(COURT_LISTING, courtListings);
 
-        final CourtSchedule schedule1 = new CourtSchedule.CourtScheduleBuilder()
-                .withCourtScheduleId(UUID.randomUUID().toString())
-                .withCourtRoomId("courtroom-1")
-                .withPanel("PANEL1")
-                .withSessionDate(sessionDate)
-                .withCourtSession("AM")
-                .build();
+        final CourtSchedule schedule1 = new CourtSchedule()
+                .courtScheduleId(UUID.randomUUID().toString())
+                .courtRoomId(COURTROOM_1)
+                .panel(PANEL1_2)
+                .sessionDate(sessionDate)
+                .courtSession("AM");
 
-        final CourtSchedule schedule2 = new CourtSchedule.CourtScheduleBuilder()
-                .withCourtScheduleId(UUID.randomUUID().toString())
-                .withCourtRoomId("courtroom-1")
-                .withPanel("PANEL1")
-                .withSessionDate(sessionDate)
-                .withCourtSession("AM")
-                .build();
+        final CourtSchedule schedule2 = new CourtSchedule()
+                .courtScheduleId(UUID.randomUUID().toString())
+                .courtRoomId(COURTROOM_1)
+                .panel(PANEL1_2)
+                .sessionDate(sessionDate)
+                .courtSession("AM");
 
         when(dateParsingUtility.parseSessionDate(sessionDateStr)).thenReturn(sessionDate);
         when(venueCourtRoomHelper.getCourtRoom(eq(listingProfile), eq(executionId), anyMap()))
                 .thenReturn(courtRoom);
-        when(sessionsService.getExtractedCourtSchedules(eq(List.of("OU001")), eq(sessionDate), eq(sessionDate)))
+        when(sessionsService.getExtractedCourtSchedules(eq(List.of(OU001_2)), eq(sessionDate), eq(sessionDate)))
                 .thenReturn(List.of(schedule1, schedule2));
 
         // when
@@ -1152,10 +1157,10 @@ class RotaCourtScheduleHelperTest {
     @Test
     void shouldSkipListing_WhenSessionIsMissing() {
         // given
-        final String listingProfileId = "listing-1";
+        final String listingProfileId = LISTING_1;
         final Map<String, String> listingProfile = new HashMap<>();
-        listingProfile.put(PANEL, "PANEL1");
-        listingProfile.put(SESSION_DATE, "2024-01-15");
+        listingProfile.put(PANEL, PANEL1_2);
+        listingProfile.put(SESSION_DATE, DATE_2024_01_15);
 
         final Map<String, Map<String, String>> courtListings = new HashMap<>();
         courtListings.put(listingProfileId, listingProfile);
@@ -1172,40 +1177,36 @@ class RotaCourtScheduleHelperTest {
     @Test
     void shouldFilterByCourtRoomId_WhenMultipleCourtRooms() {
         // given
-        final String listingProfileId = "listing-1";
-        final String sessionDateStr = "2024-01-15";
+        final String listingProfileId = LISTING_1;
+        final String sessionDateStr = DATE_2024_01_15;
         final Map<String, String> listingProfile = new HashMap<>();
-        listingProfile.put(PANEL, "PANEL1");
+        listingProfile.put(PANEL, PANEL1_2);
         listingProfile.put(SESSION_DATE, sessionDateStr);
         listingProfile.put(SESSION, "AM");
-        listingProfile.put("locationId", "100");
-        listingProfile.put("venueId", "200");
-        listingProfile.put("venueName", "Test Venue");
+        listingProfile.put(LOCATION_ID, VALUE_100);
+        listingProfile.put(VENUE_ID, VALUE_200);
+        listingProfile.put(VENUE_NAME, TEST_VENUE);
 
         final Map<String, Map<String, String>> courtListings = new HashMap<>();
         courtListings.put(listingProfileId, listingProfile);
         records.put(COURT_LISTING, courtListings);
 
-        final CourtSchedule matchingSchedule = new CourtSchedule.CourtScheduleBuilder()
-                .withCourtScheduleId(UUID.randomUUID().toString())
-                .withCourtRoomId("courtroom-1")  // Matches
-                .withPanel("PANEL1")
-                .withSessionDate(sessionDate)
-                .withCourtSession("AM")
-                .build();
-
-        final CourtSchedule nonMatchingSchedule = new CourtSchedule.CourtScheduleBuilder()
-                .withCourtScheduleId(UUID.randomUUID().toString())
-                .withCourtRoomId("courtroom-2")  // Different court room
-                .withPanel("PANEL1")
-                .withSessionDate(sessionDate)
-                .withCourtSession("AM")
-                .build();
-
+        final CourtSchedule matchingSchedule = new CourtSchedule()
+                .courtScheduleId(UUID.randomUUID().toString())
+                .courtRoomId(COURTROOM_1)  // Matches
+                .panel(PANEL1_2)
+                .sessionDate(sessionDate)
+                .courtSession("AM");
+        final CourtSchedule nonMatchingSchedule = new CourtSchedule()
+                .courtScheduleId(UUID.randomUUID().toString())
+                .courtRoomId("courtroom-2")  // Different court room
+                .panel(PANEL1_2)
+                .sessionDate(sessionDate)
+                .courtSession("AM");
         when(dateParsingUtility.parseSessionDate(sessionDateStr)).thenReturn(sessionDate);
         when(venueCourtRoomHelper.getCourtRoom(eq(listingProfile), eq(executionId), anyMap()))
                 .thenReturn(courtRoom);
-        when(sessionsService.getExtractedCourtSchedules(eq(List.of("OU001")), eq(sessionDate), eq(sessionDate)))
+        when(sessionsService.getExtractedCourtSchedules(eq(List.of(OU001_2)), eq(sessionDate), eq(sessionDate)))
                 .thenReturn(List.of(matchingSchedule, nonMatchingSchedule));
 
         // when
@@ -1221,41 +1222,37 @@ class RotaCourtScheduleHelperTest {
     @Test
     void shouldFilterBySessionDate_WhenMultipleDates() {
         // given
-        final String listingProfileId = "listing-1";
-        final String sessionDateStr = "2024-01-15";
-        final LocalDate differentDate = LocalDate.parse("2024-01-16");
+        final String listingProfileId = LISTING_1;
+        final String sessionDateStr = DATE_2024_01_15;
+        final LocalDate differentDate = LocalDate.parse(DATE_2024_01_16);
         final Map<String, String> listingProfile = new HashMap<>();
-        listingProfile.put(PANEL, "PANEL1");
+        listingProfile.put(PANEL, PANEL1_2);
         listingProfile.put(SESSION_DATE, sessionDateStr);
         listingProfile.put(SESSION, "AM");
-        listingProfile.put("locationId", "100");
-        listingProfile.put("venueId", "200");
-        listingProfile.put("venueName", "Test Venue");
+        listingProfile.put(LOCATION_ID, VALUE_100);
+        listingProfile.put(VENUE_ID, VALUE_200);
+        listingProfile.put(VENUE_NAME, TEST_VENUE);
 
         final Map<String, Map<String, String>> courtListings = new HashMap<>();
         courtListings.put(listingProfileId, listingProfile);
         records.put(COURT_LISTING, courtListings);
 
-        final CourtSchedule matchingSchedule = new CourtSchedule.CourtScheduleBuilder()
-                .withCourtScheduleId(UUID.randomUUID().toString())
-                .withCourtRoomId("courtroom-1")
-                .withPanel("PANEL1")
-                .withSessionDate(sessionDate)  // Matches
-                .withCourtSession("AM")
-                .build();
-
-        final CourtSchedule nonMatchingSchedule = new CourtSchedule.CourtScheduleBuilder()
-                .withCourtScheduleId(UUID.randomUUID().toString())
-                .withCourtRoomId("courtroom-1")
-                .withPanel("PANEL1")
-                .withSessionDate(differentDate)  // Different date
-                .withCourtSession("AM")
-                .build();
-
+        final CourtSchedule matchingSchedule = new CourtSchedule()
+                .courtScheduleId(UUID.randomUUID().toString())
+                .courtRoomId(COURTROOM_1)
+                .panel(PANEL1_2)
+                .sessionDate(sessionDate)  // Matches
+                .courtSession("AM");
+        final CourtSchedule nonMatchingSchedule = new CourtSchedule()
+                .courtScheduleId(UUID.randomUUID().toString())
+                .courtRoomId(COURTROOM_1)
+                .panel(PANEL1_2)
+                .sessionDate(differentDate)  // Different date
+                .courtSession("AM");
         when(dateParsingUtility.parseSessionDate(sessionDateStr)).thenReturn(sessionDate);
         when(venueCourtRoomHelper.getCourtRoom(eq(listingProfile), eq(executionId), anyMap()))
                 .thenReturn(courtRoom);
-        when(sessionsService.getExtractedCourtSchedules(eq(List.of("OU001")), eq(sessionDate), eq(sessionDate)))
+        when(sessionsService.getExtractedCourtSchedules(eq(List.of(OU001_2)), eq(sessionDate), eq(sessionDate)))
                 .thenReturn(List.of(matchingSchedule, nonMatchingSchedule));
 
         // when

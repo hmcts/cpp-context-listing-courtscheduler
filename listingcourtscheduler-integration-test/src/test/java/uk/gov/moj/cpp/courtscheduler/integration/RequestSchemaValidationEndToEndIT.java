@@ -22,7 +22,7 @@ import org.springframework.http.ResponseEntity;
  *   <li>{@code courtscheduler.update.json} — {@code additionalProperties:false} + required + enums.</li>
  * </ul>
  */
-class RequestSchemaValidationEndToEndIT extends AbstractIntegrationTest {
+class RequestSchemaValidationEndToEndIT extends IntegrationTestBase {
 
     private static final String CREATE_CT = "application/vnd.courtscheduler.create+json";
     private static final String UPDATE_CT = "application/vnd.courtscheduler.update+json";

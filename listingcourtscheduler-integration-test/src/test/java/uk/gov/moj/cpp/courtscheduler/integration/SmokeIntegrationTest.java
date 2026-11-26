@@ -11,7 +11,7 @@ import org.springframework.web.client.RestTemplate;
  * Confirms the dockerised app booted with Liquibase, authz and audit filters enabled,
  * and that actuator/health is reachable on the configured context path.
  */
-class SmokeIntegrationTest extends AbstractIntegrationTest {
+class SmokeIntegrationTest extends IntegrationTestBase {
 
     @Test
     void actuatorHealthIsUp() {

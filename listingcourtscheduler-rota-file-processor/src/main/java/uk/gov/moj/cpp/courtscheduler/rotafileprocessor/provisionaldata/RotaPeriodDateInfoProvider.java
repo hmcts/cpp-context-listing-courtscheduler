@@ -13,7 +13,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.Map;
 
 public class RotaPeriodDateInfoProvider {
-    private static final DateTimeFormatter formatter = ofPattern("yyyy-MM-dd");
+    private static final DateTimeFormatter FORMATTER = ofPattern("yyyy-MM-dd");
 
     private final LocalDate rotaPeriodStartDate;
     private final DayOfWeek rotaPeriodStartDay;
@@ -28,8 +28,8 @@ public class RotaPeriodDateInfoProvider {
         final String rotaPeriodStartDateStr = rotaDetail.get("rotaPeriodStartDate");
         final String rotaPeriodEndDateStr = rotaDetail.get("rotaPeriodEndDate");
 
-        rotaPeriodStartDate = parse(rotaPeriodStartDateStr, formatter);
-        rotaPeriodEndDate = parse(rotaPeriodEndDateStr, formatter);
+        rotaPeriodStartDate = parse(rotaPeriodStartDateStr, FORMATTER);
+        rotaPeriodEndDate = parse(rotaPeriodEndDateStr, FORMATTER);
         rotaPeriodStartDay = rotaPeriodStartDate.getDayOfWeek();
         rotaPeriodEndDay = rotaPeriodEndDate.getDayOfWeek();
         monthsBetweenRotaPeriod = MONTHS.between(rotaPeriodStartDate, rotaPeriodEndDate) + 1;

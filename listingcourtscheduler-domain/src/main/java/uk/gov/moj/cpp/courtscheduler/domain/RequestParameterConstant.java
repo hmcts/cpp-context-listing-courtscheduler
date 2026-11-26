@@ -17,7 +17,6 @@ public enum RequestParameterConstant {
     BUSINESS_TYPE("businessType"),
     PAGE_SIZE("pageSize"),
     SHOW_OVERBOOKING_SLOTS("showOverbookedSlots"),
-    CASE_IDENTIFIER("caseIdentifier"),
     RESULTS("results"),
     PAGE_COUNT("pageCount"),
     HEARING_SLOTS("hearingSlots"),
@@ -55,11 +54,12 @@ public enum RequestParameterConstant {
     IS_POLICE("isPolice"),
     HEARING_DATE("hearingDate"),
     HEARING_START_TIME("hearingStartTime"),
+    STATUS("status"),
     IS_DRAFT("isDraft"),
     JURISDICTION("jurisdiction"),
     INDEX("index"),
     COURT_SCHEDULE_IDS("courtScheduleIds"),
-
+    AVAILABLE_DURATION_MINS("availableDurationMins"),
     ;
 
     private final String name;

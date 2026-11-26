@@ -1,0 +1,40 @@
+{
+  "courtSchedules": [
+    {
+      "courtScheduleId": "5771a96b-1c5a-45d1-b647-1bec5212cafc",
+      "courtHouseId": "a771a96b-1c5a-45d1-b647-1bec5212cafd",
+      "courtRoomId": "b771a96b-1c5a-45d1-b647-1bec5212cafe",
+      "courtRoomNumber": 1,
+      "sessionDate": "2026-03-02",
+      "sessionStartTime": "2026-03-02T10:00:00Z",
+      "isDraft": false,
+      "businessType": "TRFL",
+      "courtSession": "AD",
+      "availableDuration": 360
+    },
+    {
+      "courtScheduleId": "6771a96b-1c5a-45d1-b647-1bec5212cafc",
+      "courtHouseId": "a771a96b-1c5a-45d1-b647-1bec5212cafd",
+      "courtRoomId": "b771a96b-1c5a-45d1-b647-1bec5212cafe",
+      "courtRoomNumber": 1,
+      "sessionDate": "2026-03-03",
+      "sessionStartTime": "2026-03-03T10:00:00Z",
+      "isDraft": false,
+      "businessType": "TRFL",
+      "courtSession": "AD",
+      "availableDuration": 360
+    },
+    {
+      "courtScheduleId": "7771a96b-1c5a-45d1-b647-1bec5212cafc",
+      "courtHouseId": "a771a96b-1c5a-45d1-b647-1bec5212cafd",
+      "courtRoomId": "b771a96b-1c5a-45d1-b647-1bec5212cafe",
+      "courtRoomNumber": 1,
+      "sessionDate": "2026-03-04",
+      "sessionStartTime": "2026-03-04T10:00:00Z",
+      "isDraft": false,
+      "businessType": "TRFL",
+      "courtSession": "AD",
+      "availableDuration": 360
+    }
+  ]
+}

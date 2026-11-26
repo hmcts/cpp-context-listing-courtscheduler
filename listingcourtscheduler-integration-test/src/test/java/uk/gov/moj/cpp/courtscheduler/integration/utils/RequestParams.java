@@ -1,7 +1,7 @@
 package uk.gov.moj.cpp.courtscheduler.integration.utils;
 
 /**
- * Replacement for {@code uk.gov.justice.services.test.utils.core.http.RequestParams}.
+ * Replacement for {@code uk.gov.moj.cpp.courtscheduler.integration.utils.RequestParams}.
  * Pure data carrier used by {@link RestPoller} — keeps the legacy IT test API intact.
  */
 public final class RequestParams {

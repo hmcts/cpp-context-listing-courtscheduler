@@ -11,7 +11,6 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZoneOffset;
-import java.util.Date;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
@@ -24,114 +23,159 @@ import org.springframework.beans.factory.annotation.Autowired;
  */
 class MoveHearingToPastDateRepositoryTest extends AbstractRepositoryTest {
 
+    private static final String MAGISTRATES = "MAGISTRATES";
+    private static final String CROWN = "CROWN";
+
     @Autowired
     private CourtScheduleRepository courtScheduleRepository;
 
     @Test
-    public void shouldFindMagistratesSessionForExactCourtHouseAndDate() {
-        String courtCentreId = randomUUID().toString();
-        LocalDate sessionDate = LocalDate.of(2024, 3, 4);
+    void shouldFindMagistratesSessionForExactCourtHouseAndDate() {
+        final String courtCentreId = randomUUID().toString();
+        final LocalDate sessionDate = LocalDate.of(2024, 3, 4);
 
-        CourtSchedule schedule = createMoveToPastDateSchedule(courtCentreId, sessionDate, "MAGISTRATES");
+        final CourtSchedule schedule = createMoveToPastDateSchedule(courtCentreId, sessionDate, MAGISTRATES);
 
-        Optional<CourtSchedule> result = courtScheduleRepository.findSessionForMoveToPastDate(courtCentreId, null, sessionDate, null, "MAGISTRATES");
-
-        assertTrue(result.isPresent());
-        assertEquals(schedule.getCourtScheduleId(), result.get().getCourtScheduleId());
-    }
-
-    @Test
-    public void shouldReturnEmpty_whenNoSessionMatchesExactDate() {
-        String courtCentreId = randomUUID().toString();
-        LocalDate sessionDate = LocalDate.of(2024, 3, 4);
-
-        createMoveToPastDateSchedule(courtCentreId, sessionDate, "MAGISTRATES");
-
-        Optional<CourtSchedule> result = courtScheduleRepository.findSessionForMoveToPastDate(courtCentreId, null, sessionDate.plusDays(1), null, "MAGISTRATES");
-
-        assertFalse(result.isPresent());
-    }
-
-    @Test
-    public void shouldReturnEmpty_whenJurisdictionDoesNotMatch() {
-        String courtCentreId = randomUUID().toString();
-        LocalDate sessionDate = LocalDate.of(2024, 3, 4);
-
-        createMoveToPastDateSchedule(courtCentreId, sessionDate, "CROWN");
-
-        Optional<CourtSchedule> result = courtScheduleRepository.findSessionForMoveToPastDate(courtCentreId, null, sessionDate, null, "MAGISTRATES");
-
-        assertFalse(result.isPresent());
-    }
-
-    @Test
-    public void shouldFindCrownSession_whenJurisdictionIsCrown() {
-        String courtCentreId = randomUUID().toString();
-        LocalDate sessionDate = LocalDate.of(2024, 3, 4);
-
-        CourtSchedule schedule = createMoveToPastDateSchedule(courtCentreId, sessionDate, "CROWN");
-
-        Optional<CourtSchedule> result = courtScheduleRepository.findSessionForMoveToPastDate(courtCentreId, null, sessionDate, null, "CROWN");
+        final Optional<CourtSchedule> result = courtScheduleRepository.findSessionForMoveToPastDate(courtCentreId, null, sessionDate, null, MAGISTRATES);
 
         assertTrue(result.isPresent());
         assertEquals(schedule.getCourtScheduleId(), result.get().getCourtScheduleId());
     }
 
     @Test
-    public void shouldScopeToRequestedCourtRoom() {
-        String courtCentreId = randomUUID().toString();
-        LocalDate sessionDate = LocalDate.of(2024, 3, 4);
-        String room2 = randomUUID().toString();
+    void shouldReturnEmpty_whenNoSessionMatchesExactDate() {
+        final String courtCentreId = randomUUID().toString();
+        final LocalDate sessionDate = LocalDate.of(2024, 3, 4);
 
-        createTimedSchedule(courtCentreId, sessionDate, "MAGISTRATES", randomUUID().toString(), 8, 17, 1);
-        CourtSchedule inRoom2 = createTimedSchedule(courtCentreId, sessionDate, "MAGISTRATES", room2, 8, 17, 2);
+        createMoveToPastDateSchedule(courtCentreId, sessionDate, MAGISTRATES);
 
-        Optional<CourtSchedule> result = courtScheduleRepository.findSessionForMoveToPastDate(courtCentreId, room2, sessionDate, null, "MAGISTRATES");
+        final Optional<CourtSchedule> result = courtScheduleRepository.findSessionForMoveToPastDate(courtCentreId, null, sessionDate.plusDays(1), null, MAGISTRATES);
+
+        assertFalse(result.isPresent());
+    }
+
+    @Test
+    void shouldReturnEmpty_whenJurisdictionDoesNotMatch() {
+        final String courtCentreId = randomUUID().toString();
+        final LocalDate sessionDate = LocalDate.of(2024, 3, 4);
+
+        createMoveToPastDateSchedule(courtCentreId, sessionDate, CROWN);
+
+        final Optional<CourtSchedule> result = courtScheduleRepository.findSessionForMoveToPastDate(courtCentreId, null, sessionDate, null, MAGISTRATES);
+
+        assertFalse(result.isPresent());
+    }
+
+    @Test
+    void shouldFindCrownSession_whenJurisdictionIsCrown() {
+        final String courtCentreId = randomUUID().toString();
+        final LocalDate sessionDate = LocalDate.of(2024, 3, 4);
+
+        final CourtSchedule schedule = createMoveToPastDateSchedule(courtCentreId, sessionDate, CROWN);
+
+        final Optional<CourtSchedule> result = courtScheduleRepository.findSessionForMoveToPastDate(courtCentreId, null, sessionDate, null, CROWN);
+
+        assertTrue(result.isPresent());
+        assertEquals(schedule.getCourtScheduleId(), result.get().getCourtScheduleId());
+    }
+
+    @Test
+    void shouldScopeToRequestedCourtRoom() {
+        final String courtCentreId = randomUUID().toString();
+        final LocalDate sessionDate = LocalDate.of(2024, 3, 4);
+        final String room2 = randomUUID().toString();
+
+        createTimedSchedule(courtCentreId, sessionDate, MAGISTRATES, randomUUID().toString(), 8, 17, 1);
+        final CourtSchedule inRoom2 = createTimedSchedule(courtCentreId, sessionDate, MAGISTRATES, room2, 8, 17, 2);
+
+        final Optional<CourtSchedule> result = courtScheduleRepository.findSessionForMoveToPastDate(courtCentreId, room2, sessionDate, null, MAGISTRATES);
 
         assertTrue(result.isPresent());
         assertEquals(inRoom2.getCourtScheduleId(), result.get().getCourtScheduleId());
     }
 
     @Test
-    public void shouldReturnEmpty_whenSessionExistsOnDateButInADifferentRoom() {
-        String courtCentreId = randomUUID().toString();
-        LocalDate sessionDate = LocalDate.of(2024, 3, 4);
-        String requestedRoom = randomUUID().toString();
-        String otherRoom = randomUUID().toString();
+    void shouldReturnEmpty_whenSessionExistsOnDateButInADifferentRoom() {
+        final String courtCentreId = randomUUID().toString();
+        final LocalDate sessionDate = LocalDate.of(2024, 3, 4);
+        final String requestedRoom = randomUUID().toString();
+        final String otherRoom = randomUUID().toString();
 
         // a session exists on the date/centre, but only in a DIFFERENT room than the one requested
-        createTimedSchedule(courtCentreId, sessionDate, "MAGISTRATES", otherRoom, 8, 17, 1);
+        createTimedSchedule(courtCentreId, sessionDate, MAGISTRATES, otherRoom, 8, 17, 1);
 
-        Optional<CourtSchedule> result = courtScheduleRepository.findSessionForMoveToPastDate(
-                courtCentreId, requestedRoom, sessionDate, null, "MAGISTRATES");
+        final Optional<CourtSchedule> result = courtScheduleRepository.findSessionForMoveToPastDate(
+                courtCentreId, requestedRoom, sessionDate, null, MAGISTRATES);
 
         // room-scoped search must not fall back to another room -> caller surfaces NO_SESSION_FOUND
         assertFalse(result.isPresent());
     }
 
     @Test
-    public void shouldSelectSessionWhoseWindowContainsHearingStartTime() {
-        String courtCentreId = randomUUID().toString();
-        LocalDate sessionDate = LocalDate.of(2024, 3, 4);
+    void shouldSelectSessionWhoseWindowContainsHearingStartTime() {
+        final String courtCentreId = randomUUID().toString();
+        final LocalDate sessionDate = LocalDate.of(2024, 3, 4);
 
-        CourtSchedule morningSession = createTimedSchedule(courtCentreId, sessionDate, "MAGISTRATES", null, 8, 12, 1);
-        CourtSchedule afternoonSession = createTimedSchedule(courtCentreId, sessionDate, "MAGISTRATES", null, 13, 17, 2);
+        final CourtSchedule morningSession = createTimedSchedule(courtCentreId, sessionDate, MAGISTRATES, null, 8, 12, 1);
+        final CourtSchedule afternoonSession = createTimedSchedule(courtCentreId, sessionDate, MAGISTRATES, null, 13, 17, 2);
 
         // 10:00 lands the AM window (08:00-12:00), never the PM window
-        Optional<CourtSchedule> morning = courtScheduleRepository.findSessionForMoveToPastDate(
-                courtCentreId, null, sessionDate, LocalDateTime.of(sessionDate, LocalTime.of(10, 0)), "MAGISTRATES");
+        final Optional<CourtSchedule> morning = courtScheduleRepository.findSessionForMoveToPastDate(
+                courtCentreId, null, sessionDate, LocalDateTime.of(sessionDate, LocalTime.of(10, 0)), MAGISTRATES);
         assertTrue(morning.isPresent());
         assertEquals(morningSession.getCourtScheduleId(), morning.get().getCourtScheduleId());
 
         // 14:00 lands the PM window (13:00-17:00), never the AM window
-        Optional<CourtSchedule> afternoon = courtScheduleRepository.findSessionForMoveToPastDate(
-                courtCentreId, null, sessionDate, LocalDateTime.of(sessionDate, LocalTime.of(14, 0)), "MAGISTRATES");
+        final Optional<CourtSchedule> afternoon = courtScheduleRepository.findSessionForMoveToPastDate(
+                courtCentreId, null, sessionDate, LocalDateTime.of(sessionDate, LocalTime.of(14, 0)), MAGISTRATES);
         assertTrue(afternoon.isPresent());
         assertEquals(afternoonSession.getCourtScheduleId(), afternoon.get().getCourtScheduleId());
     }
 
-    private CourtSchedule createMoveToPastDateSchedule(String courtCentreId, LocalDate sessionDate, String jurisdiction) {
-        CourtSchedule schedule = random(CourtSchedule.class);
+    @Test
+    void shouldNeverReturnADraftSession_evenWhenItIsTheOnlyMatch() {
+        final String courtCentreId = randomUUID().toString();
+        final LocalDate sessionDate = LocalDate.of(2024, 3, 4);
+        final String room = randomUUID().toString();
+
+        createDraftTimedSchedule(courtCentreId, sessionDate, MAGISTRATES, room, 9, 13);
+        createDraftTimedSchedule(courtCentreId, sessionDate, CROWN, room, 14, 17);
+
+        final Optional<CourtSchedule> magistrates = courtScheduleRepository.findSessionForMoveToPastDate(
+                courtCentreId, room, sessionDate, LocalDateTime.of(sessionDate, LocalTime.of(10, 0)), MAGISTRATES);
+        final Optional<CourtSchedule> crown = courtScheduleRepository.findSessionForMoveToPastDate(
+                courtCentreId, room, sessionDate, LocalDateTime.of(sessionDate, LocalTime.of(15, 0)), CROWN);
+
+        assertFalse(magistrates.isPresent());
+        assertFalse(crown.isPresent());
+    }
+
+    @Test
+    void shouldReturnTheFinalSession_whenADraftCoversTheSameRoomAndTime() {
+        final String courtCentreId = randomUUID().toString();
+        final LocalDate sessionDate = LocalDate.of(2024, 3, 4);
+        final String room = randomUUID().toString();
+
+        createDraftTimedSchedule(courtCentreId, sessionDate, CROWN, room, 9, 13);
+        final CourtSchedule finalSession = createTimedSchedule(courtCentreId, sessionDate, CROWN, room, 9, 13, 2);
+
+        final Optional<CourtSchedule> result = courtScheduleRepository.findSessionForMoveToPastDate(
+                courtCentreId, room, sessionDate, LocalDateTime.of(sessionDate, LocalTime.of(10, 0)), CROWN);
+
+        assertTrue(result.isPresent());
+        assertEquals(finalSession.getCourtScheduleId(), result.get().getCourtScheduleId());
+    }
+
+    private CourtSchedule createDraftTimedSchedule(final String courtCentreId, final LocalDate sessionDate, final String jurisdiction,
+                                                   final String courtRoomId, final int startHour, final int endHour) {
+        final CourtSchedule schedule = createTimedSchedule(courtCentreId, sessionDate, jurisdiction, courtRoomId, startHour, endHour, 1);
+        schedule.setIsDraft(true);
+        courtScheduleRepository.save(schedule);
+        return schedule;
+    }
+
+    private CourtSchedule createMoveToPastDateSchedule(final String courtCentreId, final LocalDate sessionDate, final String jurisdiction) {
+        final CourtSchedule schedule = random(CourtSchedule.class);
         schedule.setCourtScheduleId(randomUUID().toString());
         schedule.setSessionDate(sessionDate);
         // oucode is VARCHAR(10) in the production schema — keep the random ≤10-char value
@@ -144,9 +188,8 @@ class MoveHearingToPastDateRepositoryTest extends AbstractRepositoryTest {
         return schedule;
     }
 
-    private CourtSchedule createTimedSchedule(String courtCentreId, LocalDate sessionDate, String jurisdiction,
-                                              String courtRoomId, int startHour, int endHour, int roomNumber) {
-        CourtSchedule schedule = random(CourtSchedule.class);
+    private CourtSchedule createTimedSchedule(final String courtCentreId, final LocalDate sessionDate, final String jurisdiction, final String courtRoomId, final int startHour, final int endHour, final int roomNumber) {
+        final CourtSchedule schedule = random(CourtSchedule.class);
         schedule.setCourtScheduleId(randomUUID().toString());
         schedule.setSessionDate(sessionDate);
         schedule.setCourtHouseId(courtCentreId);
@@ -155,8 +198,8 @@ class MoveHearingToPastDateRepositoryTest extends AbstractRepositoryTest {
             schedule.setCourtRoomId(courtRoomId);
         }
         schedule.setCourtRoomNumber(roomNumber);
-        schedule.setSessionStartTime(Date.from(sessionDate.atTime(startHour, 0).atZone(ZoneOffset.UTC).toInstant()));
-        schedule.setSessionEndTime(Date.from(sessionDate.atTime(endHour, 0).atZone(ZoneOffset.UTC).toInstant()));
+        schedule.setSessionStartTime(sessionDate.atTime(startHour, 0).atZone(ZoneOffset.UTC).toInstant());
+        schedule.setSessionEndTime(sessionDate.atTime(endHour, 0).atZone(ZoneOffset.UTC).toInstant());
         schedule.setIsDraft(false);
         schedule.setActive(true);
         courtScheduleRepository.save(schedule);

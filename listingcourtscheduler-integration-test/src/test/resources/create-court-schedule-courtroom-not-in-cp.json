@@ -1,0 +1,1 @@
+{"sessions":[],"sessionToBeAdded":{"courtCentreId":"785339c1-af71-3322-a55b-ba255e0db1c2","jurisdiction":"CROWN","courtRoomId":"00000000-0000-0000-0000-000000000001","sessionType":"AM","businessType":"DVLA","duration":60,"panel":"ADULT","repeatDays":["Monday"],"isDraft":false},"repeatPattern":{"startDate":"START_DATE","endDate":"END_DATE","repeatFor":1,"frequency":"EVERY_WEEK"}}

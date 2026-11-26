@@ -5,5 +5,6 @@
   "ouCode": "OU_CODE",
   "pageSize": "10",
   "pageNumber": "1",
-  "courtSession": "COURT_SESSION"
+  "courtSession": "COURT_SESSION",
+  "jurisdiction": "MAGISTRATES"
 }

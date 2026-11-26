@@ -89,7 +89,10 @@ public class ActionMetricsInterceptor implements HandlerInterceptor, WebMvcConfi
                     .tags(Tags.of("action", action, "status", status))
                     .register(meterRegistry)
                     .record(durationNs, TimeUnit.NANOSECONDS);
-        } catch (RuntimeException recordingFailure) {
+        } catch (RuntimeException recordingFailure) { // NOPMD(AvoidCatchingGenericException) - deliberate
+            // broad safety net: metrics recording is a side effect of the real request that has
+            // already completed successfully - no failure from the meter registry should ever
+            // propagate out of this interceptor and turn a healthy request into a 500.
             LOG.debug("Action metric recording failed for action={}: {}", action, recordingFailure.toString());
         }
     }
@@ -123,7 +126,7 @@ public class ActionMetricsInterceptor implements HandlerInterceptor, WebMvcConfi
         final int after = vendorStart + VENDOR_PREFIX.length();
         final int suffix = mediaType.indexOf(JSON_SUFFIX, after);
         final int semi = mediaType.indexOf(';', after);
-        final int end = suffix > 0 ? suffix : (semi > 0 ? semi : mediaType.length());
+        final int end = suffix > 0 ? suffix : semi > 0 ? semi : mediaType.length();
         final String segment = mediaType.substring(after, end).trim();
         return segment.isEmpty() ? null : segment;
     }

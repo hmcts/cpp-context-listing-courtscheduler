@@ -4,7 +4,7 @@ import org.springframework.stereotype.Service;
 
 import static java.lang.String.format;
 
-import uk.gov.moj.cpp.courtscheduler.domain.RequestedSlots;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.RequestedSlots;
 
 import java.io.IOException;
 

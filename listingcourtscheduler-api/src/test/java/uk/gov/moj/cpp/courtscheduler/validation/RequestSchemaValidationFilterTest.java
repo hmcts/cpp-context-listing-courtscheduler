@@ -25,8 +25,10 @@ import org.springframework.mock.web.MockHttpServletResponse;
  * Schemas are loaded from the classpath (packaged by processResources into request-schemas/).
  */
 class RequestSchemaValidationFilterTest {
+    private static final String POST_2 = "POST";
 
-    private static final String MIGRATE_CT = "application/vnd.courtscheduler.oucode.migrate+json";
+
+    private static final String REMOVE_ALL_CT = "application/vnd.courtscheduler.remove-all-judiciary+json";
     private static final String ASSIGN_CT = "application/vnd.courtscheduler.assign-judiciary+json";
 
     private final ObjectMapper mapper = new ObjectMapper();
@@ -53,8 +55,8 @@ class RequestSchemaValidationFilterTest {
 
     @Test
     void validBody_passesThroughAndStaysReadable() throws Exception {
-        final String body = "{\"ouCodes\":[\"B01OU00\"],\"migrated\":true}";
-        final MockHttpServletResponse response = run("POST", MIGRATE_CT, body);
+        final String body = "{\"courtScheduleIds\":[\"f2ea88af-5cd9-339c-8e2c-405df1f55ea6\"]}";
+        final MockHttpServletResponse response = run(POST_2, REMOVE_ALL_CT, body);
 
         assertEquals(200, response.getStatus());
         assertTrue(chain.proceeded, "valid body must reach the controller");
@@ -67,7 +69,7 @@ class RequestSchemaValidationFilterTest {
     void validAssignJudiciary_passes() throws Exception {
         final String body = "{\"judiciaries\":[{\"judiciaryId\":\"j-1\","
                 + "\"sessionIds\":[\"f2ea88af-5cd9-339c-8e2c-405df1f55ea6\"]}]}";
-        final MockHttpServletResponse response = run("POST", ASSIGN_CT, body);
+        final MockHttpServletResponse response = run(POST_2, ASSIGN_CT, body);
         assertEquals(200, response.getStatus());
         assertTrue(chain.proceeded);
     }
@@ -76,7 +78,7 @@ class RequestSchemaValidationFilterTest {
 
     @Test
     void missingRequiredField_returns400() throws Exception {
-        final MockHttpServletResponse response = run("POST", MIGRATE_CT, "{\"ouCodes\":[\"B01OU00\"]}");
+        final MockHttpServletResponse response = run(POST_2, REMOVE_ALL_CT, "{}");
         assertEquals(400, response.getStatus());
         assertFalse(chain.proceeded);
         assertTrue(response.getContentAsString().contains("\"error\""));
@@ -84,8 +86,8 @@ class RequestSchemaValidationFilterTest {
 
     @Test
     void wrongType_returns400() throws Exception {
-        final MockHttpServletResponse response = run("POST", MIGRATE_CT,
-                "{\"ouCodes\":\"not-an-array\",\"migrated\":true}");
+        final MockHttpServletResponse response = run(POST_2, REMOVE_ALL_CT,
+                "{\"courtScheduleIds\":\"not-an-array\"}");
         assertEquals(400, response.getStatus());
         assertFalse(chain.proceeded);
     }
@@ -94,7 +96,7 @@ class RequestSchemaValidationFilterTest {
     void additionalPropertiesFalse_rejectsUnknownField() throws Exception {
         final String body = "{\"judiciaries\":[{\"judiciaryId\":\"j-1\","
                 + "\"sessionIds\":[\"f2ea88af-5cd9-339c-8e2c-405df1f55ea6\"]}],\"bogusField\":true}";
-        final MockHttpServletResponse response = run("POST", ASSIGN_CT, body);
+        final MockHttpServletResponse response = run(POST_2, ASSIGN_CT, body);
         assertEquals(400, response.getStatus());
         assertFalse(chain.proceeded);
     }
@@ -102,14 +104,14 @@ class RequestSchemaValidationFilterTest {
     @Test
     void badUuidPattern_returns400() throws Exception {
         final String body = "{\"judiciaries\":[{\"judiciaryId\":\"j-1\",\"sessionIds\":[\"not-a-uuid\"]}]}";
-        final MockHttpServletResponse response = run("POST", ASSIGN_CT, body);
+        final MockHttpServletResponse response = run(POST_2, ASSIGN_CT, body);
         assertEquals(400, response.getStatus());
         assertFalse(chain.proceeded);
     }
 
     @Test
     void invalidJson_returns400() throws Exception {
-        final MockHttpServletResponse response = run("POST", MIGRATE_CT, "{not json");
+        final MockHttpServletResponse response = run(POST_2, REMOVE_ALL_CT, "{not json");
         assertEquals(400, response.getStatus());
         assertFalse(chain.proceeded);
     }
@@ -117,15 +119,15 @@ class RequestSchemaValidationFilterTest {
     // ---- pass-through cases (unchanged behaviour) ----
 
     @Test
-    void getRequest_isNotValidated() {
+    void httpGetRequest_isNotValidated() {
         final MockHttpServletRequest request = new MockHttpServletRequest("GET", "/x");
-        request.setContentType(MIGRATE_CT);
+        request.setContentType(REMOVE_ALL_CT);
         assertTrue(filter.shouldNotFilter(request), "GET must be skipped (never body-validated, like WildFly)");
     }
 
     @Test
     void unmappedMediaType_passesThrough() throws Exception {
-        final MockHttpServletResponse response = run("POST", "application/json", "{\"anything\":1}");
+        final MockHttpServletResponse response = run(POST_2, "application/json", "{\"anything\":1}");
         assertEquals(200, response.getStatus());
         assertTrue(chain.proceeded, "no matching schema -> pass through unvalidated");
     }

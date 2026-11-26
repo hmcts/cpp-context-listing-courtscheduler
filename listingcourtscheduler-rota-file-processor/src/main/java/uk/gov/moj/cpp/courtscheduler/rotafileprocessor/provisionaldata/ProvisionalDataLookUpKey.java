@@ -10,13 +10,19 @@ public class ProvisionalDataLookUpKey implements Comparable<ProvisionalDataLookU
 
     @Override
     @SuppressWarnings("squid:S00121")
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+    public boolean equals(final Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
 
-        ProvisionalDataLookUpKey that = (ProvisionalDataLookUpKey) o;
+        final ProvisionalDataLookUpKey that = (ProvisionalDataLookUpKey) o;
 
-        if (populateCycle != that.populateCycle) return false;
+        if (populateCycle != that.populateCycle) {
+            return false;
+        }
         return extractDate != null ? extractDate.equals(that.extractDate) : that.extractDate == null;
     }
 
@@ -52,7 +58,7 @@ public class ProvisionalDataLookUpKey implements Comparable<ProvisionalDataLookU
     }
 
     @Override
-    public int compareTo(ProvisionalDataLookUpKey o) {
+    public int compareTo(final ProvisionalDataLookUpKey o) {
        return Comparator.comparing(ProvisionalDataLookUpKey::getPopulateCycle)
                 .thenComparing(ProvisionalDataLookUpKey::getExtractDate)
                 .compare(this, o);

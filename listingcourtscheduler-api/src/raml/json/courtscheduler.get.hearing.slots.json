@@ -1,4 +1,5 @@
 {
+  "status": "ALL",
   "results": 1,
   "pageCount": 1,
   "hearingSlots": [
@@ -22,6 +23,7 @@
       "maxDuration": 0,
       "availableSlots": -24,
       "availableDuration": 0,
+      "draft": false,
       "judiciaries": [
         {
           "judiciaryId": "b1fe7c40-b329-362d-842d-5f3d03798840",

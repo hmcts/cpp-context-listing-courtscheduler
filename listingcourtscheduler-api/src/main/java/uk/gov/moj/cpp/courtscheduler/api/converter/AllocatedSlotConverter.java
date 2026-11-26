@@ -5,7 +5,7 @@ import org.springframework.stereotype.Service;
 import static java.lang.String.format;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.createDefaultHearingStartTime;
 
-import uk.gov.moj.cpp.courtscheduler.domain.AllocatedSlots;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.AllocatedSlots;
 
 import java.io.IOException;
 

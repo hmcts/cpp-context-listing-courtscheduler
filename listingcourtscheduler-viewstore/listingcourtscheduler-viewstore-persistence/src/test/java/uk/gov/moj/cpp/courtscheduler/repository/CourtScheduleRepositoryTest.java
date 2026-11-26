@@ -1,19 +1,1288 @@
 package uk.gov.moj.cpp.courtscheduler.repository;
 
-import org.junit.jupiter.api.Disabled;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.Result;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.UpdateCourtSchedule;
+import static java.util.UUID.randomUUID;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static uk.gov.moj.cpp.courtscheduler.domain.utils.TimezoneUtils.LONDON_ZONE;
+
+import uk.gov.moj.cpp.courtscheduler.openapi.model.AllocatedSlot;
+import uk.gov.moj.cpp.courtscheduler.domain.CrownFallbackSearchResult;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.HearingSlot;
+import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.RequestedCourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.RequestedSlots;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtScheduleMatcherInfo;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CrownFallbackRequest;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.BookingState;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.BookingLog;
+import uk.gov.moj.cpp.courtscheduler.domain.utils.TimezoneUtils;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciaryKey;
+
+import java.sql.Timestamp;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.ZoneOffset;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+import java.util.Optional;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 
 /**
- * Disabled — the original 1,700-line test (preserved in git history) was a real-DB
- * integration test driven by DeltaSpike's {@code @RunWith(CdiTestRunner.class)}.
- * Most of its content ports cleanly to {@code @DataJpaTest} (see {@link AbstractRepositoryTest})
- * but it accumulated many assertions whose schema/constraint expectations have drifted
- * with the production schema (FK to {@code court_schedule}, tighter {@code VARCHAR}
- * lengths, JPA query signature changes, JUnit 4→5 assertion-arg order). Each
- * {@code @Test} method needs an individual pass to align prerequisite data setup and
- * assertion arguments — substantial per-test work that's better tracked in its own
- * ticket. The bulk of the behaviour is re-asserted by the integration-test module's
- * IT classes, so leaving this disabled until that focused pass.
+ * Repository tests for the ccsph2-era additions to {@link CourtScheduleRepository}
+ * (multiday slot-candidate discovery, judiciary enrichment lookups, byIdList guards).
+ *
+ * <p>The original 1,700-line legacy test (preserved in git history, pre-Spring-Boot) was a
+ * real-DB integration test driven by DeltaSpike's {@code @RunWith(CdiTestRunner.class)}; its
+ * assertions drifted against the production schema and its bulk behaviour is re-asserted by
+ * the integration-test module — that per-test revival remains tracked separately. The tests
+ * below are the ones added on team/ccsph2 and were written against the current schema.</p>
+ *
+ * <p>FK note: changeset 033 enforces {@code court_schedule_judiciary.court_schedule_id}
+ * → {@code court_schedule(id)}; unlike the branch these tests came from, every judiciary row
+ * here persists its parent schedule first.</p>
  */
-@Disabled("Awaiting per-test rewrite — see Javadoc.")
 class CourtScheduleRepositoryTest extends AbstractRepositoryTest {
+    private static final String BK_RES = "BK-RES";
+    private static final String CS_CONFIRM = "CS-CONFIRM";
+    private static final String CS_BUG3_LIST = "CS-BUG3-LIST";
+    private static final String BK_BUG3_1 = "BK-BUG3-1";
+    private static final String CS_LOG_LIST = "CS-LOG-LIST";
+    private static final String CS_HOLD_COUNTERS = "CS-HOLD-COUNTERS";
+    private static final String CS_REPICK_1 = "CS-REPICK-1";
+
+    private static final String ADULT_2 = "ADULT";
+    private static final String CR01_2 = "CR01";
+    private static final String CR02_2 = "CR02";
+    private static final String CROWN_2 = "CROWN";
+    private static final String CS_REL_DAY1 = "CS-REL-DAY1";
+    private static final String MAGISTRATES_2 = "MAGISTRATES";
+    private static final String PROFILE_A = "PROFILE-A";
+    private static final String TRF_2 = "TRF";
+    private static final String PLE = "PLE";
+
+
+    @Autowired
+    private CourtScheduleRepository courtScheduleRepository;
+
+    @Autowired
+    private CourtScheduleJudiciaryRepository courtScheduleJudiciaryRepository;
+
+    @Autowired
+    private AllocatedListingRepository allocatedListingRepository;
+
+    @Autowired
+    private BookingLogRepository bookingLogRepository;
+
+    @jakarta.persistence.PersistenceContext
+    private jakarta.persistence.EntityManager em;
+
+    // Same output as the former SimpleDateFormat: literal 'Z' suffix, formatted in the JVM default zone.
+    private static final DateTimeFormatter SIMPLE_DATE_FORMAT =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.ROOT).withZone(ZoneId.systemDefault());
+
+    // Behavioural coverage of getCourtSchedulesByIdList's aggregation semantics lives in the
+    // integration tests (see CourtSchedulerIT). This unit test only covers the short-circuit
+    // branches that don't reach the query.
+    /**
+     * SPRDT-1351 / SPRDT-1370: a session moved off a retired duration type onto a slot type has its
+     * slot nature flipped on the entity by the service before update() runs. update() copies the
+     * counters from the request and persists the entity as it stands, so the row must come back
+     * slot-based with the slot counters and zeroed durations, not with the pre-change nature.
+     */
+    @Test
+    void updateShouldPersistTheSlotNatureAlongsideTheNewCounters() {
+        final CourtSchedule persisted = courtScheduleRepository.save(
+                createCourtSchedule("B99MC04", ADULT_2, LocalDate.of(2026, 7, 6), CR01_2, TRF_2, "AM"));
+        em.flush();
+        persisted.setSlotBased(true);
+        final UpdateCourtSchedule update = new UpdateCourtSchedule()
+                .courtScheduleId(persisted.getCourtScheduleId())
+                .courtRoomId(CR01_2)
+                .courtSession("AM")
+                .businessType("PTPH")
+                .panel(ADULT_2)
+                .maxSlots(15)
+                .availableSlots(15)
+                .maxDuration(0)
+                .availableDuration(0)
+                .sessionStartTime("10:00")
+                .sessionEndTime("13:00")
+                .isOverbookingAllowed(false)
+                .jurisdiction(CROWN_2);
+
+        final Result result = courtScheduleRepository.update(persisted, update, Optional.empty());
+        em.flush();
+        em.clear();
+
+        assertTrue(result.getSuccess());
+        final CourtSchedule reloaded = em.find(CourtSchedule.class, persisted.getCourtScheduleId());
+        assertTrue(reloaded.isSlotBased());
+        assertEquals("PTPH", reloaded.getBusinessType());
+        assertEquals(15, reloaded.getMaxSlots());
+        assertEquals(15, reloaded.getAvailableSlots());
+        assertEquals(0, reloaded.getMaxDuration());
+        assertEquals(0, reloaded.getAvailableDuration());
+    }
+
+    /**
+     * The validate-create duplicate check must follow the unique indexes of changeset 051, which
+     * include is_draft: a draft and a final session for the same courtroom, business type and date
+     * do not clash, so each draft state only sees its own sessions.
+     */
+    @Test
+    void similarSessionsShouldOnlyReturnSessionsWithTheRequestedDraftState() {
+        final LocalDate sessionDate = LocalDate.of(2026, 10, 29);
+        final CourtSchedule finalSession = createCourtSchedule("C06MC00", ADULT_2, sessionDate, CR01_2, TRF_2, "AD");
+        final CourtSchedule draftSession = createCourtSchedule("C06MC00", ADULT_2, sessionDate, CR01_2, TRF_2, "AD");
+        draftSession.setIsDraft(true);
+        courtScheduleRepository.save(finalSession);
+        courtScheduleRepository.save(draftSession);
+        em.flush();
+        em.clear();
+
+        final List<CourtSchedule> draftMatches = courtScheduleRepository.getSimilarSessions(
+                "CHC06MC00", CR01_2, TRF_2, sessionDate, sessionDate, CROWN_2, true);
+        final List<CourtSchedule> finalMatches = courtScheduleRepository.getSimilarSessions(
+                "CHC06MC00", CR01_2, TRF_2, sessionDate, sessionDate, CROWN_2, false);
+
+        assertEquals(List.of(draftSession.getCourtScheduleId()),
+                draftMatches.stream().map(CourtSchedule::getCourtScheduleId).toList());
+        assertEquals(List.of(finalSession.getCourtScheduleId()),
+                finalMatches.stream().map(CourtSchedule::getCourtScheduleId).toList());
+    }
+
+    @Test
+    void courtSchedulesByIdListShouldReturnEmptyListForEmptyOrNullInput() {
+        assertTrue(courtScheduleRepository.getCourtSchedulesByIdList(new ArrayList<>()).isEmpty());
+        assertTrue(courtScheduleRepository.getCourtSchedulesByIdList(null).isEmpty());
+    }
+
+    // Tests for getMultidayHearingSlotCandidates short-circuit paths:
+    //   (a) the discovery query returns no rows
+    //   (b) discovery finds rows but no room has the required consecutive business days
+    // The ID_QUERY_BATCH_SIZE partitioning in rehydrateMultidayCandidatesWithSlotStartTimes and
+    // getCountBasedAllocatedListing is covered by the end-to-end integration test suite.
+
+    @Test
+    void multidayHearingSlotCandidatesShouldReturnEmptyWhenNoMatchingSchedulesExist() {
+        // No schedules in DB → discovery returns empty rows → short-circuits before rehydration
+        final HearingSlotRequestParam requestParam = new HearingSlotRequestParam(
+                ADULT_2,
+                "2026-06-01",
+                "2026-06-05",
+                null, null, null,
+                "10", "1",
+                null, null, null, null, null, null,
+                false, null, null, null);
+
+        final List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> result =
+                courtScheduleRepository.getMultidayHearingSlotCandidates(requestParam, 2);
+
+        assertTrue(result.isEmpty());
+    }
+
+    @Test
+    void multidayHearingSlotCandidatesShouldReturnEmptyWhenSchedulesHaveNoConsecutiveBusinessDays() {
+        // Three schedules in same room on Mon/Wed/Fri — no two are consecutive business days.
+        // Discovery finds all three rows; grouping and consecutive-day check produces no candidates
+        // → candidateIds is empty → short-circuits before rehydration.
+        final LocalDate monday    = LocalDate.of(2026, 6, 1);
+        final LocalDate wednesday = LocalDate.of(2026, 6, 3);
+        final LocalDate friday    = LocalDate.of(2026, 6, 5);
+        final String ouCode = "B99MC00";
+
+        for (final LocalDate date : List.of(monday, wednesday, friday)) {
+            courtScheduleRepository.save(createCourtSchedule(ouCode, ADULT_2, date, CR01_2, TRF_2));
+        }
+
+        final HearingSlotRequestParam requestParam = new HearingSlotRequestParam(
+                ADULT_2,
+                monday.toString(),
+                friday.toString(),
+                null, null, ouCode,
+                "10", "1",
+                null, null, null, null, null, null,
+                false, null, null, null);
+
+        final List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> result =
+                courtScheduleRepository.getMultidayHearingSlotCandidates(requestParam, 2);
+
+        assertTrue(result.isEmpty());
+    }
+
+    @Test
+    void multidayHearingSlotCandidatesShouldReturnEmptyWhenConsecutiveDaysAreInDifferentRooms() {
+        // Mon in CR01 and Tue in CR02 — consecutive days exist but not within any single room.
+        // Grouping by (room, businessType, ouCode) means neither room has 2 consecutive days
+        // → candidateIds is empty → short-circuits before rehydration.
+        final LocalDate monday  = LocalDate.of(2026, 6, 8);
+        final LocalDate tuesday = LocalDate.of(2026, 6, 9);
+        final String ouCode = "B99MC01";
+
+        courtScheduleRepository.save(createCourtSchedule(ouCode, ADULT_2, monday,  CR01_2, TRF_2));
+        courtScheduleRepository.save(createCourtSchedule(ouCode, ADULT_2, tuesday, CR02_2, TRF_2));
+
+        final HearingSlotRequestParam requestParam = new HearingSlotRequestParam(
+                ADULT_2,
+                monday.toString(),
+                tuesday.toString(),
+                null, null, ouCode,
+                "10", "1",
+                null, null, null, null, null, null,
+                false, null, null, null);
+
+        final List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> result =
+                courtScheduleRepository.getMultidayHearingSlotCandidates(requestParam, 2);
+
+        assertTrue(result.isEmpty());
+    }
+
+    // SPRDT-1276: the CROWN multiday search forces courtSession=AD / isSlotBased=false. These two
+    // tests pin the repository half of that contract: the court_session predicate actually filters,
+    // and businessType no longer suppresses the is_slot_based predicate.
+
+    @Test
+    void multidayHearingSlotCandidatesShouldExcludeAmSessionsWhenCourtSessionIsAd() {
+        // Two rooms, both with consecutive Mon+Tue sessions. CR01 sits AM, CR02 sits AD.
+        // A 2-day CROWN search must see CR02 only — before the fix an absent/AM court_session
+        // let the AM room through, which is the AM session on the ticket's screenshot.
+        final LocalDate monday  = LocalDate.of(2026, 6, 15);
+        final LocalDate tuesday = LocalDate.of(2026, 6, 16);
+        final String ouCode = "B99MC02";
+
+        for (final LocalDate date : List.of(monday, tuesday)) {
+            courtScheduleRepository.save(createCourtSchedule(ouCode, ADULT_2, date, CR01_2, TRF_2, "AM"));
+            courtScheduleRepository.save(createCourtSchedule(ouCode, ADULT_2, date, CR02_2, TRF_2, "AD"));
+        }
+
+        final HearingSlotRequestParam requestParam = new HearingSlotRequestParam(
+                ADULT_2,
+                monday.toString(),
+                tuesday.toString(),
+                null, null, ouCode,
+                "10", "1",
+                null, null, null, "AD", false, null,
+                false, "720", null, CROWN_2);
+
+        final List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> result =
+                courtScheduleRepository.getMultidayHearingSlotCandidates(requestParam, 2);
+
+        assertEquals(2, result.size());
+        assertTrue(result.stream().allMatch(cs -> CR02_2.equals(cs.getCourtRoomId())));
+    }
+
+    @Test
+    void multidayHearingSlotCandidatesShouldApplyBothBusinessTypeAndIsSlotBasedForCrown() {
+        // Two rooms with the same businessType and the same consecutive days: CR01 duration-based,
+        // CR02 slot-based. Supplying businessType used to suppress the is_slot_based predicate
+        // (if/else), so both rooms came back. For a CROWN >360 search both predicates now apply
+        // and CR02 must drop out.
+        //
+        // The rooms must differ: unique index court_act_business_date_session_idx_am keys on
+        // (oucode, court_room_id, rota_business_type, session_start, court_session[AD->AM],
+        // is_draft), so one room cannot hold two sessions differing only by is_slot_based.
+        final LocalDate monday  = LocalDate.of(2026, 6, 22);
+        final LocalDate tuesday = LocalDate.of(2026, 6, 23);
+        final String ouCode = "B99MC03";
+
+        for (final LocalDate date : List.of(monday, tuesday)) {
+            courtScheduleRepository.save(createCourtSchedule(ouCode, ADULT_2, date, CR01_2, TRF_2, "AD"));
+            final CourtSchedule slotBased = createCourtSchedule(ouCode, ADULT_2, date, CR02_2, TRF_2, "AD");
+            slotBased.setSlotBased(true);
+            courtScheduleRepository.save(slotBased);
+        }
+
+        final HearingSlotRequestParam requestParam = new HearingSlotRequestParam(
+                ADULT_2,
+                monday.toString(),
+                tuesday.toString(),
+                null, null, ouCode,
+                "10", "1",
+                null, null, TRF_2, "AD", false, null,
+                false, "720", null, CROWN_2);
+
+        final List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> result =
+                courtScheduleRepository.getMultidayHearingSlotCandidates(requestParam, 2);
+
+        assertEquals(2, result.size());
+        assertTrue(result.stream().noneMatch(uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule::getSlotBased));
+        assertTrue(result.stream().allMatch(cs -> "CR01".equals(cs.getCourtRoomId())));
+    }
+
+    // SPRDT-1475: every session of a CROWN multiday block shares one business type. These two tests
+    // pin the rota_business_type predicate behind crown.search.and.book: the anchored consecutive
+    // search and the extend-tail search, each against a room that runs two business types a day.
+
+    @Test
+    void adSessionsInRangeShouldReturnOnlyTheRequestedBusinessTypeWhenTheRoomRunsTwo() {
+        final LocalDate monday  = LocalDate.of(2026, 7, 6);
+        final LocalDate tuesday = LocalDate.of(2026, 7, 7);
+        final String ouCode = "B99MC10";
+
+        for (final LocalDate date : List.of(monday, tuesday)) {
+            courtScheduleRepository.save(createCourtSchedule(ouCode, ADULT_2, date, CR01_2, TRF_2, "AD"));
+            courtScheduleRepository.save(createCourtSchedule(ouCode, ADULT_2, date, CR01_2, PLE, "AD"));
+        }
+
+        final List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> result =
+                courtScheduleRepository.findAdSessionsInRange(ouCode, CR01_2, TRF_2, monday, tuesday, false);
+
+        assertEquals(2, result.size());
+        assertTrue(result.stream().allMatch(cs -> TRF_2.equals(cs.getBusinessType())));
+    }
+
+    @Test
+    void consecutiveSessionsShouldKeepTheAnchorsBusinessTypeWhenTheRoomRunsTwo() {
+        final LocalDate monday  = LocalDate.of(2026, 7, 13);
+        final LocalDate tuesday = LocalDate.of(2026, 7, 14);
+        final String ouCode = "B99MC11";
+
+        final CourtSchedule anchor = courtScheduleRepository.save(
+                createCourtSchedule(ouCode, ADULT_2, monday, CR01_2, TRF_2, "AD"));
+        courtScheduleRepository.save(createCourtSchedule(ouCode, ADULT_2, monday, CR01_2, PLE, "AD"));
+        final CourtSchedule tuesdaySameType = courtScheduleRepository.save(
+                createCourtSchedule(ouCode, ADULT_2, tuesday, CR01_2, TRF_2, "AD"));
+        courtScheduleRepository.save(createCourtSchedule(ouCode, ADULT_2, tuesday, CR01_2, PLE, "AD"));
+
+        final List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> result =
+                courtScheduleRepository.findConsecutiveSessions(anchor.getCourtScheduleId(), 2);
+
+        assertEquals(List.of(anchor.getCourtScheduleId(), tuesdaySameType.getCourtScheduleId()),
+                result.stream().map(uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule::getCourtScheduleId).toList());
+        assertTrue(result.stream().allMatch(cs -> TRF_2.equals(cs.getBusinessType())));
+    }
+
+    // SPRDT-1572 / LPT-2608: a CROWN multiday block books duration-based AD sessions only. These pin
+    // the is_slot_based predicate on the anchored search, the extend-tail search and the centre
+    // search; the MAGS centre search stays unconstrained.
+
+    @Test
+    void consecutiveSessionsShouldNotReturnASlotBasedTailSession() {
+        final LocalDate monday  = LocalDate.of(2026, 8, 3);
+        final LocalDate tuesday = LocalDate.of(2026, 8, 4);
+        final String ouCode = "B99MC20";
+
+        final CourtSchedule anchor = courtScheduleRepository.save(
+                createCourtSchedule(ouCode, ADULT_2, monday, CR01_2, TRF_2, "AD"));
+        courtScheduleRepository.save(slotBased(createCourtSchedule(ouCode, ADULT_2, tuesday, CR01_2, TRF_2, "AD")));
+
+        final List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> result =
+                courtScheduleRepository.findConsecutiveSessions(anchor.getCourtScheduleId(), 2);
+
+        assertEquals(List.of(anchor.getCourtScheduleId()),
+                result.stream().map(uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule::getCourtScheduleId).toList());
+    }
+
+    @Test
+    void consecutiveSessionsShouldReturnNothingForASlotBasedAnchor() {
+        final LocalDate monday  = LocalDate.of(2026, 8, 10);
+        final LocalDate tuesday = LocalDate.of(2026, 8, 11);
+        final String ouCode = "B99MC21";
+
+        final CourtSchedule slotBasedAnchor = courtScheduleRepository.save(
+                slotBased(createCourtSchedule(ouCode, ADULT_2, monday, CR01_2, TRF_2, "AD")));
+        courtScheduleRepository.save(createCourtSchedule(ouCode, ADULT_2, tuesday, CR01_2, TRF_2, "AD"));
+
+        assertTrue(courtScheduleRepository.findConsecutiveSessions(slotBasedAnchor.getCourtScheduleId(), 2).isEmpty());
+    }
+
+    @Test
+    void adSessionsInRangeShouldNotReturnSlotBasedSessions() {
+        final LocalDate monday  = LocalDate.of(2026, 8, 17);
+        final LocalDate tuesday = LocalDate.of(2026, 8, 18);
+        final String ouCode = "B99MC22";
+
+        final CourtSchedule durationBased = courtScheduleRepository.save(
+                createCourtSchedule(ouCode, ADULT_2, monday, CR01_2, TRF_2, "AD"));
+        courtScheduleRepository.save(slotBased(createCourtSchedule(ouCode, ADULT_2, tuesday, CR01_2, TRF_2, "AD")));
+
+        final List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> result =
+                courtScheduleRepository.findAdSessionsInRange(ouCode, CR01_2, TRF_2, monday, tuesday, false);
+
+        assertEquals(List.of(durationBased.getCourtScheduleId()),
+                result.stream().map(uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule::getCourtScheduleId).toList());
+    }
+
+    @Test
+    void durationBasedCentreSearchShouldSkipASlotBasedRoom() {
+        final LocalDate monday  = LocalDate.of(2026, 8, 24);
+        final LocalDate tuesday = LocalDate.of(2026, 8, 25);
+        final String ouCode = "B99MC23";
+        final String slotBasedRoom = "CR01";
+        final String durationBasedRoom = "CR02";
+
+        for (final LocalDate date : List.of(monday, tuesday)) {
+            courtScheduleRepository.save(slotBased(createCourtSchedule(ouCode, ADULT_2, date, slotBasedRoom, TRF_2, "AD")));
+            courtScheduleRepository.save(createCourtSchedule(ouCode, ADULT_2, date, durationBasedRoom, TRF_2, "AD"));
+        }
+
+        final List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> crownRun =
+                courtScheduleRepository.findConsecutiveDurationBasedSessionsForCentre("CH" + ouCode, monday, 2);
+
+        assertEquals(2, crownRun.size());
+        assertTrue(crownRun.stream().allMatch(cs -> durationBasedRoom.equals(cs.getCourtRoomId())));
+        assertTrue(crownRun.stream().noneMatch(uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule::getSlotBased));
+    }
+
+    @Test
+    void courtSchedulesShouldKeepBusinessTypeSuppressingIsSlotBasedForMagistrates() {
+        // MAGISTRATES regression guard for SPRDT-1276. The CROWN >360 carve-out must not reach
+        // here: businessType is supplied, so the caller's isSlotBased=true stays IGNORED and the
+        // duration-based row is still returned. If the carve-out ever loses its jurisdiction
+        // gate, the is_slot_based=true predicate is appended and this returns 0.
+        final LocalDate monday = LocalDate.of(2026, 7, 6);
+        final String ouCode = "B99MG01";
+
+        final CourtSchedule magsSchedule = createCourtSchedule(ouCode, ADULT_2, monday, CR01_2, TRF_2, "AM");
+        magsSchedule.setJurisdiction(MAGISTRATES_2);
+        courtScheduleRepository.save(magsSchedule);
+
+        final HearingSlotRequestParam requestParam = new HearingSlotRequestParam(
+                ADULT_2,
+                monday.toString(),
+                monday.toString(),
+                null, null, ouCode,
+                "10", "1",
+                null, null, TRF_2, null, true, null,
+                false, "60", null, MAGISTRATES_2);
+
+        assertEquals(1, courtScheduleRepository.getCourtSchedules(requestParam).getValue().size());
+    }
+
+    @Test
+    void courtSchedulesShouldKeepBusinessTypeSuppressingIsSlotBasedForMagistratesOverAFullDay() {
+        // The threshold alone must not trigger the carve-out — a MAGISTRATES search for 720
+        // minutes is still an ordinary search. Same expectation as the single-day MAGS case.
+        final LocalDate monday = LocalDate.of(2026, 7, 13);
+        final String ouCode = "B99MG02";
+
+        final CourtSchedule magsSchedule = createCourtSchedule(ouCode, ADULT_2, monday, CR01_2, TRF_2, "AM");
+        magsSchedule.setJurisdiction(MAGISTRATES_2);
+        courtScheduleRepository.save(magsSchedule);
+
+        final HearingSlotRequestParam requestParam = new HearingSlotRequestParam(
+                ADULT_2,
+                monday.toString(),
+                monday.toString(),
+                null, null, ouCode,
+                "10", "1",
+                null, null, TRF_2, null, true, null,
+                false, "720", null, MAGISTRATES_2);
+
+        assertEquals(1, courtScheduleRepository.getCourtSchedules(requestParam).getValue().size());
+    }
+
+    @Test
+    void courtSchedulesShouldKeepBusinessTypeSuppressingIsSlotBasedForSingleDayCrown() {
+        // CROWN at or below a full day is also outside the carve-out — 360 is not "> 360".
+        final LocalDate monday = LocalDate.of(2026, 7, 20);
+        final String ouCode = "B99CR01";
+
+        courtScheduleRepository.save(createCourtSchedule(ouCode, ADULT_2, monday, CR01_2, TRF_2, "AD"));
+
+        final HearingSlotRequestParam requestParam = new HearingSlotRequestParam(
+                ADULT_2,
+                monday.toString(),
+                monday.toString(),
+                null, null, ouCode,
+                "10", "1",
+                null, null, TRF_2, null, true, null,
+                false, "360", null, CROWN_2);
+
+        assertEquals(1, courtScheduleRepository.getCourtSchedules(requestParam).getValue().size());
+    }
+
+    // -----------------------------------------------------------------------
+    // Tests for getCourtScheduleJudiciariesByCourtScheduleIds
+    // -----------------------------------------------------------------------
+
+    @Test
+    void courtScheduleJudiciariesByCourtScheduleIdsShouldReturnEmptyForNullOrEmptyInput() {
+        assertTrue(courtScheduleRepository.getCourtScheduleJudiciariesByCourtScheduleIds(null).isEmpty());
+        assertTrue(courtScheduleRepository.getCourtScheduleJudiciariesByCourtScheduleIds(new ArrayList<>()).isEmpty());
+    }
+
+    @Test
+    void courtScheduleJudiciariesByCourtScheduleIdsShouldReturnOnlyActiveRecordsForGivenIds() {
+        final String scheduleId1 = persistScheduleWithId(randomUUID().toString());
+        final String scheduleId2 = persistScheduleWithId(randomUUID().toString());
+        final String unqueriedId = persistScheduleWithId(randomUUID().toString());
+
+        // Two active records for schedule 1, one inactive for schedule 1, one active for an unqueried schedule
+        courtScheduleJudiciaryRepository.saveAndFlush(createJudiciary(scheduleId1, randomUUID().toString(), PROFILE_A, true));
+        courtScheduleJudiciaryRepository.saveAndFlush(createJudiciary(scheduleId1, randomUUID().toString(), PROFILE_A, true));
+        courtScheduleJudiciaryRepository.saveAndFlush(createJudiciary(scheduleId1, randomUUID().toString(), PROFILE_A, false));
+        courtScheduleJudiciaryRepository.saveAndFlush(createJudiciary(unqueriedId, randomUUID().toString(), PROFILE_A, true));
+
+        final List<CourtScheduleJudiciary> result =
+                courtScheduleRepository.getCourtScheduleJudiciariesByCourtScheduleIds(List.of(scheduleId1, scheduleId2));
+
+        assertEquals(2, result.size());
+        assertTrue(result.stream().allMatch(j -> scheduleId1.equals(j.getId().getCourtScheduleId())));
+        assertTrue(result.stream().allMatch(CourtScheduleJudiciary::isActive));
+    }
+
+    // -----------------------------------------------------------------------
+    // Tests for getCourtScheduleJudiciariesForProvisionalBooking
+    // -----------------------------------------------------------------------
+
+    @Test
+    void courtScheduleJudiciariesForProvisionalBookingShouldReturnEmptyForNullOrEmptyInput() {
+        assertTrue(courtScheduleRepository.getCourtScheduleJudiciariesForProvisionalBooking(null).isEmpty());
+        assertTrue(courtScheduleRepository.getCourtScheduleJudiciariesForProvisionalBooking(new ArrayList<>()).isEmpty());
+    }
+
+    @Test
+    void courtScheduleJudiciariesForProvisionalBookingShouldReturnRecordsMatchingBothScheduleAndProfileId() {
+        final String s1 = persistScheduleWithId(randomUUID().toString());
+        final String s2 = persistScheduleWithId(randomUUID().toString());
+        final String p1 = randomUUID().toString();
+        final String p2 = randomUUID().toString();
+
+        // (s1,p1) — should be returned
+        courtScheduleJudiciaryRepository.saveAndFlush(createJudiciary(s1, randomUUID().toString(), p1, true));
+        // (s1,p2) — profile not in query list → excluded
+        courtScheduleJudiciaryRepository.saveAndFlush(createJudiciary(s1, randomUUID().toString(), p2, true));
+        // (s2,p1) — schedule not in query list → excluded
+        courtScheduleJudiciaryRepository.saveAndFlush(createJudiciary(s2, randomUUID().toString(), p1, true));
+
+        // Build a CourtSchedule entity whose IDs drive the query (does not need to be persisted)
+        final CourtSchedule cs = new CourtSchedule();
+        cs.setCourtScheduleId(s1);
+        cs.setListingProfileId(p1);
+
+        final List<CourtScheduleJudiciary> result =
+                courtScheduleRepository.getCourtScheduleJudiciariesForProvisionalBooking(List.of(cs));
+
+        assertEquals(1, result.size());
+        assertEquals(s1, result.getFirst().getId().getCourtScheduleId());
+        assertEquals(p1, result.getFirst().getCourtListingProfileId());
+    }
+
+    // -----------------------------------------------------------------------
+    // Tests for releaseAllocatedListingsForDates / saveBookedSlots release flag
+    // (change-court-room-for-multiday-hearing, team/ccsph2 PR #856)
+    // -----------------------------------------------------------------------
+
+    @Test
+    void releasesOnlyAllocationsOnRequestedDates() {
+        final String hearingId = randomUUID().toString();
+        final LocalDate day1 = LocalDate.of(2026, 7, 15);
+        final LocalDate day2 = LocalDate.of(2026, 7, 16);
+        final LocalDate day3 = LocalDate.of(2026, 7, 17);
+
+        courtScheduleRepository.saveAndFlush(slotBasedCourtSchedule(CS_REL_DAY1, day1));
+        courtScheduleRepository.saveAndFlush(slotBasedCourtSchedule("CS-REL-DAY2", day2));
+        courtScheduleRepository.saveAndFlush(slotBasedCourtSchedule("CS-REL-DAY3", day3));
+
+        allocatedListingRepository.saveAndFlush(allocatedListingFor("AL-REL-DAY1", "BK-REL-DAY1", CS_REL_DAY1, hearingId, day1));
+        allocatedListingRepository.saveAndFlush(allocatedListingFor("AL-REL-DAY2", "BK-REL-DAY2", "CS-REL-DAY2", hearingId, day2));
+        allocatedListingRepository.saveAndFlush(allocatedListingFor("AL-REL-DAY3", "BK-REL-DAY3", "CS-REL-DAY3", hearingId, day3));
+
+        courtScheduleRepository.releaseAllocatedListingsForDates(hearingId, List.of(day2, day3));
+
+        // @DataJpaTest runs in one rollback tx: flush pending persists/removes before
+        // clearing, else clear() silently discards them (ccsph2 rig committed per call).
+        em.flush();
+        em.clear();
+
+        final List<AllocatedListing> remaining = allocatedListingRepository.findByHearingId(hearingId);
+        assertEquals(1, remaining.size());
+        assertEquals(CS_REL_DAY1, remaining.getFirst().getCourtScheduleId());
+
+        assertEquals(Integer.valueOf(9), courtScheduleRepository.findBy(CS_REL_DAY1).getAvailableSlots());
+        assertEquals(Integer.valueOf(10), courtScheduleRepository.findBy("CS-REL-DAY2").getAvailableSlots());
+        assertEquals(Integer.valueOf(10), courtScheduleRepository.findBy("CS-REL-DAY3").getAvailableSlots());
+    }
+
+    @Test
+    void noopWhenNoAllocationsMatchDates() {
+        final String hearingId = randomUUID().toString();
+        final LocalDate day1 = LocalDate.of(2026, 7, 15);
+        final LocalDate day2 = LocalDate.of(2026, 7, 16);
+        final LocalDate day3 = LocalDate.of(2026, 7, 17);
+        final LocalDate unrelatedDate = LocalDate.of(2026, 7, 18);
+
+        courtScheduleRepository.saveAndFlush(slotBasedCourtSchedule("CS-NOOP-DAY1", day1));
+        courtScheduleRepository.saveAndFlush(slotBasedCourtSchedule("CS-NOOP-DAY2", day2));
+        courtScheduleRepository.saveAndFlush(slotBasedCourtSchedule("CS-NOOP-DAY3", day3));
+
+        allocatedListingRepository.saveAndFlush(allocatedListingFor("AL-NOOP-DAY1", "BK-NOOP-DAY1", "CS-NOOP-DAY1", hearingId, day1));
+        allocatedListingRepository.saveAndFlush(allocatedListingFor("AL-NOOP-DAY2", "BK-NOOP-DAY2", "CS-NOOP-DAY2", hearingId, day2));
+        allocatedListingRepository.saveAndFlush(allocatedListingFor("AL-NOOP-DAY3", "BK-NOOP-DAY3", "CS-NOOP-DAY3", hearingId, day3));
+
+        courtScheduleRepository.releaseAllocatedListingsForDates(hearingId, List.of(unrelatedDate));
+
+        // @DataJpaTest runs in one rollback tx: flush pending persists/removes before
+        // clearing, else clear() silently discards them (ccsph2 rig committed per call).
+        em.flush();
+        em.clear();
+
+        final List<AllocatedListing> remaining = allocatedListingRepository.findByHearingId(hearingId);
+        assertEquals(3, remaining.size());
+
+        assertEquals(Integer.valueOf(9), courtScheduleRepository.findBy("CS-NOOP-DAY1").getAvailableSlots());
+        assertEquals(Integer.valueOf(9), courtScheduleRepository.findBy("CS-NOOP-DAY2").getAvailableSlots());
+        assertEquals(Integer.valueOf(9), courtScheduleRepository.findBy("CS-NOOP-DAY3").getAvailableSlots());
+    }
+
+    @Test
+    void findByCourtRoomIdAndSessionDateAndBusinessTypeAndCourtSessionReturnsGeneratedMatcherInfo() {
+        // Verifies the class-based (DTO) projection binds the raw JPQL column-select into the
+        // generated CourtScheduleMatcherInfo, including converting the entity's java.util.Date
+        // createdOn into the POJO's OffsetDateTime field.
+        final LocalDate sessionDate = LocalDate.of(2026, 9, 1);
+        final String ouCode = "B99MC10";
+        final CourtSchedule schedule = createCourtSchedule(ouCode, "ADULT", sessionDate, "CR10", "TRF", "AM");
+
+        courtScheduleRepository.saveAndFlush(schedule);
+
+        final CourtScheduleMatcherInfo matcherInfo = courtScheduleRepository
+                .findByCourtRoomIdAndSessionDateAndBusinessTypeAndCourtSession("CR10", sessionDate, "TRF", "AM");
+
+        assertNotNull(matcherInfo);
+        assertEquals(schedule.getCourtScheduleId(), matcherInfo.getCourtScheduleId());
+        assertEquals(ouCode, matcherInfo.getOuCode());
+        assertNotNull(matcherInfo.getCreatedOn());
+    }
+
+    @Test
+    void saveBookedSlotsSkipsHearingWideReleaseWhenReleaseExistingHearingAllocationsIsFalse() {
+        // SPRDT: ChangeCourtRoomForMultidayHearing regression guard. Booking day2 via the no-release
+        // variant (releaseExistingHearingAllocations=false) must NOT wipe out day1's allocation for
+        // the SAME hearingId — that hearing-wide wipe was the production bug (day1 vanished after
+        // changing only days 2-3 of a 3-day hearing).
+        final String hearingId = randomUUID().toString();
+        final LocalDate day1 = LocalDate.of(2026, 8, 10);
+        final LocalDate day2 = LocalDate.of(2026, 8, 11);
+
+        courtScheduleRepository.saveAndFlush(slotBasedCourtSchedule("CS-NORELEASE-DAY1", day1));
+        courtScheduleRepository.saveAndFlush(slotBasedCourtSchedule("CS-NORELEASE-DAY2", day2));
+
+        allocatedListingRepository.saveAndFlush(
+                allocatedListingFor("AL-NORELEASE-DAY1", "BK-NORELEASE-DAY1", "CS-NORELEASE-DAY1", hearingId, day1));
+
+        final AllocatedSlot day2Slot = allocatedSlotForBooking(hearingId, "CS-NORELEASE-DAY2", day2);
+
+        final Result result = courtScheduleRepository.saveBookedSlots(
+                new ArrayList<>(List.of(day2Slot)), false, false, false);
+
+        assertTrue(result.getSuccess());
+
+        // @DataJpaTest runs in one rollback tx: flush pending persists/removes before
+        // clearing, else clear() silently discards them (ccsph2 rig committed per call).
+        em.flush();
+        em.clear();
+
+        final List<AllocatedListing> remaining = allocatedListingRepository.findByHearingId(hearingId);
+        assertEquals(2, remaining.size());
+        final List<String> remainingCourtScheduleIds = remaining.stream().map(AllocatedListing::getCourtScheduleId).toList();
+        assertTrue(remainingCourtScheduleIds.contains("CS-NORELEASE-DAY1"));
+        assertTrue(remainingCourtScheduleIds.contains("CS-NORELEASE-DAY2"));
+    }
+
+    @Test
+    void saveBookedSlotsStillReleasesHearingWideByDefault() {
+        // Regression guard for every OTHER caller of the 3-arg saveBookedSlots (crown/mags
+        // search-and-book, move-to-past, etc.): the historical hearing-wide release on booking
+        // must be UNCHANGED when releaseExistingHearingAllocations is not explicitly suppressed.
+        final String hearingId = randomUUID().toString();
+        final LocalDate day1 = LocalDate.of(2026, 8, 20);
+        final LocalDate day2 = LocalDate.of(2026, 8, 21);
+
+        courtScheduleRepository.saveAndFlush(slotBasedCourtSchedule("CS-RELEASE-DAY1", day1));
+        courtScheduleRepository.saveAndFlush(slotBasedCourtSchedule("CS-RELEASE-DAY2", day2));
+
+        allocatedListingRepository.saveAndFlush(
+                allocatedListingFor("AL-RELEASE-DAY1", "BK-RELEASE-DAY1", "CS-RELEASE-DAY1", hearingId, day1));
+
+        final AllocatedSlot day2Slot = allocatedSlotForBooking(hearingId, "CS-RELEASE-DAY2", day2);
+
+        final Result result = courtScheduleRepository.saveBookedSlots(
+                new ArrayList<>(List.of(day2Slot)), false, false);
+
+        assertTrue(result.getSuccess());
+
+        // @DataJpaTest runs in one rollback tx: flush pending persists/removes before
+        // clearing, else clear() silently discards them (ccsph2 rig committed per call).
+        em.flush();
+        em.clear();
+
+        final List<AllocatedListing> remaining = allocatedListingRepository.findByHearingId(hearingId);
+        assertEquals(1, remaining.size());
+        assertEquals("CS-RELEASE-DAY2", remaining.get(0).getCourtScheduleId());
+    }
+
+    // -----------------------------------------------------------------------
+    // Tests for releasing the bookingId-keyed reservation on confirmation
+    // (Task 7, reserve-a-slot-courtscheduler)
+    // -----------------------------------------------------------------------
+
+    @Test
+    void shouldReleaseTheReservationWhenTheBookingIsConfirmed() {
+        // Reservations are stored as an ordinary allocated_listings row whose hearing_id column
+        // holds the minted bookingId (see ReservationService) — releaseOldAllocatedListings(BK_RES)
+        // must find and release it through the full three-step release, restoring capacity.
+        final LocalDate sessionDate = LocalDate.of(2026, 9, 9);
+        courtScheduleRepository.saveAndFlush(slotBasedCourtSchedule("CS-RES", sessionDate));
+
+        allocatedListingRepository.saveAndFlush(
+                reservationListingFor("AL-RES", BK_RES, "CS-RES", BK_RES, sessionDate));
+
+        courtScheduleRepository.releaseOldAllocatedListings(BK_RES);
+
+        // @DataJpaTest runs in one rollback tx: flush pending persists/removes before
+        // clearing, else clear() silently discards them (ccsph2 rig committed per call).
+        em.flush();
+        em.clear();
+
+        assertTrue(allocatedListingRepository.findByHearingId(BK_RES).isEmpty());
+        assertEquals(Integer.valueOf(10), slotsLeft("CS-RES"));
+    }
+
+    @Test
+    void shouldTolerateReleasingABookingWithNoReservation() {
+        // Legacy magistrates drafts have only a provisional_booking row and nothing in
+        // allocated_listings to release. If this threw, every pre-go-live draft would fail at share.
+        assertDoesNotThrow(() -> courtScheduleRepository.releaseOldAllocatedListings("BK-DOES-NOT-EXIST"));
+    }
+
+    @Test
+    void confirmingABookedSlotReleasesItsBookingIdKeyedReservationWithoutTouchingTheRealHearingId() {
+        // Highest-risk case for Task 7: persistHearingSlots releases slots.get(0).getBookingId()
+        // (the minted bookingId from the reservation) AFTER the new allocation has already been
+        // saved under the real hearingId. Since the minted bookingId and the real hearingId are
+        // different keys, releasing the bookingId must NOT touch the just-created confirmed booking.
+        final String hearingId = randomUUID().toString();
+        final String bookingId = randomUUID().toString();
+        final LocalDate sessionDate = LocalDate.of(2026, 9, 9);
+
+        courtScheduleRepository.saveAndFlush(slotBasedCourtSchedule(CS_CONFIRM, sessionDate));
+
+        // The hold taken at slot-pick time — keyed on bookingId, not hearingId, and carrying the
+        // non-null expires_at that makes it a reservation rather than a confirmed booking.
+        allocatedListingRepository.saveAndFlush(
+                reservationListingFor("AL-CONFIRM-RES", bookingId, CS_CONFIRM, bookingId, sessionDate));
+
+        final AllocatedSlot slot = allocatedSlotForBooking(hearingId, CS_CONFIRM, sessionDate);
+        slot.setBookingId(bookingId);
+
+        final Result result = courtScheduleRepository.saveBookedSlots(new ArrayList<>(List.of(slot)), true, false);
+
+        assertTrue(Boolean.TRUE.equals(result.getSuccess()));
+
+        // @DataJpaTest runs in one rollback tx: flush pending persists/removes before
+        // clearing, else clear() silently discards them (ccsph2 rig committed per call).
+        em.flush();
+        em.clear();
+
+        // The bookingId-keyed reservation is gone...
+        assertTrue(allocatedListingRepository.findByHearingId(bookingId).isEmpty());
+        // ...while the confirmed booking under the real hearingId survives, untouched.
+        final List<AllocatedListing> confirmed = allocatedListingRepository.findByHearingId(hearingId);
+        assertEquals(1, confirmed.size());
+        assertEquals(CS_CONFIRM, confirmed.get(0).getCourtScheduleId());
+    }
+
+    /**
+     * CRITICAL 1 regression guard, at the persistence level. A reservation keys every one of its
+     * rows on the SAME minted bookingId (as hearing_id), and saveBookedSlots opens with a
+     * hearing-wide releaseOldAllocatedListings on that key. Reserving slot by slot therefore made
+     * each call release the previous slots of the same booking: a three-session pick came out
+     * holding one session, and the other two sessions' capacity was handed back.
+     *
+     * <p>One saveBookedSlots call carrying all three slots must leave three allocations standing
+     * and each of the three sessions decremented by exactly one.
+     */
+    @Test
+    void oneMultiSlotReserveHoldsEverySessionAndDecrementsEachExactlyOnce() {
+        final String bookingId = randomUUID().toString();
+        final LocalDate day1 = LocalDate.of(2026, 10, 12);
+        final LocalDate day2 = LocalDate.of(2026, 10, 13);
+        final LocalDate day3 = LocalDate.of(2026, 10, 14);
+
+        courtScheduleRepository.saveAndFlush(slotBasedCourtSchedule("CS-MULTI-1", day1));
+        courtScheduleRepository.saveAndFlush(slotBasedCourtSchedule("CS-MULTI-2", day2));
+        courtScheduleRepository.saveAndFlush(slotBasedCourtSchedule("CS-MULTI-3", day3));
+
+        // Exactly what ReservationService.reserveAll builds: every slot keyed on the bookingId,
+        // every slot stamped with a non-null expires_at, all handed over in ONE call.
+        final List<AllocatedSlot> reservedSlots = new ArrayList<>(List.of(
+                reservedSlotFor(bookingId, "CS-MULTI-1", day1),
+                reservedSlotFor(bookingId, "CS-MULTI-2", day2),
+                reservedSlotFor(bookingId, "CS-MULTI-3", day3)));
+
+        final Result result = courtScheduleRepository.saveBookedSlots(reservedSlots, false, false);
+
+        assertTrue(Boolean.TRUE.equals(result.getSuccess()));
+
+        // @DataJpaTest runs in one rollback tx: flush pending persists/removes before
+        // clearing, else clear() silently discards them (ccsph2 rig committed per call).
+        em.flush();
+        em.clear();
+
+        final List<AllocatedListing> held = allocatedListingRepository.findByHearingId(bookingId);
+        assertEquals(3, held.size());
+        held.forEach(row -> assertEquals(LocalDate.now(ZoneOffset.UTC), row.getExpiresAt()));
+
+        // Max 10, and exactly one hold on each session: 9 left on each. Before the fix the first
+        // two holds were released by the later ones, leaving 10.
+        assertEquals(Integer.valueOf(9), slotsLeft("CS-MULTI-1"));
+        assertEquals(Integer.valueOf(9), slotsLeft("CS-MULTI-2"));
+        assertEquals(Integer.valueOf(9), slotsLeft("CS-MULTI-3"));
+    }
+
+    // -----------------------------------------------------------------------
+    // Release the reservation on list, not just on confirm.
+    // Listing (courtscheduler.list.hearings-in-sessions -> SlotsUpdateService.listHearingSlots ->
+    // updateListHearingSlots) never called releaseOldAllocatedListings on the bookingId-keyed hold,
+    // so the session was decremented twice (once by the hold, once by the listed booking) until the
+    // 01:00 purge reclaimed one. These tests exercise updateListHearingSlots directly.
+    // -----------------------------------------------------------------------
+
+    @Test
+    void shouldReleaseTheReservationAndDecrementTheSessionExactlyOnceWhenListing() {
+        final LocalDate sessionDate = LocalDate.of(2026, 9, 11);
+        final CourtSchedule session = slotBasedCourtSchedule(CS_BUG3_LIST, sessionDate);
+        session.setMaxSlots(4);
+        session.setAvailableSlots(3); // the reservation already took one, off a max of 4
+        courtScheduleRepository.saveAndFlush(session);
+
+        // The hold taken at slot-pick time: hearing_id = bookingId, non-null expires_at.
+        allocatedListingRepository.saveAndFlush(
+                reservationListingFor("AL-BUG3-RES", BK_BUG3_1, CS_BUG3_LIST, BK_BUG3_1, sessionDate));
+
+        courtScheduleRepository.updateListHearingSlots(
+                requestedSlotsFor("HEARING-BUG3-1", BK_BUG3_1, CS_BUG3_LIST));
+
+        // @DataJpaTest runs in one rollback tx: flush pending persists/removes before
+        // clearing, else clear() silently discards them (ccsph2 rig committed per call).
+        em.flush();
+        em.clear();
+
+        // reserve -1, list -1, release +1 => net -1 from the original 4
+        assertEquals(Integer.valueOf(3), slotsLeft(CS_BUG3_LIST));
+        assertTrue(allocatedListingRepository.findByHearingId(BK_BUG3_1).isEmpty());
+        final List<AllocatedListing> confirmed = allocatedListingRepository.findByHearingId("HEARING-BUG3-1");
+        assertEquals(1, confirmed.size());
+        assertNull(confirmed.get(0).getExpiresAt());
+        assertEquals(BK_BUG3_1, confirmed.get(0).getBookingId());
+    }
+
+    @Test
+    void shouldListNormallyWhenNoBookingIdIsSupplied() {
+        // Regression net: every pre-go-live caller (Crown fallback, search-and-book, rota) never
+        // sends a bookingId. This must keep working unchanged.
+        final LocalDate sessionDate = LocalDate.of(2026, 9, 11);
+        final CourtSchedule session = slotBasedCourtSchedule("CS-BUG3-NOBOOKING", sessionDate);
+        session.setMaxSlots(4);
+        session.setAvailableSlots(4);
+        courtScheduleRepository.saveAndFlush(session);
+
+        courtScheduleRepository.updateListHearingSlots(
+                requestedSlotsFor("HEARING-BUG3-2", null, "CS-BUG3-NOBOOKING"));
+
+        em.flush();
+        em.clear();
+
+        assertEquals(Integer.valueOf(3), slotsLeft("CS-BUG3-NOBOOKING"));
+        assertNull(allocatedListingRepository.findByHearingId("HEARING-BUG3-2").get(0).getBookingId());
+    }
+
+    @Test
+    void shouldTolerateABookingIdWithNoReservation() {
+        // A pre-go-live magistrates draft: a bookingId is present but nothing was ever reserved
+        // under it (only a provisional_booking row exists). Must be a no-op, not an error.
+        final LocalDate sessionDate = LocalDate.of(2026, 9, 11);
+        final CourtSchedule session = slotBasedCourtSchedule("CS-BUG3-LEGACY", sessionDate);
+        session.setMaxSlots(4);
+        session.setAvailableSlots(4);
+        courtScheduleRepository.saveAndFlush(session);
+
+        courtScheduleRepository.updateListHearingSlots(
+                requestedSlotsFor("HEARING-BUG3-3", "BK-BUG3-LEGACY", "CS-BUG3-LEGACY"));
+
+        em.flush();
+        em.clear();
+
+        assertEquals(Integer.valueOf(3), slotsLeft("CS-BUG3-LEGACY"));
+        assertEquals(1, allocatedListingRepository.findByHearingId("HEARING-BUG3-3").size());
+    }
+
+    // -----------------------------------------------------------------------
+    // LPT-2611: the share that confirms a hold, and the purge that drops a lapsed one, are
+    // recorded in the booking log.
+    // -----------------------------------------------------------------------
+
+    @Test
+    void shouldLogTheConfirmedListingWhenAShareListsAHold() {
+        final LocalDate sessionDate = LocalDate.of(2026, 9, 11);
+        final CourtSchedule session = slotBasedCourtSchedule(CS_LOG_LIST, sessionDate);
+        session.setMaxSlots(4);
+        session.setAvailableSlots(3);
+        courtScheduleRepository.saveAndFlush(session);
+        allocatedListingRepository.saveAndFlush(
+                reservationListingFor("AL-LOG-RES", "BK-LOG-1", CS_LOG_LIST, null, sessionDate));
+
+        courtScheduleRepository.updateListHearingSlots(requestedSlotsFor("HEARING-LOG-1", "BK-LOG-1", CS_LOG_LIST));
+        em.flush();
+
+        final List<BookingLog> latest = bookingLogRepository.findLatestEvent("BK-LOG-1");
+        assertEquals(1, latest.size());
+        assertEquals(BookingState.CONFIRMED, latest.get(0).getState());
+        assertEquals("HEARING-LOG-1", latest.get(0).getHearingId());
+        assertEquals(CS_LOG_LIST, latest.get(0).getCourtScheduleId());
+    }
+
+    @Test
+    void shouldLogEachLapsedHoldWhenThePurgeRemovesIt() {
+        final LocalDate sessionDate = LocalDate.of(2026, 9, 11);
+        final CourtSchedule session = slotBasedCourtSchedule("CS-LOG-PURGE", sessionDate);
+        session.setMaxSlots(4);
+        session.setAvailableSlots(3);
+        courtScheduleRepository.saveAndFlush(session);
+        final AllocatedListing lapsed = reservationListingFor("AL-LOG-LAPSED", "BK-LOG-2", "CS-LOG-PURGE", null, sessionDate);
+        lapsed.setExpiresAt(LocalDate.now(ZoneOffset.UTC).minusDays(1));
+        allocatedListingRepository.saveAndFlush(lapsed);
+
+        courtScheduleRepository.releaseExpiredReservations(LocalDate.now(ZoneOffset.UTC));
+        em.flush();
+
+        final List<BookingLog> latest = bookingLogRepository.findLatestEvent("BK-LOG-2");
+        assertEquals(1, latest.size());
+        assertEquals(BookingState.EXPIRED, latest.get(0).getState());
+        assertEquals("CS-LOG-PURGE", latest.get(0).getCourtScheduleId());
+        assertEquals(lapsed.getHearingStartTime(), latest.get(0).getHearingStartTime());
+        assertEquals(lapsed.getDuration(), latest.get(0).getDuration());
+    }
+
+    // A re-share frees the previous next hearing's listing before the recreated one is listed.
+    // Without a record the booking is left with no rows and a latest state of CONFIRMED, and the
+    // status check cannot tell it from a booking that never existed.
+    @Test
+    void shouldLogTheFreedListingWhenAHearingsSessionsAreReleased() {
+        final LocalDate sessionDate = LocalDate.of(2026, 9, 11);
+        final CourtSchedule session = slotBasedCourtSchedule("CS-LOG-FREE", sessionDate);
+        session.setMaxSlots(4);
+        session.setAvailableSlots(3);
+        courtScheduleRepository.saveAndFlush(session);
+        allocatedListingRepository.saveAndFlush(
+                allocatedListingFor("AL-LOG-FREE", "BK-LOG-3", "CS-LOG-FREE", "HEARING-LOG-3", sessionDate));
+
+        courtScheduleRepository.releaseOldAllocatedListings("HEARING-LOG-3");
+        em.flush();
+
+        assertTrue(allocatedListingRepository.findByBookingId("BK-LOG-3").isEmpty());
+        final List<BookingLog> latest = bookingLogRepository.findLatestEvent("BK-LOG-3");
+        assertEquals(1, latest.size());
+        assertEquals(BookingState.UNLISTED, latest.get(0).getState());
+        assertEquals("CS-LOG-FREE", latest.get(0).getCourtScheduleId());
+    }
+
+    // -----------------------------------------------------------------------
+    // reserve-a-slot-new15: a re-pick under the SAME bookingId must release the abandoned
+    // session's capacity and leave only the new pick's row standing.
+    // -----------------------------------------------------------------------
+
+    /**
+     * This is the test that matters for reserve-a-slot-new15: the two mock-based service tests
+     * only prove the id is threaded through; this one proves the actual capacity arithmetic of a
+     * re-pick against a real persistence context. A reservation's hearing_id is its bookingId, and
+     * saveBookedSlots opens with a hearing-wide releaseOldAllocatedListings(hearing_id) — so
+     * reserving the second session under the SAME bookingId as the first must release the first
+     * session's row before taking the second, restoring the first session's capacity and leaving
+     * only one allocated_listings row for the bookingId.
+     */
+    // The court_schedule counters are team/ccsph2 bookkeeping, kept for the MI export until
+    // SPRDT-1406. A reserve-a-slot hold must leave them alone - none of its releases gives
+    // anything back - while still taking capacity, which is counted from allocated_listings.
+    @Test
+    void aHoldTakesCapacityButNeverTouchesTheCounters() {
+        final LocalDate sessionDate = LocalDate.of(2026, 9, 21);
+        courtScheduleRepository.saveAndFlush(slotBasedCourtSchedule(CS_HOLD_COUNTERS, sessionDate));
+
+        courtScheduleRepository.saveBookedSlots(
+                new ArrayList<>(List.of(reservedSlotFor(randomUUID().toString(), CS_HOLD_COUNTERS, sessionDate))), false, false);
+        em.flush();
+        em.clear();
+
+        assertEquals(Integer.valueOf(9), courtScheduleRepository.findBy(CS_HOLD_COUNTERS).getAvailableSlots(),
+                "the counter is untouched by a hold");
+        assertEquals(9, slotsLeft(CS_HOLD_COUNTERS), "the hold still takes one of the 10 slots");
+    }
+
+    @Test
+    void shouldReleaseThePreviousPickWhenReservingAgainUnderTheSameBookingId() {
+        final LocalDate sessionDate = LocalDate.of(2026, 9, 20);
+        final CourtSchedule first = slotBasedCourtSchedule(CS_REPICK_1, sessionDate);
+        final CourtSchedule second = slotBasedCourtSchedule("CS-REPICK-2", sessionDate);
+        courtScheduleRepository.saveAndFlush(first);
+        courtScheduleRepository.saveAndFlush(second);
+        final String bookingId = randomUUID().toString();
+
+        courtScheduleRepository.saveBookedSlots(
+                new ArrayList<>(List.of(reservedSlotFor(bookingId, CS_REPICK_1, sessionDate))), false, false);
+
+        // @DataJpaTest runs in one rollback tx: flush pending persists/removes before
+        // clearing, else clear() silently discards them (ccsph2 rig committed per call).
+        em.flush();
+        em.clear();
+        assertEquals(Integer.valueOf(9), slotsLeft(CS_REPICK_1));
+
+        courtScheduleRepository.saveBookedSlots(
+                new ArrayList<>(List.of(reservedSlotFor(bookingId, "CS-REPICK-2", sessionDate))), false, false);
+
+        em.flush();
+        em.clear();
+
+        assertEquals(Integer.valueOf(10), slotsLeft(CS_REPICK_1),
+                "the abandoned session must get its slot back");
+        assertEquals(Integer.valueOf(9), slotsLeft("CS-REPICK-2"),
+                "the newly picked session must be held");
+        assertEquals(1, allocatedListingRepository.findByHearingId(bookingId).size(),
+                "only the new pick's row survives");
+    }
+
+    /** Builds a {@link RequestedSlots} with one {@link HearingSlot} carrying one court schedule. */
+    private RequestedSlots requestedSlotsFor(final String hearingId, final String bookingId,
+                                              final String courtScheduleId) {
+        final RequestedCourtSchedule requestedCourtSchedule = new RequestedCourtSchedule();
+        requestedCourtSchedule.setCourtScheduleId(courtScheduleId);
+
+        final HearingSlot hearingSlot = new HearingSlot();
+        hearingSlot.setHearingId(hearingId);
+        hearingSlot.setBookingId(bookingId);
+        hearingSlot.setCourtScheduleIds(new ArrayList<>(List.of(requestedCourtSchedule)));
+
+        final RequestedSlots requestedSlots = new RequestedSlots();
+        requestedSlots.setHearingSlots(new ArrayList<>(List.of(hearingSlot)));
+        return requestedSlots;
+    }
+
+    private static AllocatedSlot reservedSlotFor(final String bookingId, final String courtScheduleId,
+                                                 final LocalDate sessionDate) {
+        final AllocatedSlot slot = allocatedSlotForBooking(bookingId, courtScheduleId, sessionDate);
+        slot.setSource("RESERVE_UNCONFIRMED_SLOT");
+        slot.setExpiresAt(LocalDate.now(ZoneOffset.UTC));
+        return slot;
+    }
+
+    private static AllocatedSlot allocatedSlotForBooking(final String hearingId, final String courtScheduleId,
+                                                          final LocalDate sessionDate) {
+        final AllocatedSlot slot = random(AllocatedSlot.class);
+        slot.setHearingId(hearingId);
+        slot.setCourtScheduleId(courtScheduleId);
+        slot.setSessionDate(sessionDate.toString());
+        slot.setHearingStartTime(SIMPLE_DATE_FORMAT.format(
+                sessionDate.atTime(10, 0).atZone(ZoneId.of("UTC")).toInstant()));
+        slot.setSource("DEFAULT");
+        // random(AllocatedSlot.class) fills EVERY field, expiresAt included, which would make this
+        // confirm-path slot reservation-shaped: expires_at is the reservation discriminator, and a
+        // confirmed booking has none. Leaving the random value in place also collides with the
+        // partial unique index on (court_schedule_id, booking_id) WHERE expires_at IS NOT NULL.
+        slot.setExpiresAt(null);
+        return slot;
+    }
+
+    private CourtSchedule slotBasedCourtSchedule(final String courtScheduleId, final LocalDate sessionDate) {
+        final CourtSchedule cs = random(CourtSchedule.class);
+        cs.setCourtScheduleId(courtScheduleId);
+        cs.setSessionDate(sessionDate);
+        cs.setActive(true);
+        cs.setSlotBased(true);
+        cs.setMaxSlots(10);
+        cs.setAvailableSlots(9);
+        cs.setMaxDuration(0);
+        cs.setAvailableDuration(0);
+        return cs;
+    }
+
+    private AllocatedListing allocatedListingFor(final String id, final String bookingId, final String courtScheduleId,
+                                                  final String hearingId, final LocalDate sessionDate) {
+        final AllocatedListing allocatedListing = new AllocatedListing();
+        allocatedListing.setId(id);
+        allocatedListing.setBookingId(bookingId);
+        allocatedListing.setCourtScheduleId(courtScheduleId);
+        allocatedListing.setHearingId(hearingId);
+        allocatedListing.setCourtRoomId(1);
+        allocatedListing.setHearingStartTime(sessionDate.atTime(10, 0).atZone(ZoneId.of("UTC")).toInstant());
+        allocatedListing.setDuration(120);
+        allocatedListing.setOucode("BA124");
+        allocatedListing.setRotaBusinessType("BUSS");
+        allocatedListing.setSource("DEFAULT");
+        return allocatedListing;
+    }
+
+    /**
+     * A reservation row: same shape as {@link #allocatedListingFor} but with the non-null
+     * {@code expires_at} that is the actual discriminator between a reservation and a confirmed
+     * booking. {@code source} is descriptive only and must never be relied on for the distinction,
+     * so tests that seed a reservation set the expiry, not just the label.
+     */
+    private AllocatedListing reservationListingFor(final String id, final String bookingId, final String courtScheduleId,
+                                                    final String hearingId, final LocalDate sessionDate) {
+        final AllocatedListing reservation = allocatedListingFor(id, bookingId, courtScheduleId, hearingId, sessionDate);
+        reservation.setSource("RESERVE_UNCONFIRMED_SLOT");
+        reservation.setExpiresAt(LocalDate.now(ZoneOffset.UTC));
+        return reservation;
+    }
+
+
+    /**
+     * What a session has left, counted from allocated_listings: the only source of availability.
+     * court_schedule.available_slot / available_duration_mins are no longer kept up to date.
+     */
+    private int slotsLeft(final String courtScheduleId) {
+        return courtScheduleRepository.findBy(courtScheduleId).getMaxSlots()
+                - allocatedListingRepository.findByCourtScheduleId(courtScheduleId).size();
+    }
+
+
+    // -----------------------------------------------------------------------
+    // Fixture helpers
+    // -----------------------------------------------------------------------
+
+    /** Persists a random schedule under the given id (FK parent for judiciary rows) and returns the id. */
+    private String persistScheduleWithId(final String courtScheduleId) {
+        final CourtSchedule cs = random(CourtSchedule.class);
+        cs.setCourtScheduleId(courtScheduleId);
+        courtScheduleRepository.save(cs);
+        return courtScheduleId;
+    }
+
+    /**
+     * SPRDT-1324: an auto-created AD session ends at the fixed all-day default (17:00 Europe/London)
+     * whatever the requested hearing time is, rather than start + the session's 360-minute capacity.
+     * A 12:30 request used to produce an 18:30 end time, which put the session past the court day.
+     * The date is in British Summer Time so the test also proves the end is a London wall-clock
+     * time (16:00 UTC), not 17:00 UTC.
+     */
+    @Test
+    void createCrownFallbackSessionShouldEndAtFivePmRegardlessOfStartTime() {
+        final String ouCode = random(String.class);
+        final String courtCentreId = randomUUID().toString();
+        final String courtRoomId = randomUUID().toString();
+        final LocalDate sessionDate = LocalDate.of(2026, 8, 28);
+
+        // The template only supplies metadata to copy; it sits on an earlier date because an active
+        // session for the same room, business type and date would collide with the created one on the
+        // AM/PM uniqueness index.
+        final CourtSchedule template = createCourtSchedule(ouCode, ADULT_2, sessionDate.minusDays(7), courtRoomId, "LNG", "AD");
+        template.setCourtHouseId(courtCentreId);
+        courtScheduleRepository.save(template);
+
+        final CrownFallbackRequest request = new CrownFallbackRequest()
+                .hearingId(randomUUID().toString())
+                .courtCentreId(courtCentreId)
+                .courtRoomId(courtRoomId)
+                .hearingDate(sessionDate)
+                .earliestHearingTime(sessionDate + "T12:30:00Z")
+                .durationInMinutes(10)
+                .source("CROWN_FB_LIST");
+
+        final Optional<CrownFallbackSearchResult> created = courtScheduleRepository.createCrownFallbackSession(request);
+
+        assertTrue(created.isPresent());
+        final LocalTime startTime = created.get().session().getSessionStartTime().toInstant()
+                .atZone(ZoneOffset.UTC).toLocalTime();
+        final Instant sessionEnd = created.get().session().getSessionEndTime().toInstant();
+        assertEquals(LocalTime.of(12, 30), startTime);
+        // 17:00 is a Europe/London wall-clock time, like every other session time in the viewstore
+        // (DateUtils.combineDateAndTime, TimezoneUtils.calculateNationalBreakTime). 2026-08-28 is in
+        // BST, so the stored instant must be 16:00 UTC — 17:00 UTC would show as 18:00 on the calendar.
+        assertEquals(sessionDate.atTime(17, 0), sessionEnd.atZone(LONDON_ZONE).toLocalDateTime());
+        assertEquals(LocalTime.of(16, 0), sessionEnd.atZone(ZoneOffset.UTC).toLocalTime());
+    }
+
+    private static CourtSchedule slotBased(final CourtSchedule schedule) {
+        schedule.setSlotBased(true);
+        return schedule;
+    }
+
+    private CourtSchedule createCourtSchedule(final String ouCode, final String panel, final LocalDate sessionDate,
+                                              final String courtRoomId, final String businessType,
+                                              final String courtSession) {
+        final CourtSchedule schedule = createCourtSchedule(ouCode, panel, sessionDate, courtRoomId, businessType);
+        schedule.setCourtSession(courtSession);
+        return schedule;
+    }
+
+    private CourtSchedule createCourtSchedule(final String ouCode, final String panel, final LocalDate sessionDate,
+                                              final String courtRoomId, final String businessType) {
+        final CourtSchedule schedule = new CourtSchedule();
+        schedule.setCourtScheduleId(randomUUID().toString());
+        schedule.setSlotBased(false);
+        schedule.setOuCode(ouCode);
+        schedule.setCourtRoomId(courtRoomId);
+        schedule.setBusinessType(businessType);
+        schedule.setSessionDate(sessionDate);
+        schedule.setCourtSession("AM");
+        schedule.setActive(true);
+        schedule.setCourtRoomNumber(1);
+        schedule.setCourtHouseName("Test Court House");
+        schedule.setCourtRoomName("Test Court Room " + courtRoomId);
+        schedule.setOperationalUnit(ouCode);
+        schedule.setPanel(panel);
+        schedule.setMaxSlots(10);
+        schedule.setMaxDuration(240);
+        schedule.setAvailableSlots(10);
+        schedule.setAvailableDuration(240);
+        schedule.setCourtHouseId("CH" + ouCode);
+
+        // Boolean fields with defaults
+        schedule.setSupportAdSplit(false);
+        schedule.setIsOverbookingAllowed(false);
+        schedule.setIsDraft(false);
+
+        // Numeric fields with defaults
+        schedule.setMaxAdMorningDuration(0);
+        schedule.setMaxAdAfternoonDuration(0);
+
+        schedule.setJurisdiction(CROWN_2);
+
+        // Timestamp fields
+        final LocalDateTime now = LocalDateTime.now();
+        schedule.setCreatedOn(Timestamp.valueOf(now).toInstant());
+        schedule.setUpdatedOn(Timestamp.valueOf(now).toInstant());
+
+        // Session time fields (with time zone)
+        final LocalDateTime startDateTime = LocalDateTime.of(sessionDate, LocalTime.of(9, 0));
+        final LocalDateTime endDateTime = LocalDateTime.of(sessionDate, LocalTime.of(13, 0));
+        schedule.setSessionStartTime(startDateTime.atZone(ZoneId.systemDefault()).toInstant());
+        schedule.setSessionEndTime(endDateTime.atZone(ZoneId.systemDefault()).toInstant());
+        schedule.setNationalBreakTime(TimezoneUtils.calculateNationalBreakTime(sessionDate).toInstant());
+        schedule.setListingProfileId(random(String.class));
+
+        return schedule;
+    }
+
+    private CourtScheduleJudiciary createJudiciary(final String scheduleId, final String judiciaryId, final String listingProfileId, final boolean active) {
+        final CourtScheduleJudiciary j = new CourtScheduleJudiciary();
+        j.setId(new CourtScheduleJudiciaryKey(scheduleId, judiciaryId));
+        j.setCourtListingProfileId(listingProfileId);
+        j.setTitle("Mr");
+        j.setForenames("Test");
+        j.setSurname("Judge");
+        j.setEmail("test@court.gov.uk");
+        j.setJudiciaryType("JUDGE");
+        j.setBenchChairman(false);
+        j.setDeputy(false);
+        j.setActive(active);
+        return j;
+    }
 }

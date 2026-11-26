@@ -25,6 +25,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class RedisCacheServiceTest {
+    private static final String HOST = "host";
+    private static final String KEY1 = "key1";
+    private static final String REDIS_CLIENT = "redisClient";
+    private static final String VALUE1 = "value1";
+
     @InjectMocks
     private RedisCacheService redisCacheService;
 
@@ -48,22 +53,22 @@ class RedisCacheServiceTest {
         when(redisClient.connect()).thenReturn(statefulRedisConnection);
         when(statefulRedisConnection.sync()).thenReturn(redisCommands);
         // given
-        when(redisCommands.set(eq("key1"), eq("value1"), any())).thenReturn("value1");
+        when(redisCommands.set(eq(KEY1), eq(VALUE1), any())).thenReturn(VALUE1);
 
         // when
-        final String result = redisCacheService.add("key1", "value1");
+        final String result = redisCacheService.add(KEY1, VALUE1);
 
         // then
-        verify(redisCommands).set(eq("key1"), eq("value1"), any(SetArgs.class));
-        assertThat(result, is("value1"));
+        verify(redisCommands).set(eq(KEY1), eq(VALUE1), any(SetArgs.class));
+        assertThat(result, is(VALUE1));
     }
 
     @Test
     void shouldNotAddToCacheWhenHostIsLocalHost() {
         //given
-        setField(redisCacheService, "host", "localhost");
+        setField(redisCacheService, HOST, "localhost");
         // when
-        final String result = redisCacheService.add("key1", "value1");
+        final String result = redisCacheService.add(KEY1, VALUE1);
 
         // then
         assertThat(result, is(nullValue()));
@@ -71,10 +76,10 @@ class RedisCacheServiceTest {
 
     @Test
     void shouldAddToCacheSuccessfullyWhenRedisClientIsNullBySettingUpRedisClient() {
-        setField(redisCacheService, "redisClient", null);
+        setField(redisCacheService, REDIS_CLIENT, null);
 
         // when
-        final String result = redisCacheService.add("key1", "value1");
+        final String result = redisCacheService.add(KEY1, VALUE1);
 
         // then
         assertThat(result, is(nullValue()));
@@ -85,21 +90,21 @@ class RedisCacheServiceTest {
         when(redisClient.connect()).thenReturn(statefulRedisConnection);
         when(statefulRedisConnection.sync()).thenReturn(redisCommands);
         // given
-        when(redisCommands.get("key1")).thenReturn("value1");
+        when(redisCommands.get(KEY1)).thenReturn(VALUE1);
 
         // when
-        final String result = redisCacheService.get("key1");
+        final String result = redisCacheService.get(KEY1);
 
         // then
-        assertThat(result, is("value1"));
+        assertThat(result, is(VALUE1));
     }
 
     @Test
     void shouldNotGetFromCacheWhenHostIsLocalHost() {
-        setField(redisCacheService, "host", "localhost");
+        setField(redisCacheService, HOST, "localhost");
 
         // when
-        final String value = redisCacheService.get("key1");
+        final String value = redisCacheService.get(KEY1);
 
         // then
         assertThat(value, is(nullValue()));
@@ -107,10 +112,10 @@ class RedisCacheServiceTest {
 
     @Test
     void shouldNotGetFromCacheWhenRedisClientIsNull() {
-        setField(redisCacheService, "redisClient", null);
+        setField(redisCacheService, REDIS_CLIENT, null);
 
         // when
-        final String value = redisCacheService.get("key1");
+        final String value = redisCacheService.get(KEY1);
 
         // then
         assertThat(value, is(nullValue()));
@@ -120,17 +125,17 @@ class RedisCacheServiceTest {
     void shouldRemoveFromCacheSuccessfully() {
         when(redisClient.connect()).thenReturn(statefulRedisConnection);
         when(statefulRedisConnection.sync()).thenReturn(redisCommands);
-        assertThat(redisCacheService.remove("key1"), is(true));
+        assertThat(redisCacheService.remove(KEY1), is(true));
 
-        verify(redisCommands, times(1)).del("key1");
+        verify(redisCommands, times(1)).del(KEY1);
     }
 
     @Test
     void shouldReturnFalseIfRedisConnectionExceptionOccurredWhilstRemovingFromCache() {
         when(redisClient.connect()).thenThrow(RedisConnectionException.class);
-        assertThat(redisCacheService.remove("key1"), is(false));
+        assertThat(redisCacheService.remove(KEY1), is(false));
 
-        verify(redisCommands, never()).del("key1");
+        verify(redisCommands, never()).del(KEY1);
     }
 
     @Test
@@ -141,12 +146,12 @@ class RedisCacheServiceTest {
         redisCacheService.flushAllCacheKeys();
 
         // then
-        assertThat(redisCacheService.get("key1"), is(nullValue()));
+        assertThat(redisCacheService.get(KEY1), is(nullValue()));
     }
 
     @Test
     void shouldNotFlushAllCacheKeysWhenHostIsLocalHost() {
-        setField(redisCacheService, "host", "localhost");
+        setField(redisCacheService, HOST, "localhost");
 
         // when
         final String result = redisCacheService.flushAllCacheKeys();
@@ -157,7 +162,7 @@ class RedisCacheServiceTest {
 
     @Test
     void shouldNotFlushAllCacheKeysWhenRedisClientIsNull() {
-        setField(redisCacheService, "redisClient", null);
+        setField(redisCacheService, REDIS_CLIENT, null);
 
         // when
         final String result = redisCacheService.flushAllCacheKeys();
@@ -167,8 +172,8 @@ class RedisCacheServiceTest {
     }
 
     private void mockRedis() {
-        setField(redisCacheService, "redisClient", redisClient);
-        setField(redisCacheService, "host", "redisHost");
+        setField(redisCacheService, REDIS_CLIENT, redisClient);
+        setField(redisCacheService, HOST, "redisHost");
         setField(redisCacheService, "key", "test_key");
         setField(redisCacheService, "port", "6380");
         setField(redisCacheService, "useSsl", "false");

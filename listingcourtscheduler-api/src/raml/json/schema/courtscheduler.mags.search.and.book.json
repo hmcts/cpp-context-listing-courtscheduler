@@ -1,0 +1,17 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "description": "courtscheduler.mags.search.and.book — MAGISTRATES search-and-book (SPI route), main's behaviour: one session per request. MAGS never anchors (no courtScheduleId). durationInMinutes is booked whole on the matched session; endDate is accepted and ignored. An already-booked hearing is released and searched again.",
+  "type": "object",
+  "properties": {
+    "courtCentreId": { "type": "string" },
+    "hearingDate": { "type": "string", "format": "date" },
+    "endDate": { "type": "string", "format": "date" },
+    "durationInMinutes": { "type": "integer" },
+    "courtRoomId": { "type": "string" },
+    "hearingStartTime": { "type": "string" },
+    "hearingSessionDateSearchCutOff": { "type": "string", "format": "date" },
+    "isPolice": { "type": "boolean" }
+  },
+  "required": ["courtCentreId", "hearingDate"],
+  "additionalProperties": false
+}

@@ -24,6 +24,8 @@ class ContentNegotiationErrorTest {
             .setControllerAdvice(new GlobalExceptionHandler())
             .build();
 
+    // Deliberate: MockMvc andExpect(...) performs the assertions, which PMD does not recognise
+    @SuppressWarnings("PMD.UnitTestShouldIncludeAssert")
     @Test
     void mismatchedAccept_returns406NotAcceptable_notServerError() throws Exception {
         mvc.perform(get("/vendor").accept(MediaType.APPLICATION_JSON))
@@ -31,6 +33,8 @@ class ContentNegotiationErrorTest {
                 .andExpect(jsonPath("$.error").exists());
     }
 
+    // Deliberate: MockMvc andExpect(...) performs the assertions, which PMD does not recognise
+    @SuppressWarnings("PMD.UnitTestShouldIncludeAssert")
     @Test
     void matchingVendorAccept_succeeds() throws Exception {
         mvc.perform(get("/vendor").accept(MediaType.parseMediaType("application/vnd.courtscheduler.get+json")))
@@ -38,9 +42,9 @@ class ContentNegotiationErrorTest {
     }
 
     @RestController
-    static class VendorEndpoint {
+    /* default */ static class VendorEndpoint {
         @GetMapping(path = "/vendor", produces = "application/vnd.courtscheduler.get+json")
-        ResponseEntity<String> vendor() {
+        /* default */ ResponseEntity<String> vendor() {
             return ResponseEntity.ok("{}");
         }
     }

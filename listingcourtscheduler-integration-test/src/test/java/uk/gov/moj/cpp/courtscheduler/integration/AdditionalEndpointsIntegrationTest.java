@@ -9,17 +9,17 @@ import org.springframework.http.ResponseEntity;
 
 /**
  * Smoke tests for the controllers added on top of the original CourtSchedule contract:
- * hearing-slot, provisional-booking, MI export, OU code, validate, session, rotasl.
+ * hearing-slot, unconfirmed-booking, MI export, OU code, validate, session, rotasl.
  *
  * <p>Each test exercises the path/verb/Accept combination against the real wired pipeline
  * (converters → validators → services → repositories) and asserts the endpoint does not
  * fall through to the unhandled-exception 500. With minimal stub payloads the validators
  * may reject (4xx) — the contract is honoured either way.</p>
  */
-class AdditionalEndpointsIntegrationTest extends AbstractIntegrationTest {
+class AdditionalEndpointsIntegrationTest extends IntegrationTestBase {
 
     @Test
-    void getHearingSlots_doesNotBlowUp() {
+    void fetchHearingSlots_doesNotBlowUp() {
         final ResponseEntity<String> response = get(
                 "/hearingslots?panel=ADULT"
                         + "&sessionStartDate=2026-06-01"
@@ -63,24 +63,24 @@ class AdditionalEndpointsIntegrationTest extends AbstractIntegrationTest {
     @Test
     void postProvisionalBooking_doesNotBlowUp() {
         final ResponseEntity<String> response = post(
-                "/provisionalBooking",
+                "/unconfirmedBooking",
                 SYSTEM_USER_ID,
-                "application/vnd.courtscheduler.create.provisional.booking+json",
+                "application/vnd.courtscheduler.create.unconfirmed.booking+json",
                 "{\"courtScheduleIds\":[]}");
         assertThat(response.getStatusCode().is5xxServerError()).isFalse();
     }
 
     @Test
-    void getProvisionalBooking_doesNotBlowUp() {
+    void fetchProvisionalBooking_doesNotBlowUp() {
         final ResponseEntity<String> response = get(
-                "/provisionalBooking?bookingIds=" + UUID.randomUUID(),
+                "/unconfirmedBooking?bookingIds=" + UUID.randomUUID(),
                 SYSTEM_USER_ID,
-                "application/vnd.courtscheduler.get.provisional.booking+json");
+                "application/vnd.courtscheduler.get.unconfirmed.booking+json");
         assertThat(response.getStatusCode().is5xxServerError()).isFalse();
     }
 
     @Test
-    void getMiCourtSchedules_returns200() {
+    void fetchMiCourtSchedules_returns200() {
         final ResponseEntity<String> response = get(
                 "/mi/court_schedules?fromDate=2026-01-01&toDate=2026-12-31",
                 SYSTEM_USER_ID,
@@ -90,7 +90,7 @@ class AdditionalEndpointsIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
-    void getMiAllocatedListings_returns200() {
+    void fetchMiAllocatedListings_returns200() {
         final ResponseEntity<String> response = get(
                 "/mi/allocated_listings?fromDate=2026-01-01&toDate=2026-12-31",
                 SYSTEM_USER_ID,
@@ -100,33 +100,13 @@ class AdditionalEndpointsIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
-    void getMiCourtScheduleJudiciaries_returns200() {
+    void fetchMiCourtScheduleJudiciaries_returns200() {
         final ResponseEntity<String> response = get(
                 "/mi/court_schedule_judiciaries?fromDate=2026-01-01&toDate=2026-12-31",
                 SYSTEM_USER_ID,
                 "application/vnd.courtscheduler.export.court_schedule_judiciary+json");
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).contains("courtScheduleJudiciaries");
-    }
-
-    @Test
-    void postOuCodeMigrate_doesNotBlowUp() {
-        final ResponseEntity<String> response = post(
-                "/oucode/migrate",
-                SYSTEM_USER_ID,
-                "application/vnd.courtscheduler.oucode.migrate+json",
-                "{\"ouCodes\":[],\"migrated\":true}");
-        assertThat(response.getStatusCode().is5xxServerError()).isFalse();
-    }
-
-    @Test
-    void postOuCodeRecalculateAvailability_doesNotBlowUp() {
-        final ResponseEntity<String> response = post(
-                "/oucode/recalculate-availability",
-                SYSTEM_USER_ID,
-                "application/vnd.courtscheduler.oucode.recalculate.availability+json",
-                "{\"ouCodes\":[]}");
-        assertThat(response.getStatusCode().is5xxServerError()).isFalse();
     }
 
     @Test

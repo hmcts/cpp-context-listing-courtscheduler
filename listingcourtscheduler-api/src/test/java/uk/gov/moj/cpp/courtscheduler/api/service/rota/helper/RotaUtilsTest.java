@@ -19,7 +19,7 @@ import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload.DISTRICT_JUD
 import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload.MAGISTRATES;
 
 import uk.gov.moj.cpp.courtscheduler.common.service.RotaProcessLogService;
-import uk.gov.moj.cpp.courtscheduler.domain.Venue;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.Venue;
 import uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload;
 
 import java.util.ArrayList;
@@ -38,6 +38,15 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class RotaUtilsTest {
+    private static final String ERROR_001_2 = "ERROR_001";
+    private static final String ERROR_1 = "Error 1";
+    private static final String ERROR_2 = "Error 2";
+    private static final String LOCATION_100_VENUE_A_200 = "Location 100 - Venue A - 200";
+    private static final String TEST_VENUE = "Test Venue";
+    private static final String ITEM1 = "item1";
+    private static final String PART1 = "part1";
+    private static final String PART2 = "part2";
+
 
     @Mock
     private RotaProcessLogService rotaProcessLogService;
@@ -74,12 +83,12 @@ class RotaUtilsTest {
     @Test
     void shouldReturnRecordsByType_WhenTypeExists() {
         // given
-        Map<String, Map<String, String>> magistratesData = new HashMap<>();
+        final Map<String, Map<String, String>> magistratesData = new HashMap<>();
         magistratesData.put("mag1", new HashMap<>());
         records.put(MAGISTRATES, magistratesData);
 
         // when
-        Map<String, Map<String, String>> result = RotaUtils.getRecordsByType(records, MAGISTRATES);
+        final Map<String, Map<String, String>> result = RotaUtils.getRecordsByType(records, MAGISTRATES);
 
         // then
         assertNotNull(result);
@@ -90,7 +99,7 @@ class RotaUtilsTest {
     @Test
     void shouldReturnEmptyMap_WhenTypeDoesNotExist() {
         // when
-        Map<String, Map<String, String>> result = RotaUtils.getRecordsByType(records, DISTRICT_JUDGES);
+        final Map<String, Map<String, String>> result = RotaUtils.getRecordsByType(records, DISTRICT_JUDGES);
 
         // then
         assertNotNull(result);
@@ -110,41 +119,41 @@ class RotaUtilsTest {
     @Test
     void shouldCreateNewList_WhenExistingListIsNull() {
         // when
-        List<String> result = RotaUtils.addToListIfNotPresent(null, "item1");
+        final List<String> result = RotaUtils.addToListIfNotPresent(null, ITEM1);
 
         // then
         assertNotNull(result);
         assertThat(result.size(), is(1));
-        assertTrue(result.contains("item1"));
+        assertTrue(result.contains(ITEM1));
     }
 
     @Test
     void shouldAddItem_WhenItemNotPresent() {
         // given
-        List<String> existingList = new ArrayList<>();
-        existingList.add("item1");
+        final List<String> existingList = new ArrayList<>();
+        existingList.add(ITEM1);
 
         // when
-        List<String> result = RotaUtils.addToListIfNotPresent(existingList, "item2");
+        final List<String> result = RotaUtils.addToListIfNotPresent(existingList, "item2");
 
         // then
         assertThat(result.size(), is(2));
-        assertTrue(result.contains("item1"));
+        assertTrue(result.contains(ITEM1));
         assertTrue(result.contains("item2"));
     }
 
     @Test
     void shouldNotAddItem_WhenItemAlreadyPresent() {
         // given
-        List<String> existingList = new ArrayList<>();
-        existingList.add("item1");
+        final List<String> existingList = new ArrayList<>();
+        existingList.add(ITEM1);
 
         // when
-        List<String> result = RotaUtils.addToListIfNotPresent(existingList, "item1");
+        final List<String> result = RotaUtils.addToListIfNotPresent(existingList, ITEM1);
 
         // then
         assertThat(result.size(), is(1));
-        assertTrue(result.contains("item1"));
+        assertTrue(result.contains(ITEM1));
     }
 
     // ============================================================================
@@ -154,7 +163,7 @@ class RotaUtilsTest {
     @Test
     void shouldBuildCompositeKey_WhenBothPartsAreValid() {
         // when
-        String result = RotaUtils.buildCompositeKey("part1", "part2");
+        final String result = RotaUtils.buildCompositeKey(PART1, PART2);
 
         // then
         assertNotNull(result);
@@ -164,7 +173,7 @@ class RotaUtilsTest {
     @Test
     void shouldReturnNull_WhenPart1IsNull() {
         // when
-        String result = RotaUtils.buildCompositeKey(null, "part2");
+        final String result = RotaUtils.buildCompositeKey(null, PART2);
 
         // then
         assertNull(result);
@@ -173,7 +182,7 @@ class RotaUtilsTest {
     @Test
     void shouldReturnNull_WhenPart2IsNull() {
         // when
-        String result = RotaUtils.buildCompositeKey("part1", null);
+        final String result = RotaUtils.buildCompositeKey(PART1, null);
 
         // then
         assertNull(result);
@@ -182,7 +191,7 @@ class RotaUtilsTest {
     @Test
     void shouldReturnNull_WhenPart1IsEmpty() {
         // when
-        String result = RotaUtils.buildCompositeKey("", "part2");
+        final String result = RotaUtils.buildCompositeKey("", PART2);
 
         // then
         assertNull(result);
@@ -191,7 +200,7 @@ class RotaUtilsTest {
     @Test
     void shouldReturnNull_WhenPart2IsEmpty() {
         // when
-        String result = RotaUtils.buildCompositeKey("part1", "");
+        final String result = RotaUtils.buildCompositeKey(PART1, "");
 
         // then
         assertNull(result);
@@ -200,55 +209,59 @@ class RotaUtilsTest {
     @Test
     void shouldParseCompositeKey_WhenKeyIsValid() {
         // when
-        String[] result = RotaUtils.parseCompositeKey("part1|part2");
+        final String[] result = RotaUtils.parseCompositeKey("part1|part2");
 
         // then
         assertNotNull(result);
         assertThat(result.length, is(2));
-        assertThat(result[0], is("part1"));
-        assertThat(result[1], is("part2"));
+        assertThat(result[0], is(PART1));
+        assertThat(result[1], is(PART2));
     }
 
     @Test
-    void shouldReturnNull_WhenCompositeKeyIsNull() {
+    void shouldReturnEmptyArray_WhenCompositeKeyIsNull() {
         // when
-        String[] result = RotaUtils.parseCompositeKey(null);
+        final String[] result = RotaUtils.parseCompositeKey(null);
 
         // then
-        assertNull(result);
+        assertNotNull(result);
+        assertThat(result.length, is(0));
     }
 
     @Test
-    void shouldReturnNull_WhenCompositeKeyIsEmpty() {
+    void shouldReturnEmptyArray_WhenCompositeKeyIsEmpty() {
         // when
-        String[] result = RotaUtils.parseCompositeKey("");
+        final String[] result = RotaUtils.parseCompositeKey("");
 
         // then
-        assertNull(result);
+        assertNotNull(result);
+        assertThat(result.length, is(0));
     }
 
     @Test
-    void shouldReturnNull_WhenCompositeKeyHasNoSeparator() {
+    void shouldReturnEmptyArray_WhenCompositeKeyHasNoSeparator() {
         // when
-        String[] result = RotaUtils.parseCompositeKey("nopart");
+        final String[] result = RotaUtils.parseCompositeKey("nopart");
 
         // then
-        assertNull(result);
+        assertNotNull(result);
+        assertThat(result.length, is(0));
     }
 
     @Test
-    void shouldReturnNull_WhenCompositeKeyHasEmptyFirstPart() {
+    void shouldReturnEmptyArray_WhenCompositeKeyHasEmptyFirstPart() {
         // when
-        String[] result = RotaUtils.parseCompositeKey("|part2");
+        final String[] result = RotaUtils.parseCompositeKey("|part2");
 
         // then
-        assertNull(result);
+        assertNotNull(result);
+        assertThat(result.length, is(0));
     }
 
     @Test
     void shouldExtractFirstPart_WhenKeyIsValid() {
         // when
-        String result = RotaUtils.extractFirstPart("judiciaryId|courtListingProfileId");
+        final String result = RotaUtils.extractFirstPart("judiciaryId|courtListingProfileId");
 
         // then
         assertNotNull(result);
@@ -258,7 +271,7 @@ class RotaUtilsTest {
     @Test
     void shouldReturnNull_WhenKeyIsInvalid() {
         // when
-        String result = RotaUtils.extractFirstPart("invalid");
+        final String result = RotaUtils.extractFirstPart("invalid");
 
         // then
         assertNull(result);
@@ -267,7 +280,7 @@ class RotaUtilsTest {
     @Test
     void shouldReturnNull_WhenKeyIsNull() {
         // when
-        String result = RotaUtils.extractFirstPart(null);
+        final String result = RotaUtils.extractFirstPart(null);
 
         // then
         assertNull(result);
@@ -280,7 +293,7 @@ class RotaUtilsTest {
     @Test
     void shouldBuildVenueDetails_WhenVenueIsNull() {
         // when
-        String result = RotaUtils.buildVenueDetails(null);
+        final String result = RotaUtils.buildVenueDetails(null);
 
         // then
         assertNotNull(result);
@@ -290,10 +303,10 @@ class RotaUtilsTest {
     @Test
     void shouldBuildVenueDetails_WhenVenueHasAllFields() {
         // given
-        Venue venue = new Venue(100, 200, "Test Venue");
+        final Venue venue = new Venue().locationId(100).venueId(200).venueName(TEST_VENUE);
 
         // when
-        String result = RotaUtils.buildVenueDetails(venue);
+        final String result = RotaUtils.buildVenueDetails(venue);
 
         // then
         assertNotNull(result);
@@ -303,40 +316,40 @@ class RotaUtilsTest {
     @Test
     void shouldBuildVenueDetails_WhenVenueHasNullLocationId() {
         // given
-        Venue venue = new Venue(null, 200, "Test Venue");
+        final Venue venue = new Venue().locationId(null).venueId(200).venueName(TEST_VENUE);
 
         // when
-        String result = RotaUtils.buildVenueDetails(venue);
+        final String result = RotaUtils.buildVenueDetails(venue);
 
         // then
         assertNotNull(result);
         assertTrue(result.contains("UNKNOWN_LOCATION"));
-        assertTrue(result.contains("Test Venue"));
+        assertTrue(result.contains(TEST_VENUE));
         assertTrue(result.contains("200"));
     }
 
     @Test
     void shouldBuildVenueDetails_WhenVenueHasNullVenueId() {
         // given
-        Venue venue = new Venue(100, null, "Test Venue");
+        final Venue venue = new Venue().locationId(100).venueId(null).venueName(TEST_VENUE);
 
         // when
-        String result = RotaUtils.buildVenueDetails(venue);
+        final String result = RotaUtils.buildVenueDetails(venue);
 
         // then
         assertNotNull(result);
         assertTrue(result.contains("100"));
-        assertTrue(result.contains("Test Venue"));
+        assertTrue(result.contains(TEST_VENUE));
         assertTrue(result.contains("UNKNOWN_VENUE_ID"));
     }
 
     @Test
     void shouldBuildVenueDetails_WhenVenueHasBlankVenueName() {
         // given
-        Venue venue = new Venue(100, 200, "   ");
+        final Venue venue = new Venue().locationId(100).venueId(200).venueName("   ");
 
         // when
-        String result = RotaUtils.buildVenueDetails(venue);
+        final String result = RotaUtils.buildVenueDetails(venue);
 
         // then
         assertNotNull(result);
@@ -404,17 +417,17 @@ class RotaUtilsTest {
     @Test
     void shouldLogProcessingError_WhenAllParamsAreValid() {
         // given
-        String errorCode = "ERROR_001";
-        String errorText = "Test error message";
+        final String errorCode = ERROR_001_2;
+        final String errorText = "Test error message";
 
         // when
         RotaUtils.logProcessingError(rotaProcessLogService, executionId, errorCode, errorText);
 
         // then
-        ArgumentCaptor<uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog> captor =
+        final ArgumentCaptor<uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog> captor =
                 ArgumentCaptor.forClass(uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog.class);
         verify(rotaProcessLogService).saveRotaProcessLog(captor.capture());
-        uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog log = captor.getValue();
+        final uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog log = captor.getValue();
         assertThat(log.getExecutionId(), is(executionId));
         assertThat(log.getErrorCode(), is(errorCode));
         assertThat(log.getErrorText(), is(errorText));
@@ -423,7 +436,7 @@ class RotaUtilsTest {
     @Test
     void shouldNotLogProcessingError_WhenExecutionIdIsNull() {
         // when
-        RotaUtils.logProcessingError(rotaProcessLogService, null, "ERROR_001", "Test error");
+        RotaUtils.logProcessingError(rotaProcessLogService, null, ERROR_001_2, "Test error");
 
         // then
         verify(rotaProcessLogService, never()).saveRotaProcessLog(any());
@@ -432,7 +445,7 @@ class RotaUtilsTest {
     @Test
     void shouldNotLogProcessingError_WhenExecutionIdIsEmpty() {
         // when
-        RotaUtils.logProcessingError(rotaProcessLogService, "", "ERROR_001", "Test error");
+        RotaUtils.logProcessingError(rotaProcessLogService, "", ERROR_001_2, "Test error");
 
         // then
         verify(rotaProcessLogService, never()).saveRotaProcessLog(any());
@@ -441,7 +454,7 @@ class RotaUtilsTest {
     @Test
     void shouldNotLogProcessingError_WhenErrorTextIsNull() {
         // when
-        RotaUtils.logProcessingError(rotaProcessLogService, executionId, "ERROR_001", null);
+        RotaUtils.logProcessingError(rotaProcessLogService, executionId, ERROR_001_2, null);
 
         // then
         verify(rotaProcessLogService, never()).saveRotaProcessLog(any());
@@ -450,7 +463,7 @@ class RotaUtilsTest {
     @Test
     void shouldNotLogProcessingError_WhenErrorTextIsEmpty() {
         // when
-        RotaUtils.logProcessingError(rotaProcessLogService, executionId, "ERROR_001", "");
+        RotaUtils.logProcessingError(rotaProcessLogService, executionId, ERROR_001_2, "");
 
         // then
         verify(rotaProcessLogService, never()).saveRotaProcessLog(any());
@@ -459,16 +472,16 @@ class RotaUtilsTest {
     @Test
     void shouldLogMissingDataError_WhenAllParamsAreValid() {
         // given
-        List<String> messages = Arrays.asList("Error 1", "Error 2", "Error 3");
+        final List<String> messages = Arrays.asList(ERROR_1, ERROR_2, "Error 3");
 
         // when
         RotaUtils.logMissingDataError(rotaProcessLogService, messages, executionId, JUDICIARY_NOT_FOUND);
 
         // then
-        ArgumentCaptor<uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog> captor =
+        final ArgumentCaptor<uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog> captor =
                 ArgumentCaptor.forClass(uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog.class);
         verify(rotaProcessLogService).saveRotaProcessLog(captor.capture());
-        uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog log = captor.getValue();
+        final uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog log = captor.getValue();
         assertThat(log.getExecutionId(), is(executionId));
         assertThat(log.getErrorCode(), is(JUDICIARY_NOT_FOUND.code()));
         assertNotNull(log.getErrorText());
@@ -477,7 +490,7 @@ class RotaUtilsTest {
     @Test
     void shouldNotLogMissingDataError_WhenExecutionIdIsNull() {
         // given
-        List<String> messages = Arrays.asList("Error 1", "Error 2");
+        final List<String> messages = Arrays.asList(ERROR_1, ERROR_2);
 
         // when
         RotaUtils.logMissingDataError(rotaProcessLogService, messages, null, JUDICIARY_NOT_FOUND);
@@ -489,7 +502,7 @@ class RotaUtilsTest {
     @Test
     void shouldNotLogMissingDataError_WhenExecutionIdIsEmpty() {
         // given
-        List<String> messages = Arrays.asList("Error 1", "Error 2");
+        final List<String> messages = Arrays.asList(ERROR_1, ERROR_2);
 
         // when
         RotaUtils.logMissingDataError(rotaProcessLogService, messages, "", JUDICIARY_NOT_FOUND);
@@ -519,53 +532,53 @@ class RotaUtilsTest {
     @Test
     void shouldFilterBlankMessages_WhenLoggingMissingDataError() {
         // given
-        List<String> messages = Arrays.asList("Error 1", "   ", "", "Error 2");
+        final List<String> messages = Arrays.asList(ERROR_1, "   ", "", ERROR_2);
 
         // when
         RotaUtils.logMissingDataError(rotaProcessLogService, messages, executionId, JUDICIARY_NOT_FOUND);
 
         // then
-        ArgumentCaptor<uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog> captor =
+        final ArgumentCaptor<uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog> captor =
                 ArgumentCaptor.forClass(uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog.class);
         verify(rotaProcessLogService).saveRotaProcessLog(captor.capture());
-        uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog log = captor.getValue();
+        final uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog log = captor.getValue();
         assertNotNull(log.getErrorText());
         // Should contain Error 1 and Error 2, but not blank messages
-        assertTrue(log.getErrorText().contains("Error 1"));
-        assertTrue(log.getErrorText().contains("Error 2"));
+        assertTrue(log.getErrorText().contains(ERROR_1));
+        assertTrue(log.getErrorText().contains(ERROR_2));
     }
 
     @Test
     void shouldRemoveDuplicateMessages_WhenLoggingMissingDataError() {
         // given
-        List<String> messages = Arrays.asList("Error 1", "Error 1", "Error 2");
+        final List<String> messages = Arrays.asList(ERROR_1, ERROR_1, ERROR_2);
 
         // when
         RotaUtils.logMissingDataError(rotaProcessLogService, messages, executionId, JUDICIARY_NOT_FOUND);
 
         // then
-        ArgumentCaptor<uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog> captor =
+        final ArgumentCaptor<uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog> captor =
                 ArgumentCaptor.forClass(uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog.class);
         verify(rotaProcessLogService).saveRotaProcessLog(captor.capture());
-        uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog log = captor.getValue();
+        final uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog log = captor.getValue();
         assertNotNull(log.getErrorText());
     }
 
     @Test
     void shouldLogMissingReferenceData_WhenAllParamsAreValid() {
         // given
-        Map<String, String> missingReferenceDataMap = new HashMap<>();
-        missingReferenceDataMap.put("Location 100 - Venue A - 200", REF_DATA_VENUE_NOT_FOUND.code());
+        final Map<String, String> missingReferenceDataMap = new HashMap<>();
+        missingReferenceDataMap.put(LOCATION_100_VENUE_A_200, REF_DATA_VENUE_NOT_FOUND.code());
         missingReferenceDataMap.put("Location 101 - Venue B - 201", REF_DATA_VENUE_NOT_FOUND.code());
 
         // when
         RotaUtils.logMissingReferenceData(rotaProcessLogService, missingReferenceDataMap, executionId, REF_DATA_VENUE_NOT_FOUND);
 
         // then
-        ArgumentCaptor<uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog> captor =
+        final ArgumentCaptor<uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog> captor =
                 ArgumentCaptor.forClass(uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog.class);
         verify(rotaProcessLogService).saveRotaProcessLog(captor.capture());
-        uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog log = captor.getValue();
+        final uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog log = captor.getValue();
         assertThat(log.getExecutionId(), is(executionId));
         assertThat(log.getErrorCode(), is(REF_DATA_VENUE_NOT_FOUND.code()));
         assertNotNull(log.getErrorText());
@@ -592,8 +605,8 @@ class RotaUtilsTest {
     @Test
     void shouldNotLogMissingReferenceData_WhenExecutionIdIsNull() {
         // given
-        Map<String, String> missingReferenceDataMap = new HashMap<>();
-        missingReferenceDataMap.put("Location 100 - Venue A - 200", REF_DATA_VENUE_NOT_FOUND.code());
+        final Map<String, String> missingReferenceDataMap = new HashMap<>();
+        missingReferenceDataMap.put(LOCATION_100_VENUE_A_200, REF_DATA_VENUE_NOT_FOUND.code());
 
         // when
         RotaUtils.logMissingReferenceData(rotaProcessLogService, missingReferenceDataMap, null, REF_DATA_VENUE_NOT_FOUND);
@@ -605,8 +618,8 @@ class RotaUtilsTest {
     @Test
     void shouldNotLogMissingReferenceData_WhenExecutionIdIsEmpty() {
         // given
-        Map<String, String> missingReferenceDataMap = new HashMap<>();
-        missingReferenceDataMap.put("Location 100 - Venue A - 200", REF_DATA_VENUE_NOT_FOUND.code());
+        final Map<String, String> missingReferenceDataMap = new HashMap<>();
+        missingReferenceDataMap.put(LOCATION_100_VENUE_A_200, REF_DATA_VENUE_NOT_FOUND.code());
 
         // when
         RotaUtils.logMissingReferenceData(rotaProcessLogService, missingReferenceDataMap, "", REF_DATA_VENUE_NOT_FOUND);
@@ -618,29 +631,29 @@ class RotaUtilsTest {
     @Test
     void shouldFilterByErrorCode_WhenLoggingMissingReferenceData() {
         // given
-        Map<String, String> missingReferenceDataMap = new HashMap<>();
-        missingReferenceDataMap.put("Location 100 - Venue A - 200", REF_DATA_VENUE_NOT_FOUND.code());
+        final Map<String, String> missingReferenceDataMap = new HashMap<>();
+        missingReferenceDataMap.put(LOCATION_100_VENUE_A_200, REF_DATA_VENUE_NOT_FOUND.code());
         missingReferenceDataMap.put("Location 101 - Venue B - 201", JUDICIARY_NOT_FOUND.code());
 
         // when
         RotaUtils.logMissingReferenceData(rotaProcessLogService, missingReferenceDataMap, executionId, REF_DATA_VENUE_NOT_FOUND);
 
         // then
-        ArgumentCaptor<uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog> captor =
+        final ArgumentCaptor<uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog> captor =
                 ArgumentCaptor.forClass(uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog.class);
         verify(rotaProcessLogService).saveRotaProcessLog(captor.capture());
-        uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog log = captor.getValue();
+        final uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog log = captor.getValue();
         assertThat(log.getErrorCode(), is(REF_DATA_VENUE_NOT_FOUND.code()));
         // Should only contain venue data, not judiciary data
-        assertTrue(log.getErrorText().contains("Location 100 - Venue A - 200"));
+        assertTrue(log.getErrorText().contains(LOCATION_100_VENUE_A_200));
         assertFalse(log.getErrorText().contains("Location 101 - Venue B - 201"));
     }
 
     @Test
     void shouldFilterBlankVenueDetails_WhenLoggingMissingReferenceData() {
         // given
-        Map<String, String> missingReferenceDataMap = new HashMap<>();
-        missingReferenceDataMap.put("Location 100 - Venue A - 200", REF_DATA_VENUE_NOT_FOUND.code());
+        final Map<String, String> missingReferenceDataMap = new HashMap<>();
+        missingReferenceDataMap.put(LOCATION_100_VENUE_A_200, REF_DATA_VENUE_NOT_FOUND.code());
         missingReferenceDataMap.put("   ", REF_DATA_VENUE_NOT_FOUND.code());
         missingReferenceDataMap.put("", REF_DATA_VENUE_NOT_FOUND.code());
 
@@ -648,11 +661,11 @@ class RotaUtilsTest {
         RotaUtils.logMissingReferenceData(rotaProcessLogService, missingReferenceDataMap, executionId, REF_DATA_VENUE_NOT_FOUND);
 
         // then
-        ArgumentCaptor<uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog> captor =
+        final ArgumentCaptor<uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog> captor =
                 ArgumentCaptor.forClass(uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog.class);
         verify(rotaProcessLogService).saveRotaProcessLog(captor.capture());
-        uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog log = captor.getValue();
-        assertTrue(log.getErrorText().contains("Location 100 - Venue A - 200"));
+        final uk.gov.moj.cpp.courtscheduler.persist.entity.RotaProcessLog log = captor.getValue();
+        assertTrue(log.getErrorText().contains(LOCATION_100_VENUE_A_200));
     }
 }
 

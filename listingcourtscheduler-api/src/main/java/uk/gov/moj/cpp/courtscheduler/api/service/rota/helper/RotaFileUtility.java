@@ -11,7 +11,7 @@ import static uk.gov.moj.cpp.courtscheduler.domain.utils.FileUtil.getLJAFileTime
 import uk.gov.moj.cpp.courtscheduler.persist.entity.RotaFileProcessHistory;
 import uk.gov.moj.cpp.courtscheduler.repository.RotaFileProcessHistoryRepository;
 
-import java.sql.Timestamp;
+import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -95,7 +95,7 @@ public class RotaFileUtility {
      */
     private boolean checkForNewerFiles(final String fileName, final OffsetDateTime fileDateTime) {
         final String fileNamePrefix = getLJASnapshotFileNamePrefix(fileName);
-        final Timestamp fileTimestamp = Timestamp.from(fileDateTime.toInstant());
+        final Instant fileTimestamp = fileDateTime.toInstant();
         final List<RotaFileProcessHistory> newerFiles = rotaFileProcessHistoryRepository
                 .findByFileNamePrefixAndFileDateGreaterThan(fileNamePrefix, fileTimestamp);
 
@@ -171,7 +171,7 @@ public class RotaFileUtility {
      * @param processStart the start time in nanoseconds
      * @param processEnd   the end time in nanoseconds
      */
-    public void logProcessingTime(final org.slf4j.Logger logger, final String blobName, 
+    public void logProcessingTime(final Logger logger, final String blobName,
                                  final long processStart, final long processEnd) {
         logger.info("PRF: Processing and parsing completed for blob {} in {} ms",
                 blobName, convertNanosToMillis(processEnd - processStart));
@@ -185,7 +185,7 @@ public class RotaFileUtility {
      * @param blobName              the name of the blob file
      * @param rotaFileProcessHistoryService the service for updating file process history
      */
-    public void updateFileProcessHistory(final org.slf4j.Logger logger,
+    public void updateFileProcessHistory(final Logger logger,
                                         final RotaFileProcessHistory rotaFileProcessHistory,
                                         final String blobName,
                                         final uk.gov.moj.cpp.courtscheduler.common.service.RotaFileProcessHistoryService rotaFileProcessHistoryService) {

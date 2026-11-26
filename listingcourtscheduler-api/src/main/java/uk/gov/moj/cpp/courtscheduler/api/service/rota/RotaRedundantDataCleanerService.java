@@ -3,12 +3,12 @@ package uk.gov.moj.cpp.courtscheduler.api.service.rota;
 import org.springframework.stereotype.Service;
 
 import uk.gov.moj.cpp.courtscheduler.common.service.AllocatedListingService;
+import uk.gov.moj.cpp.courtscheduler.common.service.BookingLogPurgeService;
 import uk.gov.moj.cpp.courtscheduler.common.service.CourtScheduleJudiciaryService;
 import uk.gov.moj.cpp.courtscheduler.common.service.CourtScheduleService;
 import uk.gov.moj.cpp.courtscheduler.common.service.RotaProcessLogService;
 
 import org.springframework.scheduling.annotation.Async;
-import org.springframework.stereotype.Service;
 import jakarta.inject.Inject;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,7 +16,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @Service
-@org.springframework.transaction.annotation.Transactional
+@Transactional
 public class RotaRedundantDataCleanerService {
 
     private static final Logger logger = LoggerFactory.getLogger(RotaRedundantDataCleanerService.class);
@@ -33,6 +33,9 @@ public class RotaRedundantDataCleanerService {
     @Inject
     private RotaProcessLogService rotaProcessLogService;
 
+    @Inject
+    private BookingLogPurgeService bookingLogPurgeService;
+
     @Async
     @Transactional
     public void cleanDataForPreviousMonths(final int numberOfPreviousMonthsAndOlder) {
@@ -44,5 +47,8 @@ public class RotaRedundantDataCleanerService {
         logger.info("numberOfDeletedCourtSchedulesForRedundancy: {}", numberOfDeletedCourtSchedulesForRedundancy);
         final int numberOfDeletedRotaProcessLogsForRedundancy = rotaProcessLogService.deleteRedundantRotaData(numberOfPreviousMonthsAndOlder);
         logger.info("numberOfDeletedRotaProcessLogsForRedundancy: {}", numberOfDeletedRotaProcessLogsForRedundancy);
+        // Last, once the old sessions are gone: their booking_log rows are the ones left without one.
+        final int numberOfDeletedBookingLogsForRedundancy = bookingLogPurgeService.deleteRowsOfDeletedSessions();
+        logger.info("numberOfDeletedBookingLogsForRedundancy: {}", numberOfDeletedBookingLogsForRedundancy);
     }
 }

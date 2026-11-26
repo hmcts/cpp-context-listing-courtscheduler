@@ -9,7 +9,7 @@ import org.junit.jupiter.api.Disabled;
  * Services framework primitives — {@code Enveloper}, {@code Requester},
  * {@code JsonEnvelope} — and asserted envelope-shaped responses from a CDI
  * "fat" controller that mixed court-schedule CRUD, sessions, OU-code migration,
- * MI exports, validation and provisional-booking endpoints into one class.</p>
+ * MI exports, validation and unconfirmed-booking endpoints into one class.</p>
  *
  * <p>The Spring Boot port (see {@link CourtSchedulerApi}) preserves the omnibus
  * shape but every method signature changed: each endpoint now takes a plain
@@ -26,6 +26,8 @@ import org.junit.jupiter.api.Disabled;
  * See {@link RotaFileProcessorApiTest} for the rewrite pattern once you decide
  * to invest the time.</p>
  */
+// Deliberate: intentional empty placeholder kept to track migration debt; it has no test cases by design
+@SuppressWarnings("PMD.TestClassWithoutTestCases")
 @Disabled("Awaiting per-test rewrite onto Spring controller signatures — see Javadoc and RotaFileProcessorApiTest as the template.")
 class CourtSchedulerApiTest {
 }

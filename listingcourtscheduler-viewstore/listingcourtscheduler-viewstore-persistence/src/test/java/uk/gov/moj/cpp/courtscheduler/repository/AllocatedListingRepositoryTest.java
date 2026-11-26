@@ -11,54 +11,64 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.TimezoneUtils.UTC_ZONE;
 
-import uk.gov.moj.cpp.courtscheduler.domain.AllocatedListingTotalBooked;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.AllocatedListingTotalBooked;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.IdResponse;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.BookingState;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.BookingLog;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 import java.util.Set;
 
 import org.springframework.beans.factory.annotation.Autowired;
 
+import jakarta.persistence.EntityManager;
+
 import org.apache.commons.lang3.tuple.Pair;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
-
-
 class AllocatedListingRepositoryTest extends AbstractRepositoryTest {
+    private static final String ADULT_2 = "ADULT";
+    private static final String COURT_SCHEDULE_1 = "COURT-SCHEDULE-1";
+    private static final String COURT_SCHEDULE_2 = "COURT-SCHEDULE-2";
+    private static final String DEFAULT_2 = "DEFAULT";
+
     public static final LocalDate DEFAULT_SESSION_DATE = LocalDate.parse("2024-12-09");
     @Autowired
     private AllocatedListingRepository allocatedListingRepository;
     @Autowired
+    private BookingLogRepository bookingLogRepository;
+    @Autowired
     private CourtScheduleRepository courtScheduleRepository;
+    @Autowired
+    private EntityManager entityManager;
 
     @AfterEach
     public void tearDown() {
-        List<AllocatedListing> all = allocatedListingRepository.findAll();
+        final List<AllocatedListing> all = allocatedListingRepository.findAll();
         all.forEach(allocatedListing -> allocatedListingRepository.remove(allocatedListing));
     }
 
     @Test
-    public void shouldSave() {
+    void shouldSave() {
         final AllocatedListing allocatedListing = newAllocatedListingWithSavedSchedule();
 
         allocatedListingRepository.save(allocatedListing);
-        AllocatedListing by = allocatedListingRepository.findBy(allocatedListing.getId());
+        final AllocatedListing by = allocatedListingRepository.findBy(allocatedListing.getId());
 
         assertThat(by, notNullValue());
 
     }
 
     @Test
-    public void shouldFindByHearingId() {
-        String hearingId = random(String.class);
+    void shouldFindByHearingId() {
+        final String hearingId = random(String.class);
         final AllocatedListing allocatedListing1 = newAllocatedListingWithSavedSchedule();
         allocatedListing1.setHearingId(hearingId);
         final AllocatedListing allocatedListing2 = newAllocatedListingWithSavedSchedule();
@@ -68,22 +78,18 @@ class AllocatedListingRepositoryTest extends AbstractRepositoryTest {
         allocatedListingRepository.save(allocatedListing1);
         allocatedListingRepository.save(allocatedListing2);
         allocatedListingRepository.save(allocatedListing3);
-        List<AllocatedListing> allocatedListings = allocatedListingRepository.findByHearingId(hearingId);
+        final List<AllocatedListing> allocatedListings = allocatedListingRepository.findByHearingId(hearingId);
 
         assertThat(allocatedListings, hasItems(allocatedListing1, allocatedListing2));
     }
 
     @Test
-    public void shouldFindAllocatedListingsUpdatedBetweenDates() {
-    }
-
-    @Test
-    public void shouldReturnTotalListedDurationForCourtscheduleId() {
+    void shouldReturnTotalListedDurationForCourtscheduleId() {
         final String courtScheduleId = persistRandomCourtSchedule();
-        AllocatedListing allocatedListing1 = random(AllocatedListing.class);
+        final AllocatedListing allocatedListing1 = random(AllocatedListing.class);
         allocatedListing1.setDuration(20);
         allocatedListing1.setCourtScheduleId(courtScheduleId);
-        AllocatedListing allocatedListing2 = random(AllocatedListing.class);
+        final AllocatedListing allocatedListing2 = random(AllocatedListing.class);
         allocatedListing2.setDuration(10);
         allocatedListing2.setCourtScheduleId(courtScheduleId);
         allocatedListingRepository.save(allocatedListing1);
@@ -93,8 +99,8 @@ class AllocatedListingRepositoryTest extends AbstractRepositoryTest {
     }
 
     @Test
-    public void shouldFindByCourtScheduleId() {
-        String courtScheduleId = persistRandomCourtSchedule();
+    void shouldFindByCourtScheduleId() {
+        final String courtScheduleId = persistRandomCourtSchedule();
         final AllocatedListing allocatedListing1 = random(AllocatedListing.class);
         allocatedListing1.setCourtScheduleId(courtScheduleId);
         final AllocatedListing allocatedListing2 = random(AllocatedListing.class);
@@ -104,25 +110,25 @@ class AllocatedListingRepositoryTest extends AbstractRepositoryTest {
         allocatedListingRepository.save(allocatedListing1);
         allocatedListingRepository.save(allocatedListing2);
         allocatedListingRepository.save(allocatedListing3);
-        List<AllocatedListing> allocatedListings = allocatedListingRepository.findByCourtScheduleId(courtScheduleId);
+        final List<AllocatedListing> allocatedListings = allocatedListingRepository.findByCourtScheduleId(courtScheduleId);
 
         assertThat(allocatedListings, hasItems(allocatedListing1, allocatedListing2));
     }
 
     @Test
-    public void shouldGetAllocatedListingsByCourtScheduleId() {
+    void shouldGetAllocatedListingsByCourtScheduleId() {
         final String hearingId = random(String.class);
         final String courtScheduleId1 = persistRandomCourtSchedule();
         final String courtScheduleId2 = persistRandomCourtSchedule();
 
         final CourtSchedule courtSchedule1 = random(CourtSchedule.class);
-        courtSchedule1.setPanel("ADULT");
+        courtSchedule1.setPanel(ADULT_2);
         courtSchedule1.setCourtScheduleId(courtScheduleId1);
         courtSchedule1.setSlotBased(true);
         courtScheduleRepository.saveAndFlush(courtSchedule1);
 
         final CourtSchedule courtSchedule2 = random(CourtSchedule.class);
-        courtSchedule2.setPanel("ADULT");
+        courtSchedule2.setPanel(ADULT_2);
         courtSchedule2.setCourtScheduleId(courtScheduleId2);
         courtSchedule2.setSlotBased(true);
         courtScheduleRepository.saveAndFlush(courtSchedule2);
@@ -171,11 +177,11 @@ class AllocatedListingRepositoryTest extends AbstractRepositoryTest {
     }
 
     @Test
-    public void shouldGetHearingIdsByReq() {
+    void shouldGetHearingIdsByReq() {
         final LocalDate today = LocalDate.now();
         final CourtSchedule courtSchedule1 = random(CourtSchedule.class);
-        courtSchedule1.setPanel("ADULT");
-        courtSchedule1.setCourtScheduleId("COURT-SCHEDULE-1");
+        courtSchedule1.setPanel(ADULT_2);
+        courtSchedule1.setCourtScheduleId(COURT_SCHEDULE_1);
         final LocalDate sessionDate = today.minusDays(3);
         courtSchedule1.setSessionDate(sessionDate);
         courtSchedule1.setCourtHouseName("HOUSE-1");
@@ -183,51 +189,51 @@ class AllocatedListingRepositoryTest extends AbstractRepositoryTest {
         courtScheduleRepository.saveAndFlush(courtSchedule1);
 
         final CourtSchedule courtSchedule2 = random(CourtSchedule.class);
-        courtSchedule2.setPanel("ADULT");
-        courtSchedule2.setCourtScheduleId("COURT-SCHEDULE-2");
+        courtSchedule2.setPanel(ADULT_2);
+        courtSchedule2.setCourtScheduleId(COURT_SCHEDULE_2);
         courtSchedule2.setSessionDate(sessionDate);
         courtSchedule2.setCourtHouseName("HOUSE-2");
         courtSchedule2.setActive(true);
         courtScheduleRepository.saveAndFlush(courtSchedule2);
 
         final CourtSchedule courtSchedule3 = random(CourtSchedule.class);
-        courtSchedule3.setPanel("ADULT");
+        courtSchedule3.setPanel(ADULT_2);
         courtSchedule3.setCourtScheduleId("COURT-SCHEDULE-3");
         final LocalDate sessionDate1 = today.minusDays(1);
         courtSchedule3.setSessionDate(sessionDate1);
         courtSchedule3.setActive(true);
         courtScheduleRepository.saveAndFlush(courtSchedule3);
 
-        List<String> expHearingIds = new ArrayList<>();
+        final List<String> expHearingIds = new ArrayList<>();
         final String hearingId1 = randomUUID().toString();
         expHearingIds.add(hearingId1);
         final LocalDateTime hearing1StartTime = sessionDate.atTime(14, 0);
-        allocatedListingRepository.saveAndFlush(createAllocateListing("1", "BOOKING-1", "COURT-SCHEDULE-1", hearingId1, hearing1StartTime));
+        allocatedListingRepository.saveAndFlush(createAllocateListing("1", "BOOKING-1", COURT_SCHEDULE_1, hearingId1, hearing1StartTime));
         final String hearingId2 = randomUUID().toString();
         expHearingIds.add(hearingId2);
         final LocalDateTime hearing2StartTime = sessionDate.atTime(16, 0);
-        allocatedListingRepository.saveAndFlush(createAllocateListing("2", "BOOKING-2", "COURT-SCHEDULE-1", hearingId2, hearing2StartTime));
+        allocatedListingRepository.saveAndFlush(createAllocateListing("2", "BOOKING-2", COURT_SCHEDULE_1, hearingId2, hearing2StartTime));
 
         final String hearingId3 = randomUUID().toString();
         expHearingIds.add(hearingId3);
         final LocalDateTime hearing3StartTime = sessionDate1.atTime(9, 0);
-        allocatedListingRepository.saveAndFlush(createAllocateListing("3", "BOOKING-3", "COURT-SCHEDULE-2", hearingId3, hearing3StartTime));
+        allocatedListingRepository.saveAndFlush(createAllocateListing("3", "BOOKING-3", COURT_SCHEDULE_2, hearingId3, hearing3StartTime));
         final String hearingId4 = randomUUID().toString();
         expHearingIds.add(hearingId4);
         final LocalDateTime hearing4StartTime = sessionDate1.atTime(11, 0);
-        allocatedListingRepository.saveAndFlush(createAllocateListing("4", "BOOKING-4", "COURT-SCHEDULE-2", hearingId4, hearing4StartTime));
+        allocatedListingRepository.saveAndFlush(createAllocateListing("4", "BOOKING-4", COURT_SCHEDULE_2, hearingId4, hearing4StartTime));
 
         final String hearingId5 = randomUUID().toString();
         expHearingIds.add(hearingId5);
-        allocatedListingRepository.saveAndFlush(createAllocateListing("5", "BOOKING-5", "COURT-SCHEDULE-3", hearingId5));
+        allocatedListingRepository.saveAndFlush(createAllocateListing(hearingId5));
 
         // Listing 6 originally pointed at "COURT-SCHEDULE-4" — a non-existent schedule
         // that the query was expected to filter out. With the FK added in changeset 033,
         // that orphan row is no longer insertable; drop it from setup since the test only
         // asserts on the five listings whose court_schedule is set up above.
 
-        HearingSlotRequestParam hearingIdsRequest =
-                new HearingSlotRequestParam("ADULT",
+        final HearingSlotRequestParam hearingIdsRequest =
+                new HearingSlotRequestParam(ADULT_2,
                         today.minusDays(6).toString(),
                         today.toString(),
                         null,
@@ -242,11 +248,12 @@ class AllocatedListingRepositoryTest extends AbstractRepositoryTest {
                         false,
                         null,
                         false,
-                        "API",
+                        null,
+                        null,
                         null);
-        Pair<Integer, Set<IdResponse>> hearingIdsResult = allocatedListingRepository.findHearingIdsBy(hearingIdsRequest);
+        final Pair<Integer, Set<IdResponse>> hearingIdsResult = allocatedListingRepository.findHearingIdsBy(hearingIdsRequest);
         assertEquals(5, hearingIdsResult.getKey().longValue());
-        List<IdResponse> actHearingIds = new ArrayList<>(hearingIdsResult.getValue());
+        final List<IdResponse> actHearingIds = new ArrayList<>(hearingIdsResult.getValue());
         assertEquals(expHearingIds.get(0), actHearingIds.get(0).hearingId());
         assertEquals(expHearingIds.get(1), actHearingIds.get(1).hearingId());
         assertEquals(expHearingIds.get(2), actHearingIds.get(2).hearingId());
@@ -266,11 +273,11 @@ class AllocatedListingRepositoryTest extends AbstractRepositoryTest {
 
 
     @Test
-    public void shouldGetHearingIdsByReqWithMultiPanels() {
+    void shouldGetHearingIdsByReqWithMultiPanels() {
         final LocalDate today = LocalDate.now();
         final CourtSchedule courtSchedule1 = random(CourtSchedule.class);
-        courtSchedule1.setPanel("ADULT");
-        courtSchedule1.setCourtScheduleId("COURT-SCHEDULE-1");
+        courtSchedule1.setPanel(ADULT_2);
+        courtSchedule1.setCourtScheduleId(COURT_SCHEDULE_1);
         final LocalDate sessionDate = today.minusDays(3);
         courtSchedule1.setSessionDate(sessionDate);
         courtSchedule1.setCourtHouseName("HOUSE-1");
@@ -279,7 +286,7 @@ class AllocatedListingRepositoryTest extends AbstractRepositoryTest {
 
         final CourtSchedule courtSchedule2 = random(CourtSchedule.class);
         courtSchedule2.setPanel("YOUTH");
-        courtSchedule2.setCourtScheduleId("COURT-SCHEDULE-2");
+        courtSchedule2.setCourtScheduleId(COURT_SCHEDULE_2);
         courtSchedule2.setSessionDate(sessionDate);
         courtSchedule2.setCourtHouseName("HOUSE-2");
         courtSchedule2.setActive(true);
@@ -287,13 +294,13 @@ class AllocatedListingRepositoryTest extends AbstractRepositoryTest {
 
         final String hearingId1 = randomUUID().toString();
         final LocalDateTime hearing1StartTime = sessionDate.atTime(14, 0);
-        allocatedListingRepository.saveAndFlush(createAllocateListing("1", "BOOKING-1", "COURT-SCHEDULE-1", hearingId1, hearing1StartTime));
+        allocatedListingRepository.saveAndFlush(createAllocateListing("1", "BOOKING-1", COURT_SCHEDULE_1, hearingId1, hearing1StartTime));
 
         final String hearingId2 = randomUUID().toString();
         final LocalDateTime hearing2StartTime = sessionDate.atTime(16, 0);
-        allocatedListingRepository.saveAndFlush(createAllocateListing("2", "BOOKING-2", "COURT-SCHEDULE-2", hearingId2, hearing2StartTime));
+        allocatedListingRepository.saveAndFlush(createAllocateListing("2", "BOOKING-2", COURT_SCHEDULE_2, hearingId2, hearing2StartTime));
 
-        HearingSlotRequestParam hearingIdsRequest =
+        final HearingSlotRequestParam hearingIdsRequest =
                 new HearingSlotRequestParam("ADULT, YOUTH",
                         today.minusDays(6).toString(),
                         today.toString(),
@@ -309,53 +316,414 @@ class AllocatedListingRepositoryTest extends AbstractRepositoryTest {
                         null,
                         null,
                         false,
-                        "API",
+                        null,
+                        null,
                         null);
-        Pair<Integer, Set<IdResponse>> hearingIdsResult = allocatedListingRepository.findHearingIdsBy(hearingIdsRequest);
+        final Pair<Integer, Set<IdResponse>> hearingIdsResult = allocatedListingRepository.findHearingIdsBy(hearingIdsRequest);
         assertEquals(2, hearingIdsResult.getKey().longValue());
-        List<IdResponse> actHearingIds = new ArrayList<>(hearingIdsResult.getValue());
-        assertThat(actHearingIds.get(0).hearingId(), is(hearingId1));
-        assertThat(actHearingIds.get(0).hearingDayCount(), is(1L));
-        assertThat(actHearingIds.get(0).hearingDayPosition(), is(1L));
-        assertThat(actHearingIds.get(0).hearingDate(), is(sessionDate));
-        assertThat(actHearingIds.get(0).courtScheduleId(), is("COURT-SCHEDULE-1"));
+        final List<IdResponse> actHearingIds = new ArrayList<>(hearingIdsResult.getValue());
+        assertThat(actHearingIds.getFirst().hearingId(), is(hearingId1));
+        assertThat(actHearingIds.getFirst().hearingDayCount(), is(1L));
+        assertThat(actHearingIds.getFirst().hearingDayPosition(), is(1L));
+        assertThat(actHearingIds.getFirst().hearingDate(), is(sessionDate));
+        assertThat(actHearingIds.getFirst().courtScheduleId(), is(COURT_SCHEDULE_1));
 
         assertThat(actHearingIds.get(1).hearingId(), is(hearingId2));
         assertThat(actHearingIds.get(1).hearingDayCount(), is(1L));
         assertThat(actHearingIds.get(1).hearingDayPosition(), is(1L));
         assertThat(actHearingIds.get(1).hearingDate(), is(sessionDate));
-        assertThat(actHearingIds.get(1).courtScheduleId(), is("COURT-SCHEDULE-2"));
+        assertThat(actHearingIds.get(1).courtScheduleId(), is(COURT_SCHEDULE_2));
     }
 
-    private AllocatedListing createAllocateListing(String id,
-                                                   String bookingId,
-                                                   String courtScheduleId,
-                                                   String hearingId) {
-        return createAllocateListing(id,
-                bookingId,
-                courtScheduleId,
+    private AllocatedListing createAllocateListing(final String hearingId) {
+        return createAllocateListing("5",
+                "BOOKING-5",
+                "COURT-SCHEDULE-3",
                 hearingId,
                 DEFAULT_SESSION_DATE.atTime(14, 0));
     }
 
-    private AllocatedListing createAllocateListing(String id,
-                                                   String bookingId,
-                                                   String courtScheduleId,
-                                                   String hearingId, LocalDateTime hearingStartTime) {
-        AllocatedListing allocatedListing = new AllocatedListing();
+    private AllocatedListing createAllocateListing(final String id,
+                                                   final String bookingId,
+                                                   final String courtScheduleId,
+                                                   final String hearingId) {
+        return createAllocateListing(id, bookingId, courtScheduleId, hearingId,
+                DEFAULT_SESSION_DATE.atTime(14, 0));
+    }
+
+    private AllocatedListing createAllocateListing(final String id,
+                                                   final String bookingId,
+                                                   final String courtScheduleId,
+                                                   final String hearingId, final LocalDateTime hearingStartTime) {
+        final AllocatedListing allocatedListing = new AllocatedListing();
         allocatedListing.setId(id);
         allocatedListing.setBookingId(bookingId);
         allocatedListing.setCourtScheduleId(courtScheduleId);
         allocatedListing.setHearingId(hearingId);
         allocatedListing.setCourtRoomId(1);
-        allocatedListing.setHearingStartTime(Date.from(hearingStartTime.atZone(UTC_ZONE).toInstant()));
+        allocatedListing.setHearingStartTime(hearingStartTime.atZone(UTC_ZONE).toInstant());
         allocatedListing.setDuration(120);
         allocatedListing.setOucode("BA124");
         allocatedListing.setRotaBusinessType("BUSS");
-        allocatedListing.setSource("DEFAULT");
+        allocatedListing.setSource(DEFAULT_2);
 
         return allocatedListing;
     }
 
+    @Test
+    void shouldUpdateSourceByHearingId() {
+        final String hearingId = randomUUID().toString();
+        final AllocatedListing listing1 = random(AllocatedListing.class);
+        listing1.setHearingId(hearingId);
+        listing1.setCourtScheduleId(persistRandomCourtSchedule());
+        listing1.setSource(DEFAULT_2);
+        final AllocatedListing listing2 = random(AllocatedListing.class);
+        listing2.setHearingId(hearingId);
+        // distinct schedule — allocated_listings has a unique (court_schedule_id, hearing_id) index
+        listing2.setCourtScheduleId(persistRandomCourtSchedule());
+        listing2.setSource(DEFAULT_2);
+        final AllocatedListing otherHearingListing = random(AllocatedListing.class);
+        otherHearingListing.setCourtScheduleId(persistRandomCourtSchedule());
+        otherHearingListing.setSource(DEFAULT_2);
+
+        allocatedListingRepository.save(listing1);
+        allocatedListingRepository.save(listing2);
+        allocatedListingRepository.save(otherHearingListing);
+
+        final int updated = allocatedListingRepository.updateSourceByHearingId(hearingId, "CROWN_FB_LIST");
+
+        assertThat(updated, is(2));
+        final List<AllocatedListing> updatedRows = allocatedListingRepository.findByHearingId(hearingId);
+        for (final AllocatedListing row : updatedRows) {
+            assertThat(row.getSource(), is("CROWN_FB_LIST"));
+        }
+        final AllocatedListing untouched = allocatedListingRepository.findBy(otherHearingListing.getId());
+        assertThat(untouched.getSource(), is(DEFAULT_2));
+    }
+
+    @Test
+    void shouldReturnZeroAndNotUpdate_whenSourceIsNull() {
+        final String hearingId = randomUUID().toString();
+        final AllocatedListing listing = random(AllocatedListing.class);
+        listing.setHearingId(hearingId);
+        listing.setCourtScheduleId(persistRandomCourtSchedule());
+        listing.setSource(DEFAULT_2);
+        allocatedListingRepository.save(listing);
+
+        final int updated = allocatedListingRepository.updateSourceByHearingId(hearingId, null);
+
+        assertThat(updated, is(0));
+        final AllocatedListing unchanged = allocatedListingRepository.findBy(listing.getId());
+        assertThat(unchanged.getSource(), is(DEFAULT_2));
+    }
+
+    @Test
+    void shouldReturnZero_whenHearingIdDoesNotMatch() {
+        final int updated = allocatedListingRepository.updateSourceByHearingId(randomUUID().toString(), "CROWN_FB_UPDATE");
+        assertThat(updated, is(0));
+    }
+
+    @Test
+    void shouldFindByHearingIdOrderBySessionDateAsc() {
+        final String hearingId = randomUUID().toString();
+        final LocalDate day1 = LocalDate.of(2026, 3, 2);
+        final LocalDate day2 = LocalDate.of(2026, 3, 3);
+        final LocalDate day3 = LocalDate.of(2026, 3, 4);
+
+        seedScheduleAndAllocation("CS-EXTEND-DAY2", day2, hearingId, "AL-EXTEND-DAY2");
+        seedScheduleAndAllocation("CS-EXTEND-DAY1", day1, hearingId, "AL-EXTEND-DAY1");
+        seedScheduleAndAllocation("CS-EXTEND-DAY3", day3, hearingId, "AL-EXTEND-DAY3");
+
+        final List<AllocatedListing> ordered = allocatedListingRepository.findByHearingIdOrderBySessionDateAsc(hearingId);
+
+        assertEquals(3, ordered.size());
+        assertEquals("CS-EXTEND-DAY1", ordered.get(0).getCourtScheduleId());
+        assertEquals("CS-EXTEND-DAY2", ordered.get(1).getCourtScheduleId());
+        assertEquals("CS-EXTEND-DAY3", ordered.get(2).getCourtScheduleId());
+    }
+
+    @Test
+    void shouldDeleteByHearingIdAndSessionDateGreaterThan() {
+        final String hearingId = randomUUID().toString();
+        final LocalDate day1 = LocalDate.of(2026, 3, 2);
+        final LocalDate day2 = LocalDate.of(2026, 3, 3);
+        final LocalDate day3 = LocalDate.of(2026, 3, 4);
+
+        seedScheduleAndAllocation("CS-DEL-DAY1", day1, hearingId, "AL-DEL-DAY1");
+        seedScheduleAndAllocation("CS-DEL-DAY2", day2, hearingId, "AL-DEL-DAY2");
+        seedScheduleAndAllocation("CS-DEL-DAY3", day3, hearingId, "AL-DEL-DAY3");
+
+        final int deleted = allocatedListingRepository.deleteByHearingIdAndSessionDateGreaterThan(hearingId, day2);
+
+        assertEquals(1, deleted);
+        final List<AllocatedListing> remaining = allocatedListingRepository.findByHearingIdOrderBySessionDateAsc(hearingId);
+        assertEquals(2, remaining.size());
+        assertEquals("CS-DEL-DAY1", remaining.get(0).getCourtScheduleId());
+        assertEquals("CS-DEL-DAY2", remaining.get(1).getCourtScheduleId());
+    }
+
+    // -----------------------------------------------------------------------
+    // Tests for releaseExpiredReservations (defect fix: the nightly purge must restore
+    // court_schedule capacity, not just delete the allocated_listings row — a bare DELETE
+    // permanently burns a slot per expired reservation). Replaces the old
+    // shouldDeleteAllReservedSessionsExpiredBeforeCutoff test, which asserted only against the
+    // now-removed deleteExpiredReservedSessions bare-DELETE method; its three behaviours
+    // (expired-yesterday purged, expiring-today retained, missed-run backlog self-heals) are
+    // preserved below, plus the capacity-restoration assertion the old test never made.
+    // -----------------------------------------------------------------------
+
+    @Test
+    void shouldReleaseExpiredReservationAndRestoreCapacity() {
+        final LocalDate today = LocalDate.now(java.time.ZoneOffset.UTC);
+        final CourtSchedule session = random(CourtSchedule.class);
+        session.setSlotBased(true);
+        session.setMaxSlots(4);
+        session.setAvailableSlots(3); // one slot already consumed by the reservation below
+        courtScheduleRepository.saveAndFlush(session);
+
+        final AllocatedListing expired = createAllocateListing(
+                "AL-EXPIRED", "BK-EXPIRED", session.getCourtScheduleId(), "HEARING-EXPIRED");
+        expired.setExpiresAt(today.minusDays(1));
+        allocatedListingRepository.saveAndFlush(expired);
+
+        final int released = courtScheduleRepository.releaseExpiredReservations(today);
+
+        assertEquals(1, released);
+        assertThat(allocatedListingRepository.findByHearingId("HEARING-EXPIRED").isEmpty(), is(true));
+        assertThat(slotsLeft(session.getCourtScheduleId()), is(4));
+    }
+
+    @Test
+    void shouldNotReleaseReservationsExpiringToday() {
+        final LocalDate today = LocalDate.now(java.time.ZoneOffset.UTC);
+        final String courtScheduleId = persistRandomCourtSchedule();
+        final AllocatedListing expiringToday = createAllocateListing(
+                "AL-TODAY", "BK-TODAY", courtScheduleId, "HEARING-TODAY");
+        expiringToday.setExpiresAt(today);
+        allocatedListingRepository.saveAndFlush(expiringToday);
+
+        assertEquals(0, courtScheduleRepository.releaseExpiredReservations(today));
+        assertThat(allocatedListingRepository.findByHearingId("HEARING-TODAY").size(), is(1));
+    }
+
+    @Test
+    void shouldNotReleaseConfirmedBookings() {
+        final LocalDate today = LocalDate.now(java.time.ZoneOffset.UTC);
+        final String courtScheduleId = persistRandomCourtSchedule();
+        final AllocatedListing confirmed = createAllocateListing(
+                "AL-CONFIRMED", "BK-CONFIRMED", courtScheduleId, "HEARING-CONFIRMED");
+        confirmed.setExpiresAt(null);
+        allocatedListingRepository.saveAndFlush(confirmed);
+
+        assertEquals(0, courtScheduleRepository.releaseExpiredReservations(today));
+        assertThat(allocatedListingRepository.findByHearingId("HEARING-CONFIRMED").size(), is(1));
+    }
+
+    @Test
+    void shouldReleaseBacklogOfExpiredReservationsInOnePassAndRestoreCapacity() {
+        // A missed daily run can leave both a yesterday-expiry and a two-days-ago-expiry row
+        // outstanding at once. The cutoff isn't scoped to exactly "yesterday", so one pass clears
+        // the whole backlog and restores capacity for every released session — proving the purge
+        // is self-healing rather than permanently stranding rows an exact-date match would miss.
+        final LocalDate today = LocalDate.now(java.time.ZoneOffset.UTC);
+        final LocalDate yesterday = today.minusDays(1);
+        final LocalDate twoDaysAgo = today.minusDays(2);
+
+        final CourtSchedule sessionYesterday = random(CourtSchedule.class);
+        sessionYesterday.setSlotBased(true);
+        sessionYesterday.setMaxSlots(4);
+        sessionYesterday.setAvailableSlots(3);
+        courtScheduleRepository.saveAndFlush(sessionYesterday);
+
+        final CourtSchedule sessionTwoDaysAgo = random(CourtSchedule.class);
+        sessionTwoDaysAgo.setSlotBased(true);
+        sessionTwoDaysAgo.setMaxSlots(4);
+        sessionTwoDaysAgo.setAvailableSlots(3);
+        courtScheduleRepository.saveAndFlush(sessionTwoDaysAgo);
+
+        final AllocatedListing expiredYesterday = createAllocateListing(
+                "AL-BACKLOG-YDAY", "BK-BACKLOG-YDAY", sessionYesterday.getCourtScheduleId(), "HEARING-BACKLOG-YDAY");
+        expiredYesterday.setExpiresAt(yesterday);
+        allocatedListingRepository.saveAndFlush(expiredYesterday);
+
+        final AllocatedListing expiredTwoDaysAgo = createAllocateListing(
+                "AL-BACKLOG-2DAY", "BK-BACKLOG-2DAY", sessionTwoDaysAgo.getCourtScheduleId(), "HEARING-BACKLOG-2DAY");
+        expiredTwoDaysAgo.setExpiresAt(twoDaysAgo);
+        allocatedListingRepository.saveAndFlush(expiredTwoDaysAgo);
+
+        final int released = courtScheduleRepository.releaseExpiredReservations(today);
+
+        assertEquals(2, released);
+        assertThat(allocatedListingRepository.findByHearingId("HEARING-BACKLOG-YDAY").isEmpty(), is(true));
+        assertThat(allocatedListingRepository.findByHearingId("HEARING-BACKLOG-2DAY").isEmpty(), is(true));
+        assertThat(slotsLeft(sessionYesterday.getCourtScheduleId()), is(4));
+        assertThat(slotsLeft(sessionTwoDaysAgo.getCourtScheduleId()), is(4));
+    }
+
+    // -----------------------------------------------------------------------
+    // Tests for releaseUnconfirmedReservations: the batch release behind
+    // POST /unconfirmedBooking/release (hearing on draft save, progression on surplus). One query
+    // for every booking id, with "unconfirmed" decided by the query itself (expires_at IS NOT NULL).
+    // -----------------------------------------------------------------------
+
+    @Test
+    void shouldReleaseTheUnconfirmedHoldsOfEveryBookingInOneCallAndRestoreCapacity() {
+        final LocalDate expiry = LocalDate.now(java.time.ZoneOffset.UTC).plusDays(1);
+        // booking A holds two sessions (a multi-day pick), booking B one; one hold per session each
+        final CourtSchedule sessionA1 = persistSlotBasedSession(4, 3);
+        final CourtSchedule sessionA2 = persistSlotBasedSession(4, 3);
+        final CourtSchedule sessionB = persistSlotBasedSession(4, 3);
+        final String bookingA = randomUUID().toString();
+        final String bookingB = randomUUID().toString();
+
+        persistHold("AL-A1", bookingA, sessionA1.getCourtScheduleId(), expiry);
+        persistHold("AL-A2", bookingA, sessionA2.getCourtScheduleId(), expiry);
+        persistHold("AL-B1", bookingB, sessionB.getCourtScheduleId(), expiry);
+
+        final int released = releaseUnconfirmed(List.of(bookingA, bookingB));
+
+        assertEquals(3, released);
+        assertThat(allocatedListingRepository.findByBookingId(bookingA).isEmpty(), is(true));
+        assertThat(allocatedListingRepository.findByBookingId(bookingB).isEmpty(), is(true));
+        assertThat(slotsLeft(sessionA1.getCourtScheduleId()), is(4));
+        assertThat(slotsLeft(sessionA2.getCourtScheduleId()), is(4));
+        assertThat(slotsLeft(sessionB.getCourtScheduleId()), is(4));
+    }
+
+    @Test
+    void shouldKeepTheConfirmedListingOfABookingWhileReleasingItsHold() {
+        final LocalDate expiry = LocalDate.now(java.time.ZoneOffset.UTC).plusDays(1);
+        final CourtSchedule session = persistSlotBasedSession(4, 2);
+        final String booking = randomUUID().toString();
+
+        persistHold("AL-HOLD", booking, session.getCourtScheduleId(), expiry);
+        persistHold("AL-LISTED", booking, session.getCourtScheduleId(), null); // a share confirmed it
+
+        final int released = releaseUnconfirmed(List.of(booking));
+
+        assertEquals(1, released);
+        final List<AllocatedListing> left = allocatedListingRepository.findByBookingId(booking);
+        assertThat(left.size(), is(1));
+        assertThat(left.get(0).getId(), is("AL-LISTED"));
+        assertThat(slotsLeft(session.getCourtScheduleId()), is(3));
+    }
+
+    @Test
+    void shouldReleaseNothingForUnknownOrNoBookingIds() {
+        final CourtSchedule session = persistSlotBasedSession(4, 3);
+        persistHold("AL-OTHER", randomUUID().toString(), session.getCourtScheduleId(),
+                LocalDate.now(java.time.ZoneOffset.UTC).plusDays(1));
+
+        assertEquals(0, releaseUnconfirmed(List.of(randomUUID().toString())));
+        assertEquals(0, releaseUnconfirmed(List.of()));
+        assertThat(slotsLeft(session.getCourtScheduleId()), is(3));
+    }
+
+    @Test
+    void shouldGiveADurationBasedSessionBackTheMinutesItsHoldsTook() {
+        final CourtSchedule session = random(CourtSchedule.class);
+        session.setSlotBased(false);
+        session.setMaxDuration(360);
+        session.setAvailableDuration(120); // 240 minutes held by the two bookings below
+        courtScheduleRepository.saveAndFlush(session);
+        final String bookingA = randomUUID().toString();
+        final String bookingB = randomUUID().toString();
+        final LocalDate expiry = LocalDate.now(java.time.ZoneOffset.UTC).plusDays(1);
+        persistHold("AL-DUR-A", bookingA, session.getCourtScheduleId(), expiry); // 120 minutes each
+        persistHold("AL-DUR-B", bookingB, session.getCourtScheduleId(), expiry);
+
+        assertEquals(2, releaseUnconfirmed(List.of(bookingA, bookingB)));
+
+        final CourtSchedule after = courtScheduleRepository.findBy(session.getCourtScheduleId());
+        assertThat(minutesLeft(session.getCourtScheduleId()), is(360));
+        assertThat(after.getAvailableSlots(), is(session.getAvailableSlots()));
+    }
+
+    // LPT-2611: each released hold is recorded, with what is needed to trace it, under the
+    // caller's reason.
+    @Test
+    void shouldLogEachReleasedHoldUnderTheCallersReason() {
+        final CourtSchedule session = persistSlotBasedSession(4, 3);
+        final String booking = randomUUID().toString();
+        persistHold("AL-LOG-REL", booking, session.getCourtScheduleId(), LocalDate.now(java.time.ZoneOffset.UTC).plusDays(1));
+        final AllocatedListing held = allocatedListingRepository.findBy("AL-LOG-REL");
+
+        courtScheduleRepository.releaseUnconfirmedReservations(List.of(booking), BookingState.SURPLUS_RELEASED);
+
+        final List<BookingLog> latest = bookingLogRepository.findLatestEvent(booking);
+        assertEquals(1, latest.size());
+        assertEquals(BookingState.SURPLUS_RELEASED, latest.get(0).getState());
+        assertEquals(session.getCourtScheduleId(), latest.get(0).getCourtScheduleId());
+        assertEquals(held.getHearingStartTime(), latest.get(0).getHearingStartTime());
+        assertEquals(held.getDuration(), latest.get(0).getDuration());
+    }
+
+    // A booking whose hold the purge already removed releases nothing, but the release must still be
+    // recorded: otherwise its latest event stays EXPIRED and the pre-share check could re-book a
+    // booking the clerk dropped.
+    @Test
+    void shouldLogTheReleaseOfABookingThatNoLongerHoldsAnything() {
+        final String expiredAndDropped = randomUUID().toString();
+        bookingLogRepository.record(BookingState.EXPIRED, List.of(createAllocateListing("AL-GONE", expiredAndDropped, "CS-GONE", null)));
+
+        courtScheduleRepository.releaseUnconfirmedReservations(List.of(expiredAndDropped), BookingState.DRAFT_RELEASED);
+
+        final List<BookingLog> latest = bookingLogRepository.findLatestEvent(expiredAndDropped);
+        assertEquals(1, latest.size());
+        assertEquals(BookingState.DRAFT_RELEASED, latest.get(0).getState());
+        assertEquals(null, latest.get(0).getCourtScheduleId());
+    }
+
+    /**
+     * The release is two plain SQL statements, so it does not refresh entities this test already
+     * holds; clear them so the assertions read what the database now says.
+     */
+    private int releaseUnconfirmed(final List<String> bookingIds) {
+        final int released = courtScheduleRepository.releaseUnconfirmedReservations(bookingIds, BookingState.DRAFT_RELEASED);
+        entityManager.clear();
+        return released;
+    }
+
+
+    /**
+     * What a session has left, counted from allocated_listings: the only source of availability.
+     * court_schedule.available_slot / available_duration_mins are no longer kept up to date.
+     */
+    private int slotsLeft(final String courtScheduleId) {
+        return courtScheduleRepository.findBy(courtScheduleId).getMaxSlots()
+                - allocatedListingRepository.findByCourtScheduleId(courtScheduleId).size();
+    }
+
+    private int minutesLeft(final String courtScheduleId) {
+        return courtScheduleRepository.findBy(courtScheduleId).getMaxDuration()
+                - allocatedListingRepository.findByCourtScheduleId(courtScheduleId).stream().mapToInt(AllocatedListing::getDuration).sum();
+    }
+
+    private CourtSchedule persistSlotBasedSession(final int maxSlots, final int availableSlots) {
+        final CourtSchedule session = random(CourtSchedule.class);
+        session.setSlotBased(true);
+        session.setMaxSlots(maxSlots);
+        session.setAvailableSlots(availableSlots);
+        return courtScheduleRepository.saveAndFlush(session);
+    }
+
+    private void persistHold(final String id, final String bookingId, final String courtScheduleId, final LocalDate expiresAt) {
+        final AllocatedListing listing = createAllocateListing(id, bookingId, courtScheduleId, null);
+        listing.setExpiresAt(expiresAt);
+        allocatedListingRepository.saveAndFlush(listing);
+    }
+
+    private void seedScheduleAndAllocation(final String courtScheduleId, final LocalDate sessionDate,
+                                           final String hearingId, final String allocationId) {
+        final CourtSchedule cs = random(CourtSchedule.class);
+        cs.setCourtScheduleId(courtScheduleId);
+        cs.setSessionDate(sessionDate);
+        cs.setActive(true);
+        courtScheduleRepository.saveAndFlush(cs);
+
+        allocatedListingRepository.saveAndFlush(
+                createAllocateListing(allocationId, "BK-" + allocationId, courtScheduleId, hearingId,
+                        sessionDate.atTime(10, 0)));
+    }
 
 }

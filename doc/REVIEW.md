@@ -87,7 +87,7 @@ Wiremock 3.9 + Azurite + the api container). All 17 IT classes live there.
 
 | File | Why |
 |---|---|
-| `AbstractIntegrationTest.java` | New Spring-style base class for *modern* IT classes (those built fresh during the migration). Uses `RestTemplate` against `app.baseUrl`. Co-exists with the legacy `AbstractIT.java` (`AM`) which is the `*IT.java` re-platformed shim — kept so the 11 legacy IT classes need minimal edits. |
+| `IntegrationTestBase.java` | New Spring-style base class for *modern* IT classes (those built fresh during the migration). Uses `RestTemplate` against `app.baseUrl`. Co-exists with the legacy `AbstractIT.java` (`AM`) which is the `*IT.java` re-platformed shim — kept so the 11 legacy IT classes need minimal edits. |
 | `AdditionalEndpointsIntegrationTest.java`, `EnvelopeAndErrorShapeIntegrationTest.java`, `SmokeIntegrationTest.java` | New ITs added during the migration to lock the OpenAPI contract, the response-envelope shape, the error-body shape, and a smoke baseline. Not in the legacy suite. |
 | `utils/RequestParams.java` | Builder for parameterised GETs — replaces the legacy `RestClient`'s fluent API. |
 | `utils/RestPoller.java` | Awaitility-based polling helper for async endpoints (e.g. `POST /rotasl/process-rota-files` is `@Async`). |

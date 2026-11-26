@@ -17,6 +17,8 @@ import org.junit.jupiter.api.Disabled;
  * (per the in-place rule) but the only honest test body is none — the production class
  * was intentionally deleted, not migrated.</p>
  */
+// Deliberate: intentional empty placeholder kept to track migration debt; it has no test cases by design
+@SuppressWarnings("PMD.TestClassWithoutTestCases")
 @Disabled("Production class removed — replaced by Spring filters/auto-configuration.")
 class CourtSchedulerApiInterceptorChainProviderTest {
 }

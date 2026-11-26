@@ -9,33 +9,47 @@ import static org.apache.commons.collections.CollectionUtils.isEmpty;
 import static org.apache.commons.collections.CollectionUtils.isNotEmpty;
 import static org.apache.commons.lang3.ObjectUtils.isNotEmpty;
 import static org.apache.commons.lang3.StringUtils.isBlank;
+import static uk.gov.moj.cpp.courtscheduler.domain.rota.PanelTypes.ADULT;
+import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.DEFAULT_ALL_DAY_END_TIME;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.combineDateAndTime;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.getOrElseDefaultSessionStartAndEndTimeIfEmpty;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toExactTimestamp;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toIsoString;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toIsoStringExtended;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toMeridian;
+import static uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleQueryParameterNames.BUSINESS_TYPE;
+import static uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleQueryParameterNames.COURT_CENTRE_ID;
+import static uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleQueryParameterNames.COURT_ROOM_ID;
+import static uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleQueryParameterNames.COURT_SCHEDULE_IDS;
+import static uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleQueryParameterNames.END_DATE;
+import static uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleQueryParameterNames.OU_CODE;
+import static uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleQueryParameterNames.SESSION_DATE;
+import static uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleQueryParameterNames.START_DATE;
+import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.toOffsetDateTime;
 import static uk.gov.moj.cpp.courtscheduler.utils.QueryConstants.EXISTS_PROVISIONAL_DATA_COURT_SCHEDULE;
 
 import uk.gov.moj.cpp.courtscheduler.converter.CourtSchedulerConverter;
-import uk.gov.moj.cpp.courtscheduler.domain.AllocatedListingEachBooked;
-import uk.gov.moj.cpp.courtscheduler.domain.AllocatedSlot;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleMatcherInfo;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.AllocatedListingEachBooked;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.AllocatedSlot;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtRoom;
 import uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleRequestParam;
-import uk.gov.moj.cpp.courtscheduler.domain.Hearing;
-import uk.gov.moj.cpp.courtscheduler.domain.HearingSlot;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CrownFallbackRequest;
+import uk.gov.moj.cpp.courtscheduler.domain.CrownFallbackSearchResult;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.Hearing;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.HearingSlot;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
-import uk.gov.moj.cpp.courtscheduler.domain.MiFilterCriteria;
-import uk.gov.moj.cpp.courtscheduler.domain.RequestedCourtSchedule;
-import uk.gov.moj.cpp.courtscheduler.domain.RequestedSlots;
-import uk.gov.moj.cpp.courtscheduler.domain.Result;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.MiFilterCriteria;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.RequestedCourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.RequestedSlots;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.Result;
 import uk.gov.moj.cpp.courtscheduler.domain.SlotProcessingContext;
-import uk.gov.moj.cpp.courtscheduler.domain.SlotStartTime;
-import uk.gov.moj.cpp.courtscheduler.domain.UpdateCourtSchedule;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.SlotStartTime;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.UpdateCourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils;
 import uk.gov.moj.cpp.courtscheduler.domain.utils.TimezoneUtils;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.AllocatedListingTotalBooked;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
+import uk.gov.moj.cpp.courtscheduler.persist.entity.BookingState;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.ProvisionalBooking;
@@ -44,6 +58,8 @@ import uk.gov.moj.cpp.courtscheduler.service.CourtScheduleRetryService;
 
 import java.math.BigInteger;
 import java.sql.Timestamp;
+import java.time.DayOfWeek;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -51,10 +67,12 @@ import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
-import java.util.Date;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -73,7 +91,7 @@ import jakarta.persistence.criteria.CriteriaQuery;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
-import org.modelmapper.ModelMapper;
+import org.owasp.encoder.Encode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -90,9 +108,25 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCustom {
 
-    public static final String BUSINESS_TYPE = "businessType";
-    public static final StringBuilder COURT_SCHEDULE_ALL_FIELDS_QUERY_STRING = new StringBuilder("""
-                SELECT DISTINCT
+    private static final String UNCHECKED_WARNING = "unchecked";
+    private static final String SUPPRESS_INSTANTIATING_IN_LOOPS = "PMD.AvoidInstantiatingObjectsInLoops";
+    private static final int HEARING_SLOTS_QUERY_INITIAL_CAPACITY = 4_000;
+    private static final int SEARCH_QUERY_INITIAL_CAPACITY = 700;
+    private static final String STATUS_DRAFT = "DRAFT";
+    private static final String STATUS_FINAL = "FINAL";
+    /**
+     * SPRDT-1572 / LPT-2608: a CROWN multiday block books duration-based AD sessions only — the same
+     * rule the multiday hearing-slots search already forces (SlotsSearchService MULTIDAY_IS_SLOT_BASED).
+     * is_slot_based is NOT NULL (changeset 019), so no null handling is needed.
+     */
+    private static final String DURATION_BASED_ONLY_PREDICATE = "  AND s.is_slot_based = false\n";
+    private static final int SINGLE_RESULT_COUNT = 1;
+    // Returns one row per court_schedule. Aggregates fold allocated_listings into the group so
+    // availability (available_slot, available_duration_mins, totalbooked{,formorning,forafternoon})
+    // matches the semantics of the courtscheduler.get.hearing.slots query. hasHearingsBooked is
+    // BOOL_OR so the presence flag holds whenever any allocated_listing exists for the schedule.
+    public static final String COURT_SCHEDULE_ALL_FIELDS_QUERY_STRING = """
+                SELECT
                     s.id,
                     s.court_listing_profile_id,
                     s.oucode,
@@ -111,8 +145,8 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
                     s.max_slot,
                     s.max_duration_mins,
                     CASE WHEN s.is_slot_based = true THEN s.max_slot - count(al.duration) ELSE 0 END as available_slot,
-                    CASE WHEN s.is_slot_based = false and s.support_ad_split =false THEN  s.max_duration_mins - sum(al.duration) ELSE 0 END as available_duration_mins,
-                    case when al.id is not null then true else false end as hasHearingsBooked,
+                    CASE WHEN s.is_slot_based = false and s.support_ad_split = false THEN s.max_duration_mins - COALESCE(sum(al.duration), 0) ELSE 0 END as available_duration_mins,
+                    COALESCE(BOOL_OR(al.id IS NOT NULL), false) as hasHearingsBooked,
                     s.created_on,
                     s.updated_on,
                     s.support_ad_split,
@@ -194,51 +228,17 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
                     s.session_end_time,
                     s.is_overbooking_allowed,
                     s.is_draft,
-                    s.jurisdiction,
-                    al.id
-            """);
+                    s.jurisdiction
+            """;
 
     private static final int BATCH_SIZE = 50;
-    public static final String COURT_ROOM_ID = "courtRoomId";
-    public static final String OU_CODE = "ouCode";
-    public static final String COURT_CENTRE_ID = "courtCentreId";
-    public static final String SESSION_DATE = "sessionDate";
+    // PostgreSQL wire protocol encodes bind-parameter count as a signed 16-bit integer (max 32767).
+    // IN-clause queries with large ID lists must be partitioned below that ceiling.
+    private static final int ID_QUERY_BATCH_SIZE = 1000;
     public static final String COURTCENTREID_QUERY_CONDITION_STRING = "AND s.court_house_id = :courtCentreId ";
     public static final String SESSION_START_QUERY_CONDITION_STRING = "AND s.session_start = :sessionDate ";
     public static final String BUSINESS_TYPE_QUERY_CONDITION_STRING = "AND s.rota_business_type IN (:businessType) ";
     public static final String COURT_ROOM_ID_QUERY_CONDITION_STRING = "AND s.court_room_id = :courtRoomId ";
-
-    @PersistenceContext
-    EntityManager entityManager;
-    @Inject
-    CourtScheduleCriteria courtScheduleCriteria;
-    // @Lazy breaks the legacy CourtScheduleRepository <-> CourtScheduleRetryService cycle
-    // tolerated by CDI but rejected by Spring's AOP-aware proxy machinery.
-    @Inject
-    @org.springframework.context.annotation.Lazy
-    CourtScheduleRetryService courtScheduleRetryService;
-    @Inject
-    uk.gov.moj.cpp.courtscheduler.service.CourtScheduleBatchInsertService courtScheduleBatchInsertService;
-    @Inject
-    private AllocatedListingRepository allocatedListingRepository;
-    @Inject
-    private CourtScheduleJudiciaryRepository courtScheduleJudiciaryRepository;
-    @Inject
-    ProvisionalBookingRepository provisionalBookingRepository;
-
-    /**
-     * Internal save helper preserving the legacy {@code AbstractEntityRepository#save} semantics:
-     * persist if the row doesn't yet exist in the DB (manually-set {@code String} ids would
-     * otherwise be routed through {@code merge} by Spring Data's default), merge otherwise.
-     */
-    private CourtSchedule saveInternal(final CourtSchedule entity) {
-        if (entity.getCourtScheduleId() == null
-                || entityManager.find(CourtSchedule.class, entity.getCourtScheduleId()) == null) {
-            entityManager.persist(entity);
-            return entity;
-        }
-        return entityManager.merge(entity);
-    }
 
     private static final Logger LOGGER = LoggerFactory.getLogger(CourtScheduleRepositoryImpl.class.getName());
 
@@ -250,11 +250,22 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
             "WHERE court_listing_profile_id is null AND not exists (select 1 from allocated_listings al where al.court_schedule_id = id) AND oucode IN (:ouCodes) " +
             "AND active =true and not exists( " + EXISTS_PROVISIONAL_DATA_COURT_SCHEDULE.getQuery() + ")";
 
+    // Releasing unconfirmed holds by booking id (releaseUnconfirmedReservations).
+    // The WHERE is the safety property: a listing a share confirmed keeps its booking_id but has
+    // no expires_at, so it can never be deleted here.
+    private static final String DELETE_UNCONFIRMED_RESERVATIONS_QUERY = """
+            DELETE FROM allocated_listings
+             WHERE booking_id IN (:bookingIds)
+               AND expires_at IS NOT NULL
+            RETURNING court_schedule_id, duration, id, booking_id, hearing_id, oucode, court_room_id,
+                      rota_business_type, hearing_start_time, expires_at
+            """;
+
     public static final String DELETE_SLOTS_BY_IDS_QUERY = "DELETE FROM court_schedule cs WHERE cs.id IN (:courtScheduleIds) AND cs.court_listing_profile_id is not null AND not exists (select 1 from allocated_listings al where al.court_schedule_id = cs.id) AND  not exists(" + EXISTS_PROVISIONAL_DATA_COURT_SCHEDULE.getQuery() + ")";
 
     private static final String DELETE_REDUNDANT_ROTA_DATA = "DELETE FROM court_schedule cs WHERE cs.session_start < (CURRENT_DATE - :numberOfDays)";
 
-    private static final String GET_HEARING_SLOTS_QUERY_MANDATORY_PARAMS = """
+    private static final String GET_HEARING_SLOTS_QUERY_SELECT_FROM = """
             SELECT cs.id,
             cs.court_listing_profile_id,
             cs.oucode,
@@ -298,7 +309,7 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
                                     WHEN al.hearing_start_time < national_break_time
                                         THEN al.duration
                                     ELSE 0
-                                    END
+                                        END
                         ELSE 0
                         END
                         ),0
@@ -316,7 +327,7 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
                                     WHEN al.hearing_start_time >= national_break_time
                                         THEN al.duration
                                     ELSE 0
-                                    END
+                                        END
                             ELSE 0
                             END
                         ),0
@@ -326,12 +337,15 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
                     SUM(al.duration),0
                     ) AS totalbooked
             FROM court_schedule cs LEFT JOIN allocated_listings al ON cs.id = al.court_schedule_id
+            """;
+
+    private static final String GET_HEARING_SLOTS_QUERY_MANDATORY_PARAMS = GET_HEARING_SLOTS_QUERY_SELECT_FROM + """
             WHERE cs.active = true
             AND cs.panel in (:panelType)
             AND cs.session_start BETWEEN :sessionStart AND :sessionEnd
             """;
     private static final String GET_HEARING_SLOTS_QUERY_GROUP_BY = """
-                GROUP BY 
+                GROUP BY
                     cs.id,
                     cs.court_listing_profile_id,
                     cs.oucode,
@@ -364,16 +378,149 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
             LIMIT :pageSize OFFSET :offset
             """;
 
+    // Re-hydrate the discovered multi-day candidate ids through the SAME aggregating projection
+    // the single-day search uses (so the SLOTS result-set mapping applies and national_break_time
+    // is selected). Used only by the multi-day re-hydrate path — see
+    // rehydrateMultidayCandidatesWithSlotStartTimes. Deliberately NOT the COURT_SCHEDULE_ALL_FIELDS
+    // query, which omits national_break_time and is never run through addSlotStartTimes.
+    private static final String GET_HEARING_SLOTS_BY_IDS_QUERY = GET_HEARING_SLOTS_QUERY_SELECT_FROM + """
+            WHERE cs.active = true
+            AND cs.id IN (:courtScheduleIds)
+            """ + GET_HEARING_SLOTS_QUERY_GROUP_BY;
+
+    // Lightweight count query used by getCourtSchedules.
+    // Mirrors the WHERE predicates of GET_HEARING_SLOTS_QUERY_MANDATORY_PARAMS but:
+    //   - drops the LEFT JOIN allocated_listings (no WHERE clause references al.*)
+    //   - drops the SUM(CASE WHEN ...) aggregates and the 25-column GROUP BY
+    //   - returns a single integer instead of materialising rows
+    // The result equals the number of distinct cs rows the paginated query would produce
+    // (the paginated query's GROUP BY is on cs.id + functionally-dependent cs.* columns).
+    // See performance analysis: "hearingSlots multi-day Crown — performance analysis & fix plan",
+    // findings #1 and #2, recommended fix #1.
+    private static final String GET_HEARING_SLOTS_COUNT_QUERY_MANDATORY_PARAMS = """
+            SELECT COUNT(*)
+            FROM court_schedule cs
+            WHERE cs.active = true
+            AND cs.panel in (:panelType)
+            AND cs.session_start BETWEEN :sessionStart AND :sessionEnd
+            """;
+
+    // Fix #4 (perf analysis): lightweight discovery projection used by getMultidayHearingSlotCandidates.
+    // Same WHERE predicates as the full query, but:
+    //   - drops the LEFT JOIN allocated_listings and the SUM(CASE WHEN ...) aggregates,
+    //   - drops the 25-column GROUP BY,
+    //   - selects only the columns needed for grouping by (room, business type, ou code) and
+    //     for the consecutive-business-day check on session_start.
+    // The result is used to narrow the candidate set; survivors are then re-hydrated via
+    // getCourtSchedulesByIdList, so the expensive aggregation only runs on rows that have a
+    // realistic chance of being a multi-day start.
+    private static final String GET_HEARING_SLOTS_DISCOVERY_QUERY_MANDATORY_PARAMS = """
+            SELECT cs.id, cs.court_room_id, cs.rota_business_type, cs.oucode, cs.session_start
+            FROM court_schedule cs
+            WHERE cs.active = true
+            AND cs.panel in (:panelType)
+            AND cs.session_start BETWEEN :sessionStart AND :sessionEnd
+            """;
+
     private static final String NATIVE_QUERY_COURT_SCHEDULE_MAPPING_VIEW = "CourtScheduleEntityMappingForView";
     private static final String NATIVE_QUERY_COURT_SCHEDULE_MAPPING_SLOTS = "CourtScheduleEntityMappingForSlots";
     private static final String NATIVE_QUERY_COURT_SCHEDULE_MAPPING_ALL = "CourtScheduleEntityMappingForAllFields";
     private static final int SLOT_DEFAULT = 1;
     private static final int DEFAULT_DURATION_TO_BE_RETURNED = 20;
     private static final String HEARING_START_TIME = "hearingStartTime";
+    private static final String IS_DRAFT = "isDraft";
 
+    // SPRDT-1159 auto-created session shape: duration-based AD sessions with a fixed full-day
+    // capacity and overbooking disallowed. LNG when the caller pinned a courtroom (FINAL session),
+    // GENC otherwise (DRAFT session).
+    private static final String AUTO_SESSION_BUSINESS_TYPE_ROOM_PINNED = "LNG";
+    private static final String AUTO_SESSION_BUSINESS_TYPE_CENTRE_WIDE = "GENC";
+    private static final String AUTO_SESSION_COURT_SESSION = "AD";
+    private static final int AUTO_SESSION_MAX_DURATION_MINS = 360;
+    /**
+     * SPRDT-1324: an AD session's end time is the fixed all-day default (17:00), never
+     * start + capacity — a session starting at 12:30 still ends at 17:00, matching the rule
+     * {@code SessionsService} applies to every other session-creation route
+     * ({@link uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils#DEFAULT_ALL_DAY_END_TIME}).
+     * Like every other session time it is a Europe/London wall-clock time, so the stored instant is
+     * 16:00 UTC while BST applies. Capacity stays {@value #AUTO_SESSION_MAX_DURATION_MINS} minutes
+     * and is unaffected.
+     */
+    private static final LocalTime AUTO_SESSION_END_TIME = LocalTime.parse(DEFAULT_ALL_DAY_END_TIME);
+
+    // SPRDT-1283 template-free auto-create defaults: used only when the centre has no session at
+    // all to copy metadata from. ouCode must come from the request (the court calendar reads
+    // sessions by ouCode); display metadata falls back to the request's names; the remaining
+    // NOT NULL columns take these fixed values.
+    private static final String AUTO_SESSION_PROFILE_ID = "CROWN-FB-AUTO";
+    private static final String AUTO_SESSION_ROOM_NAME = "Courtroom";
+    private static final int AUTO_SESSION_ROOM_NUMBER = 0;
+    private static final int AUTO_SESSION_HALF_DAY_MINS = 180;
+    private static final String AUTO_SESSION_JURISDICTION = "CROWN";
+    private static final LocalTime AUTO_SESSION_BREAK_TIME = LocalTime.of(13, 0);
+
+    @PersistenceContext
+    /* package */ EntityManager entityManager;
+    @Inject
+    /* package */ CourtScheduleCriteria courtScheduleCriteria;
+    // @Lazy breaks the legacy CourtScheduleRepository <-> CourtScheduleRetryService cycle
+    // tolerated by CDI but rejected by Spring's AOP-aware proxy machinery.
+    @Inject
+    @org.springframework.context.annotation.Lazy
+    /* package */ CourtScheduleRetryService courtScheduleRetryService;
+    @Inject
+    /* package */ uk.gov.moj.cpp.courtscheduler.service.CourtScheduleBatchInsertService courtScheduleBatchInsertService;
+    @Inject
+    private AllocatedListingRepository allocatedListingRepository;
+
+    @Inject
+    private BookingLogRepository bookingLogRepository;
+    @Inject
+    private CourtScheduleJudiciaryRepository courtScheduleJudiciaryRepository;
+    @Inject
+    /* package */ ProvisionalBookingRepository provisionalBookingRepository;
+
+    private static uk.gov.moj.cpp.courtscheduler.openapi.model.CourtScheduleJudiciary mapJudiciaryEntityToDomain(final CourtScheduleJudiciary entity) {
+        // Explicit field-by-field mapping, not ModelMapper reflection: ModelMapper's default
+        // converters don't know java.util.Date -> java.time.OffsetDateTime and would silently
+        // leave createdOn/updatedOn null (same class of bug hit earlier in this migration for
+        // CourtScheduleRepositoryImpl#deleteCourtSchedule).
+        return new uk.gov.moj.cpp.courtscheduler.openapi.model.CourtScheduleJudiciary()
+                .courtScheduleId(entity.getId() != null ? entity.getId().getCourtScheduleId() : null)
+                .judiciaryId(entity.getId() != null ? entity.getId().getJudiciaryId() : null)
+                .courtListingProfileId(entity.getCourtListingProfileId())
+                .rotaJudiciaryId(entity.getRotaJudiciaryId())
+                .title(entity.getTitle())
+                .forenames(entity.getForenames())
+                .surname(entity.getSurname())
+                .emailAddress(entity.getEmail())
+                .judiciaryType(entity.getJudiciaryType())
+                .isBenchChairman(entity.isBenchChairman())
+                .isDeputy(entity.isDeputy())
+                .position(entity.getPosition())
+                .active(entity.isActive())
+                .createdOn(toOffsetDateTime(entity.getCreatedOn()))
+                .updatedOn(toOffsetDateTime(entity.getUpdatedOn()));
+    }
+
+    /**
+     * Internal save helper preserving the legacy {@code AbstractEntityRepository#save} semantics:
+     * persist if the row doesn't yet exist in the DB (manually-set {@code String} ids would
+     * otherwise be routed through {@code merge} by Spring Data's default), merge otherwise.
+     */
+    private CourtSchedule saveInternal(final CourtSchedule entity) {
+        if (entity.getCourtScheduleId() == null
+                || entityManager.find(CourtSchedule.class, entity.getCourtScheduleId()) == null) {
+            entityManager.persist(entity);
+            return entity;
+        }
+        return entityManager.merge(entity);
+    }
+
+    @Override
     @Transactional
-    public void saveCourtSchedules(List<CourtSchedule> courtSchedules) {
-        List<CourtSchedule> failedSchedules = new ArrayList<>();
+    public void saveCourtSchedules(final List<CourtSchedule> courtSchedules) {
+        final List<CourtSchedule> failedSchedules = new ArrayList<>();
 
         batchInsertCourtSchedules(courtSchedules, failedSchedules);
 
@@ -382,7 +529,7 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
         }
     }
 
-    protected void batchInsertCourtSchedules(List<CourtSchedule> courtSchedules, List<CourtSchedule> failedSchedules) {
+    protected void batchInsertCourtSchedules(final List<CourtSchedule> courtSchedules, final List<CourtSchedule> failedSchedules) {
         if (courtSchedules == null || courtSchedules.isEmpty()) {
             LOGGER.debug("No court schedules to process");
             return;
@@ -416,7 +563,10 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
      * had recovered every record. See {@code SaveCourtSchedulesDuplicateTest} for
      * the reproducer.</p>
      */
-    private void processOptimizedBatches(List<CourtSchedule> courtSchedules, List<CourtSchedule> failedSchedules) {
+    // Each flushed batch must start from a genuinely empty, independent list — the ArrayList
+    // created per iteration below cannot be hoisted without corrupting previously-batched records.
+    @SuppressWarnings(SUPPRESS_INSTANTIATING_IN_LOOPS)
+    private void processOptimizedBatches(final List<CourtSchedule> courtSchedules, final List<CourtSchedule> failedSchedules) {
         final int totalRecords = courtSchedules.size();
         final int batchSize = Math.min(BATCH_SIZE, 1000); // Cap batch size for optimal performance
         final int numBatches = (totalRecords + batchSize - 1) / batchSize;
@@ -443,32 +593,36 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
     private void attemptBatchPersist(final List<CourtSchedule> batch, final List<CourtSchedule> failedSchedules) {
         try {
             courtScheduleBatchInsertService.persistBatch(batch);
-        } catch (Exception e) {
-            LOGGER.warn("Batch insert of {} records failed ({}); falling back to per-record retry", batch.size(), e.getMessage());
+        // Intentional safety net: the batch insert can fail in several ways (constraint
+        // violations, Hibernate/JDBC batch exceptions); any failure must fall back to the
+        // per-record retry path rather than aborting the whole batch.
+        } catch (@SuppressWarnings("PMD.AvoidCatchingGenericException") final Exception e) {
+            LOGGER.warn("Batch insert of {} records failed ({}); falling back to per-record retry", batch.size(), Encode.forJava(e.getMessage()));
             processIndividualRecordsFast(batch, failedSchedules);
         }
     }
 
-
     /**
      * Fast individual record processing with optimized entity manager usage.
      */
-    private void processIndividualRecordsFast(List<CourtSchedule> records, List<CourtSchedule> failedSchedules) {
+    private void processIndividualRecordsFast(final List<CourtSchedule> records, final List<CourtSchedule> failedSchedules) {
         LOGGER.debug("Processing {} records individually with fast method", records.size());
 
-        for (CourtSchedule cs : records) {
+        for (final CourtSchedule cs : records) {
             try {
                 // Each record is handled in its own REQUIRES_NEW transaction via retry service
                 courtScheduleRetryService.upsertOne(cs);
-            } catch (Exception ex) {
-                LOGGER.warn("Failed to upsert individual record {}: {}", cs.getCourtScheduleId(), ex.getMessage());
+            // Intentional safety net: a single record's failure (of any kind) must not abort
+            // the rest of the per-record retry loop — it is collected and reported instead.
+            } catch (@SuppressWarnings("PMD.AvoidCatchingGenericException") final Exception ex) {
+                LOGGER.warn("Failed to upsert individual record {}: {}", cs.getCourtScheduleId(), Encode.forJava(ex.getMessage()));
                 failedSchedules.add(cs);
             }
         }
     }
 
-
     //update on Create when needed
+    @Override
     @Transactional
     public CourtSchedule update(final CourtSchedule courtSchedule, final boolean isForRotaFile) {
 
@@ -477,13 +631,13 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
 
     @Override
     @Transactional
-    public Result update(CourtSchedule persistedCourtSchedule,
-                         UpdateCourtSchedule updateCourtSchedule,
-                         Optional<CourtRoom> courtRoom) {
+    public Result update(final CourtSchedule persistedCourtSchedule,
+                         final UpdateCourtSchedule updateCourtSchedule,
+                         final Optional<CourtRoom> courtRoom) {
         //SessionDate and CourtHouseId should not be updated
         persistedCourtSchedule.setCourtRoomId(updateCourtSchedule.getCourtRoomId());
         persistedCourtSchedule.setBusinessType(updateCourtSchedule.getBusinessType());
-        persistedCourtSchedule.setCourtSession(updateCourtSchedule.getSessionType());
+        persistedCourtSchedule.setCourtSession(updateCourtSchedule.getCourtSession());
         persistedCourtSchedule.setPanel(updateCourtSchedule.getPanel());
         persistedCourtSchedule.setMaxSlots(updateCourtSchedule.getMaxSlots());
         persistedCourtSchedule.setAvailableSlots(updateCourtSchedule.getAvailableSlots());
@@ -491,14 +645,14 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
         persistedCourtSchedule.setAvailableDuration(updateCourtSchedule.getAvailableDuration());
         persistedCourtSchedule.setMaxAdMorningDuration(updateCourtSchedule.getMaxDurationForMorning());
         persistedCourtSchedule.setMaxAdAfternoonDuration(updateCourtSchedule.getMaxDurationForAfternoon());
-        final DateUtils.SessionStartAndEndTime sessionStartAndEndTime = getOrElseDefaultSessionStartAndEndTimeIfEmpty(updateCourtSchedule.getSessionType(), updateCourtSchedule.getSessionStartTime(), updateCourtSchedule.getSessionEndTime());
+        final DateUtils.SessionStartAndEndTime sessionStartAndEndTime = getOrElseDefaultSessionStartAndEndTimeIfEmpty(updateCourtSchedule.getCourtSession(), updateCourtSchedule.getSessionStartTime(), updateCourtSchedule.getSessionEndTime());
         if (StringUtils.isNotEmpty(sessionStartAndEndTime.sessionStartTime()) && StringUtils.isNotEmpty(sessionStartAndEndTime.sessionEndTime())) {
-            persistedCourtSchedule.setSessionStartTime(combineDateAndTime(persistedCourtSchedule.getSessionDate(), sessionStartAndEndTime.sessionStartTime()));
-            persistedCourtSchedule.setSessionEndTime(combineDateAndTime(persistedCourtSchedule.getSessionDate(), sessionStartAndEndTime.sessionEndTime()));
+            persistedCourtSchedule.setSessionStartTime(combineDateAndTime(persistedCourtSchedule.getSessionDate(), sessionStartAndEndTime.sessionStartTime()).toInstant());
+            persistedCourtSchedule.setSessionEndTime(combineDateAndTime(persistedCourtSchedule.getSessionDate(), sessionStartAndEndTime.sessionEndTime()).toInstant());
         }
         persistedCourtSchedule.setNationalBreakTime(persistedCourtSchedule.getNationalBreakTime());
-        persistedCourtSchedule.setUpdatedOn(new Date());
-        persistedCourtSchedule.setIsOverbookingAllowed(updateCourtSchedule.isOverbookingAllowed());
+        persistedCourtSchedule.setUpdatedOn(Instant.now());
+        persistedCourtSchedule.setIsOverbookingAllowed(updateCourtSchedule.getIsOverbookingAllowed());
         persistedCourtSchedule.setJurisdiction(updateCourtSchedule.getJurisdiction());
 
         if (nonNull(updateCourtSchedule.getIsDraft())) {
@@ -514,114 +668,76 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
         }
 
         saveInternal(persistedCourtSchedule);
-        return Result.SUCCESS();
+        return new Result().msg("Success").success(true);
     }
 
-    public List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> findBy(CourtScheduleRequestParam courtScheduleRequestParam) {
+    @Override
+    public List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> findBy(final CourtScheduleRequestParam courtScheduleRequestParam) {
 
         final int pageSize = Integer.parseInt(courtScheduleRequestParam.pageSize());
         final int pageNumber = Integer.parseInt(courtScheduleRequestParam.pageNumber());
 
-        CriteriaBuilder criteriaBuilder = entityManager.getCriteriaBuilder();
-        CriteriaQuery<CourtSchedule> criteriaQuery = criteriaBuilder.createQuery(CourtSchedule.class);
-        courtScheduleCriteria.getCourtScheduleCriteria(courtScheduleRequestParam, criteriaBuilder, criteriaQuery);
-        List<CourtSchedule> resultList = entityManager.createQuery(criteriaQuery)
+        final CriteriaBuilder criteriaBuilder = entityManager.getCriteriaBuilder();
+        final CriteriaQuery<CourtSchedule> criteriaQuery = criteriaBuilder.createQuery(CourtSchedule.class);
+        courtScheduleCriteria.applyCourtScheduleCriteria(courtScheduleRequestParam, criteriaBuilder, criteriaQuery);
+        final List<CourtSchedule> resultList = entityManager.createQuery(criteriaQuery)
                 .setFirstResult((pageNumber - 1) * pageSize).setMaxResults(pageSize)
                 .getResultList();
         return resultList.stream().map(CourtSchedulerConverter::convert).toList();
     }
 
+    @Override
     public CourtSchedule retrieveCourtScheduleWithListingById(final String courtScheduleId) {
-        StringBuilder queryString = new StringBuilder("SELECT distinct s.*, case when al.id is not null then true else false end as hasHearingsBooked FROM court_schedule s left outer join  allocated_listings al on(s.id = al.court_schedule_id)  WHERE active = true AND s.id  = :courtScheduleId");
+        final StringBuilder queryString = new StringBuilder("SELECT distinct s.*, case when al.id is not null then true else false end as hasHearingsBooked FROM court_schedule s left outer join  allocated_listings al on(s.id = al.court_schedule_id)  WHERE active = true AND s.id  = :courtScheduleId");
         final jakarta.persistence.Query query = entityManager.createNativeQuery(queryString.toString(), NATIVE_QUERY_COURT_SCHEDULE_MAPPING_VIEW);
         query.setParameter("courtScheduleId", courtScheduleId);
         final List resultList = query.getResultList();
         return isNotEmpty(resultList) ? (CourtSchedule) resultList.get(0) : null;
     }
 
-    @Transactional
-    public int getInconsistentCourtSchedulersByOucode(String ouCode) {
-        // Step 1: Find inconsistent slots
-        List<Object[]> inconsistentSlots = entityManager.createNativeQuery("""
-                        select
-                            cs.id,
-                            cs.is_slot_based,
-                            cs.max_slot,
-                            cs.available_slot,
-                            cs.max_duration_mins,
-                            cs.available_duration_mins,
-                            sum(al.duration) as total_duration
-                        from court_schedule cs
-                        join allocated_listings al on cs.id = al.court_schedule_id
-                        where cs.active = true
-                          and cs.support_ad_split = false
-                          and cs.oucode = :ouCode
-                          and cs.session_start > current_date
-                        group by cs.id, cs.is_slot_based, cs.max_slot, cs.available_slot, cs.max_duration_mins, cs.available_duration_mins
-                        having (
-                            (cs.is_slot_based = true and cs.max_slot - sum(al.duration) != cs.available_slot)
-                            or (cs.is_slot_based = false and cs.max_duration_mins - sum(al.duration) != cs.available_duration_mins)
-                        )
-                        """)
-                .setParameter(OU_CODE, ouCode)
-                .getResultList();
-
-        int updateCount = 0;
-
-        for (Object[] row : inconsistentSlots) {
-            String courtScheduleId = (String) row[0];
-            boolean isSlotBased = (boolean) row[1];
-            int maxSlot = ((Number) row[2]).intValue();
-            int availableSlot = ((Number) row[3]).intValue();
-            int maxDurationMins = ((Number) row[4]).intValue();
-            int availableDurationMins = ((Number) row[5]).intValue();
-            int totalDuration = ((Number) row[6]).intValue();
-
-            int correctedValue = isSlotBased ? (maxSlot - totalDuration) : (maxDurationMins - totalDuration);
-
-            CourtSchedule courtSchedule = entityManager.find(CourtSchedule.class, courtScheduleId);
-
-            if (courtSchedule != null) {
-                if (isSlotBased && correctedValue != availableSlot) {
-                    courtSchedule.setAvailableSlots(correctedValue);
-                } else if (!isSlotBased && correctedValue != availableDurationMins) {
-                    courtSchedule.setAvailableDuration(correctedValue);
-                }
-                courtSchedule.setUpdatedOn(new Date());
-                entityManager.merge(courtSchedule);
-                updateCount++;
-            }
+    @Override
+    public List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> getCourtSchedulesByIdList(final List<String> courtScheduleIds) {
+        if (isEmpty(courtScheduleIds)) {
+            return new ArrayList<>();
         }
-        return updateCount;
-    }
+        // Defensive: a caller passing the same id twice would still be safe with the fixed SQL
+        // (IN is set-based), but deduping here keeps the wire payload and param binding clean.
+        final List<String> dedupedIds = new ArrayList<>(new LinkedHashSet<>(courtScheduleIds));
 
+        final jakarta.persistence.Query query = entityManager.createNativeQuery(COURT_SCHEDULE_ALL_FIELDS_QUERY_STRING, NATIVE_QUERY_COURT_SCHEDULE_MAPPING_ALL);
 
-    public List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> getCourtSchedulesByIdList(List<String> courtScheduleIds) {
-
-        final jakarta.persistence.Query query = entityManager.createNativeQuery(COURT_SCHEDULE_ALL_FIELDS_QUERY_STRING.toString(), NATIVE_QUERY_COURT_SCHEDULE_MAPPING_ALL);
-
-        Map<String, Object> params = new HashMap<>();
-        params.put("courtScheduleIds", courtScheduleIds);
+        final Map<String, Object> params = new HashMap<>();
+        params.put(COURT_SCHEDULE_IDS, dedupedIds);
         params.forEach(query::setParameter);
 
-        final List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> courtSchedulesResult = getCourtSchedulesResult(query);
+        final List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> courtSchedulesResult = getCourtSchedulesResult(query);
 
-        ModelMapper modelMapper = new ModelMapper();
-        List<CourtScheduleJudiciary> judiciaryList = getCourtScheduleJudiciariesByCourtScheduleIds(courtScheduleIds);
-        List<uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary> domainJudiciaries =
-                judiciaryList.stream()
-                        .map(j -> modelMapper.map(j, uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary.class))
-                        .toList();
-        courtSchedulesResult.forEach(schedule ->
-                addJudiciaries(domainJudiciaries, schedule));
+        enrichWithJudiciary(courtSchedulesResult);
         return courtSchedulesResult;
     }
 
-    private List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> getCourtSchedulesResult(final jakarta.persistence.Query query) {
+    @Override
+    public void enrichWithJudiciary(final List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> courtSchedules) {
+        if (isEmpty(courtSchedules)) {
+            return;
+        }
+        final List<String> courtScheduleIds = courtSchedules.stream()
+                .map(uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule::getCourtScheduleId)
+                .toList();
+        final List<CourtScheduleJudiciary> judiciaryList = getCourtScheduleJudiciariesByCourtScheduleIds(courtScheduleIds);
+        final List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtScheduleJudiciary> domainJudiciaries =
+                judiciaryList.stream()
+                        .map(CourtScheduleRepositoryImpl::mapJudiciaryEntityToDomain)
+                        .toList();
+        courtSchedules.forEach(schedule ->
+                addJudiciaries(domainJudiciaries, schedule));
+    }
+
+    private List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> getCourtSchedulesResult(final jakarta.persistence.Query query) {
         final List<CourtSchedule> resultList = query.getResultList();
 
         final List<String> courtScheduleIdsHavingHearingsBooked = resultList.stream()
-                .filter(CourtSchedule::getHasHearingsBooked)
+                .filter(CourtSchedule::hasHearingsBooked)
                 .map(CourtSchedule::getCourtScheduleId).toList();
 
         final List<AllocatedListingEachBooked> allocatedListingEachBookedList = isNotEmpty(courtScheduleIdsHavingHearingsBooked) ?
@@ -630,9 +746,10 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
         return resultList.stream().map(courtSchedule -> CourtSchedulerConverter.convert(courtSchedule, allocatedListingEachBookedList)).toList();
     }
 
-    public List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> getCourtSchedulesBy(final CourtScheduleRequestParam courtScheduleRequestParam) {
-        StringBuilder queryString = new StringBuilder("SELECT distinct s.*, case when al.id is not null then true else false end as hasHearingsBooked FROM court_schedule s left outer join  allocated_listings al on(s.id = al.court_schedule_id)  WHERE active = true ");
-        Map<String, Object> params = new HashMap<>();
+    @Override
+    public List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> getCourtSchedulesBy(final CourtScheduleRequestParam courtScheduleRequestParam) {
+        final StringBuilder queryString = new StringBuilder("SELECT distinct s.*, case when al.id is not null then true else false end as hasHearingsBooked FROM court_schedule s left outer join  allocated_listings al on(s.id = al.court_schedule_id)  WHERE active = true ");
+        final Map<String, Object> params = new HashMap<>();
         addFiltersForGetCourtSchedulesBy(courtScheduleRequestParam, queryString, params);
         final jakarta.persistence.Query query = entityManager.createNativeQuery(queryString.toString(), NATIVE_QUERY_COURT_SCHEDULE_MAPPING_VIEW);
         params.forEach((key, value) -> {
@@ -666,7 +783,7 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
         }
         if (courtScheduleRequestParam.isDraft() != null) {
             queryString.append("AND s.is_draft = :isDraft ");
-            params.put("isDraft", courtScheduleRequestParam.isDraft());
+            params.put(IS_DRAFT, courtScheduleRequestParam.isDraft());
         }
         queryString.append("group by s.id, al.id, s.court_room_number order by session_start ");
         if (courtScheduleRequestParam.pageSize() != null) {
@@ -680,25 +797,300 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
     }
 
     @Override
-    public List<uk.gov.moj.cpp.courtscheduler.domain.mi.CourtSchedule> findByUpdatedOnGreaterThanAndUpdatedOnLessThan(MiFilterCriteria miFilterCriteria) {
+    public List<uk.gov.moj.cpp.courtscheduler.domain.mi.CourtSchedule> findByUpdatedOnGreaterThanAndUpdatedOnLessThan(final MiFilterCriteria miFilterCriteria) {
         final List<CourtSchedule> courtScheduleList = entityManager.createQuery(
                         "SELECT cs FROM CourtSchedule cs WHERE cs.updatedOn > :fromDate AND cs.updatedOn < :toDate",
                         CourtSchedule.class)
-                .setParameter("fromDate", DateUtils.getDate(miFilterCriteria.getFromLocalDate()))
-                .setParameter("toDate", DateUtils.getDate(miFilterCriteria.getToLocalDate()))
+                .setParameter("fromDate", DateUtils.getDate(miFilterCriteria.getFromDate()).toInstant())
+                .setParameter("toDate", DateUtils.getDate(miFilterCriteria.getToDate()).toInstant())
                 .getResultList();
         return courtScheduleList.stream().map(CourtSchedulerConverter::convertToMi).toList();
     }
 
+    @Override
     @Transactional
     public Result saveBookedSlots(final List<AllocatedSlot> slots, final boolean isProvisionalSlot, final boolean isSearchUpdate) {
+        return saveBookedSlots(slots, isProvisionalSlot, isSearchUpdate, true);
+    }
+
+    /**
+     * @param releaseExistingHearingAllocations when {@code false} (and {@code isSearchUpdate} is
+     *                                          {@code false}), skips {@code bookSlotsWithCourtScheduleId}'s
+     *                                          internal hearing-wide {@link #releaseOldAllocatedListings(String)}
+     *                                          call. Callers that have already released only a date-scoped
+     *                                          subset of a hearing's allocations (e.g. {@code
+     *                                          releaseAllocatedListingsForDates}) must pass {@code false} here,
+     *                                          otherwise the hearing-wide release wipes out the untouched days'
+     *                                          allocations before booking.
+     */
+    @Override
+    @Transactional
+    public Result saveBookedSlots(final List<AllocatedSlot> slots, final boolean isProvisionalSlot, final boolean isSearchUpdate,
+                                  final boolean releaseExistingHearingAllocations) {
         if (isSearchUpdate) {
             return bookSlotsWithoutCourtScheduleId(slots, isProvisionalSlot);
         } else {
-            return bookSlotsWithCourtScheduleId(slots, isProvisionalSlot);
+            return bookSlotsWithCourtScheduleId(slots, isProvisionalSlot, releaseExistingHearingAllocations);
         }
     }
 
+    @Override
+    public Optional<AllocatedListing> findAllocatedListingByHearingId(final String hearingId) {
+        final List<AllocatedListing> existing = allocatedListingRepository.findByHearingId(hearingId);
+        return existing.stream().findFirst();
+    }
+
+    /**
+     * Crown-only fallback search. Matches strictly on ouCode + sessionDate; relaxes businessType,
+     * court_session, and (optionally) courtRoomId.
+     *
+     * Draft preference:
+     *   - courtRoomId supplied    -> try non-draft at that room first, then draft at that room
+     *   - courtRoomId not supplied -> try draft sessions (unallocated intent) at the centre
+     *
+     * Availability is deliberately not filtered (SPRDT-1159): search-and-book is overbooking-exempt,
+     * so the first session on the requested date/room is bookable regardless of remaining capacity.
+     * {@code durationInMinutes} only feeds the result's informational overbooked flag.
+     *
+     * @param earliestHearingTime Reserved for future refinement (prefer sessions covering this time).
+     *                            Currently ignored because the existing court_schedule rows don't model
+     *                            "start time covers X"; any session on the target date is acceptable.
+     */
+    // The result is built at most once, right before the early return on the first matching
+    // draft/non-draft candidate — it depends on that iteration's entity/lacksCapacity and cannot
+    // be hoisted out of the loop.
+    @SuppressWarnings(SUPPRESS_INSTANTIATING_IN_LOOPS)
+    @Override
+    public Optional<CrownFallbackSearchResult> searchCrownFallbackSlots(
+            final String courtCentreId,
+            final LocalDate hearingDate,
+            final int durationInMinutes,
+            final String courtRoomId,
+            final String earliestHearingTime) {
+
+        final boolean hasCourtRoomId = courtRoomId != null && !courtRoomId.isBlank();
+        final boolean[] draftPreferenceOrder = hasCourtRoomId
+                ? new boolean[]{false, true}
+                : new boolean[]{true};
+
+        for (final boolean isDraft : draftPreferenceOrder) {
+            final Optional<CourtSchedule> candidate = findCrownFallbackCandidate(
+                    courtCentreId, hearingDate, courtRoomId, isDraft);
+            if (candidate.isPresent()) {
+                // Build domain CourtSchedule with the exact fields downstream needs for the
+                // response (sessionDate, sessionStartTime, sessionEndTime, businessType, isDraft,
+                // ouCode, courtRoomId). convertForOverbooking() leaves sessionDate null, which
+                // trips a NullPointerException when SlotsUpdateService renders the response.
+                final CourtSchedule entity = candidate.get();
+                final int booked = allocatedListingRepository.getAllocatedListingsByCourtScheduleId(List.of(entity.getCourtScheduleId())).stream()
+                        .map(AllocatedListingTotalBooked::getTotalBooked)
+                        .filter(Objects::nonNull)
+                        .mapToInt(Integer::intValue)
+                        .sum();
+                return of(new CrownFallbackSearchResult(
+                        toCrownFallbackDomain(entity), lacksCapacity(entity, booked, durationInMinutes)));
+            }
+        }
+        return Optional.empty();
+    }
+
+    /**
+     * SPRDT-1159 on-the-fly session creation: called when {@link #searchCrownFallbackSlots} finds
+     * nothing. Creates a duration-based AD session with a fixed {@value #AUTO_SESSION_MAX_DURATION_MINS}-minute
+     * capacity and overbooking disallowed. The session starts at the requested hearing time and, per
+     * SPRDT-1324, ends at the fixed all-day default {@value uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils#DEFAULT_ALL_DAY_END_TIME}
+     * Europe/London rather than start + capacity. FINAL ({@code is_draft=false}) with businessType
+     * {@value #AUTO_SESSION_BUSINESS_TYPE_ROOM_PINNED} when a courtRoomId was supplied, DRAFT with
+     * {@value #AUTO_SESSION_BUSINESS_TYPE_CENTRE_WIDE} otherwise. Metadata the request cannot carry
+     * (listing profile, ouCode, court house/room names, panel) is copied from the latest active
+     * session at the court centre (room-scoped first when a room is supplied).
+     *
+     * <p>SPRDT-1283: a centre with no session at all to copy from no longer blocks creation — the
+     * session is built from the request's own metadata (ouCode/courtCentreName/courtRoomName) plus
+     * fixed defaults, starting at the requested hearing time. ouCode is the one field that cannot
+     * be defaulted (the court calendar reads sessions by ouCode), so empty is returned only when
+     * neither a template nor a request ouCode exists.</p>
+     */
+    @Override
+    @Transactional
+    public Optional<CrownFallbackSearchResult> createCrownFallbackSession(final CrownFallbackRequest request) {
+
+        final String courtCentreId = request.getCourtCentreId();
+        final LocalDate hearingDate = request.getHearingDate();
+        final String courtRoomId = request.getCourtRoomId();
+        final boolean hasCourtRoomId = courtRoomId != null && !courtRoomId.isBlank();
+
+        Optional<CourtSchedule> template = findLatestActiveSessionTemplate(courtCentreId, hasCourtRoomId ? courtRoomId : null);
+        if (template.isEmpty() && hasCourtRoomId) {
+            template = findLatestActiveSessionTemplate(courtCentreId, null);
+        }
+        if (template.isEmpty() && (request.getOuCode() == null || request.getOuCode().isBlank())) {
+            return Optional.empty();
+        }
+        final CourtSchedule t = template.orElse(null);
+
+        final LocalTime startTime = resolveAutoSessionStartTime(request.getEarliestHearingTime(), t);
+
+        final CourtSchedule created = new CourtSchedule();
+        created.setCourtScheduleId(UUID.randomUUID().toString());
+        created.setListingProfileId(t != null ? t.getListingProfileId() : AUTO_SESSION_PROFILE_ID);
+        created.setOuCode(t != null ? t.getOuCode() : request.getOuCode());
+        created.setCourtHouseId(courtCentreId);
+        created.setCourtHouseName(t != null ? t.getCourtHouseName()
+                : firstNonBlank(request.getCourtCentreName(), request.getOuCode()));
+        // court_room_id is NOT NULL, and DRAFT sessions carry a room in the DB (rooms are stripped
+        // from draft responses downstream, ADR-005) — so the DRAFT case borrows the template's room,
+        // or a stable per-centre virtual room when the centre has no template. Room name/number are
+        // display-metadata approximations, the id is authoritative.
+        created.setCourtRoomId(hasCourtRoomId ? courtRoomId
+                : t != null ? t.getCourtRoomId() : autoSessionVirtualRoomId(courtCentreId));
+        created.setCourtRoomNumber(t != null ? t.getCourtRoomNumber() : AUTO_SESSION_ROOM_NUMBER);
+        created.setCourtRoomName(t != null ? t.getCourtRoomName()
+                : firstNonBlank(request.getCourtRoomName(), AUTO_SESSION_ROOM_NAME));
+        created.setOperationalUnit(t != null ? t.getOperationalUnit()
+                : firstNonBlank(request.getCourtCentreName(), request.getOuCode()));
+        created.setBusinessType(hasCourtRoomId
+                ? AUTO_SESSION_BUSINESS_TYPE_ROOM_PINNED
+                : AUTO_SESSION_BUSINESS_TYPE_CENTRE_WIDE);
+        created.setPanel(t != null ? t.getPanel() : ADULT.name());
+        created.setCourtSession(AUTO_SESSION_COURT_SESSION);
+        created.setActive(true);
+        // Duration-based session: is_slot_based=false AND support_ad_split=false — the pair the
+        // availability aggregation requires before it computes available_duration_mins at all.
+        created.setSlotBased(false);
+        created.setSupportAdSplit(false);
+        created.setSessionDate(hearingDate);
+        created.setMaxSlots(t != null ? t.getMaxSlots() : 0);
+        created.setAvailableSlots(t != null ? t.getMaxSlots() : 0);
+        created.setMaxDuration(AUTO_SESSION_MAX_DURATION_MINS);
+        created.setAvailableDuration(AUTO_SESSION_MAX_DURATION_MINS);
+        created.setHasHearingsBooked(false);
+        created.setMaxAdMorningDuration(t != null ? t.getMaxAdMorningDuration() : AUTO_SESSION_HALF_DAY_MINS);
+        created.setMaxAdAfternoonDuration(t != null ? t.getMaxAdAfternoonDuration() : AUTO_SESSION_HALF_DAY_MINS);
+        created.setIsOverbookingAllowed(false);
+        created.setIsDraft(!hasCourtRoomId);
+        created.setJurisdiction(t != null ? t.getJurisdiction() : AUTO_SESSION_JURISDICTION);
+        created.setNationalBreakTime(t != null ? t.getNationalBreakTime()
+                : hearingDate.atTime(AUTO_SESSION_BREAK_TIME).atZone(ZoneOffset.UTC).toInstant());
+        created.setSessionStartTime(hearingDate.atTime(startTime).atZone(ZoneOffset.UTC).toInstant());
+        // The end is a London wall-clock time (BST-aware); the start is the requested UTC instant.
+        created.setSessionEndTime(hearingDate.atTime(AUTO_SESSION_END_TIME).atZone(TimezoneUtils.LONDON_ZONE).toInstant());
+
+        entityManager.persist(created);
+        entityManager.flush();
+
+        return of(new CrownFallbackSearchResult(toCrownFallbackDomain(created), false));
+    }
+
+    /**
+     * Start time for an auto-created session: the requested earliestHearingTime when parseable,
+     * else the template session's time of day, else 10:00.
+     */
+    private static LocalTime resolveAutoSessionStartTime(final String earliestHearingTime, final CourtSchedule template) {
+        if (earliestHearingTime != null && !earliestHearingTime.isBlank()) {
+            try {
+                return ZonedDateTime.parse(earliestHearingTime).toLocalTime();
+            } catch (final java.time.format.DateTimeParseException e) {
+                LOGGER.warn("[CROWN-FB][AUTO-SESSION] Unparseable earliestHearingTime '{}' — falling back to template/default start time", earliestHearingTime);
+            }
+        }
+        if (template != null && template.getSessionStartTime() != null) {
+            return template.getSessionStartTime().atZone(ZoneOffset.UTC).toLocalTime();
+        }
+        return LocalTime.of(10, 0);
+    }
+
+    /**
+     * Stable per-centre virtual room for a DRAFT session auto-created at a centre with no template
+     * session: court_room_id is NOT NULL, and a deterministic UUID stops repeat auto-creates from
+     * fabricating a new room per booking (the draft-tier candidate search reuses the session anyway).
+     */
+    private static String autoSessionVirtualRoomId(final String courtCentreId) {
+        return UUID.nameUUIDFromBytes(
+                ("CROWN-FB-ROOM:" + courtCentreId).getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString();
+    }
+
+    private static String firstNonBlank(final String preferred, final String fallback) {
+        return preferred != null && !preferred.isBlank() ? preferred : fallback;
+    }
+
+    private Optional<CourtSchedule> findLatestActiveSessionTemplate(final String courtCentreId, final String courtRoomId) {
+        final StringBuilder sql = new StringBuilder(200)
+                .append("SELECT s.id FROM court_schedule s WHERE s.active = true AND s.court_house_id = :courtCentreId ");
+        if (courtRoomId != null) {
+            sql.append(" AND s.court_room_id = :courtRoomId ");
+        }
+        sql.append(" ORDER BY s.session_start DESC ");
+        final jakarta.persistence.Query query = entityManager.createNativeQuery(sql.toString());
+        query.setParameter(COURT_CENTRE_ID, courtCentreId);
+        if (courtRoomId != null) {
+            query.setParameter(COURT_ROOM_ID, courtRoomId);
+        }
+        query.setMaxResults(1);
+        @SuppressWarnings(UNCHECKED_WARNING)
+        final List<String> ids = query.getResultList();
+        if (ids.isEmpty()) {
+            return Optional.empty();
+        }
+        return ofNullable(entityManager.find(CourtSchedule.class, ids.get(0)));
+    }
+
+    private static uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule toCrownFallbackDomain(final CourtSchedule entity) {
+        return new uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule()
+                .courtScheduleId(entity.getCourtScheduleId())
+                .ouCode(entity.getOuCode())
+                .courtRoomId(entity.getCourtRoomId())
+                .courtHouseId(entity.getCourtHouseId())
+                .businessType(entity.getBusinessType())
+                .courtSession(entity.getCourtSession())
+                .sessionDate(entity.getSessionDate())
+                .draft(entity.isDraft())
+                .sessionStartTime(toOffsetDateTime(entity.getSessionStartTime()))
+                .sessionEndTime(toOffsetDateTime(entity.getSessionEndTime()));
+    }
+
+    private Optional<CourtSchedule> findCrownFallbackCandidate(
+            final String courtCentreId,
+            final LocalDate hearingDate,
+            final String courtRoomId,
+            final boolean isDraft) {
+
+        // Filter on court_schedule.court_house_id (same UUID as courtCentreId, per the
+        // domain CourtSchedule.courtHouseId comment). This lets listing callers supply a
+        // single canonical id (courtCentreId UUID) instead of the historical ouCode+courtCentreId pair.
+        // No availability or overbooking predicate (SPRDT-1159): search-and-book is
+        // overbooking-exempt, so any active session on the date/room qualifies.
+        final StringBuilder sql = new StringBuilder(300)
+                .append("SELECT s.id FROM court_schedule s "
+                        + "WHERE s.active = true "
+                        + "  AND s.court_house_id = :courtCentreId "
+                        + "  AND DATE(s.session_start) = :hearingDate "
+                        + "  AND s.is_draft = :isDraft ");
+
+        if (courtRoomId != null && !courtRoomId.isBlank()) {
+            sql.append(" AND s.court_room_id = :courtRoomId ");
+        }
+
+        sql.append(" ORDER BY s.session_start ASC ");
+
+        final jakarta.persistence.Query query = entityManager.createNativeQuery(sql.toString());
+        query.setParameter(COURT_CENTRE_ID, courtCentreId);
+        query.setParameter("hearingDate", java.sql.Date.valueOf(hearingDate));
+        query.setParameter(IS_DRAFT, isDraft);
+        if (courtRoomId != null && !courtRoomId.isBlank()) {
+            query.setParameter(COURT_ROOM_ID, courtRoomId);
+        }
+        query.setMaxResults(1);
+
+        @SuppressWarnings(UNCHECKED_WARNING)
+        final List<String> ids = query.getResultList();
+        if (ids.isEmpty()) {
+            return Optional.empty();
+        }
+        return ofNullable(entityManager.find(CourtSchedule.class, ids.get(0)));
+    }
+
+    @Override
     @Transactional
     public boolean searchBookHearingSlots(final List<AllocatedSlot> slots) {
         boolean isSearchSuccessful = false;
@@ -717,19 +1109,22 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
         return isSearchSuccessful;
     }
 
-    private Result bookSlotsWithCourtScheduleId(final List<AllocatedSlot> slots, final boolean isProvisionalSlot) {
+    private Result bookSlotsWithCourtScheduleId(final List<AllocatedSlot> slots, final boolean isProvisionalSlot,
+                                                final boolean releaseExistingHearingAllocations) {
         final Optional<String> hearingId = getHearingId(slots);
-        hearingId.ifPresent(this::releaseOldAllocatedListings);
+        if (releaseExistingHearingAllocations) {
+            hearingId.ifPresent(this::releaseOldAllocatedListings);
+        }
 
         final List<AllocatedSlot> updateAllocatedSlots = getUpdatedAllocatedSlots(slots, false);
 
         if (isNotEmpty(updateAllocatedSlots)) {
             persistHearingSlots(slots, isProvisionalSlot, updateAllocatedSlots);
-            final Result success = Result.SUCCESS();
-            updateAllocatedSlots.forEach(slot -> success.addHearingDaySchedule(slot.getSessionDate(), slot.getCourtScheduleId()));
+            final Result success = new Result().msg("Success").success(true);
+            updateAllocatedSlots.forEach(slot -> success.getHearingDayCourtSchedules().put(slot.getSessionDate(), slot.getCourtScheduleId()));
             return success;
         } else {
-            return Result.FAILED(format("courtScheduleId matching for non-provisional slot(s) has been failed,please check the logs. hearingId : %s", slots.get(0).getHearingId()));
+            return new Result().msg(format("courtScheduleId matching for non-provisional slot(s) has been failed,please check the logs. hearingId : %s", slots.get(0).getHearingId())).success(false);
         }
     }
 
@@ -745,11 +1140,11 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
             slots.clear();
             slots.addAll(updateAllocatedSlots.stream().toList());
         } else {
-            return Result.FAILED("Not able to allocate hearing slots");
+            return new Result().msg("Not able to allocate hearing slots").success(false);
         }
 
-        final Result success = Result.SUCCESS();
-        updateAllocatedSlots.forEach(slot -> success.addHearingDaySchedule(slot.getSessionDate(), slot.getCourtScheduleId()));
+        final Result success = new Result().msg("Success").success(true);
+        updateAllocatedSlots.forEach(slot -> success.getHearingDayCourtSchedules().put(slot.getSessionDate(), slot.getCourtScheduleId()));
         return success;
     }
 
@@ -757,48 +1152,306 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
         updateCourtSchedule(updateAllocatedSlots);
         saveAllocatedListing(updateAllocatedSlots);
         if (isProvisionalSlot) {
-            deleteProvisionalBooking(slots.get(0).getBookingId());
+            final String bookingId = slots.get(0).getBookingId();
+            // Release the hold the clerk took at slot-pick time. Keyed on the bookingId, so the
+            // pipeline's hearing-wide release (which uses the real hearing id) does not cover it.
+            // A no-op when there is nothing to release — legacy drafts have only a
+            // provisional_booking row, which deleteProvisionalBooking still soft-deletes.
+            //
+            // Only the unconfirmed rows go: the confirmed listing being written by this very call
+            // carries the same booking_id, so releasing by booking_id alone would delete it.
+            releaseReservationsForBooking(bookingId);
+            bookingLogRepository.record(BookingState.CONFIRMED, allocatedListingRepository.findByBookingId(bookingId).stream()
+                    .filter(row -> row.getExpiresAt() == null)
+                    .toList());
+            deleteProvisionalBooking(bookingId);
         }
     }
 
     @Override
-    public Optional<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> findCourtScheduleById(final String courtScheduleId) {
-        final uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule entity = entityManager.find(CourtSchedule.class, courtScheduleId);
+    public Optional<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> findCourtScheduleById(final String courtScheduleId) {
+        final CourtSchedule entity = entityManager.find(CourtSchedule.class, courtScheduleId);
         return ofNullable(entity)
-                .filter(uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule::isActive)
+                .filter(CourtSchedule::isActive)
                 .map(CourtSchedulerConverter::convertForOverbooking);
     }
 
+    @Override
+    public List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> findConsecutiveSessions(
+            final String anchorCourtScheduleId, final int daysNeeded) {
+        final CourtSchedule anchor = entityManager.find(CourtSchedule.class, anchorCourtScheduleId);
+        if (anchor == null || !anchor.isActive()) {
+            LOGGER.info("findConsecutiveSessions: anchor {} not found or inactive", anchorCourtScheduleId);
+            return Collections.emptyList();
+        }
+        // SPRDT-1572: a CROWN multiday block books duration-based AD sessions only. A slot-based
+        // anchor is refused here: the run query below excludes slot-based rows, so without this
+        // guard the run would silently start on the day AFTER the anchor.
+        if (anchor.isSlotBased()) {
+            LOGGER.info("findConsecutiveSessions: anchor {} is slot-based; multiday needs duration-based AD sessions",
+                    anchorCourtScheduleId);
+            return Collections.emptyList();
+        }
+
+        final LocalDate startDate = anchor.getSessionDate();
+        final int weekendBuffer = 2 * ((daysNeeded / 5) + 1);
+        final LocalDate endDateExclusive = startDate.plusDays(daysNeeded + weekendBuffer);
+
+        return queryAdWeekdaySessions(
+                anchor.getOuCode(), anchor.getCourtRoomId(), anchor.getBusinessType(),
+                startDate, endDateExclusive.minusDays(1), anchor.isDraft());
+    }
+
+    // ─── SPRDT-1089: no-anchor consecutive multi-day search (Phase 1) ─────────
+
+    /**
+     * CROWN no-anchor consecutive search (SPRDT-1089, AC3). Finds a single room in the court centre
+     * (filtered on {@code court_house_id}, the canonical court-centre id — same mapping as
+     * {@link #findCrownFallbackCandidate}) that has {@code daysNeeded} consecutive duration-based AD
+     * weekday sessions of one business type starting from {@code fromDate}, skipping weekends. Returns
+     * the run for the first qualifying (room, business type), or empty if none qualifies.
+     *
+     * <p>Mirrors {@link #queryAdWeekdaySessions}: {@code active = true}, {@code court_session = 'AD'},
+     * {@code EXTRACT(DOW) NOT IN (0,6)}. Consecutiveness across weekends is asserted by the caller
+     * ({@code areConsecutiveBusinessDays}); here we provide a generous window and let the caller trim.</p>
+     */
+    @Override
+    public List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> findConsecutiveDurationBasedSessionsForCentre(
+            final String courtCentreId, final LocalDate fromDate, final int daysNeeded) {
+        return findConsecutiveAdSessionsForCentre(courtCentreId, fromDate, daysNeeded, null, true);
+    }
+
+    @Override
+    public List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> findConsecutiveDurationBasedSessionsInCourtRoom(
+            final String courtCentreId, final LocalDate fromDate, final int daysNeeded, final String courtRoomId,
+            final boolean finalSessionsOnly) {
+        return findConsecutiveAdSessionsForCentre(courtCentreId, fromDate, daysNeeded, courtRoomId, true,
+                finalSessionsOnly ? Boolean.FALSE : null);
+    }
+
+    private List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> findConsecutiveAdSessionsForCentre(
+            final String courtCentreId, final LocalDate fromDate, final int daysNeeded, final String courtRoomId,
+            final boolean durationBasedOnly) {
+        return findConsecutiveAdSessionsForCentre(courtCentreId, fromDate, daysNeeded, courtRoomId, durationBasedOnly, null);
+    }
+
+    /** @param isDraft {@code null} for any draft state, else only sessions with that {@code is_draft}. */
+    private List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> findConsecutiveAdSessionsForCentre(
+            final String courtCentreId, final LocalDate fromDate, final int daysNeeded, final String courtRoomId,
+            final boolean durationBasedOnly, final Boolean isDraft) {
+        final StringBuilder roomQuery = new StringBuilder(512).append("""
+                SELECT s.court_room_id, s.rota_business_type
+                FROM court_schedule s
+                WHERE s.active = true
+                  AND s.court_house_id = :courtCentreId
+                  AND s.court_session = 'AD'
+                  AND EXTRACT(DOW FROM s.session_start) NOT IN (0, 6)
+                  AND DATE(s.session_start) = :fromDate
+                """);
+        if (courtRoomId != null) {
+            roomQuery.append("  AND s.court_room_id = :courtRoomId\n");
+        }
+        if (durationBasedOnly) {
+            roomQuery.append(DURATION_BASED_ONLY_PREDICATE);
+        }
+        if (isDraft != null) {
+            roomQuery.append("  AND s.is_draft = :isDraft\n");
+        }
+        roomQuery.append("""
+                GROUP BY s.court_room_id, s.rota_business_type
+                ORDER BY s.court_room_id, s.rota_business_type
+                """);
+        final jakarta.persistence.Query roomJpaQuery = entityManager.createNativeQuery(roomQuery.toString());
+        roomJpaQuery.setParameter(COURT_CENTRE_ID, courtCentreId);
+        roomJpaQuery.setParameter("fromDate", java.sql.Date.valueOf(fromDate));
+        if (courtRoomId != null) {
+            roomJpaQuery.setParameter("courtRoomId", courtRoomId);
+        }
+        if (isDraft != null) {
+            roomJpaQuery.setParameter(IS_DRAFT, isDraft);
+        }
+
+        @SuppressWarnings(UNCHECKED_WARNING)
+        final List<Object[]> rooms = roomJpaQuery.getResultList();
+        if (isEmpty(rooms)) {
+            return Collections.emptyList();
+        }
+
+        // Generous calendar window: daysNeeded business days plus enough buffer for the weekends spanned.
+        final int weekendBuffer = 2 * ((daysNeeded / 5) + 1);
+        final LocalDate toInclusive = fromDate.plusDays((long) daysNeeded + weekendBuffer);
+
+        for (final Object[] room : rooms) {
+            final String candidateRoomId = (String) room[0];
+            final String businessType = (String) room[1];
+            final List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> run = queryAdWeekdaySessionsInCentre(
+                    courtCentreId, candidateRoomId, businessType, fromDate, toInclusive, durationBasedOnly, isDraft);
+            if (run.size() >= daysNeeded) {
+                return run;
+            }
+        }
+        return Collections.emptyList();
+    }
+
+    private List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> queryAdWeekdaySessionsInCentre(
+            final String courtCentreId, final String courtRoomId, final String businessType,
+            final LocalDate fromInclusive, final LocalDate toInclusive, final boolean durationBasedOnly,
+            final Boolean isDraft) {
+        final StringBuilder queryStr = new StringBuilder(512).append("""
+                SELECT s.id
+                FROM court_schedule s
+                WHERE s.active = true
+                  AND s.court_house_id = :courtCentreId
+                  AND s.court_room_id = :courtRoomId
+                  AND s.rota_business_type = :businessType
+                  AND s.court_session = 'AD'
+                  AND EXTRACT(DOW FROM s.session_start) NOT IN (0, 6)
+                  AND s.session_start >= :startDate
+                  AND s.session_start <= :endDate
+                """);
+        if (durationBasedOnly) {
+            queryStr.append(DURATION_BASED_ONLY_PREDICATE);
+        }
+        if (isDraft != null) {
+            queryStr.append("  AND s.is_draft = :isDraft\n");
+        }
+        queryStr.append("ORDER BY s.session_start");
+        final jakarta.persistence.Query query = entityManager.createNativeQuery(queryStr.toString());
+        query.setParameter(COURT_CENTRE_ID, courtCentreId);
+        query.setParameter(COURT_ROOM_ID, courtRoomId);
+        query.setParameter(BUSINESS_TYPE, businessType);
+        query.setParameter(START_DATE, java.sql.Date.valueOf(fromInclusive));
+        query.setParameter(END_DATE, java.sql.Date.valueOf(toInclusive));
+        if (isDraft != null) {
+            query.setParameter(IS_DRAFT, isDraft);
+        }
+
+        @SuppressWarnings(UNCHECKED_WARNING)
+        final List<String> ids = query.getResultList();
+        if (isEmpty(ids)) {
+            return Collections.emptyList();
+        }
+        final List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> sessions =
+                new ArrayList<>(getCourtSchedulesByIdList(ids));
+        sessions.sort(java.util.Comparator.comparing(
+                uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule::getSessionDate));
+        return sessions;
+    }
+
+    @Override
+    public List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> findAdSessionsInRange(
+            final String ouCode, final String courtRoomId, final String businessType,
+            final LocalDate fromInclusive, final LocalDate toInclusive, final Boolean isDraft) {
+        return queryAdWeekdaySessions(ouCode, courtRoomId, businessType, fromInclusive, toInclusive, isDraft);
+    }
+
+    private List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> queryAdWeekdaySessions(
+            final String ouCode, final String courtRoomId, final String businessType,
+            final LocalDate fromInclusive, final LocalDate toInclusive, final Boolean isDraft) {
+        final StringBuilder queryStr = new StringBuilder(450)
+                .append("""
+                SELECT s.id
+                FROM court_schedule s
+                WHERE s.active = true
+                  AND s.oucode = :ouCode
+                  AND s.court_room_id = :courtRoomId
+                  AND s.court_session = 'AD'
+                  AND EXTRACT(DOW FROM s.session_start) NOT IN (0, 6)
+                  AND s.session_start >= :startDate
+                  AND s.session_start <= :endDate
+                """)
+                // SPRDT-1572: both callers (anchored consecutive search, extend tail) build CROWN
+                // multiday blocks, which book duration-based AD sessions only.
+                .append(DURATION_BASED_ONLY_PREDICATE);
+        // Every session of a CROWN multiday block shares one business type: the anchored consecutive
+        // search passes the anchor's and the extend tail passes the block's last day's (SPRDT-1475).
+        // null is kept only for the findAdSessionsInRange contract.
+        if (businessType != null) {
+            queryStr.append("  AND s.rota_business_type = :businessType\n");
+        }
+        // CROWN anchor consecutive: all days must share the anchor's draft state (isDraft non-null).
+        // The extend path passes null to leave draft state unconstrained.
+        if (isDraft != null) {
+            queryStr.append("  AND s.is_draft = :isDraft\n");
+        }
+        queryStr.append("ORDER BY s.session_start");
+        final jakarta.persistence.Query query = entityManager.createNativeQuery(queryStr.toString());
+        query.setParameter(OU_CODE, ouCode);
+        query.setParameter(COURT_ROOM_ID, courtRoomId);
+        if (businessType != null) {
+            query.setParameter(BUSINESS_TYPE, businessType);
+        }
+        query.setParameter(START_DATE, java.sql.Date.valueOf(fromInclusive));
+        query.setParameter(END_DATE, java.sql.Date.valueOf(toInclusive));
+        if (isDraft != null) {
+            query.setParameter(IS_DRAFT, isDraft);
+        }
+
+        @SuppressWarnings(UNCHECKED_WARNING)
+        final List<String> ids = query.getResultList();
+        if (isEmpty(ids)) {
+            return Collections.emptyList();
+        }
+        final List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> sessions =
+                new ArrayList<>(getCourtSchedulesByIdList(ids));
+        sessions.sort(java.util.Comparator.comparing(
+                uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule::getSessionDate));
+        return sessions;
+    }
+
+    @Override
     @Transactional
     public List<Hearing> updateListHearingSlots(final RequestedSlots slots) {
 
-        final List<uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing> allocatedListings = new ArrayList<>();
-        final List<uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule> courtSchedules = new ArrayList<>();
-        final ModelMapper modelMapper = new ModelMapper();
+        final List<AllocatedListing> allocatedListings = new ArrayList<>();
+        final List<CourtSchedule> courtSchedules = new ArrayList<>();
 
-         List<Hearing> hearings = flattenHearingSlots(slots);
+         final List<Hearing> hearings = flattenHearingSlots(slots);
+
+        // Release the hold taken at slot-pick time before the loop below charges
+        // each session for the real booking. The hold is keyed on the bookingId, so the
+        // hearing-wide release inside the loop (keyed on the real hearing id) does not cover it:
+        // a hold lives in booking_id with hearing_id null, so only a booking-keyed release sees it.
+        // Without this the session is decremented twice — once by the hold, once by the booking —
+        // until the 01:00 purge. Released once per distinct booking, before the loop, so a
+        // multi-session booking is released as a unit rather than re-attempted per session.
+        // No-op when there is nothing to release: a pre-go-live draft has only a
+        // provisional_booking row.
+        slots.getHearingSlots().stream()
+                .map(HearingSlot::getBookingId)
+                .filter(StringUtils::isNotBlank)
+                .distinct()
+                .forEach(this::releaseReservationsForBooking);
 
          hearings.forEach(hearing -> {
-             uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule cs = entityManager.find(CourtSchedule.class, hearing.getCourtScheduleId());
+             final CourtSchedule cs = entityManager.find(CourtSchedule.class, hearing.getCourtScheduleId());
             if (cs != null) {
-                //check slot based /duration based for deducting the available slots
+                // team/ccsph2 bookkeeping, kept for the MI export (GET /mi/court_schedules) until SPRDT-1406 drops court_schedule.available_slot / available_duration_mins. Reserve-a-slot holds never touch these columns, and nothing decides from them - availability is counted from allocated_listings.
                 if (cs.isSlotBased()) {
                     cs.setAvailableSlots(cs.getAvailableSlots() - 1);
-                } else cs.setAvailableDuration(cs.getAvailableDuration() - hearing.getDuration());
+                } else {
+                    cs.setAvailableDuration(cs.getAvailableDuration() - hearing.getDuration());
+                }
 
-                boolean isCourtScheduleReleased = releaseOldListingsFromAllocatedListings(hearing.getHearingId());
+                // A re-list replaces the hearing's previous allocation.
+                final boolean isCourtScheduleReleased = !allocatedListingRepository.findByHearingId(hearing.getHearingId()).isEmpty();
+                if (isCourtScheduleReleased) {
+                    releaseOldAllocatedListings(hearing.getHearingId());
+                }
 
                 final boolean isOverbookingAllowed = findCourtScheduleById(hearing.getCourtScheduleId()).stream().findFirst()
-                        .map(uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule::isOverbookingAllowed)
+                        .map(uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule::getOverbookingAllowed)
                         .orElse(false);
 
-                String hearingSource = resolveAllocatedListingSource(hearing.getSource(), isCourtScheduleReleased, isOverbookingAllowed);
+                final String hearingSource = resolveAllocatedListingSource(hearing.getSource(), isCourtScheduleReleased, isOverbookingAllowed);
                 //prepare allocated listing
-                uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing allocatedlisting = new AllocatedListing();
+                final AllocatedListing allocatedlisting = new AllocatedListing();
                 allocatedlisting.setHearingId(hearing.getHearingId());
+                allocatedlisting.setBookingId(hearing.getBookingId());
                 allocatedlisting.setCourtScheduleId(hearing.getCourtScheduleId());
                 allocatedlisting.setCourtRoomId(cs.getCourtRoomNumber());
                 allocatedlisting.setOucode(cs.getOuCode());
+                allocatedlisting.setRotaBusinessType(cs.getBusinessType());
                 allocatedlisting.setId(UUID.randomUUID().toString());
                 allocatedlisting.setHearingStartTime(getAdjustedHearingStartTime(hearing.getHearingStartTime(), cs));
                 allocatedlisting.setDuration(getAdjustedDuration(hearing, cs));
@@ -811,10 +1464,10 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
             }
          });
 
-        List<CourtScheduleJudiciary> judiciaryList = getCourtScheduleJudiciaries(courtSchedules);
-        List<uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary> domainJudiciaries =
+        final List<CourtScheduleJudiciary> judiciaryList = getCourtScheduleJudiciaries(courtSchedules);
+        final List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtScheduleJudiciary> domainJudiciaries =
                 judiciaryList.stream()
-                        .map(j -> modelMapper.map(j, uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary.class))
+                        .map(CourtScheduleRepositoryImpl::mapJudiciaryEntityToDomain)
                         .toList();
 
         hearings.forEach(hearing ->
@@ -822,6 +1475,7 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
 
         updateCourtScheduleWithRequestedList(courtSchedules);
         saveAllocatedListingWithRequestedList(allocatedListings);
+        bookingLogRepository.record(BookingState.CONFIRMED, allocatedListings);
 
         return hearings;
     }
@@ -834,52 +1488,225 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
         return nonNull(hearing.getDuration()) ? hearing.getDuration() : DEFAULT_DURATION_TO_BE_RETURNED;
     }
 
-    private void updateCourtScheduleWithRequestedList(List<uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule> slots) {
+    // Saves the counter decrements made above. team/ccsph2 bookkeeping, kept for the MI export (GET /mi/court_schedules) until SPRDT-1406 drops court_schedule.available_slot / available_duration_mins. Reserve-a-slot holds never touch these columns, and nothing decides from them - availability is counted from allocated_listings.
+    private void updateCourtScheduleWithRequestedList(final List<CourtSchedule> slots) {
         slots.forEach(this::saveInternal);
-
     }
 
-    private void saveAllocatedListingWithRequestedList(List<AllocatedListing> slots) {
+    private void saveAllocatedListingWithRequestedList(final List<AllocatedListing> slots) {
         slots.forEach(
                 allocatedListing -> {
                     allocatedListing.setHearingStartTime(
-                            DateUtils.toExactTimestamp(toIsoStringExtended(allocatedListing.getHearingStartTime())));
+                            toExactTimestamp(toIsoStringExtended(allocatedListing.getHearingStartTime())).toInstant());
                     this.allocatedListingRepository.save(allocatedListing);
                 }
         );
     }
 
-    @SuppressWarnings("unchecked")
-    public Pair<Integer, List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule>> getCourtSchedules(final HearingSlotRequestParam requestParam) {
-        Map<String, Object> queryParamsForCount = buildQueryParams(requestParam, true);
-        Map<String, Object> queryParamsForResult = buildQueryParams(requestParam, false);
+    @Override
+    @SuppressWarnings(UNCHECKED_WARNING)
+    public Pair<Integer, List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule>> getCourtSchedules(final HearingSlotRequestParam requestParam) {
+        final Map<String, Object> queryParamsForCount = buildQueryParams(requestParam, true);
+        final Map<String, Object> queryParamsForResult = buildQueryParams(requestParam, false);
 
-        // First, get total count without pagination
-        String countQuery = buildFullQuery(requestParam).replace(GET_HEARING_SLOTS_QUERY_PAGINATION, "");
-        List<CourtSchedule> allSchedules = executeQuery(countQuery, queryParamsForCount);
-        LOGGER.info("GET_HEARING_SLOTS_QUERY_MANDATORY_PARAMS ******* allSchedules : {}", allSchedules);
-        int totalCount = allSchedules.size();
-        LOGGER.info("GET_HEARING_SLOTS_QUERY_MANDATORY_PARAMS ******* allSchedules count : {}", totalCount);
+        // Fix #1 (perf analysis): cheap count query instead of materialising every matching row
+        // just to call .size(). The previous implementation ran the heavy SELECT (LEFT JOIN
+        // allocated_listings + 3x SUM(CASE WHEN) + 25-column GROUP BY) twice per request — once
+        // unpaginated to count, once paginated for the actual page. This single COUNT(*) query
+        // is on court_schedule alone (no join, no aggregates, no GROUP BY) and produces the same
+        // total because every WHERE predicate references cs.* only.
+        final String countQuery = buildCountQuery(requestParam);
+        final jakarta.persistence.Query countJpaQuery = entityManager.createNativeQuery(countQuery);
+        queryParamsForCount.forEach(countJpaQuery::setParameter);
+        final int totalCount = ((Number) countJpaQuery.getSingleResult()).intValue();
+        LOGGER.debug("getCourtSchedules totalCount: {}", totalCount);
 
-        // Then get paginated results
-        String paginatedQuery = buildFullQuery(requestParam);
-        List<CourtSchedule> paginatedSchedules = executeQuery(paginatedQuery, queryParamsForResult);
-        LOGGER.info("GET_HEARING_SLOTS_QUERY_MANDATORY_PARAMS ******* paginatedSchedules : {}", paginatedSchedules);
+        // Paginated results
+        final String paginatedQuery = buildFullQuery(requestParam);
+        final List<CourtSchedule> paginatedSchedules = executeQuery(paginatedQuery, queryParamsForResult);
+        // Fix #2 (perf analysis): do not serialise the full entity list at INFO. Log the row
+        // count only; if a full dump is ever needed, raise the logger to DEBUG.
+        LOGGER.debug("getCourtSchedules paginated row count: {}", paginatedSchedules.size());
 
         if (paginatedSchedules.isEmpty()) {
             return Pair.of(0, Collections.emptyList());
         }
 
-        List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> domainSchedules =
+        final List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> domainSchedules =
                 processScheduleEntities(paginatedSchedules);
 
         return Pair.of(totalCount, domainSchedules);
     }
 
+    /**
+     * Fix #4 (perf analysis) — discovery + re-hydrate path for multi-day Crown searches.
+     *
+     * <p>Strategy:
+     * <ol>
+     *   <li>Run a lightweight projection over <code>court_schedule</code> (no
+     *       <code>LEFT JOIN allocated_listings</code>, no aggregates, no GROUP BY) to enumerate
+     *       sessions matching the request's predicates and date window.</li>
+     *   <li>Group the rows by (court_room_id, rota_business_type, oucode) and keep only the
+     *       rooms where at least one window of <code>daysNeeded</code> consecutive business-day
+     *       sessions exists.</li>
+     *   <li>Collect the ids of <em>all</em> sessions in the surviving rooms (the look-ahead days
+     *       are needed by the capacity check that runs downstream in the service) and re-hydrate
+     *       them via {@link #getCourtSchedulesByIdList(List)}, which performs the expensive
+     *       aggregation only on this much smaller set.</li>
+     * </ol>
+     *
+     * <p>This is an over-approximation: a room can be returned as a candidate even if no
+     * concrete start date has sufficient available capacity. The downstream filter in
+     * {@code SlotsSearchService.filterForMultidayAvailability} resolves that with the now-
+     * available aggregated booking data.
+     *
+     * @param requestParam the original (already-window-extended) request
+     * @param daysNeeded   the number of consecutive business days the hearing requires
+     * @return the rehydrated candidate schedules; empty if no room qualifies
+     */
+    // computeIfAbsent's TreeSet/ArrayList suppliers only run the first time a grouping key is
+    // seen — the idiomatic "create on first use" pattern, not repeated wasteful allocation.
+    @SuppressWarnings(SUPPRESS_INSTANTIATING_IN_LOOPS)
+    @Override
+    public List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> getMultidayHearingSlotCandidates(
+            final HearingSlotRequestParam requestParam, final int daysNeeded) {
+
+        // 1. Cheap discovery query
+        final String discoverySql = buildDiscoveryQuery(requestParam);
+        final jakarta.persistence.Query discoveryQuery = entityManager.createNativeQuery(discoverySql);
+        buildQueryParams(requestParam, true).forEach(discoveryQuery::setParameter);
+
+        @SuppressWarnings(UNCHECKED_WARNING)
+        final List<Object[]> rows = discoveryQuery.getResultList();
+
+        if (rows.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        // 2. Group by (room, businessType, oucode) → distinct session dates and matching ids
+        final Map<String, Set<LocalDate>> datesByRoom = new HashMap<>();
+        final Map<String, List<String>> idsByRoom = new HashMap<>();
+        for (final Object[] row : rows) {
+            final String id = (String) row[0];
+            final String roomId = (String) row[1];
+            final String businessType = (String) row[2];
+            final String oucode = (String) row[3];
+            final LocalDate sessionDate = toLocalDate(row[4]);
+            if (id == null || roomId == null || sessionDate == null) {
+                continue;
+            }
+            final String key = roomId + "|" + businessType + "|" + oucode;
+            datesByRoom.computeIfAbsent(key, k -> new TreeSet<>()).add(sessionDate);
+            idsByRoom.computeIfAbsent(key, k -> new ArrayList<>()).add(id);
+        }
+
+        // 3. Surviving rooms: those with at least one daysNeeded-long business-day run
+        final List<String> candidateIds = new ArrayList<>();
+        for (final Map.Entry<String, Set<LocalDate>> entry : datesByRoom.entrySet()) {
+            if (hasConsecutiveBusinessDays(entry.getValue(), daysNeeded)) {
+                candidateIds.addAll(idsByRoom.get(entry.getKey()));
+            }
+        }
+
+        LOGGER.debug("getMultidayHearingSlotCandidates discoveryRows={}, totalRooms={}, candidateIds={}",
+                rows.size(), datesByRoom.size(), candidateIds.size());
+
+        if (candidateIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        // 4. Re-hydrate the survivors — this is the only place the heavy SQL runs
+        return rehydrateMultidayCandidatesWithSlotStartTimes(candidateIds);
+    }
+
+    /**
+     * Re-hydrate the discovered multi-day candidate ids through the same SLOTS query +
+     * {@link #processScheduleEntities(List)} pipeline the single-day hearing-slots search uses,
+     * so the response carries the hourly {@code slotStartTimes} breakdown. The discovery step in
+     * {@link #getMultidayHearingSlotCandidates} preserves the perf win by running this heavy
+     * aggregation only on the narrowed candidate set.
+     *
+     * <p>This must NOT delegate to {@link #getCourtSchedulesByIdList(List)}: that path runs the
+     * {@code COURT_SCHEDULE_ALL_FIELDS} query (which does not select {@code national_break_time})
+     * and never calls {@code addSlotStartTimes}. SPRDT-903 perf-fix #4 switched the multi-day
+     * re-hydrate to it, which is what silently dropped {@code slotStartTimes} from duration-based
+     * multi-day Crown searches while single-day searches kept it.
+     */
+    // Each batch's params map is bound to that batch's id sublist and passed to executeQuery
+    // immediately — it cannot be hoisted or reused across iterations.
+    @SuppressWarnings(SUPPRESS_INSTANTIATING_IN_LOOPS)
+    private List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> rehydrateMultidayCandidatesWithSlotStartTimes(final List<String> courtScheduleIds) {
+        if (isEmpty(courtScheduleIds)) {
+            return Collections.emptyList();
+        }
+        final List<String> dedupedIds = new ArrayList<>(new LinkedHashSet<>(courtScheduleIds));
+
+        final List<CourtSchedule> entities = new ArrayList<>();
+        for (int i = 0; i < dedupedIds.size(); i += ID_QUERY_BATCH_SIZE) {
+            final List<String> batch = dedupedIds.subList(i, Math.min(i + ID_QUERY_BATCH_SIZE, dedupedIds.size()));
+            final Map<String, Object> params = new HashMap<>();
+            params.put(COURT_SCHEDULE_IDS, batch);
+            entities.addAll(executeQuery(GET_HEARING_SLOTS_BY_IDS_QUERY, params));
+        }
+
+        if (entities.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return processScheduleEntities(entities);
+    }
+
+    // Deliberate: converts raw native-query column values, which JDBC may return as java.sql.Date.
+    @SuppressWarnings("PMD.ReplaceJavaUtilDate")
+    private static LocalDate toLocalDate(final Object value) {
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof LocalDate localDate) {
+            return localDate;
+        }
+        if (value instanceof java.sql.Date sqlDate) {
+            return sqlDate.toLocalDate();
+        }
+        // Defensive fallback: most JDBC drivers return java.sql.Date for DATE columns, but
+        // Hibernate's TemporalType handling can vary. java.sql.Date.toString() format is ISO.
+        return LocalDate.parse(value.toString());
+    }
+
+    private static boolean hasConsecutiveBusinessDays(final Set<LocalDate> dates, final int daysNeeded) {
+        if (daysNeeded <= 0) {
+            return true;
+        }
+        for (final LocalDate start : dates) {
+            LocalDate current = start;
+            boolean valid = true;
+            for (int day = 0; day < daysNeeded; day++) {
+                if (day > 0) {
+                    current = nextBusinessDay(current);
+                }
+                if (!dates.contains(current)) {
+                    valid = false;
+                    break;
+                }
+            }
+            if (valid) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static LocalDate nextBusinessDay(final LocalDate date) {
+        LocalDate next = date.plusDays(1);
+        while (next.getDayOfWeek() == DayOfWeek.SATURDAY || next.getDayOfWeek() == DayOfWeek.SUNDAY) {
+            next = next.plusDays(1);
+        }
+        return next;
+    }
+
     private String resolveAllocatedListingSource(final String rawHearingSource,
                                                  final boolean isCourtScheduleReleased,
                                                  final boolean isOverbookingAllowed) {
-        String source = isNotEmpty(rawHearingSource) ? rawHearingSource : "DEFAULT";
+        final String source = isNotEmpty(rawHearingSource) ? rawHearingSource : "DEFAULT";
 
         if (isCourtScheduleReleased) {
             return "MOVE";
@@ -891,8 +1718,8 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
         return source;
     }
 
-    private Map<String, Object> buildQueryParams(HearingSlotRequestParam requestParam, boolean isCountQuery) {
-        Map<String, Object> params = new HashMap<>();
+    private Map<String, Object> buildQueryParams(final HearingSlotRequestParam requestParam, final boolean isCountQuery) {
+        final Map<String, Object> params = new HashMap<>();
         params.put("panelType", List.of(requestParam.panel().split(",")));
         params.put("sessionStart", LocalDate.parse(requestParam.sessionStartDate()));
         params.put("sessionEnd", LocalDate.parse(requestParam.sessionEndDate()));
@@ -910,12 +1737,15 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
             params.put(COURT_ROOM_ID, requestParam.courtRoomId());
         }
 
+        // Must mirror appendOptionalPredicates exactly — a bound parameter with no predicate
+        // (or a predicate with no bound parameter) is an immediate JPA failure.
         if (StringUtils.isNotBlank(requestParam.businessType())) {
             params.put(BUSINESS_TYPE, requestParam.businessType());
-        } else {
-            if (isNotEmpty(requestParam.isSlotBased())) {
+            if (requestParam.isCrownMultiDaySearch() && isNotEmpty(requestParam.isSlotBased())) {
                 params.put("slotBased", requestParam.isSlotBased());
             }
+        } else if (isNotEmpty(requestParam.isSlotBased())) {
+            params.put("slotBased", requestParam.isSlotBased());
         }
 
         if (StringUtils.isNotBlank(requestParam.courtSession())) {
@@ -926,11 +1756,14 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
             params.put(HEARING_START_TIME,ZonedDateTime.parse(requestParam.hearingStartTime()));
         }
 
+        if (StringUtils.isNotBlank(requestParam.jurisdiction())) {
+            params.put("jurisdiction", requestParam.jurisdiction());
+        }
 
         if (!isCountQuery) {
             // Add pagination parameters
-            int pageSize = Integer.parseInt(requestParam.pageSize());
-            int pageNumber = Integer.parseInt(requestParam.pageNumber());
+            final int pageSize = Integer.parseInt(requestParam.pageSize());
+            final int pageNumber = Integer.parseInt(requestParam.pageNumber());
             params.put("pageSize", pageSize);
             params.put("offset", (pageNumber - 1) * pageSize);
         }
@@ -938,9 +1771,33 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
         return params;
     }
 
-    private String buildFullQuery(HearingSlotRequestParam requestParam) {
-        StringBuilder query = new StringBuilder(GET_HEARING_SLOTS_QUERY_MANDATORY_PARAMS);
+    private String buildFullQuery(final HearingSlotRequestParam requestParam) {
+        final StringBuilder query = new StringBuilder(HEARING_SLOTS_QUERY_INITIAL_CAPACITY).append(GET_HEARING_SLOTS_QUERY_MANDATORY_PARAMS);
+        appendOptionalPredicates(query, requestParam);
+        query.append(GET_HEARING_SLOTS_QUERY_GROUP_BY)
+                .append(GET_HEARING_SLOTS_QUERY_PAGINATION);
 
+        return query.toString();
+    }
+
+    // Fix #1 (perf analysis): companion to buildFullQuery that produces a cheap COUNT(*) query
+    // sharing the same predicate set, so totalCount cannot drift away from the paginated query.
+    private String buildCountQuery(final HearingSlotRequestParam requestParam) {
+        final StringBuilder query = new StringBuilder(GET_HEARING_SLOTS_COUNT_QUERY_MANDATORY_PARAMS);
+        appendOptionalPredicates(query, requestParam);
+        return query.toString();
+    }
+
+    // Fix #4 (perf analysis): companion to buildFullQuery that produces the slim discovery
+    // projection. Shares the same optional-predicate appender so the discovery and the
+    // re-hydrated set are guaranteed to come from the same WHERE clause.
+    private String buildDiscoveryQuery(final HearingSlotRequestParam requestParam) {
+        final StringBuilder query = new StringBuilder(GET_HEARING_SLOTS_DISCOVERY_QUERY_MANDATORY_PARAMS);
+        appendOptionalPredicates(query, requestParam);
+        return query.toString();
+    }
+
+    private void appendOptionalPredicates(final StringBuilder query, final HearingSlotRequestParam requestParam) {
         if (StringUtils.isNotBlank(requestParam.ouCode())) {
             query.append(" AND cs.oucode = :ouCode");
         }
@@ -953,12 +1810,18 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
             query.append(" AND cs.court_room_id = :courtRoomId");
         }
 
+        // SPRDT-1276: for a CROWN multi-day search only, businessType and isSlotBased are
+        // independent predicates rather than alternatives. The historic if/else means supplying a
+        // businessType silently drops the is_slot_based filter, which would let slot-based
+        // sessions back into the search that forces isSlotBased=false. MAGISTRATES (and CROWN at
+        // or under a full day) keep the original either/or behaviour untouched.
         if (StringUtils.isNotBlank(requestParam.businessType())) {
             query.append(" AND cs.rota_business_type = :businessType");
-        } else {
-            if (isNotEmpty(requestParam.isSlotBased())) {
+            if (requestParam.isCrownMultiDaySearch() && isNotEmpty(requestParam.isSlotBased())) {
                 query.append(" AND cs.is_slot_based = :slotBased");
             }
+        } else if (isNotEmpty(requestParam.isSlotBased())) {
+            query.append(" AND cs.is_slot_based = :slotBased");
         }
 
         if (StringUtils.isNotBlank(requestParam.courtSession())) {
@@ -969,14 +1832,22 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
             query.append(" AND (:hearingStartTime) between cs.session_start_time AND cs.session_end_time ");
         }
 
-        query.append(GET_HEARING_SLOTS_QUERY_GROUP_BY)
-                .append(GET_HEARING_SLOTS_QUERY_PAGINATION);
+        if (StringUtils.isNotBlank(requestParam.status())) {
+            if (STATUS_DRAFT.equalsIgnoreCase(requestParam.status())) {
+                query.append(" AND cs.is_draft = true");
+            } else if (STATUS_FINAL.equalsIgnoreCase(requestParam.status())) {
+                query.append(" AND cs.is_draft = false");
+            }
+            // "ALL" or any other value means no is_draft filter
+        }
 
-        return query.toString();
+        if (StringUtils.isNotBlank(requestParam.jurisdiction())) {
+            query.append(" AND cs.jurisdiction = :jurisdiction");
+        }
     }
 
-    private List<CourtSchedule> executeQuery(String query, Map<String, Object> params) {
-        jakarta.persistence.Query jpaQuery = entityManager.createNativeQuery(query, NATIVE_QUERY_COURT_SCHEDULE_MAPPING_SLOTS);
+    private List<CourtSchedule> executeQuery(final String query, final Map<String, Object> params) {
+        final jakarta.persistence.Query jpaQuery = entityManager.createNativeQuery(query, NATIVE_QUERY_COURT_SCHEDULE_MAPPING_SLOTS);
 
         // Set parameters
         params.forEach(jpaQuery::setParameter);
@@ -984,17 +1855,17 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
         return jpaQuery.getResultList();
     }
 
-    private List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> processScheduleEntities(List<CourtSchedule> scheduleEntities) {
+    private List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> processScheduleEntities(final List<CourtSchedule> scheduleEntities) {
         final long mappingStartTime = System.nanoTime();
 
-        Set<String> courtScheduleIds = new TreeSet<>();
-        Map<String, CourtSchedule> courtScheduleMap = scheduleEntities.stream()
+        final Set<String> courtScheduleIds = new TreeSet<>();
+        final Map<String, CourtSchedule> courtScheduleMap = scheduleEntities.stream()
                 .collect(Collectors.toMap(CourtSchedule::getCourtScheduleId, Function.identity()));
         scheduleEntities.forEach(e -> courtScheduleIds.add(e.getCourtScheduleId()));
 
-        Map<String, List<SlotStartTime>> slotStartTimeList = getCountBasedAllocatedListing(courtScheduleIds, courtScheduleMap);
+        final Map<String, List<SlotStartTime>> slotStartTimeList = getCountBasedAllocatedListing(courtScheduleIds, courtScheduleMap);
 
-        List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> domainSchedules = scheduleEntities.stream()
+        final List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> domainSchedules = scheduleEntities.stream()
                 .map(CourtSchedulerConverter::convert)
                 .toList();
 
@@ -1004,65 +1875,85 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
                 addSlotStartTimes(slotStartTimeList, schedule));
 
         final long mappingEndTime = System.nanoTime();
-        LOGGER.info("PRF: Time taken for mapping : {}", (mappingEndTime - mappingStartTime) / 1000000);
+        LOGGER.info("PRF: Time taken for mapping : {}", (mappingEndTime - mappingStartTime) / 1_000_000);
 
         return domainSchedules;
     }
 
-    private void processJudiciaryDetails(List<CourtSchedule> schedulesWithProfiles,
-                                         List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> domainSchedules) {
-        ModelMapper modelMapper = new ModelMapper();
-        List<CourtScheduleJudiciary> judiciaryList = getCourtScheduleJudiciaries(schedulesWithProfiles);
-        List<uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary> domainJudiciaries =
+    private void processJudiciaryDetails(final List<CourtSchedule> schedulesWithProfiles,
+                                         final List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> domainSchedules) {
+        final List<CourtScheduleJudiciary> judiciaryList = getCourtScheduleJudiciaries(schedulesWithProfiles);
+        final List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtScheduleJudiciary> domainJudiciaries =
                 judiciaryList.stream()
-                        .map(j -> modelMapper.map(j, uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary.class))
+                        .map(CourtScheduleRepositoryImpl::mapJudiciaryEntityToDomain)
                         .toList();
 
         domainSchedules.forEach(schedule ->
                 addJudiciaries(domainJudiciaries, schedule));
     }
 
-    public List<CourtScheduleJudiciary> getCourtScheduleJudiciaries(List<CourtSchedule> courtScheduleList) {
+    @Override
+    public List<CourtScheduleJudiciary> getCourtScheduleJudiciaries(final List<CourtSchedule> courtScheduleList) {
         return getCourtScheduleJudiciariesByCourtScheduleIds(courtScheduleList.stream().map(CourtSchedule::getCourtScheduleId).toList());
     }
 
-    public List<CourtScheduleJudiciary> getCourtScheduleJudiciariesByCourtScheduleIds(List<String> courtScheduleIdList) {
+    @Override
+    public List<CourtScheduleJudiciary> getCourtScheduleJudiciariesByCourtScheduleIds(final List<String> courtScheduleIdList) {
+        if (courtScheduleIdList == null || courtScheduleIdList.isEmpty()) {
+            return Collections.emptyList();
+        }
         final long startjudiciaryquery = System.nanoTime();
-        jakarta.persistence.Query query = entityManager.createNativeQuery("select * from court_schedule_judiciary s where s.active = true and s.court_schedule_id in (:courtScheduleIdList)", CourtScheduleJudiciary.class);
-        query.setParameter("courtScheduleIdList", courtScheduleIdList);
-        List<CourtScheduleJudiciary> courtScheduleJudiciaryList = query.getResultList();
+        final List<CourtScheduleJudiciary> courtScheduleJudiciaryList = new ArrayList<>();
+        for (int i = 0; i < courtScheduleIdList.size(); i += ID_QUERY_BATCH_SIZE) {
+            final List<String> batch = courtScheduleIdList.subList(i, Math.min(i + ID_QUERY_BATCH_SIZE, courtScheduleIdList.size()));
+            final jakarta.persistence.Query query = entityManager.createNativeQuery(
+                    "select * from court_schedule_judiciary s where s.active = true and s.court_schedule_id in (:courtScheduleIdList)",
+                    CourtScheduleJudiciary.class);
+            query.setParameter("courtScheduleIdList", batch);
+            courtScheduleJudiciaryList.addAll(query.getResultList());
+        }
         final long endjudiciaryquery = System.nanoTime();
-        LOGGER.info("PRF: Time taken for judiciaryquery : {}", (endjudiciaryquery - startjudiciaryquery) / 1000000);
+        LOGGER.info("PRF: Time taken for judiciaryquery : {}", (endjudiciaryquery - startjudiciaryquery) / 1_000_000);
         return courtScheduleJudiciaryList;
     }
 
-    public List<CourtScheduleJudiciary> getCourtScheduleJudiciariesForProvisionalBooking(List<CourtSchedule> courtScheduleList) {
+    @Override
+    public List<CourtScheduleJudiciary> getCourtScheduleJudiciariesForProvisionalBooking(final List<CourtSchedule> courtScheduleList) {
+        if (courtScheduleList == null || courtScheduleList.isEmpty()) {
+            return Collections.emptyList();
+        }
         final long startjudiciaryquery = System.nanoTime();
-        List<CourtScheduleJudiciary> courtScheduleJudiciaryList = entityManager.createNativeQuery("select * from court_schedule_judiciary s where s.active = true and s.court_schedule_id in (:courtScheduleIdList) and court_listing_profile_id in (:courtListingProfileIdList)", CourtScheduleJudiciary.class)
-                .setParameter("courtScheduleIdList", courtScheduleList.stream().map(CourtSchedule::getCourtScheduleId).toList())
-                .setParameter("courtListingProfileIdList", courtScheduleList.stream().map(CourtSchedule::getListingProfileId).toList())
-                .getResultList();
+        final List<CourtScheduleJudiciary> courtScheduleJudiciaryList = new ArrayList<>();
+        for (int i = 0; i < courtScheduleList.size(); i += ID_QUERY_BATCH_SIZE) {
+            final List<CourtSchedule> batch = courtScheduleList.subList(i, Math.min(i + ID_QUERY_BATCH_SIZE, courtScheduleList.size()));
+            courtScheduleJudiciaryList.addAll(entityManager.createNativeQuery(
+                    "select * from court_schedule_judiciary s where s.active = true and s.court_schedule_id in (:courtScheduleIdList) and court_listing_profile_id in (:courtListingProfileIdList)",
+                    CourtScheduleJudiciary.class)
+                .setParameter("courtScheduleIdList", batch.stream().map(CourtSchedule::getCourtScheduleId).toList())
+                .setParameter("courtListingProfileIdList", batch.stream().map(CourtSchedule::getListingProfileId).toList())
+                .getResultList());
+        }
         final long endjudiciaryquery = System.nanoTime();
-        LOGGER.info("PRF: Time taken for judiciaryquery : {}", (endjudiciaryquery - startjudiciaryquery) / 1000000);
+        LOGGER.info("PRF: Time taken for judiciaryquery : {}", (endjudiciaryquery - startjudiciaryquery) / 1_000_000);
         return courtScheduleJudiciaryList;
     }
 
+    @Override
     @Transactional
-    public List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> deleteCourtSchedule(List<String> courtScheduleIdList) {
-        List<uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule> errorDeleteCourtSchedules = new ArrayList<>();
-        ModelMapper modelMapper = new ModelMapper();
+    public List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> deleteCourtSchedule(final List<String> courtScheduleIdList) {
+        final List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule> errorDeleteCourtSchedules = new ArrayList<>();
         courtScheduleIdList.forEach(courtScheduleId -> {
-            CourtSchedule courtSchedule = entityManager.find(CourtSchedule.class, courtScheduleId);
+            final CourtSchedule courtSchedule = entityManager.find(CourtSchedule.class, courtScheduleId);
             if (courtSchedule != null) {
-                List<AllocatedListing> allocatedListings = allocatedListingRepository.findByCourtScheduleId(courtScheduleId);
+                final List<AllocatedListing> allocatedListings = allocatedListingRepository.findByCourtScheduleId(courtScheduleId);
                 if (isNotEmpty(allocatedListings)) {
-                    uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule domainCourtSchedule =
-                            modelMapper.map(courtSchedule, uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule.class);
+                    final uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule domainCourtSchedule =
+                            CourtSchedulerConverter.convert(courtSchedule);
                     errorDeleteCourtSchedules.add(domainCourtSchedule);
                 } else {
                     if (!courtSchedule.getSessionDate().isBefore(now())) {
-                        List<CourtScheduleJudiciary> courtScheduleJudiciaries = courtScheduleJudiciaryRepository.findByCourtScheduleId(courtScheduleId);
-                        courtScheduleJudiciaries.forEach(courtScheduleJudiciary -> courtScheduleJudiciaryRepository.remove(courtScheduleJudiciary));
+                        final List<CourtScheduleJudiciary> courtScheduleJudiciaries = courtScheduleJudiciaryRepository.findByCourtScheduleId(courtScheduleId);
+                        courtScheduleJudiciaries.forEach(courtScheduleJudiciaryRepository::remove);
                         entityManager.remove(entityManager.contains(courtSchedule) ? courtSchedule : entityManager.merge(courtSchedule));
                     }
                 }
@@ -1071,17 +1962,19 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
         return errorDeleteCourtSchedules;
     }
 
+    @Override
     @Transactional
     @SuppressWarnings({"squid:S2077"})
     public int deleteUnAllocatedCourtScheduleEntriesForRotaPeriod(final LocalDate startDate, final LocalDate endDate, final List<String> ouCodes) {
         return entityManager
                 .createNativeQuery(DELETE_UNALLOCATED_COURT_SCHEDULE_QUERY)
-                .setParameter("startDate", startDate)
-                .setParameter("endDate", endDate)
+                .setParameter(START_DATE, startDate)
+                .setParameter(END_DATE, endDate)
                 .setParameter("ouCodes", ouCodes)
                 .executeUpdate();
     }
 
+    @Override
     @Transactional
     @SuppressWarnings({"squid:S2077"})
     public int deleteUnAllocatedProvisionalEntries(final List<String> ouCodes) {
@@ -1091,20 +1984,22 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
                 .executeUpdate();
     }
 
+    @Override
     @Transactional
     @SuppressWarnings({"squid:S2077"})
     public int deleteSlots(final List<String> courtScheduleIds) {
         return entityManager
                 .createNativeQuery(DELETE_SLOTS_BY_IDS_QUERY)
-                .setParameter("courtScheduleIds", courtScheduleIds)
+                .setParameter(COURT_SCHEDULE_IDS, courtScheduleIds)
                 .executeUpdate();
     }
 
+    /** team/ccsph2 bookkeeping, kept for the MI export (GET /mi/court_schedules) until SPRDT-1406 drops court_schedule.available_slot / available_duration_mins. Reserve-a-slot holds never touch these columns, and nothing decides from them - availability is counted from allocated_listings. */
     @Override
     @Transactional
     public void releaseAllocatedSlotsOrDurationFromCourtSchedule(final List<AllocatedListing> allocatedListings) {
         allocatedListings.forEach(allocatedListing -> {
-            CourtSchedule courtSchedule = entityManager.find(CourtSchedule.class, allocatedListing.getCourtScheduleId());
+            final CourtSchedule courtSchedule = entityManager.find(CourtSchedule.class, allocatedListing.getCourtScheduleId());
             if (courtSchedule.isSlotBased()) {
                 courtSchedule.setAvailableSlots(courtSchedule.getAvailableSlots() + 1);
             } else {
@@ -1117,9 +2012,9 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
     protected void releaseCourtScheduleAllocatedSlotsForBookingId(final List<AllocatedListing> allocatedListings) {
 
         allocatedListings.forEach(allocatedListing -> {
-            Optional<ProvisionalBooking> byBookingId = provisionalBookingRepository.findByBookingId(allocatedListing.getBookingId());
+            final Optional<ProvisionalBooking> byBookingId = provisionalBookingRepository.findByBookingId(allocatedListing.getBookingId());
             if (byBookingId.isPresent()) {
-                ProvisionalBooking provisionalBooking = byBookingId.get();
+                final ProvisionalBooking provisionalBooking = byBookingId.get();
                 provisionalBooking.setActive(true);
                 provisionalBookingRepository.save(provisionalBooking);
             }
@@ -1127,24 +2022,23 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
     }
 
     protected boolean releaseOldListingsFromAllocatedListings(final String hearingId) {
-        List<AllocatedListing> allocatedListings = this.allocatedListingRepository.findByHearingId(hearingId);
-        allocatedListings.forEach(allocatedListing -> this.allocatedListingRepository.remove(allocatedListing));
+        final List<AllocatedListing> allocatedListings = this.allocatedListingRepository.findByHearingId(hearingId);
+        allocatedListings.forEach(this.allocatedListingRepository::remove);
         return !allocatedListings.isEmpty();
     }
 
-    List<AllocatedSlot> searchBookSlots(final List<AllocatedSlot> allocatedSlots) {
+    /* package */ List<AllocatedSlot> searchBookSlots(final List<AllocatedSlot> allocatedSlots) {
 
         final List<AllocatedSlot> matchedSlots = new ArrayList<>();
         for (final AllocatedSlot allocatedSlot : allocatedSlots) {
 
-            final LocalDateTime sessionFromHearingStartTime = StringUtils.isNotBlank(allocatedSlot.getHearingStartTime()) ? (ZonedDateTime.parse(allocatedSlot.getHearingStartTime())).toLocalDateTime() : null;
+            final LocalDateTime sessionFromHearingStartTime = StringUtils.isNotBlank(allocatedSlot.getHearingStartTime()) ? ZonedDateTime.parse(allocatedSlot.getHearingStartTime()).toLocalDateTime() : null;
             final LocalDate hearingSessionSearchCutOff = StringUtils.isNotBlank(allocatedSlot.getHearingSessionDateSearchCutOff()) ? LocalDate.parse(allocatedSlot.getHearingSessionDateSearchCutOff()) : null;
             final CourtSchedule courtScheduleFound = searchListHearingSlotFilterCriteria(allocatedSlot.getCourtCentreId(), LocalDate.parse(
-                    allocatedSlot.getSessionDate()), hearingSessionSearchCutOff ,sessionFromHearingStartTime, allocatedSlot.getCourtRoomUUId(), allocatedSlot.isPolice());
+                    allocatedSlot.getSessionDate()), hearingSessionSearchCutOff ,sessionFromHearingStartTime, allocatedSlot.getCourtRoomUUId(), allocatedSlot.getPolice());
 
             if (courtScheduleFound != null) {
-                ModelMapper modelMapper = new ModelMapper();
-                List<CourtScheduleJudiciary> judiciaryList = getCourtScheduleJudiciaries(List.of(courtScheduleFound));
+                final List<CourtScheduleJudiciary> judiciaryList = getCourtScheduleJudiciaries(List.of(courtScheduleFound));
                 allocatedSlot.setCourtRoomId(String.valueOf(courtScheduleFound.getCourtRoomNumber()));
                 allocatedSlot.setCourtRoomUUId(String.valueOf(courtScheduleFound.getCourtRoomId()));
                 allocatedSlot.setCourtScheduleId(courtScheduleFound.getCourtScheduleId());
@@ -1154,9 +2048,9 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
                 allocatedSlot.setSlotBased(courtScheduleFound.isSlotBased());
                 allocatedSlot.setJudiciaries(
                         judiciaryList.stream()
-                                .map(j -> modelMapper.map(j, uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary.class))
+                                .map(CourtScheduleRepositoryImpl::mapJudiciaryEntityToDomain)
                                 .toList());
-                allocatedSlot.setSource(allocatedSlot.isPolice() ? "POLICE" : "NONPOLICE");
+                allocatedSlot.setSource(Boolean.TRUE.equals(allocatedSlot.getPolice()) ? "POLICE" : "NONPOLICE");
                 matchedSlots.add(allocatedSlot);
             } else {
                 LOGGER.error(format("Could not update slot as court schedule id not found for combination %s, %s, %s, %s",
@@ -1213,14 +2107,14 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
                                                          final String courtScheduleId,
                                                          final boolean isSearchUpdate) {
 
-        CriteriaBuilder criteriaBuilder = entityManager.getCriteriaBuilder();
-        CriteriaQuery<CourtSchedule> criteriaQuery = criteriaBuilder.createQuery(CourtSchedule.class);
+        final CriteriaBuilder criteriaBuilder = entityManager.getCriteriaBuilder();
+        final CriteriaQuery<CourtSchedule> criteriaQuery = criteriaBuilder.createQuery(CourtSchedule.class);
         List<CourtSchedule> courtScheduleList;
         if (isSearchUpdate) {
             LOGGER.info(format("Trying to find a match with these params for SPI : courtCentreId: %s sessionDate: %s session: %s courtRoomNumber:%s ", ouCode, sessionDate, session, courtRoomNumber));
             courtScheduleList = getCourtScheduleForSearchUpdateFilterCriteria(ouCode, sessionDate, session, courtRoomNumber, true);
             LOGGER.info(format("found %d matches for SPI", courtScheduleList.size()));
-            if (CollectionUtils.isEmpty(courtScheduleList)) {
+            if (isEmpty(courtScheduleList)) {
                 LOGGER.info(format("Trying to find a match with these params for SPI : courtCentreId: %s sessionDate: %s session: %s ", ouCode, sessionDate, session));
                 courtScheduleList = getCourtScheduleForSearchUpdateFilterCriteria(ouCode, sessionDate, session, courtRoomNumber, false);
                 LOGGER.info(format("found %d matches SPI", courtScheduleList.size()));
@@ -1239,17 +2133,18 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
         return null;
     }
 
-    private List<CourtSchedule> getCourtScheduleForSearchUpdateFilterCriteria(String ouCode,
-                                                                              LocalDate sessionDate,
-                                                                              String courtSessionString,
-                                                                              String courtRoomNumber,
-                                                                              boolean isNarrowSearch) {
+    private List<CourtSchedule> getCourtScheduleForSearchUpdateFilterCriteria(final String ouCode,
+                                                                              final LocalDate sessionDate,
+                                                                              final String courtSessionString,
+                                                                              final String courtRoomNumber,
+                                                                              final boolean isNarrowSearch) {
         LOGGER.info("Criteria Query Params: courtCentreId {} sessionDate {} courtSessionString {} courtRoomNumber {}", ouCode, sessionDate, courtSessionString, courtRoomNumber);
         final List<String> businessType = List.of("REM", "NGAP", "GAP");
         final List<String> courtSession = List.of("AD", courtSessionString);
 
-        StringBuilder queryString = new StringBuilder("SELECT distinct s.*, case when al.id is not null then true else false end as hasHearingsBooked FROM court_schedule s left outer join  allocated_listings al on(s.id = al.court_schedule_id) WHERE s.active = true ");
-        Map<String, Object> params = new HashMap<>();
+        final StringBuilder queryString = new StringBuilder(SEARCH_QUERY_INITIAL_CAPACITY)
+                .append("SELECT distinct s.*, case when al.id is not null then true else false end as hasHearingsBooked FROM court_schedule s left outer join  allocated_listings al on(s.id = al.court_schedule_id) WHERE s.active = true ");
+        final Map<String, Object> params = new HashMap<>();
 
         queryString.append(COURTCENTREID_QUERY_CONDITION_STRING);
         params.put(COURT_CENTRE_ID, ouCode);
@@ -1277,17 +2172,17 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
         return selectQuery.getResultList();
     }
 
-
-    public CourtSchedule searchListHearingSlotFilterCriteria(String courtCentreId,
-                                                                              LocalDate sessionDate,
-                                                                              LocalDate sessionEndDate,
-                                                                              LocalDateTime sessionStartTime,
-                                                                              String courtRoomId,
-                                                                              Boolean isPolice) {
+    @Override
+    public CourtSchedule searchListHearingSlotFilterCriteria(final String courtCentreId,
+                                                                              final LocalDate sessionDate,
+                                                                              final LocalDate sessionEndDate,
+                                                                              final LocalDateTime sessionStartTime,
+                                                                              final String courtRoomId,
+                                                                              final Boolean isPolice) {
         LOGGER.info("CourtScheduleRepository:searchListHearingSlotFilterCriteria courtCentreId: {}, sessionDate: {}, sessionEndDate: {}, hearingStartTime: {}, courtRoomId: {}",
                 courtCentreId, sessionDate, sessionEndDate, sessionStartTime, courtRoomId);
 
-        List<CourtSchedule> resultList;
+        final List<CourtSchedule> resultList;
         if (Boolean.TRUE.equals(isPolice)) {
             resultList = getCourtSchedulesForPolice(courtCentreId, sessionDate, sessionEndDate, sessionStartTime, courtRoomId);
         } else {
@@ -1298,50 +2193,13 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
         return (resultList != null && !resultList.isEmpty()) ? resultList.get(0) : null;
     }
 
-    @Override
-    public Optional<CourtSchedule> findSessionForMoveToPastDate(final String courtCentreId,
-                                                                final String courtRoomId,
-                                                                final LocalDate sessionDate,
-                                                                final LocalDateTime sessionStartTime,
-                                                                final String jurisdiction) {
-        LOGGER.info("CourtScheduleRepository:findSessionForMoveToPastDate courtCentreId: {}, courtRoomId: {}, sessionDate: {}, sessionStartTime: {}, jurisdiction: {}",
-                courtCentreId, courtRoomId, sessionDate, sessionStartTime, jurisdiction);
-
-        final StringBuilder queryString = new StringBuilder("SELECT distinct s.*, case when al.id is not null then true else false end as hasHearingsBooked FROM " +
-                "court_schedule s left outer join  allocated_listings al on(s.id = al.court_schedule_id) WHERE s.active = true ");
-        final Map<String, Object> params = new HashMap<>();
-        queryString.append(COURTCENTREID_QUERY_CONDITION_STRING);
-        params.put(COURT_CENTRE_ID, courtCentreId);
-        queryString.append(SESSION_START_QUERY_CONDITION_STRING);
-        params.put(SESSION_DATE, sessionDate);
-        queryString.append("AND s.jurisdiction = :jurisdiction ");
-        params.put("jurisdiction", jurisdiction);
-        // hearingStartTime range-containment: a 10:00 start lands an AM or AD session (whose window
-        // contains 10:00) but never a PM session that starts after lunch, and vice-versa.
-        if (sessionStartTime != null) {
-            queryString.append("AND (:hearingStartTime) between s.session_start_time and s.session_end_time ");
-            params.put(HEARING_START_TIME, sessionStartTime);
-        }
-        // when a room is supplied the search is scoped to that room, otherwise any room in the centre.
-        if (courtRoomId != null) {
-            queryString.append(COURT_ROOM_ID_QUERY_CONDITION_STRING);
-            params.put(COURT_ROOM_ID, courtRoomId);
-        }
-        queryString.append("order by s.is_draft asc, s.court_room_number asc");
-
-        final jakarta.persistence.Query selectQuery = entityManager.createNativeQuery(queryString.toString(), NATIVE_QUERY_COURT_SCHEDULE_MAPPING_VIEW);
-        params.forEach(selectQuery::setParameter);
-
-        final List<CourtSchedule> resultList = selectQuery.getResultList();
-        return resultList.isEmpty() ? Optional.empty() : Optional.of(resultList.get(0));
-    }
-
-    private List<CourtSchedule> getCourtSchedulesForPolice(String courtCentreId, LocalDate sessionDate, LocalDate sessionEndDate, LocalDateTime sessionStartTime, String courtRoomId) {
+    private List<CourtSchedule> getCourtSchedulesForPolice(final String courtCentreId, final LocalDate sessionDate, final LocalDate sessionEndDate, final LocalDateTime sessionStartTime, final String courtRoomId) {
         List<CourtSchedule> resultList;
+        LocalDate currentSessionDate = sessionDate;
         do {
-            resultList = performFallbackSearchForPolice(courtCentreId, sessionDate, sessionStartTime, courtRoomId);
-            sessionDate = sessionDate.plusDays(1);
-        } while (isSearchResultEmpty(resultList) && shouldContinueSearch(sessionDate, sessionEndDate));
+            resultList = performFallbackSearchForPolice(courtCentreId, currentSessionDate, sessionStartTime, courtRoomId);
+            currentSessionDate = currentSessionDate.plusDays(1);
+        } while (isSearchResultEmpty(resultList) && shouldContinueSearch(currentSessionDate, sessionEndDate));
         return resultList;
     }
 
@@ -1349,7 +2207,7 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
      * Performs a fallback search strategy for police court schedules.
      * Tries multiple search combinations with progressively relaxed criteria.
      */
-    private List<CourtSchedule> performFallbackSearchForPolice(String courtCentreId, LocalDate sessionDate, LocalDateTime sessionStartTime, String courtRoomId) {
+    private List<CourtSchedule> performFallbackSearchForPolice(final String courtCentreId, final LocalDate sessionDate, final LocalDateTime sessionStartTime, final String courtRoomId) {
         // 1st attempt: All parameters
         List<CourtSchedule> resultList = searchWithLogging("1st Call with All params",
             () -> searchListQueryFilterCriteriaForPolice(courtCentreId, sessionDate, sessionStartTime, courtRoomId),
@@ -1384,10 +2242,10 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
     /**
      * Executes a search with logging and returns the result.
      */
-    private List<CourtSchedule> searchWithLogging(String attemptDescription,
-                                                 java.util.function.Supplier<List<CourtSchedule>> searchFunction,
-                                                 String courtCentreId, LocalDate sessionDate,
-                                                 LocalDateTime sessionStartTime, String courtRoomId) {
+    private List<CourtSchedule> searchWithLogging(final String attemptDescription,
+                                                 final java.util.function.Supplier<List<CourtSchedule>> searchFunction,
+                                                 final String courtCentreId, final LocalDate sessionDate,
+                                                 final LocalDateTime sessionStartTime, final String courtRoomId) {
         LOGGER.info("CourtScheduleRepository:searchListHearingSlotFilterCriteria {} courtCentreId: {}, sessionDate: {}, sessionStartTime: {}, courtRoomId: {}",
                    attemptDescription, courtCentreId, sessionDate, sessionStartTime, courtRoomId);
         return searchFunction.get();
@@ -1396,7 +2254,7 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
     /**
      * Applies the closest time filter if conditions are met.
      */
-    private List<CourtSchedule> applyClosestTimeFilterIfNeeded(List<CourtSchedule> resultList, LocalDateTime sessionStartTime) {
+    private List<CourtSchedule> applyClosestTimeFilterIfNeeded(final List<CourtSchedule> resultList, final LocalDateTime sessionStartTime) {
         if (sessionStartTime != null && !isSearchResultEmpty(resultList)) {
             return findClosestCourtScheduleByTimeAndBusinessType(resultList, sessionStartTime);
         }
@@ -1406,14 +2264,14 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
     /**
      * Checks if the search result is empty or null.
      */
-    private boolean isSearchResultEmpty(List<CourtSchedule> resultList) {
+    private boolean isSearchResultEmpty(final List<CourtSchedule> resultList) {
         return resultList == null || resultList.isEmpty();
     }
 
     /**
      * Determines if the search should continue based on date constraints.
      */
-    private boolean shouldContinueSearch(LocalDate currentDate, LocalDate sessionEndDate) {
+    private boolean shouldContinueSearch(final LocalDate currentDate, final LocalDate sessionEndDate) {
         return sessionEndDate != null && (currentDate.isBefore(sessionEndDate) || currentDate.isEqual(sessionEndDate));
     }
 
@@ -1422,13 +2280,13 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
      * if they have the same business type. Returns a list containing the court schedule with the closest 
      * session start time to the requested time.
      */
-    private List<CourtSchedule> findClosestCourtScheduleByTimeAndBusinessType(List<CourtSchedule> courtSchedules, LocalDateTime requestedTime) {
+    private List<CourtSchedule> findClosestCourtScheduleByTimeAndBusinessType(final List<CourtSchedule> courtSchedules, final LocalDateTime requestedTime) {
         if (courtSchedules == null || courtSchedules.isEmpty() || requestedTime == null) {
             return courtSchedules;
         }
 
         // If there's only one schedule, return it
-        if (courtSchedules.size() == 1) {
+        if (courtSchedules.size() == SINGLE_RESULT_COUNT) {
             LOGGER.info("Only one court schedule found, returning it");
             return courtSchedules;
         }
@@ -1436,29 +2294,29 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
         LOGGER.info("Finding closest court schedule for requested time: {} comparing all schedules with same business type", requestedTime);
 
         // Calculate national break out time
-        LocalDate sessionDate = courtSchedules.get(0).getSessionDate();
-        Date nationalBreakTime = TimezoneUtils.calculateNationalBreakTime(sessionDate);
-        LocalDateTime nationalBreakOutTime = convertToLocalDateTime(nationalBreakTime);
+        final LocalDate sessionDate = courtSchedules.get(0).getSessionDate();
+        final Instant nationalBreakTime = TimezoneUtils.calculateNationalBreakTime(sessionDate).toInstant();
+        final LocalDateTime nationalBreakOutTime = convertToLocalDateTime(nationalBreakTime);
 
         LOGGER.info("National break out time calculated: {} for session date: {}", nationalBreakOutTime, sessionDate);
 
         // Create two separate filter lists based on national break out time
-        List<CourtSchedule> schedulesBeforeBreak = courtSchedules.stream()
+        final List<CourtSchedule> schedulesBeforeBreak = courtSchedules.stream()
                 .filter(schedule -> {
                     if (schedule.getSessionStartTime() == null) {
                         return false;
                     }
-                    LocalDateTime scheduleTime = convertToLocalDateTime(schedule.getSessionStartTime());
+                    final LocalDateTime scheduleTime = convertToLocalDateTime(schedule.getSessionStartTime());
                     return scheduleTime.isBefore(nationalBreakOutTime);
                 })
                 .toList();
 
-        List<CourtSchedule> schedulesAfterBreak = courtSchedules.stream()
+        final List<CourtSchedule> schedulesAfterBreak = courtSchedules.stream()
                 .filter(schedule -> {
                     if (schedule.getSessionEndTime() == null) {
                         return false;
                     }
-                    LocalDateTime scheduleTime = convertToLocalDateTime(schedule.getSessionEndTime());
+                    final LocalDateTime scheduleTime = convertToLocalDateTime(schedule.getSessionEndTime());
                     return scheduleTime.isAfter(nationalBreakOutTime);
                 })
                 .toList();
@@ -1485,7 +2343,7 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
         }
 
         // Find the schedule with the closest session start time from selected schedules
-        CourtSchedule closestSchedule = selectedSchedules.get(0);
+        final CourtSchedule closestSchedule = selectedSchedules.get(0);
 
         LOGGER.info("Found closest court schedule: {} with session start time: {} and business type: {}",
                 closestSchedule.getCourtScheduleId(), closestSchedule.getSessionStartTime(), closestSchedule.getBusinessType());
@@ -1494,31 +2352,32 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
     }
 
     /**
-     * Converts Date to LocalDateTime for comparison
+     * Converts an Instant to LocalDateTime (JVM default zone) for comparison.
      */
-    private LocalDateTime convertToLocalDateTime(Date date) {
-        if (date == null) {
+    private LocalDateTime convertToLocalDateTime(final Instant instant) {
+        if (instant == null) {
             return null;
         }
-        return date.toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDateTime();
+        return instant.atZone(ZoneId.systemDefault()).toLocalDateTime();
     }
 
-    private List<CourtSchedule> getCourtSchedulesForNonPolice(String courtCentreId, LocalDate sessionDate, LocalDateTime sessionStartTime, String courtRoomId) {
-        List<CourtSchedule> resultList;
+    private List<CourtSchedule> getCourtSchedulesForNonPolice(final String courtCentreId, final LocalDate sessionDate, final LocalDateTime sessionStartTime, final String courtRoomId) {
+        final List<CourtSchedule> resultList;
             LOGGER.info("CourtScheduleRepository:searchListHearingSlotFilterCriteria First Call with All params for courtCentreId: {} and sessionDate: {}", courtCentreId, sessionDate);
             resultList = searchListQueryFilterCriteriaForNonPolice(courtCentreId, sessionDate, sessionStartTime, courtRoomId);
         return resultList;
     }
 
-    private List<CourtSchedule> searchListQueryFilterCriteriaForNonPolice(String courtCentreId,
-                                                                   LocalDate sessionDate,
-                                                                   LocalDateTime sessionStartTime,
-                                                                   String courtRoomId) {
+    private List<CourtSchedule> searchListQueryFilterCriteriaForNonPolice(final String courtCentreId,
+                                                                   final LocalDate sessionDate,
+                                                                   final LocalDateTime sessionStartTime,
+                                                                   final String courtRoomId) {
         LOGGER.info("Criteria Query Params: courtCentreId {} sessionDate {} hearingStartTime {} courtRoomId {}", courtCentreId, sessionDate, sessionStartTime, courtRoomId);
 
-        StringBuilder queryString = new StringBuilder("SELECT distinct s.*, case when al.id is not null then true else false end as hasHearingsBooked FROM " +
-                "court_schedule s left outer join  allocated_listings al on(s.id = al.court_schedule_id) WHERE s.active = true ");
-        Map<String, Object> params = new HashMap<>();
+        final StringBuilder queryString = new StringBuilder(SEARCH_QUERY_INITIAL_CAPACITY)
+                .append("SELECT distinct s.*, case when al.id is not null then true else false end as hasHearingsBooked FROM "
+                + "court_schedule s left outer join  allocated_listings al on(s.id = al.court_schedule_id) WHERE s.active = true ");
+        final Map<String, Object> params = new HashMap<>();
 
         final List<String> businessType = List.of("NCFL");
         queryString.append(BUSINESS_TYPE_QUERY_CONDITION_STRING);
@@ -1537,7 +2396,9 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
         if (courtRoomId != null) {
             queryString.append(COURT_ROOM_ID_QUERY_CONDITION_STRING);
             params.put(COURT_ROOM_ID, courtRoomId);
-        } else return Collections.emptyList(); //courtroom required to allocate session for non-spi
+        } else {
+            return Collections.emptyList(); //courtroom required to allocate session for non-spi
+        }
 
         queryString.append("order by s.rota_business_type desc, s.court_room_number asc");
         LOGGER.info("searchListQueryFilterCriteriaForNonPolice Criteria Query Params: queryString {}", queryString);
@@ -1550,16 +2411,17 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
         return selectQuery.getResultList();
     }
 
-    private List<CourtSchedule> searchListQueryFilterCriteriaForPolice(String courtCentreId,
-                                                              LocalDate sessionDate,
-                                                              LocalDateTime sessionStartTime,
-                                                              String courtRoomId) {
+    private List<CourtSchedule> searchListQueryFilterCriteriaForPolice(final String courtCentreId,
+                                                              final LocalDate sessionDate,
+                                                              final LocalDateTime sessionStartTime,
+                                                              final String courtRoomId) {
         LOGGER.info("Criteria Query Params: courtCentreId {} sessionDate {} hearingStartTime {} courtRoomId {}", courtCentreId, sessionDate, sessionStartTime, courtRoomId);
         final List<String> businessType = List.of("YFL", "TRFL", "DAFL", "NGAP", "GAP", "REM");
 
-        StringBuilder queryString = new StringBuilder("SELECT s.*, case when al.id is not null then true else false end as hasHearingsBooked " +
-                "FROM court_schedule s left outer join  allocated_listings al on(s.id = al.court_schedule_id) WHERE s.active = true ");
-        Map<String, Object> params = new HashMap<>();
+        final StringBuilder queryString = new StringBuilder(SEARCH_QUERY_INITIAL_CAPACITY)
+                .append("SELECT s.*, case when al.id is not null then true else false end as hasHearingsBooked "
+                + "FROM court_schedule s left outer join  allocated_listings al on(s.id = al.court_schedule_id) WHERE s.active = true ");
+        final Map<String, Object> params = new HashMap<>();
 
         queryString.append(BUSINESS_TYPE_QUERY_CONDITION_STRING);
         params.put(BUSINESS_TYPE, businessType);
@@ -1590,19 +2452,19 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
         return selectQuery.getResultList();
     }
 
+    /** team/ccsph2 bookkeeping, kept for the MI export (GET /mi/court_schedules) until SPRDT-1406 drops court_schedule.available_slot / available_duration_mins. Reserve-a-slot holds never touch these columns, and nothing decides from them - availability is counted from allocated_listings. */
     protected void updateCourtSchedule(final List<AllocatedSlot> allocatedSlots) {
-        allocatedSlots.forEach(allocatedSlot -> {
-            CourtSchedule courtSchedule = entityManager.find(CourtSchedule.class, allocatedSlot.getCourtScheduleId());
-            LOGGER.info("CourtSchedule to be updated after allocation : is {}", courtSchedule);
+        allocatedSlots.stream()
+                // A hold (expiresAt set) is reserve-a-slot's: it never takes from the counters, so
+                // none of its releases has anything to give back.
+                .filter(allocatedSlot -> allocatedSlot.getExpiresAt() == null)
+                .forEach(allocatedSlot -> {
+            final CourtSchedule courtSchedule = entityManager.find(CourtSchedule.class, allocatedSlot.getCourtScheduleId());
             if (courtSchedule.isSlotBased()) {
-                Integer availableSlots = courtSchedule.getAvailableSlots();
-                LOGGER.info("CourtSchedule to be updated after allocation : with available slots {}", availableSlots);
-                courtSchedule.setAvailableSlots(availableSlots - 1);
+                courtSchedule.setAvailableSlots(courtSchedule.getAvailableSlots() - 1);
             } else {
-                LOGGER.info("CourtSchedule to be updated after allocation : with available duration {}", courtSchedule.getAvailableDuration());
                 courtSchedule.setAvailableDuration(courtSchedule.getAvailableDuration() - allocatedSlot.getDuration());
             }
-            LOGGER.info("Final CourtSchedule object before update : with available slots {}", courtSchedule);
             saveInternal(courtSchedule);
         });
     }
@@ -1611,18 +2473,29 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
     protected void saveAllocatedListing(final List<AllocatedSlot> allocatedSlots) {
         allocatedSlots.forEach(allocatedSlot -> {
             // Check if record already exists
-            List<AllocatedListing> existingListings = allocatedListingRepository.findByCourtScheduleIdAndHearingId(allocatedSlot.getCourtScheduleId(), allocatedSlot.getHearingId());
+            // A reservation has no hearing_id, and findByCourtScheduleIdAndHearingId(id, null)
+            // matches nothing in SQL, so it would never detect its own duplicate. Dedupe such a
+            // row on the column it actually uses.
+            final List<AllocatedListing> existingListings = allocatedSlot.getHearingId() == null
+                    ? allocatedListingRepository.findByBookingId(allocatedSlot.getBookingId()).stream()
+                        .filter(row -> row.getExpiresAt() != null)
+                        .filter(row -> Objects.equals(row.getCourtScheduleId(), allocatedSlot.getCourtScheduleId()))
+                        .toList()
+                    : allocatedListingRepository.findByCourtScheduleIdAndHearingId(allocatedSlot.getCourtScheduleId(), allocatedSlot.getHearingId());
             if (existingListings.isEmpty()) {
-                AllocatedListing allocatedListing = new AllocatedListing();
+                final CourtSchedule courtSchedule = entityManager.find(CourtSchedule.class, allocatedSlot.getCourtScheduleId());
+                final AllocatedListing allocatedListing = new AllocatedListing();
                 allocatedListing.setId(UUID.randomUUID().toString());
                 allocatedListing.setCourtScheduleId(allocatedSlot.getCourtScheduleId());
                 allocatedListing.setBookingId(allocatedSlot.getBookingId());
                 allocatedListing.setHearingId(allocatedSlot.getHearingId());
                 allocatedListing.setOucode(allocatedSlot.getOuCode());
                 allocatedListing.setCourtRoomId(Integer.parseInt(allocatedSlot.getCourtRoomId()));
-                allocatedListing.setDuration(allocatedSlot.isSlotBased() ? SLOT_DEFAULT : allocatedSlot.getDuration());
-                allocatedListing.setHearingStartTime(toExactTimestamp(allocatedSlot.getHearingStartTime()));
+                allocatedListing.setRotaBusinessType(courtSchedule.getBusinessType());
+                allocatedListing.setDuration(Boolean.TRUE.equals(allocatedSlot.getSlotBased()) ? SLOT_DEFAULT : allocatedSlot.getDuration());
+                allocatedListing.setHearingStartTime(toExactTimestamp(allocatedSlot.getHearingStartTime()).toInstant());
                 allocatedListing.setSource(allocatedSlot.getSource());
+                allocatedListing.setExpiresAt(allocatedSlot.getExpiresAt());
                 LOGGER.info("bookSlotsWithoutCourtScheduleId saveAllocatedListing {}", allocatedListing);
                 this.allocatedListingRepository.save(allocatedListing);
             } else {
@@ -1635,29 +2508,201 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
 
     @Transactional
     protected void deleteProvisionalBooking(final String bookingId) {
-        Optional<ProvisionalBooking> byBookingId = this.provisionalBookingRepository.findByBookingId(bookingId);
+        final Optional<ProvisionalBooking> byBookingId = this.provisionalBookingRepository.findByBookingId(bookingId);
         if (byBookingId.isPresent()) {
-            ProvisionalBooking provisionalBooking = byBookingId.get();
+            final ProvisionalBooking provisionalBooking = byBookingId.get();
             provisionalBooking.setActive(false);
             this.provisionalBookingRepository.save(provisionalBooking);
         } else {
-            LOGGER.error(format("CHECK: bookingid not found %s", bookingId));
+            // Not an error since reserve-a-slot shipped: a booking now holds capacity through a
+            // reservation in allocated_listings and writes no provisional_booking row at all, so
+            // "no legacy row" is the normal case on every successful confirm. Only legacy drafts
+            // still have a row here, which is why the call itself stays.
+            LOGGER.debug("No legacy provisional_booking row to soft-delete for bookingId {}", bookingId);
         }
     }
 
+    /**
+     * The hearing these slots belong to, if they belong to one at all.
+     *
+     * <p>The {@code nonNull} filter is required, not defensive: a reservation carries its id in
+     * booking_id and leaves hearing_id null, and {@link java.util.stream.Stream#findFirst()}
+     * throws {@link NullPointerException} when the element it selects is null. Without it, every
+     * reservation NPEs here before the caller can even decide whether it wants a hearing-wide
+     * release — and GlobalExceptionHandler turns that into a 400 reading "Request body is missing
+     * a required field: null", which points at the caller's payload rather than at this line.
+     */
     private Optional<String> getHearingId(final List<AllocatedSlot> slots) {
         return slots.stream()
                 .map(AllocatedSlot::getHearingId)
+                .filter(Objects::nonNull)
                 .findFirst();
     }
 
+    /**
+     * Releases every UNCONFIRMED reservation held under {@code bookingId}, restoring each
+     * session's capacity — the booking-keyed counterpart of
+     * {@link #releaseOldAllocatedListings(String)}, which is keyed on hearing_id and therefore
+     * only ever sees confirmed listings.
+     *
+     * <p>The {@code expiresAt != null} filter is the safety property of this method, not an
+     * optimisation. A confirmed listing carries the same booking_id as the reservation it grew
+     * from, so without the filter this would delete a real court listing when asked to release a
+     * hold. Only a share may change a confirmed booking; this method must never touch one.
+     */
+    @Override
+    @Transactional
+    public List<AllocatedListing> releaseReservationsForBooking(final String bookingId) {
+
+        // Through the entities rather than releaseUnconfirmedReservations: the re-pick and confirm
+        // callers hold court_schedule entities in this transaction, and a bulk UPDATE would leave
+        // those stale for them to save back over.
+        final List<AllocatedListing> reservations = allocatedListingRepository.findUnconfirmedByBookingIds(List.of(bookingId));
+
+        if (isNotEmpty(reservations)) {
+            reservations.forEach(allocatedListingRepository::remove);
+            releaseCourtScheduleAllocatedSlotsForBookingId(reservations);
+        }
+        return reservations;
+    }
+
+    /**
+     * Releases the unconfirmed holds of all these bookings in one DELETE, whose WHERE takes only
+     * rows still carrying an expires_at, returning what it removed for the booking log. Holds never
+     * touched the court_schedule counters, so there is nothing to give back there.
+     *
+     * <p>Plain SQL, so it bypasses the persistence context: call it from a transaction of its own
+     * (POST /unconfirmedBooking/release), not one already holding court_schedule entities. A hold
+     * has no provisional_booking row since reserve-a-slot, so there is nothing to reactivate.
+     */
+    @Override
+    @Transactional
+    public int releaseUnconfirmedReservations(final Collection<String> bookingIds, final BookingState state) {
+        if (bookingIds.isEmpty()) {
+            return 0;
+        }
+        @SuppressWarnings("unchecked")
+        final List<Object[]> released = entityManager.createNativeQuery(DELETE_UNCONFIRMED_RESERVATIONS_QUERY)
+                .setParameter("bookingIds", bookingIds)
+                .getResultList();
+        final List<AllocatedListing> releasedHolds = released.stream().map(CourtScheduleRepositoryImpl::releasedHold).toList();
+        bookingLogRepository.record(state, releasedHolds);
+        // A booking that held nothing any more (the purge got there first) is still recorded as
+        // released, so its latest event is no longer EXPIRED and it can never be re-booked.
+        final Set<String> releasedBookingIds = releasedHolds.stream().map(AllocatedListing::getBookingId).collect(Collectors.toSet());
+        bookingLogRepository.record(state, bookingIds.stream()
+                .filter(bookingId -> !releasedBookingIds.contains(bookingId))
+                .map(CourtScheduleRepositoryImpl::bookingWithNothingHeld)
+                .toList());
+
+        return released.size();
+    }
+
+    private static AllocatedListing bookingWithNothingHeld(final String bookingId) {
+        final AllocatedListing booking = new AllocatedListing();
+        booking.setBookingId(bookingId);
+        return booking;
+    }
+
+    /**
+     * Whether a Crown fallback session cannot take {@code durationInMinutes} more: what its
+     * bookings ({@code booked} minutes, from allocated_listings) leave of max_duration_mins. Not
+     * available_duration_mins, which bookings no longer keep up to date.
+     */
+    /* package */ static boolean lacksCapacity(final CourtSchedule session, final int booked, final int durationInMinutes) {
+        return session.getMaxDuration() == null || session.getMaxDuration() - booked < durationInMinutes;
+    }
+
+    /** A row of DELETE_UNCONFIRMED_RESERVATIONS_QUERY's RETURNING list, as the hold it was. */
+    private static AllocatedListing releasedHold(final Object... row) {
+        final AllocatedListing hold = new AllocatedListing();
+        hold.setCourtScheduleId((String) row[0]);
+        hold.setDuration(row[1] == null ? null : ((Number) row[1]).intValue());
+        hold.setId((String) row[2]);
+        hold.setBookingId((String) row[3]);
+        hold.setHearingId((String) row[4]);
+        hold.setOucode((String) row[5]);
+        hold.setCourtRoomId(row[6] == null ? null : ((Number) row[6]).intValue());
+        hold.setRotaBusinessType((String) row[7]);
+        hold.setHearingStartTime(row[8] == null ? null : toTimestamp(row[8]).toInstant());
+        hold.setExpiresAt(toLocalDate(row[9]));
+        return hold;
+    }
+
+    @Override
     @Transactional
     public void releaseOldAllocatedListings(final String hearingId) {
 
         final List<AllocatedListing> allocatedListings = getExistingAllocatedListings(hearingId);
 
         if (isNotEmpty(allocatedListings)) {
+            // Logged before they go, like the purge: without it a freed listing leaves its booking
+            // with no rows and a latest state of CONFIRMED, and the status check cannot tell it
+            // from a booking that never existed.
+            bookingLogRepository.record(BookingState.UNLISTED, allocatedListings);
             releaseOldListingsFromAllocatedListings(hearingId);
+            releaseCourtScheduleAllocatedSlotsForBookingId(allocatedListings);
+            releaseAllocatedSlotsOrDurationFromCourtSchedule(allocatedListings);
+        }
+    }
+
+    @Override
+    public Optional<CourtSchedule> findSessionForMoveToPastDate(final String courtCentreId,
+                                                                final String courtRoomId,
+                                                                final LocalDate sessionDate,
+                                                                final LocalDateTime sessionStartTime,
+                                                                final String jurisdiction) {
+        LOGGER.info("CourtScheduleRepository:findSessionForMoveToPastDate courtCentreId: {}, courtRoomId: {}, sessionDate: {}, sessionStartTime: {}, jurisdiction: {}",
+                courtCentreId, courtRoomId, sessionDate, sessionStartTime, jurisdiction);
+
+        final StringBuilder queryString = new StringBuilder(SEARCH_QUERY_INITIAL_CAPACITY).append("SELECT distinct s.*, case when al.id is not null then true else false end as hasHearingsBooked FROM " +
+                "court_schedule s left outer join  allocated_listings al on(s.id = al.court_schedule_id) WHERE s.active = true ");
+        final Map<String, Object> params = new HashMap<>();
+        queryString.append(COURTCENTREID_QUERY_CONDITION_STRING);
+        params.put(COURT_CENTRE_ID, courtCentreId);
+        queryString.append(SESSION_START_QUERY_CONDITION_STRING);
+        params.put(SESSION_DATE, sessionDate);
+        // SPRDT-1447 (test finding): a hearing is never moved onto a draft session, either jurisdiction.
+        queryString.append("AND s.jurisdiction = :jurisdiction AND s.is_draft = false ");
+        params.put("jurisdiction", jurisdiction);
+        // hearingStartTime range-containment: a 10:00 start lands an AM or AD session (whose window
+        // contains 10:00) but never a PM session that starts after lunch, and vice-versa.
+        if (sessionStartTime != null) {
+            queryString.append("AND (:hearingStartTime) between s.session_start_time and s.session_end_time ");
+            params.put(HEARING_START_TIME, sessionStartTime);
+        }
+        // when a room is supplied the search is scoped to that room, otherwise any room in the centre.
+        if (courtRoomId != null) {
+            queryString.append(COURT_ROOM_ID_QUERY_CONDITION_STRING);
+            params.put(COURT_ROOM_ID, courtRoomId);
+        }
+        queryString.append("order by s.court_room_number asc");
+
+        final jakarta.persistence.Query selectQuery = entityManager.createNativeQuery(queryString.toString(), NATIVE_QUERY_COURT_SCHEDULE_MAPPING_VIEW);
+        params.forEach(selectQuery::setParameter);
+
+        @SuppressWarnings(UNCHECKED_WARNING)
+        final List<CourtSchedule> resultList = selectQuery.getResultList();
+        return resultList.isEmpty() ? Optional.empty() : of(resultList.get(0));
+    }
+
+    /**
+     * Date-scoped sibling of {@link #releaseOldAllocatedListings(String)}: releases only the
+     * hearing's allocations whose court schedule session date is in {@code dates}, leaving
+     * allocations on other dates untouched.
+     */
+    @Override
+    @Transactional
+    public void releaseAllocatedListingsForDates(final String hearingId, final List<LocalDate> dates) {
+
+        final List<AllocatedListing> allocatedListings = getExistingAllocatedListings(hearingId).stream()
+                .filter(allocatedListing -> dates.contains(
+                        entityManager.find(CourtSchedule.class, allocatedListing.getCourtScheduleId()).getSessionDate()))
+                .toList();
+
+        if (isNotEmpty(allocatedListings)) {
+            bookingLogRepository.record(BookingState.UNLISTED, allocatedListings);
+            allocatedListings.forEach(allocatedListingRepository::remove);
             releaseCourtScheduleAllocatedSlotsForBookingId(allocatedListings);
             releaseAllocatedSlotsOrDurationFromCourtSchedule(allocatedListings);
         }
@@ -1667,35 +2712,60 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
         return allocatedListingRepository.findByHearingId(hearingId);
     }
 
+    /**
+     * Releases every reservation whose expiresAt is before {@code cutoff}: removes the
+     * allocated_listings rows and restores each session's capacity via the same three-step
+     * release {@link #releaseOldAllocatedListings(String)} performs. A bare DELETE would strand
+     * the capacity on court_schedule permanently, since the row that tracked it is gone.
+     * "No reservation found" is a no-op, not an error.
+     */
+    @Override
+    @Transactional
+    public int releaseExpiredReservations(final LocalDate cutoff) {
+        final List<AllocatedListing> expired = allocatedListingRepository.findExpiredReservedSessions(cutoff);
+        if (expired.isEmpty()) {
+            return 0;
+        }
+        // Logged before they go: once removed, nothing else records which session each hold was
+        // on, and the pre-share check re-books an expired booking from exactly these rows.
+        bookingLogRepository.record(BookingState.EXPIRED, expired);
+        expired.forEach(allocatedListingRepository::remove);
+        releaseCourtScheduleAllocatedSlotsForBookingId(expired);
+        return expired.size();
+    }
+
     private Map<String, List<SlotStartTime>> getCountBasedAllocatedListing(final Set<String> courtScheduleIds, final Map<String, CourtSchedule> courtScheduleMap) {
         LOGGER.info("number of courtScheduleIds : {}", courtScheduleIds.size());
 
-        jakarta.persistence.Query query = entityManager
-                .createNativeQuery("select court_schedule_id , hearing_start_time, count(*) as count,sum(duration) as duration from allocated_listings where court_schedule_id IN :courtScheduleId group by court_schedule_id , hearing_start_time");
-        query.setParameter("courtScheduleId", courtScheduleIds);
-
-        final long allocatedListingsStartTime = System.nanoTime();
-        List<Object[]> queryResultList = query.getResultList();
-        final long allocatedListingsEndTime = System.nanoTime();
-        LOGGER.info("PRF: Time taken for allocatedListings : {} ", (allocatedListingsEndTime - allocatedListingsStartTime) / 1000000);
-
-
+        final List<String> idList = new ArrayList<>(courtScheduleIds);
         final Map<String, List<Pair<Timestamp, Integer>>> hearingStartTimeMapByCourtSchedule = new HashMap<>();
-        queryResultList.forEach(response -> {
-            final String courtScheduleId = (String) response[0];
-            final List<Pair<Timestamp, Integer>> allocatedHearingStartTimesWithCounts = hearingStartTimeMapByCourtSchedule.computeIfAbsent(courtScheduleId, k -> new ArrayList<>());
-            final Timestamp hearingStartTime = toTimestamp(response[1]);
-            //find courtScheduleId in courtScheduleMap and check if it is slot based
-            final int count = courtScheduleMap.get(courtScheduleId).isSlotBased()
-                    ? toInt(response[2])
-                    : toInt(response[3]);
 
-            allocatedHearingStartTimesWithCounts.add(Pair.of(hearingStartTime, count));
-        });
+        for (int i = 0; i < idList.size(); i += ID_QUERY_BATCH_SIZE) {
+            final List<String> batch = idList.subList(i, Math.min(i + ID_QUERY_BATCH_SIZE, idList.size()));
+            final jakarta.persistence.Query query = entityManager
+                    .createNativeQuery("select court_schedule_id , hearing_start_time, count(*) as count,sum(duration) as duration from allocated_listings where court_schedule_id IN :courtScheduleId group by court_schedule_id , hearing_start_time");
+            query.setParameter("courtScheduleId", batch);
+
+            final long allocatedListingsStartTime = System.nanoTime();
+            final List<Object[]> queryResultList = query.getResultList();
+            final long allocatedListingsEndTime = System.nanoTime();
+            LOGGER.info("PRF: Time taken for allocatedListings : {} ", (allocatedListingsEndTime - allocatedListingsStartTime) / 1_000_000);
+
+            queryResultList.forEach(response -> {
+                final String courtScheduleId = (String) response[0];
+                final List<Pair<Timestamp, Integer>> allocatedHearingStartTimesWithCounts = hearingStartTimeMapByCourtSchedule.computeIfAbsent(courtScheduleId, k -> new ArrayList<>());
+                //find courtScheduleId in courtScheduleMap and check if it is slot based
+                final int count = courtScheduleMap.get(courtScheduleId).isSlotBased()
+                        ? toInt(response[2])
+                        : toInt(response[3]);
+                allocatedHearingStartTimesWithCounts.add(Pair.of(toTimestamp(response[1]), count));
+            });
+        }
+
         return processSlotStartTimes(courtScheduleMap, hearingStartTimeMapByCourtSchedule);
     }
 
-    private int toInt(Object value) {
+    private int toInt(final Object value) {
         if (value instanceof Number number) {
             return number.intValue();
         }
@@ -1714,6 +2784,8 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
      * driver return {@link java.time.Instant} — the legacy code path expected
      * {@link java.sql.Timestamp}. Accept both shapes.
      */
+    // Deliberate: feeds the Timestamp-based slot calculation; moving that to java.time is out of scope here.
+    @SuppressWarnings("PMD.ReplaceJavaUtilDate")
     private static Timestamp toTimestamp(final Object value) {
         if (value == null) {
             return null;
@@ -1721,10 +2793,10 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
         if (value instanceof Timestamp ts) {
             return ts;
         }
-        if (value instanceof java.time.Instant instant) {
+        if (value instanceof Instant instant) {
             return Timestamp.from(instant);
         }
-        if (value instanceof java.time.LocalDateTime ldt) {
+        if (value instanceof LocalDateTime ldt) {
             return Timestamp.valueOf(ldt);
         }
         if (value instanceof java.time.OffsetDateTime odt) {
@@ -1740,7 +2812,7 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
             final SlotProcessingContext ctx = getSlotProcessingContext(courtSchedule,hearingStartTimeMapByCourtSchedule);
 
             final List<SlotStartTime> slotStartTimes;
-            if ("AD".equals(ctx.courtSession()) && Boolean.TRUE.equals(courtSchedule.getSupportAdSplit())) {
+            if ("AD".equals(ctx.courtSession()) && Boolean.TRUE.equals(courtSchedule.isSupportAdSplit())) {
                 slotStartTimes = processSlotStartTimesWithADSplitSupport(ctx.courtScheduleAllocatedPair(), ctx.sessionStartDateTime(), ctx.sessionEndDateTime(), getNationalBreakTime(courtSchedule));
             } else if (ctx.sessionStartDateTime().toLocalDate().equals(ctx.sessionEndDateTime().toLocalDate().minusDays(1))) {
                 slotStartTimes = processSlotStartTimesMultiDay(ctx); //special handling for sessionStartTime(UTC) falling in previous day
@@ -1754,11 +2826,11 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
         return resultStringListMap;
     }
     private static SlotProcessingContext getSlotProcessingContext(final CourtSchedule courtSchedule, final Map<String, List<Pair<Timestamp, Integer>>> hearingStartTimeMapByCourtSchedule) {
-        final Date sessionStartTime = courtSchedule.getSessionStartTime();
-        final Date sessionEndTime = courtSchedule.getSessionEndTime();
+        final Instant sessionStartTime = courtSchedule.getSessionStartTime();
+        final Instant sessionEndTime = courtSchedule.getSessionEndTime();
         final List<Pair<Timestamp, Integer>> courtScheduleAllocatedPair = hearingStartTimeMapByCourtSchedule.get(courtSchedule.getCourtScheduleId());
-        final LocalDateTime sessionStartDateTime = sessionStartTime.toInstant().atOffset(ZoneOffset.UTC).toLocalDateTime();
-        final LocalDateTime sessionEndDateTime = sessionEndTime.toInstant().atOffset(ZoneOffset.UTC).toLocalDateTime();
+        final LocalDateTime sessionStartDateTime = sessionStartTime.atOffset(ZoneOffset.UTC).toLocalDateTime();
+        final LocalDateTime sessionEndDateTime = sessionEndTime.atOffset(ZoneOffset.UTC).toLocalDateTime();
         final int sessionStartHour = sessionStartDateTime.getHour();
         final int sessionStartMinute = sessionStartDateTime.getMinute();
         final int sessionEndHour = sessionEndDateTime.getHour();
@@ -1781,30 +2853,30 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
                 courtSession) ;
     }
 
-    private static LocalDateTime getNationalBreakTime(CourtSchedule courtSchedule) {
-        return courtSchedule.getNationalBreakTime().toInstant().atZone(ZoneId.of("UTC")).toLocalDateTime();
+    private static LocalDateTime getNationalBreakTime(final CourtSchedule courtSchedule) {
+        return courtSchedule.getNationalBreakTime().atZone(ZoneId.of("UTC")).toLocalDateTime();
     }
 
-    private static List<SlotStartTime> processSlotStartTimesWithADSplitSupport(List<Pair<Timestamp, Integer>> courtScheduleAllocatedPair, LocalDateTime sessionStartDateTime, LocalDateTime sessionEndDateTime, LocalDateTime nationalBreakTime) {
+    private static List<SlotStartTime> processSlotStartTimesWithADSplitSupport(final List<Pair<Timestamp, Integer>> courtScheduleAllocatedPair, final LocalDateTime sessionStartDateTime, final LocalDateTime sessionEndDateTime, final LocalDateTime nationalBreakTime) {
         // if support AD split then return only two slots with skipping NATIONAL BREAK
         final List<SlotStartTime> slotStartTimes = new ArrayList<>();
         final LocalDateTime nationalBreakEnd = nationalBreakTime.plusHours(1);
 
         // Morning slot
         if (!sessionStartDateTime.isAfter(nationalBreakTime)) {
-            SlotStartTime morningSlot = new SlotStartTime();
+            final SlotStartTime morningSlot = new SlotStartTime();
             morningSlot.setSessionStartTime(toIsoString(sessionStartDateTime));
             morningSlot.setSessionEndTime(toIsoString(nationalBreakTime));
-            morningSlot.setCount(sumAllocatedDuration(courtScheduleAllocatedPair, sessionStartDateTime, nationalBreakTime));
+            morningSlot.setCount((long) sumAllocatedDuration(courtScheduleAllocatedPair, sessionStartDateTime, nationalBreakTime));
             slotStartTimes.add(morningSlot);
         }
 
         // Afternoon slot
         if (!sessionEndDateTime.isBefore(nationalBreakEnd)) {
-            SlotStartTime afternoonSlot = new SlotStartTime();
+            final SlotStartTime afternoonSlot = new SlotStartTime();
             afternoonSlot.setSessionStartTime(toIsoString(nationalBreakEnd));
             afternoonSlot.setSessionEndTime(toIsoString(sessionEndDateTime));
-            afternoonSlot.setCount(sumAllocatedDuration(courtScheduleAllocatedPair, nationalBreakEnd, sessionEndDateTime));
+            afternoonSlot.setCount((long) sumAllocatedDuration(courtScheduleAllocatedPair, nationalBreakEnd, sessionEndDateTime));
             slotStartTimes.add(afternoonSlot);
         }
 
@@ -1812,59 +2884,36 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
 
     }
 
-    private static int sumAllocatedDuration(List<Pair<Timestamp, Integer>> allocations, LocalDateTime sessionStartTime, LocalDateTime sessionEndTime) {
-        if (allocations == null) return 0;
+    private static int sumAllocatedDuration(final List<Pair<Timestamp, Integer>> allocations, final LocalDateTime sessionStartTime, final LocalDateTime sessionEndTime) {
+        if (allocations == null) {
+            return 0;
+        }
         return allocations.stream()
                 .filter(pair -> {
-                    LocalDateTime ts = pair.getLeft().toLocalDateTime();
+                    final LocalDateTime ts = pair.getLeft().toLocalDateTime();
                     return !ts.isBefore(sessionStartTime) && ts.isBefore(sessionEndTime);
                 })
                 .mapToInt(Pair::getRight)
                 .sum();
     }
 
-    private static List<SlotStartTime> processSlotStartTimes(SlotProcessingContext ctx) {
+    private static List<SlotStartTime> processSlotStartTimes(final SlotProcessingContext ctx) {
         final List<SlotStartTime> slotStartTimes = new ArrayList<>();
 
         return getSlotStartTimes(ctx, ctx.sessionStartHour(), slotStartTimes);
     }
 
-    private static List<SlotStartTime> processSlotStartTimesMultiDay(SlotProcessingContext ctx) {
+    private static List<SlotStartTime> processSlotStartTimesMultiDay(final SlotProcessingContext ctx) {
         final List<SlotStartTime> slotStartTimes = new ArrayList<>();
 
-            getSlotBeforeMidnight(ctx, slotStartTimes);
+            addSlotBeforeMidnight(ctx, slotStartTimes);
         return getSlotStartTimes(ctx, 0, slotStartTimes);
     }
 
-    private static List<Pair<Timestamp, Integer>> filterBySlotWindow(
-            final List<Pair<Timestamp, Integer>> allocations,
-            final LocalDateTime slotStart,
-            final LocalDateTime slotEnd,
-            final LocalDateTime sessionEnd,
-            final boolean isFinalBucket,
-            final int sessionEndMinute) {
-
-        if (allocations == null || allocations.isEmpty()) return Collections.emptyList();
-
-        final boolean includeSessionEndInThisBucket =
-                isFinalBucket && sessionEndMinute == 0; // only when the last bucket ends exactly at :00
-
-        return allocations.stream()
-                .filter(p -> {
-                    LocalDateTime ts = p.getLeft().toLocalDateTime();
-                    // normal case: [start, end)
-                    boolean in = !ts.isBefore(slotStart) && ts.isBefore(slotEnd);
-                    // special rule: if this is the last bucket and the session ends on the hour,
-                    // pull in a booking exactly at the session end (== slotEnd) into the previous bucket
-                    if (!in && includeSessionEndInThisBucket) {
-                        in = ts.equals(sessionEnd);
-                    }
-                    return in;
-                })
-                .toList();
-    }
-
-    private static List<SlotStartTime> getSlotStartTimes(SlotProcessingContext ctx, int sessionStartHour, List<SlotStartTime> slotStartTimes) {
+    // The AtomicInteger counter and SlotStartTime DTO are per-hour state that is added to the
+    // result list each iteration — they must be freshly created per hour, not shared/hoisted.
+    @SuppressWarnings(SUPPRESS_INSTANTIATING_IN_LOOPS)
+    private static List<SlotStartTime> getSlotStartTimes(final SlotProcessingContext ctx, final int sessionStartHour, final List<SlotStartTime> slotStartTimes) {
         for (int currentHour = sessionStartHour; currentHour <= ctx.sessionEndHour(); currentHour++) {
             if ((currentHour == ctx.sessionEndHour() && ctx.sessionEndMinute() > 0) || currentHour < ctx.sessionEndHour()) {
                 if ((ctx.nationalBreakTimeStartHour() != 0) && (currentHour == ctx.nationalBreakTimeStartHour())) {
@@ -1885,10 +2934,10 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
                 final AtomicInteger count = new AtomicInteger(0);
                 filteredList.forEach(pair -> count.set(count.get() + pair.getRight()));
 
-                SlotStartTime slot = new SlotStartTime();
+                final SlotStartTime slot = new SlotStartTime();
                 slot.setSessionStartTime(toIsoString(slotStartTime));
                 slot.setSessionEndTime(toIsoString(slotEndTime));
-                slot.setCount(count.get());
+                slot.setCount((long) count.get());
                 setHearingTimestamp(ctx.slotBased(), currentHour, filteredList, slotEndHour, slot);
 
                 slotStartTimes.add(slot);
@@ -1898,7 +2947,7 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
         return slotStartTimes;
     }
 
-    private static void getSlotBeforeMidnight(SlotProcessingContext ctx, List<SlotStartTime> slotStartTimes) {
+    private static void addSlotBeforeMidnight(final SlotProcessingContext ctx, final List<SlotStartTime> slotStartTimes) {
         decideNextMinutePart(ctx.sessionStartHour(), ctx.sessionStartHour(), ctx.sessionEndHour(), ctx.nextMinutePart(), ctx.sessionEndMinute());
         final List<Pair<Timestamp, Integer>> filteredList = getCourtScheduleAllocatedPairForHourlyPart(
                 ctx.courtScheduleAllocatedPair(), ctx.sessionStartHour(), ctx.sessionEndHour(), ctx.sessionEndMinute(), ctx.nextMinutePart());
@@ -1911,10 +2960,10 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
         final AtomicInteger count = new AtomicInteger(0);
         filteredList.forEach(pair -> count.set(count.get() + pair.getRight()));
 
-        SlotStartTime slot = new SlotStartTime();
+        final SlotStartTime slot = new SlotStartTime();
         slot.setSessionStartTime(toIsoString(slotStartTime));
         slot.setSessionEndTime(toIsoString(slotEndTime));
-        slot.setCount(count.get());
+        slot.setCount((long) count.get());
         setHearingTimestamp(ctx.slotBased(), ctx.sessionStartHour(), filteredList, 0, slot);
 
         slotStartTimes.add(slot);
@@ -1924,8 +2973,9 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
         if (slotBased) {
             filteredList.forEach(timestampIntegerPair -> {
                 final int hearingHour = timestampIntegerPair.getLeft().toLocalDateTime().getHour();
-                if (hearingHour >= currentHour && hearingHour < slotEndHour)
+                if (hearingHour >= currentHour && hearingHour < slotEndHour) {
                     responseSlotStartTime.setHearingStartTime(toIsoString(timestampIntegerPair.getLeft().toLocalDateTime()));
+                }
             });
         }
     }
@@ -1935,14 +2985,13 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
                                                                           final int sessionEndHour,
                                                                           final int sessionEndMinute,
                                                                           final AtomicInteger nextMinutePart) {
-        final int startTimeMinute = currentHour != sessionStartHour ? 0 : nextMinutePart.get();
+        final int startTimeMinute = currentHour == sessionStartHour ? nextMinutePart.get() : 0;
         final int endTimeMinute = (currentHour > sessionEndHour) ? 0 : getEndTimeMinute(currentHour, sessionEndHour, sessionEndMinute);
-
 
         return Pair.of(startTimeMinute, endTimeMinute);
     }
 
-    private static int getEndTimeMinute(int currentHour, int sessionEndHour, int sessionEndMinute) {
+    private static int getEndTimeMinute(final int currentHour, final int sessionEndHour, final int sessionEndMinute) {
         return (currentHour == sessionEndHour) ? sessionEndMinute : 0;
     }
 
@@ -1955,14 +3004,14 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
                     final int pairHour = pair.getLeft().toLocalDateTime().getHour();
                     final int pairMinute = pair.getLeft().toLocalDateTime().getMinute();
 
-                    boolean inSameHourWindow = pairHour == currentHourPart &&
+                    final boolean inSameHourWindow = pairHour == currentHourPart &&
                             (
                                     (currentHourPart < sessionEndHour && pairMinute >= nextMinutePart.get())
                                     || (currentHourPart == sessionEndHour && pairMinute <= nextMinutePart.get())
                                     || (currentHourPart == 23 && sessionEndHour == 22 && pairMinute <= nextMinutePart.get())
                             );
 
-                    boolean includeExactEndOnBoundary =
+                    final boolean includeExactEndOnBoundary =
                             (sessionEndMinute == 0)
                                     && (currentHourPart == sessionEndHour - 1)
                                     && (pairHour == sessionEndHour)
@@ -1983,15 +3032,15 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
         }
     }
 
-    private void addJudiciaries(final List<uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary> courtScheduleJudiciaries,
-                                final uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule courtSchedule) {
+    private void addJudiciaries(final List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtScheduleJudiciary> courtScheduleJudiciaries,
+                                final uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule courtSchedule) {
         of(courtScheduleJudiciaries.stream()
                         .filter(courtScheduleJudiciary -> courtScheduleJudiciary.getCourtScheduleId().equals(courtSchedule.getCourtScheduleId()))
                         .toList())
                 .ifPresent(courtSchedule.getJudiciaries()::addAll);
     }
 
-    private void addJudiciaries(final List<uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary> courtScheduleJudiciaries,
+    private void addJudiciaries(final List<uk.gov.moj.cpp.courtscheduler.openapi.model.CourtScheduleJudiciary> courtScheduleJudiciaries,
                                 final Hearing hearing) {
         of(courtScheduleJudiciaries.stream()
                         .filter(courtScheduleJudiciary -> courtScheduleJudiciary.getCourtScheduleId().equals(hearing.getCourtScheduleId()))
@@ -1999,7 +3048,7 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
                 .ifPresent(hearing.getJudiciaries()::addAll);
     }
 
-    private void addSlotStartTimes(final Map<String, List<SlotStartTime>> slotStartTimes, final uk.gov.moj.cpp.courtscheduler.domain.CourtSchedule courtSchedule) {
+    private void addSlotStartTimes(final Map<String, List<SlotStartTime>> slotStartTimes, final uk.gov.moj.cpp.courtscheduler.openapi.model.CourtSchedule courtSchedule) {
         final List<SlotStartTime> yes = slotStartTimes.get(courtSchedule.getCourtScheduleId());
         if (isNotEmpty(yes)) {
             courtSchedule.getSlotStartTimes().addAll(yes);
@@ -2015,13 +3064,17 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
                 .executeUpdate();
     }
 
-    private List<Hearing> flattenHearingSlots(RequestedSlots requestedSlots) {
-        List<Hearing> result = new ArrayList<>();
+    // A fresh Hearing DTO is required per (hearingSlot, requestedCourtSchedule) pair — each is
+    // added independently to the result list, so none can be hoisted or shared.
+    @SuppressWarnings(SUPPRESS_INSTANTIATING_IN_LOOPS)
+    private List<Hearing> flattenHearingSlots(final RequestedSlots requestedSlots) {
+        final List<Hearing> result = new ArrayList<>();
 
-        for (HearingSlot hearingSlot : requestedSlots.getHearingSlots()) {
-            for (RequestedCourtSchedule requestedCourtSchedule : hearingSlot.getCourtScheduleIds()) {
-                Hearing hearing = new Hearing();
+        for (final HearingSlot hearingSlot : requestedSlots.getHearingSlots()) {
+            for (final RequestedCourtSchedule requestedCourtSchedule : hearingSlot.getCourtScheduleIds()) {
+                final Hearing hearing = new Hearing();
                 hearing.setHearingId(hearingSlot.getHearingId());
+                hearing.setBookingId(hearingSlot.getBookingId());
                 hearing.setCourtScheduleId(requestedCourtSchedule.getCourtScheduleId());
                 hearing.setHearingStartTime(requestedCourtSchedule.getHearingStartTime());
                 hearing.setDuration(requestedCourtSchedule.getDurationInMinutes());
@@ -2032,11 +3085,12 @@ public class CourtScheduleRepositoryImpl implements CourtScheduleRepositoryCusto
         return result;
     }
 
-    private static Date getAdjustedHearingStartTime(String isoDateString, uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule cs) {
-        if (isoDateString == null || DateUtils.getDate(isoDateString).before(cs.getSessionStartTime()) || DateUtils.getDate(isoDateString).after(cs.getSessionEndTime())) {
+    private static Instant getAdjustedHearingStartTime(final String isoDateString, final CourtSchedule cs) {
+        final Instant requested = isoDateString == null ? null : DateUtils.getDate(isoDateString).toInstant();
+        if (requested == null || requested.isBefore(cs.getSessionStartTime()) || requested.isAfter(cs.getSessionEndTime())) {
             return cs.getSessionStartTime();
         } else {
-            return DateUtils.getDate(isoDateString);
+            return requested;
         }
     }
 

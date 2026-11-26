@@ -1,5 +1,6 @@
 package uk.gov.moj.cpp.courtscheduler.envelope;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.json.JsonValue;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -18,7 +19,8 @@ public final class JsonEnvelopeWrapper {
 
     private JsonEnvelopeWrapper() { }
 
-    public static Map<String, Object> wrap(final Object payload, final String name, final String userId) {
+    public static Map<String, Object> wrap(final Object payload, final String name, final String userId,
+                                            final ObjectMapper objectMapper) {
         final Map<String, Object> metadata = new LinkedHashMap<>();
         metadata.put("id", UUID.randomUUID().toString());
         metadata.put("name", name);
@@ -39,7 +41,11 @@ public final class JsonEnvelopeWrapper {
                 envelope.put("payload", converted);
             }
         } else if (payload != null) {
-            envelope.put("payload", payload);
+            // Generated OpenAPI model POJOs (e.g. CourtschedulerExportCourtSchedule) are
+            // neither a Map nor a JsonValue - convert via the app's ObjectMapper (JSR310-aware)
+            // so their fields flatten into the envelope the same way a Map would.
+            final Map<?, ?> convertedMap = objectMapper.convertValue(payload, Map.class);
+            convertedMap.forEach((k, v) -> envelope.put(String.valueOf(k), v));
         }
         return envelope;
     }

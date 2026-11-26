@@ -38,6 +38,18 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @DisplayName("ChangeJudiciaryForHearingsHelper Tests")
 class ChangeJudiciaryForHearingsHelperTest {
 
+    private static final String MAGISTRATE = "Magistrate";
+    private static final String DISTRICT_JUDGE = "District Judge";
+    private static final String JUD_1 = "jud-1";
+    private static final String JUD_2 = "jud-2";
+    private static final String JUDICIARY_ASSIGNMENT_SOURCE = "AUTO";
+    private static final String HEARINGS_KEY = "hearings";
+    private static final String JUDICIARY_KEY = "judiciary";
+    private static final String JUDICIAL_ROLE_TYPE_KEY = "judicialRoleType";
+    private static final String JUDICIARY_TYPE_KEY = "judiciaryType";
+    private static final String JUDICIAL_ID_KEY = "judicialId";
+    private static final String JUDICIARY_ASSIGNMENT_SOURCE_KEY = "judiciaryAssignmentSource";
+
     @Mock
     private CourtScheduleJudiciaryService courtScheduleJudiciaryService;
 
@@ -47,6 +59,7 @@ class ChangeJudiciaryForHearingsHelperTest {
     @InjectMocks
     private ChangeJudiciaryForHearingsHelper changeJudiciaryForHearingsHelper;
 
+    /* default */
     @Nested
     @DisplayName("Payload Building Tests")
     class PayloadBuildingTests {
@@ -64,10 +77,10 @@ class ChangeJudiciaryForHearingsHelperTest {
             // Single-session hearings: hearing 1 on schedule A with 2 judiciaries, hearing 2 on
             // schedule B with 1 judiciary
             final List<Object[]> rows = List.<Object[]>of(
-                    new Object[]{hearingId1, courtScheduleIdA, "jud-1", "Magistrate", true, false},
-                    new Object[]{hearingId1, courtScheduleIdA, "jud-2", "District Judge", false, true},
-                    new Object[]{hearingId1, courtScheduleIdA, "jud-1", "Magistrate", true, false},
-                    new Object[]{hearingId2, courtScheduleIdB, "jud-3", "Magistrate", null, null});
+                    new Object[]{hearingId1, courtScheduleIdA, JUD_1, MAGISTRATE, true, false},
+                    new Object[]{hearingId1, courtScheduleIdA, JUD_2, DISTRICT_JUDGE, false, true},
+                    new Object[]{hearingId1, courtScheduleIdA, JUD_1, MAGISTRATE, true, false},
+                    new Object[]{hearingId2, courtScheduleIdB, "jud-3", MAGISTRATE, null, null});
             when(courtScheduleJudiciaryService.getHearingSessionJudiciariesForCourtSchedules(eq(changedCourtScheduleIds)))
                     .thenReturn(rows);
 
@@ -79,31 +92,31 @@ class ChangeJudiciaryForHearingsHelperTest {
             assertEquals(2, payloads.size());
 
             final JsonObject payload1 = payloads.get(0);
-            assertEquals(List.of(hearingId1), toStringList(payload1.getJsonArray("hearings")));
+            assertEquals(List.of(hearingId1), toStringList(payload1.getJsonArray(HEARINGS_KEY)));
 
-            final JsonArray judiciary1 = payload1.getJsonArray("judiciary");
+            final JsonArray judiciary1 = payload1.getJsonArray(JUDICIARY_KEY);
             assertEquals(2, judiciary1.size());
             final Map<String, JsonObject> judiciary1ById = toJudicialRoleMap(judiciary1);
-            final JsonObject judicialRole1 = judiciary1ById.get("jud-1");
-            assertEquals("Magistrate", judicialRole1.getJsonObject("judicialRoleType").getString("judiciaryType"));
+            final JsonObject judicialRole1 = judiciary1ById.get(JUD_1);
+            assertEquals(MAGISTRATE, judicialRole1.getJsonObject(JUDICIAL_ROLE_TYPE_KEY).getString(JUDICIARY_TYPE_KEY));
             assertTrue(judicialRole1.getBoolean("isBenchChairman"));
             assertFalse(judicialRole1.getBoolean("isDeputy"));
-            final JsonObject judicialRole2 = judiciary1ById.get("jud-2");
-            assertEquals("District Judge", judicialRole2.getJsonObject("judicialRoleType").getString("judiciaryType"));
+            final JsonObject judicialRole2 = judiciary1ById.get(JUD_2);
+            assertEquals(DISTRICT_JUDGE, judicialRole2.getJsonObject(JUDICIAL_ROLE_TYPE_KEY).getString(JUDICIARY_TYPE_KEY));
             assertFalse(judicialRole2.getBoolean("isBenchChairman"));
             assertTrue(judicialRole2.getBoolean("isDeputy"));
 
             final JsonObject payload2 = payloads.get(1);
-            assertEquals(List.of(hearingId2), toStringList(payload2.getJsonArray("hearings")));
-            final JsonObject judicialRole3 = payload2.getJsonArray("judiciary").getJsonObject(0);
-            assertEquals("jud-3", judicialRole3.getString("judicialId"));
-            assertEquals("Magistrate", judicialRole3.getJsonObject("judicialRoleType").getString("judiciaryType"));
+            assertEquals(List.of(hearingId2), toStringList(payload2.getJsonArray(HEARINGS_KEY)));
+            final JsonObject judicialRole3 = payload2.getJsonArray(JUDICIARY_KEY).getJsonObject(0);
+            assertEquals("jud-3", judicialRole3.getString(JUDICIAL_ID_KEY));
+            assertEquals(MAGISTRATE, judicialRole3.getJsonObject(JUDICIAL_ROLE_TYPE_KEY).getString(JUDICIARY_TYPE_KEY));
             // Optional booleans must be omitted when the columns are null
             assertFalse(judicialRole3.containsKey("isBenchChairman"));
             assertFalse(judicialRole3.containsKey("isDeputy"));
 
-            // judiciaryAssignmentSource must be "AUTO" so listing treats the command as rota-driven
-            payloads.forEach(payload -> assertEquals("AUTO", payload.getString("judiciaryAssignmentSource")));
+            // judiciaryAssignmentSource must be JUDICIARY_ASSIGNMENT_SOURCE so listing treats the command as rota-driven
+            payloads.forEach(payload -> assertEquals(JUDICIARY_ASSIGNMENT_SOURCE, payload.getString(JUDICIARY_ASSIGNMENT_SOURCE_KEY)));
         }
 
         @Test
@@ -118,12 +131,12 @@ class ChangeJudiciaryForHearingsHelperTest {
             final List<String> changedCourtScheduleIds = List.of(changedCourtScheduleId);
 
             final List<Object[]> rows = List.<Object[]>of(
-                    new Object[]{hearingId, changedCourtScheduleId, "jud-1", "Magistrate", true, false},
-                    new Object[]{hearingId, changedCourtScheduleId, "jud-2", "Magistrate", false, false},
-                    new Object[]{hearingId, otherCourtScheduleId1, "jud-2", "Magistrate", false, false},
-                    new Object[]{hearingId, otherCourtScheduleId1, "jud-1", "Magistrate", true, false},
-                    new Object[]{hearingId, otherCourtScheduleId2, "jud-1", "Magistrate", true, false},
-                    new Object[]{hearingId, otherCourtScheduleId2, "jud-2", "Magistrate", false, false});
+                    new Object[]{hearingId, changedCourtScheduleId, JUD_1, MAGISTRATE, true, false},
+                    new Object[]{hearingId, changedCourtScheduleId, JUD_2, MAGISTRATE, false, false},
+                    new Object[]{hearingId, otherCourtScheduleId1, JUD_2, MAGISTRATE, false, false},
+                    new Object[]{hearingId, otherCourtScheduleId1, JUD_1, MAGISTRATE, true, false},
+                    new Object[]{hearingId, otherCourtScheduleId2, JUD_1, MAGISTRATE, true, false},
+                    new Object[]{hearingId, otherCourtScheduleId2, JUD_2, MAGISTRATE, false, false});
             when(courtScheduleJudiciaryService.getHearingSessionJudiciariesForCourtSchedules(eq(changedCourtScheduleIds)))
                     .thenReturn(rows);
 
@@ -134,8 +147,8 @@ class ChangeJudiciaryForHearingsHelperTest {
             // then
             assertEquals(1, payloads.size());
             final JsonObject payload = payloads.get(0);
-            assertEquals(List.of(hearingId), toStringList(payload.getJsonArray("hearings")));
-            assertEquals(Set.of("jud-1", "jud-2"), toJudicialRoleMap(payload.getJsonArray("judiciary")).keySet());
+            assertEquals(List.of(hearingId), toStringList(payload.getJsonArray(HEARINGS_KEY)));
+            assertEquals(Set.of(JUD_1, JUD_2), toJudicialRoleMap(payload.getJsonArray(JUDICIARY_KEY)).keySet());
         }
 
         @Test
@@ -148,8 +161,8 @@ class ChangeJudiciaryForHearingsHelperTest {
             final List<String> changedCourtScheduleIds = List.of(courtScheduleIdA);
 
             final List<Object[]> rows = List.<Object[]>of(
-                    new Object[]{hearingId, courtScheduleIdA, "jud-1", "Magistrate", true, false},
-                    new Object[]{hearingId, courtScheduleIdB, "jud-9", "Magistrate", true, false});
+                    new Object[]{hearingId, courtScheduleIdA, JUD_1, MAGISTRATE, true, false},
+                    new Object[]{hearingId, courtScheduleIdB, "jud-9", MAGISTRATE, true, false});
             when(courtScheduleJudiciaryService.getHearingSessionJudiciariesForCourtSchedules(eq(changedCourtScheduleIds)))
                     .thenReturn(rows);
 
@@ -167,8 +180,8 @@ class ChangeJudiciaryForHearingsHelperTest {
             final List<String> changedCourtScheduleIds = List.of(courtScheduleIdA);
 
             final List<Object[]> rows = List.<Object[]>of(
-                    new Object[]{hearingId, courtScheduleIdA, "jud-1", "Magistrate", true, false},
-                    new Object[]{hearingId, courtScheduleIdB, "jud-1", "Magistrate", false, false});
+                    new Object[]{hearingId, courtScheduleIdA, JUD_1, MAGISTRATE, true, false},
+                    new Object[]{hearingId, courtScheduleIdB, JUD_1, MAGISTRATE, false, false});
             when(courtScheduleJudiciaryService.getHearingSessionJudiciariesForCourtSchedules(eq(changedCourtScheduleIds)))
                     .thenReturn(rows);
 
@@ -186,7 +199,7 @@ class ChangeJudiciaryForHearingsHelperTest {
             final List<String> changedCourtScheduleIds = List.of(courtScheduleIdB);
 
             final List<Object[]> rows = List.<Object[]>of(
-                    new Object[]{hearingId, courtScheduleIdA, "jud-1", "Magistrate", true, false},
+                    new Object[]{hearingId, courtScheduleIdA, JUD_1, MAGISTRATE, true, false},
                     new Object[]{hearingId, courtScheduleIdB, null, null, null, null});
             when(courtScheduleJudiciaryService.getHearingSessionJudiciariesForCourtSchedules(eq(changedCourtScheduleIds)))
                     .thenReturn(rows);
@@ -206,10 +219,10 @@ class ChangeJudiciaryForHearingsHelperTest {
             final List<String> changedCourtScheduleIds = List.of(courtScheduleIdA);
 
             final List<Object[]> rows = List.<Object[]>of(
-                    new Object[]{consistentHearingId, courtScheduleIdA, "jud-1", "Magistrate", true, false},
-                    new Object[]{consistentHearingId, courtScheduleIdB, "jud-1", "Magistrate", true, false},
-                    new Object[]{inconsistentHearingId, courtScheduleIdA, "jud-1", "Magistrate", true, false},
-                    new Object[]{inconsistentHearingId, courtScheduleIdB, "jud-2", "Magistrate", true, false});
+                    new Object[]{consistentHearingId, courtScheduleIdA, JUD_1, MAGISTRATE, true, false},
+                    new Object[]{consistentHearingId, courtScheduleIdB, JUD_1, MAGISTRATE, true, false},
+                    new Object[]{inconsistentHearingId, courtScheduleIdA, JUD_1, MAGISTRATE, true, false},
+                    new Object[]{inconsistentHearingId, courtScheduleIdB, JUD_2, MAGISTRATE, true, false});
             when(courtScheduleJudiciaryService.getHearingSessionJudiciariesForCourtSchedules(eq(changedCourtScheduleIds)))
                     .thenReturn(rows);
 
@@ -219,7 +232,7 @@ class ChangeJudiciaryForHearingsHelperTest {
 
             // then
             assertEquals(1, payloads.size());
-            assertEquals(List.of(consistentHearingId), toStringList(payloads.get(0).getJsonArray("hearings")));
+            assertEquals(List.of(consistentHearingId), toStringList(payloads.get(0).getJsonArray(HEARINGS_KEY)));
         }
 
         @Test
@@ -233,8 +246,8 @@ class ChangeJudiciaryForHearingsHelperTest {
             final List<String> changedCourtScheduleIds = List.of(courtScheduleIdA, courtScheduleIdB);
 
             final List<Object[]> rows = List.<Object[]>of(
-                    new Object[]{hearingId1, courtScheduleIdA, "jud-1", "Magistrate", true, false},
-                    new Object[]{hearingId2, courtScheduleIdB, "jud-1", "Magistrate", true, false});
+                    new Object[]{hearingId1, courtScheduleIdA, JUD_1, MAGISTRATE, true, false},
+                    new Object[]{hearingId2, courtScheduleIdB, JUD_1, MAGISTRATE, true, false});
             when(courtScheduleJudiciaryService.getHearingSessionJudiciariesForCourtSchedules(eq(changedCourtScheduleIds)))
                     .thenReturn(rows);
 
@@ -246,10 +259,10 @@ class ChangeJudiciaryForHearingsHelperTest {
             assertEquals(1, payloads.size());
             final JsonObject payload = payloads.get(0);
             assertEquals(Set.copyOf(List.of(hearingId1, hearingId2)),
-                    Set.copyOf(toStringList(payload.getJsonArray("hearings"))));
-            assertEquals(1, payload.getJsonArray("judiciary").size());
-            assertEquals("jud-1", payload.getJsonArray("judiciary").getJsonObject(0).getString("judicialId"));
-            assertEquals("AUTO", payload.getString("judiciaryAssignmentSource"));
+                    Set.copyOf(toStringList(payload.getJsonArray(HEARINGS_KEY))));
+            assertEquals(1, payload.getJsonArray(JUDICIARY_KEY).size());
+            assertEquals(JUD_1, payload.getJsonArray(JUDICIARY_KEY).getJsonObject(0).getString(JUDICIAL_ID_KEY));
+            assertEquals(JUDICIARY_ASSIGNMENT_SOURCE, payload.getString(JUDICIARY_ASSIGNMENT_SOURCE_KEY));
         }
 
         @Test
@@ -266,9 +279,9 @@ class ChangeJudiciaryForHearingsHelperTest {
             final List<String> changedCourtScheduleIds = List.of(courtScheduleIdA, courtScheduleIdB, courtScheduleIdC);
 
             final List<Object[]> rows = List.<Object[]>of(
-                    new Object[]{hearingId1, courtScheduleIdA, "jud-1", "Magistrate", true, false},
-                    new Object[]{hearingId2, courtScheduleIdB, "jud-1", "Magistrate", true, false},
-                    new Object[]{hearingId3, courtScheduleIdC, "jud-2", "District Judge", false, true});
+                    new Object[]{hearingId1, courtScheduleIdA, JUD_1, MAGISTRATE, true, false},
+                    new Object[]{hearingId2, courtScheduleIdB, JUD_1, MAGISTRATE, true, false},
+                    new Object[]{hearingId3, courtScheduleIdC, JUD_2, DISTRICT_JUDGE, false, true});
             when(courtScheduleJudiciaryService.getHearingSessionJudiciariesForCourtSchedules(eq(changedCourtScheduleIds)))
                     .thenReturn(rows);
 
@@ -281,22 +294,22 @@ class ChangeJudiciaryForHearingsHelperTest {
 
             // hearing1 and hearing2 are grouped together (order within the hearings array is not contractual)
             final JsonObject groupedPayload = payloads.stream()
-                    .filter(p -> toStringList(p.getJsonArray("hearings")).size() == 2)
+                    .filter(p -> toStringList(p.getJsonArray(HEARINGS_KEY)).size() == 2)
                     .findFirst()
                     .orElseThrow(() -> new AssertionError("Expected a payload with 2 hearing IDs"));
             assertEquals(Set.copyOf(List.of(hearingId1, hearingId2)),
-                    Set.copyOf(toStringList(groupedPayload.getJsonArray("hearings"))));
-            assertEquals("jud-1", groupedPayload.getJsonArray("judiciary").getJsonObject(0).getString("judicialId"));
+                    Set.copyOf(toStringList(groupedPayload.getJsonArray(HEARINGS_KEY))));
+            assertEquals(JUD_1, groupedPayload.getJsonArray(JUDICIARY_KEY).getJsonObject(0).getString(JUDICIAL_ID_KEY));
 
             // hearing3 gets its own payload
             final JsonObject soloPayload = payloads.stream()
-                    .filter(p -> toStringList(p.getJsonArray("hearings")).size() == 1)
+                    .filter(p -> toStringList(p.getJsonArray(HEARINGS_KEY)).size() == 1)
                     .findFirst()
                     .orElseThrow(() -> new AssertionError("Expected a payload with 1 hearing ID"));
-            assertEquals(List.of(hearingId3), toStringList(soloPayload.getJsonArray("hearings")));
-            assertEquals("jud-2", soloPayload.getJsonArray("judiciary").getJsonObject(0).getString("judicialId"));
+            assertEquals(List.of(hearingId3), toStringList(soloPayload.getJsonArray(HEARINGS_KEY)));
+            assertEquals(JUD_2, soloPayload.getJsonArray(JUDICIARY_KEY).getJsonObject(0).getString(JUDICIAL_ID_KEY));
 
-            payloads.forEach(p -> assertEquals("AUTO", p.getString("judiciaryAssignmentSource")));
+            payloads.forEach(p -> assertEquals(JUDICIARY_ASSIGNMENT_SOURCE, p.getString(JUDICIARY_ASSIGNMENT_SOURCE_KEY)));
         }
 
         @Test
@@ -322,9 +335,9 @@ class ChangeJudiciaryForHearingsHelperTest {
             // clears the judiciary from the hearing
             assertEquals(1, payloads.size());
             final JsonObject payload = payloads.get(0);
-            assertEquals(List.of(hearingId), toStringList(payload.getJsonArray("hearings")));
-            assertTrue(payload.getJsonArray("judiciary").isEmpty());
-            assertEquals("AUTO", payload.getString("judiciaryAssignmentSource"));
+            assertEquals(List.of(hearingId), toStringList(payload.getJsonArray(HEARINGS_KEY)));
+            assertTrue(payload.getJsonArray(JUDICIARY_KEY).isEmpty());
+            assertEquals(JUDICIARY_ASSIGNMENT_SOURCE, payload.getString(JUDICIARY_ASSIGNMENT_SOURCE_KEY));
         }
 
         @Test
@@ -355,10 +368,11 @@ class ChangeJudiciaryForHearingsHelperTest {
 
         private Map<String, JsonObject> toJudicialRoleMap(final JsonArray judiciary) {
             return judiciary.getValuesAs(JsonObject.class).stream()
-                    .collect(Collectors.toMap(role -> role.getString("judicialId"), role -> role));
+                    .collect(Collectors.toMap(role -> role.getString(JUDICIAL_ID_KEY), role -> role));
         }
     }
 
+    /* default */
     @Nested
     @DisplayName("Command Sending Tests")
     class CommandSendingTests {
@@ -411,12 +425,12 @@ class ChangeJudiciaryForHearingsHelperTest {
 
         private JsonObject payloadFor(final String hearingId) {
             return Json.createObjectBuilder()
-                    .add("hearings", Json.createArrayBuilder().add(hearingId))
-                    .add("judiciary", Json.createArrayBuilder()
+                    .add(HEARINGS_KEY, Json.createArrayBuilder().add(hearingId))
+                    .add(JUDICIARY_KEY, Json.createArrayBuilder()
                             .add(Json.createObjectBuilder()
-                                    .add("judicialId", randomUUID().toString())
-                                    .add("judicialRoleType", Json.createObjectBuilder()
-                                            .add("judiciaryType", "Magistrate"))))
+                                    .add(JUDICIAL_ID_KEY, randomUUID().toString())
+                                    .add(JUDICIAL_ROLE_TYPE_KEY, Json.createObjectBuilder()
+                                            .add(JUDICIARY_TYPE_KEY, MAGISTRATE))))
                     .build();
         }
     }

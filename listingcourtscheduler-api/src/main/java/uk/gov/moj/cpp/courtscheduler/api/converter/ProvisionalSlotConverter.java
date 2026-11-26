@@ -4,7 +4,7 @@ import org.springframework.stereotype.Service;
 
 import static java.lang.String.format;
 
-import uk.gov.moj.cpp.courtscheduler.domain.ProvisionalBookingSlots;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.ProvisionalBookingSlots;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;

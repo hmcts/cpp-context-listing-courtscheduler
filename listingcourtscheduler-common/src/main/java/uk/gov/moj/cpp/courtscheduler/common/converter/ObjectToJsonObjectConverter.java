@@ -3,6 +3,7 @@ package uk.gov.moj.cpp.courtscheduler.common.converter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.json.Json;
 import jakarta.json.JsonObject;
+import jakarta.json.JsonReader;
 import java.io.IOException;
 import java.io.StringReader;
 import org.springframework.stereotype.Component;
@@ -26,7 +27,7 @@ public class ObjectToJsonObjectConverter {
         }
         try {
             final String json = objectMapper.writeValueAsString(source);
-            try (var reader = Json.createReader(new StringReader(json))) {
+            try (JsonReader reader = Json.createReader(new StringReader(json))) {
                 return reader.readObject();
             }
         } catch (IOException ioe) {

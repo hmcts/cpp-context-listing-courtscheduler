@@ -5,6 +5,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.verify;
@@ -12,13 +13,15 @@ import static org.mockito.Mockito.when;
 
 import uk.gov.moj.cpp.courtscheduler.common.converter.ObjectToJsonObjectConverter;
 
-import uk.gov.moj.cpp.courtscheduler.domain.AllocatedListingTotalBooked;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.AllocatedListingTotalBooked;
 import uk.gov.moj.cpp.courtscheduler.domain.HearingSlotRequestParam;
 import uk.gov.moj.cpp.courtscheduler.domain.IdResponse;
 import uk.gov.moj.cpp.courtscheduler.domain.RequestParameterConstant;
 import uk.gov.moj.cpp.courtscheduler.repository.AllocatedListingRepository;
+import uk.gov.moj.cpp.courtscheduler.repository.CourtScheduleRepository;
 
 import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -43,6 +46,9 @@ class AllocatedListingServiceTest {
 
     @Mock
     private AllocatedListingRepository allocatedListingRepository;
+
+    @Mock
+    private CourtScheduleRepository courtScheduleRepository;
 
     @Spy
     private ObjectToJsonObjectConverter objectToJsonObjectConverter = new uk.gov.moj.cpp.courtscheduler.common.converter.ObjectToJsonObjectConverter(new com.fasterxml.jackson.databind.ObjectMapper().findAndRegisterModules());
@@ -77,16 +83,31 @@ class AllocatedListingServiceTest {
         assertThat(expectedNumberOfDeletion, is(numberOfDeleted));
     }
 
+    @Test
+    void shouldPurgeExpiredReservedSessionsRestoringCapacity() {
+        final int numberOfReleased = 3;
+        when(courtScheduleRepository.releaseExpiredReservations(any(LocalDate.class))).thenReturn(numberOfReleased);
+
+        final int actual = allocatedListingService.purgeExpiredReservedSessions();
+
+        final org.mockito.ArgumentCaptor<LocalDate> cutoffCaptor = org.mockito.ArgumentCaptor.forClass(LocalDate.class);
+        verify(courtScheduleRepository, atLeastOnce()).releaseExpiredReservations(cutoffCaptor.capture());
+        assertEquals(LocalDate.now(ZoneOffset.UTC), cutoffCaptor.getValue());
+        assertThat(actual, is(numberOfReleased));
+    }
+
     private List<AllocatedListingTotalBooked> getAllocatedListingTotalBooked(final List<String> courtScheduleIds) {
         return courtScheduleIds.stream()
-                .map(courtScheduleId -> new AllocatedListingTotalBooked(courtScheduleId, totalBooked))
+                .map(courtScheduleId -> new AllocatedListingTotalBooked()
+                        .courtScheduleId(courtScheduleId)
+                        .totalBooked(totalBooked.intValue()))
                 .toList();
     }
 
 
     @Test
     void shouldGetHearingIds() {
-        HearingSlotRequestParam hearingIdsReq =
+        final HearingSlotRequestParam hearingIdsReq =
                 new HearingSlotRequestParam("panel",
                         "2024-12-09",
                         "2024-12-09",
@@ -102,15 +123,16 @@ class AllocatedListingServiceTest {
                         false,
                         null,
                         false,
-                        "API",
+                        null,
+                        null,
                         null);
-        Set<IdResponse> hearingIds = new LinkedHashSet<>();
+        final Set<IdResponse> hearingIds = new LinkedHashSet<>();
         hearingIds.add(new IdResponse(randomUUID().toString(), randomUUID().toString(), LocalDate.now(), 1, 1));
         hearingIds.add(new IdResponse(randomUUID().toString(), randomUUID().toString(), LocalDate.now(), 1, 1));
         hearingIds.add(new IdResponse(randomUUID().toString(), randomUUID().toString(), LocalDate.now(), 1, 1));
-        Pair pair = Pair.of(3, hearingIds);
+        final Pair pair = Pair.of(3, hearingIds);
         when(allocatedListingRepository.findHearingIdsBy(eq(hearingIdsReq))).thenReturn(pair);
-        JsonObject hearingIdsJsonObj = allocatedListingService.getHearingIds(hearingIdsReq);
+        final JsonObject hearingIdsJsonObj = allocatedListingService.getHearingIds(hearingIdsReq);
 
         verify(allocatedListingRepository, atLeastOnce()).findHearingIdsBy(eq(hearingIdsReq));
 
@@ -118,12 +140,12 @@ class AllocatedListingServiceTest {
         assertEquals(3, hearingIdsJsonObj.getInt(RequestParameterConstant.RESULTS.getLabel()));
         assertEquals(1, hearingIdsJsonObj.getInt(RequestParameterConstant.PAGE_COUNT.getLabel()));
 
-        JsonArray hearingIdsJsonArr = hearingIdsJsonObj.getJsonArray(RequestParameterConstant.HEARING_IDS.getLabel());
+        final JsonArray hearingIdsJsonArr = hearingIdsJsonObj.getJsonArray(RequestParameterConstant.HEARING_IDS.getLabel());
         assertEquals(3, hearingIdsJsonArr.size());
         hearingIdsJsonArr.forEach(e ->
         {
-            assertTrue(hearingIds.stream().map(IdResponse::hearingId).toList().contains(((e.asJsonObject().getString("hearingId")))));
-            assertTrue(hearingIds.stream().map(IdResponse::courtScheduleId).toList().contains(((e.asJsonObject().getString("courtScheduleId")))));
+            assertTrue(hearingIds.stream().map(IdResponse::hearingId).toList().contains(e.asJsonObject().getString("hearingId")));
+            assertTrue(hearingIds.stream().map(IdResponse::courtScheduleId).toList().contains(e.asJsonObject().getString("courtScheduleId")));
         });
 
     }

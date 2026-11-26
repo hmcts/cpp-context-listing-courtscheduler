@@ -4,8 +4,8 @@ import static java.util.Collections.emptyList;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -15,7 +15,8 @@ import static uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload.ROTA_PERIOD;
 
 import uk.gov.moj.cpp.courtscheduler.common.service.CourtScheduleJudiciaryService;
 import uk.gov.moj.cpp.courtscheduler.common.service.ReferenceDataMapperService;
-import uk.gov.moj.cpp.courtscheduler.domain.CourtRoom;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtRoom;
+import uk.gov.moj.cpp.courtscheduler.openapi.model.CourtScheduleJudiciary;
 import uk.gov.moj.cpp.courtscheduler.domain.rota.RotaPayload;
 import uk.gov.moj.cpp.courtscheduler.rotafileprocessor.provisionaldata.RotaPeriodDateInfoProvider;
 
@@ -37,6 +38,13 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 @DisplayName("RotaLocationPeriodHelper Tests")
 class RotaLocationPeriodHelperTest {
+    private static final String VALUE_100 = "100";
+    private static final String VALUE_200 = "200";
+    private static final String DATE_2024_01_01 = "2024-01-01";
+    private static final String DATE_2024_12_31 = "2024-12-31";
+    private static final String OU001_2 = "OU001";
+    private static final String OU002_2 = "OU002";
+
 
     @Mock
     private ReferenceDataMapperService referenceDataMapperService;
@@ -60,6 +68,7 @@ class RotaLocationPeriodHelperTest {
     // Tests for Location Operations
     // ============================================================================
 
+    /* default */
     @Nested
     @DisplayName("Location Extraction Tests")
     class LocationExtractionTests {
@@ -70,10 +79,10 @@ class RotaLocationPeriodHelperTest {
             // given
             final Map<String, Map<String, String>> locations = new HashMap<>();
             final Map<String, String> location1 = new HashMap<>();
-            location1.put("locationId", "100");
+            location1.put("locationId", VALUE_100);
             locations.put("loc-1", location1);
             final Map<String, String> location2 = new HashMap<>();
-            location2.put("locationId", "200");
+            location2.put("locationId", VALUE_200);
             locations.put("loc-2", location2);
             records.put(LOCATION, locations);
 
@@ -109,14 +118,8 @@ class RotaLocationPeriodHelperTest {
             // when & then
             // The method will throw NullPointerException when records is null
             // This is expected behavior as the method doesn't handle null input
-            try {
-                rotaLocationPeriodHelper.getLocationFromRecords(nullRecords);
-                // If we reach here, the test should fail
-                org.junit.jupiter.api.Assertions.fail("Expected NullPointerException");
-            } catch (final NullPointerException e) {
-                // Expected behavior
-                assertNotNull(e);
-            }
+            assertThrows(NullPointerException.class,
+                    () -> rotaLocationPeriodHelper.getLocationFromRecords(nullRecords));
         }
 
         @Test
@@ -125,8 +128,8 @@ class RotaLocationPeriodHelperTest {
             // given
             final Map<String, Map<String, String>> locations = new HashMap<>();
             final Map<String, String> location1 = new HashMap<>();
-            location1.put("locationId1", "100");
-            location1.put("locationId2", "200");
+            location1.put("locationId1", VALUE_100);
+            location1.put("locationId2", VALUE_200);
             location1.put("locationId3", "300");
             locations.put("loc-1", location1);
             records.put(LOCATION, locations);
@@ -147,6 +150,7 @@ class RotaLocationPeriodHelperTest {
     // Tests for OU Code Resolution
     // ============================================================================
 
+    /* default */
     @Nested
     @DisplayName("OU Code Resolution Tests")
     class OuCodeResolutionTests {
@@ -155,19 +159,19 @@ class RotaLocationPeriodHelperTest {
         @DisplayName("Should resolve OU codes from location IDs")
         void shouldResolveOuCodesFromLocationIds() {
             // given
-            final List<String> locationIds = List.of("100", "200");
+            final List<String> locationIds = List.of(VALUE_100, VALUE_200);
             final UUID roomId1 = UUID.randomUUID();
             final UUID roomId2 = UUID.randomUUID();
-            final CourtRoom courtRoom1 = CourtRoom.CourtRoomBuilder.aCourtRoom()
-                    .withRotaLocationId(100)
-                    .withOucode("OU001")
-                    .withCourtRoomId(roomId1.toString())
-                    .build();
-            final CourtRoom courtRoom2 = CourtRoom.CourtRoomBuilder.aCourtRoom()
-                    .withRotaLocationId(200)
-                    .withOucode("OU002")
-                    .withCourtRoomId(roomId2.toString())
-                    .build();
+            final CourtRoom courtRoom1 = new CourtRoom()
+                    .rotaLocationId(100)
+                    .oucode(OU001_2)
+                    .courtroomId(roomId1.toString())
+                    ;
+            final CourtRoom courtRoom2 = new CourtRoom()
+                    .rotaLocationId(200)
+                    .oucode(OU002_2)
+                    .courtroomId(roomId2.toString())
+                    ;
             courtRoomsMap.put(roomId1, courtRoom1);
             courtRoomsMap.put(roomId2, courtRoom2);
             when(referenceDataMapperService.getCourtRoomsMap()).thenReturn(courtRoomsMap);
@@ -178,8 +182,8 @@ class RotaLocationPeriodHelperTest {
             // then
             assertNotNull(result);
             assertEquals(2, result.size());
-            assertTrue(result.contains("OU001"));
-            assertTrue(result.contains("OU002"));
+            assertTrue(result.contains(OU001_2));
+            assertTrue(result.contains(OU002_2));
             verify(referenceDataMapperService).getCourtRoomsMap();
         }
 
@@ -211,19 +215,19 @@ class RotaLocationPeriodHelperTest {
         @DisplayName("Should handle duplicate location IDs")
         void shouldHandleDuplicateLocationIds() {
             // given
-            final List<String> locationIds = List.of("100", "100", "200");
+            final List<String> locationIds = List.of(VALUE_100, VALUE_100, VALUE_200);
             final UUID roomId1 = UUID.randomUUID();
             final UUID roomId2 = UUID.randomUUID();
-            final CourtRoom courtRoom1 = CourtRoom.CourtRoomBuilder.aCourtRoom()
-                    .withRotaLocationId(100)
-                    .withOucode("OU001")
-                    .withCourtRoomId(roomId1.toString())
-                    .build();
-            final CourtRoom courtRoom2 = CourtRoom.CourtRoomBuilder.aCourtRoom()
-                    .withRotaLocationId(200)
-                    .withOucode("OU002")
-                    .withCourtRoomId(roomId2.toString())
-                    .build();
+            final CourtRoom courtRoom1 = new CourtRoom()
+                    .rotaLocationId(100)
+                    .oucode(OU001_2)
+                    .courtroomId(roomId1.toString())
+                    ;
+            final CourtRoom courtRoom2 = new CourtRoom()
+                    .rotaLocationId(200)
+                    .oucode(OU002_2)
+                    .courtroomId(roomId2.toString())
+                    ;
             courtRoomsMap.put(roomId1, courtRoom1);
             courtRoomsMap.put(roomId2, courtRoom2);
             when(referenceDataMapperService.getCourtRoomsMap()).thenReturn(courtRoomsMap);
@@ -235,21 +239,21 @@ class RotaLocationPeriodHelperTest {
             assertNotNull(result);
             // Should only add each OU code once
             assertEquals(2, result.size());
-            assertTrue(result.contains("OU001"));
-            assertTrue(result.contains("OU002"));
+            assertTrue(result.contains(OU001_2));
+            assertTrue(result.contains(OU002_2));
         }
 
         @Test
         @DisplayName("Should handle location IDs not found in court rooms")
         void shouldHandleLocationIdsNotFoundInCourtRooms() {
             // given
-            final List<String> locationIds = List.of("100", "999");
+            final List<String> locationIds = List.of(VALUE_100, "999");
             final UUID roomId1 = UUID.randomUUID();
-            final CourtRoom courtRoom1 = CourtRoom.CourtRoomBuilder.aCourtRoom()
-                    .withRotaLocationId(100)
-                    .withOucode("OU001")
-                    .withCourtRoomId(roomId1.toString())
-                    .build();
+            final CourtRoom courtRoom1 = new CourtRoom()
+                    .rotaLocationId(100)
+                    .oucode(OU001_2)
+                    .courtroomId(roomId1.toString())
+                    ;
             courtRoomsMap.put(roomId1, courtRoom1);
             when(referenceDataMapperService.getCourtRoomsMap()).thenReturn(courtRoomsMap);
 
@@ -259,7 +263,7 @@ class RotaLocationPeriodHelperTest {
             // then
             assertNotNull(result);
             assertEquals(1, result.size());
-            assertTrue(result.contains("OU001"));
+            assertTrue(result.contains(OU001_2));
             assertFalse(result.contains("OU999"));
         }
 
@@ -267,19 +271,19 @@ class RotaLocationPeriodHelperTest {
         @DisplayName("Should handle multiple court rooms with same location ID")
         void shouldHandleMultipleCourtRoomsWithSameLocationId() {
             // given
-            final List<String> locationIds = List.of("100");
+            final List<String> locationIds = List.of(VALUE_100);
             final UUID roomId1 = UUID.randomUUID();
             final UUID roomId2 = UUID.randomUUID();
-            final CourtRoom courtRoom1 = CourtRoom.CourtRoomBuilder.aCourtRoom()
-                    .withRotaLocationId(100)
-                    .withOucode("OU001")
-                    .withCourtRoomId(roomId1.toString())
-                    .build();
-            final CourtRoom courtRoom2 = CourtRoom.CourtRoomBuilder.aCourtRoom()
-                    .withRotaLocationId(100)
-                    .withOucode("OU001")
-                    .withCourtRoomId(roomId2.toString())
-                    .build();
+            final CourtRoom courtRoom1 = new CourtRoom()
+                    .rotaLocationId(100)
+                    .oucode(OU001_2)
+                    .courtroomId(roomId1.toString())
+                    ;
+            final CourtRoom courtRoom2 = new CourtRoom()
+                    .rotaLocationId(100)
+                    .oucode(OU001_2)
+                    .courtroomId(roomId2.toString())
+                    ;
             courtRoomsMap.put(roomId1, courtRoom1);
             courtRoomsMap.put(roomId2, courtRoom2);
             when(referenceDataMapperService.getCourtRoomsMap()).thenReturn(courtRoomsMap);
@@ -291,26 +295,26 @@ class RotaLocationPeriodHelperTest {
             assertNotNull(result);
             // Should only add OU code once even if multiple court rooms have same location ID
             assertEquals(1, result.size());
-            assertTrue(result.contains("OU001"));
+            assertTrue(result.contains(OU001_2));
         }
 
         @Test
         @DisplayName("Should handle null rota location ID in court room")
         void shouldHandleNullRotaLocationIdInCourtRoom() {
             // given
-            final List<String> locationIds = List.of("100");
+            final List<String> locationIds = List.of(VALUE_100);
             final UUID roomId1 = UUID.randomUUID();
             final UUID roomId2 = UUID.randomUUID();
-            final CourtRoom courtRoom1 = CourtRoom.CourtRoomBuilder.aCourtRoom()
-                    .withRotaLocationId(null)
-                    .withOucode("OU001")
-                    .withCourtRoomId(roomId1.toString())
-                    .build();
-            final CourtRoom courtRoom2 = CourtRoom.CourtRoomBuilder.aCourtRoom()
-                    .withRotaLocationId(100)
-                    .withOucode("OU002")
-                    .withCourtRoomId(roomId2.toString())
-                    .build();
+            final CourtRoom courtRoom1 = new CourtRoom()
+                    .rotaLocationId(null)
+                    .oucode(OU001_2)
+                    .courtroomId(roomId1.toString())
+                    ;
+            final CourtRoom courtRoom2 = new CourtRoom()
+                    .rotaLocationId(100)
+                    .oucode(OU002_2)
+                    .courtroomId(roomId2.toString())
+                    ;
             courtRoomsMap.put(roomId1, courtRoom1);
             courtRoomsMap.put(roomId2, courtRoom2);
             when(referenceDataMapperService.getCourtRoomsMap()).thenReturn(courtRoomsMap);
@@ -321,8 +325,8 @@ class RotaLocationPeriodHelperTest {
             // then
             assertNotNull(result);
             assertEquals(1, result.size());
-            assertTrue(result.contains("OU002"));
-            assertFalse(result.contains("OU001"));
+            assertTrue(result.contains(OU002_2));
+            assertFalse(result.contains(OU001_2));
         }
     }
 
@@ -330,6 +334,7 @@ class RotaLocationPeriodHelperTest {
     // Tests for Rota Period Operations
     // ============================================================================
 
+    /* default */
     @Nested
     @DisplayName("Rota Period Date Extraction Tests")
     class RotaPeriodDateExtractionTests {
@@ -340,8 +345,8 @@ class RotaLocationPeriodHelperTest {
             // given
             final Map<String, Map<String, String>> rotaPeriodMap = new HashMap<>();
             final Map<String, String> rotaPeriodData = new HashMap<>();
-            rotaPeriodData.put("rotaPeriodStartDate", "2024-01-01");
-            rotaPeriodData.put("rotaPeriodEndDate", "2024-12-31");
+            rotaPeriodData.put("rotaPeriodStartDate", DATE_2024_01_01);
+            rotaPeriodData.put("rotaPeriodEndDate", DATE_2024_12_31);
             rotaPeriodMap.put("period-1", rotaPeriodData);
             records.put(ROTA_PERIOD, rotaPeriodMap);
 
@@ -350,8 +355,8 @@ class RotaLocationPeriodHelperTest {
 
             // then
             assertNotNull(result);
-            assertEquals(LocalDate.parse("2024-01-01"), result.getRotaPeriodStartDate());
-            assertEquals(LocalDate.parse("2024-12-31"), result.getRotaPeriodEndDate());
+            assertEquals(LocalDate.parse(DATE_2024_01_01), result.getRotaPeriodStartDate());
+            assertEquals(LocalDate.parse(DATE_2024_12_31), result.getRotaPeriodEndDate());
         }
 
         @Test
@@ -375,6 +380,7 @@ class RotaLocationPeriodHelperTest {
         }
     }
 
+    /* default */
     @Nested
     @DisplayName("Get Unallocated Court Schedule Judiciaries Tests")
     class GetUnallocatedCourtScheduleJudiciariesTests {
@@ -387,19 +393,17 @@ class RotaLocationPeriodHelperTest {
             final LocalDate endDate = LocalDate.parse("2024-12-31");
             final List<String> ouCodes = List.of("OU001");
             final String courtScheduleId = UUID.randomUUID().toString();
-            final uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary judiciary =
-                    uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary.judiciary()
-                            .withCourtScheduleId(courtScheduleId)
-                            .withJudiciaryId("jud-1")
-                            .build();
-            final Map<String, List<uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary>> serviceResult =
+            final CourtScheduleJudiciary judiciary = new CourtScheduleJudiciary()
+                    .courtScheduleId(courtScheduleId)
+                    .judiciaryId("jud-1");
+            final Map<String, List<CourtScheduleJudiciary>> serviceResult =
                     Map.of(courtScheduleId, List.of(judiciary));
             when(courtScheduleJudiciaryService.getCourtScheduleJudiciariesForRotaPeriod(
                     eq(startDate), eq(endDate), eq(ouCodes)))
                     .thenReturn(serviceResult);
 
             // when
-            final Map<String, List<uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary>> result =
+            final Map<String, List<CourtScheduleJudiciary>> result =
                     rotaLocationPeriodHelper.getCourtScheduleJudiciariesForRotaPeriod(startDate, endDate, ouCodes);
 
             // then
@@ -420,7 +424,7 @@ class RotaLocationPeriodHelperTest {
                     .thenReturn(new HashMap<>());
 
             // when
-            final Map<String, List<uk.gov.moj.cpp.courtscheduler.domain.CourtScheduleJudiciary>> result =
+            final Map<String, List<CourtScheduleJudiciary>> result =
                     rotaLocationPeriodHelper.getCourtScheduleJudiciariesForRotaPeriod(startDate, endDate, ouCodes);
 
             // then
@@ -428,6 +432,7 @@ class RotaLocationPeriodHelperTest {
         }
     }
 
+    /* default */
     @Nested
     @DisplayName("Delete Unallocated Court Schedule Judiciaries Tests")
     class DeleteUnallocatedCourtScheduleJudiciariesTests {
@@ -436,9 +441,9 @@ class RotaLocationPeriodHelperTest {
         @DisplayName("Should delete unallocated court schedule judiciaries for rota period")
         void shouldDeleteUnallocatedCourtScheduleJudiciariesForRotaPeriod() {
             // given
-            final LocalDate startDate = LocalDate.parse("2024-01-01");
-            final LocalDate endDate = LocalDate.parse("2024-12-31");
-            final List<String> ouCodes = List.of("OU001", "OU002");
+            final LocalDate startDate = LocalDate.parse(DATE_2024_01_01);
+            final LocalDate endDate = LocalDate.parse(DATE_2024_12_31);
+            final List<String> ouCodes = List.of(OU001_2, OU002_2);
             when(courtScheduleJudiciaryService.deleteCourtScheduleJudiciariesEntriesForRotaPeriod(
                     eq(startDate), eq(endDate), eq(ouCodes)))
                     .thenReturn(5);
@@ -457,9 +462,9 @@ class RotaLocationPeriodHelperTest {
         @DisplayName("Should return zero when no judiciaries deleted")
         void shouldReturnZeroWhenNoJudiciariesDeleted() {
             // given
-            final LocalDate startDate = LocalDate.parse("2024-01-01");
-            final LocalDate endDate = LocalDate.parse("2024-12-31");
-            final List<String> ouCodes = List.of("OU001");
+            final LocalDate startDate = LocalDate.parse(DATE_2024_01_01);
+            final LocalDate endDate = LocalDate.parse(DATE_2024_12_31);
+            final List<String> ouCodes = List.of(OU001_2);
             when(courtScheduleJudiciaryService.deleteCourtScheduleJudiciariesEntriesForRotaPeriod(
                     eq(startDate), eq(endDate), eq(ouCodes)))
                     .thenReturn(0);
@@ -478,8 +483,8 @@ class RotaLocationPeriodHelperTest {
         @DisplayName("Should handle empty OU codes list")
         void shouldHandleEmptyOuCodesList() {
             // given
-            final LocalDate startDate = LocalDate.parse("2024-01-01");
-            final LocalDate endDate = LocalDate.parse("2024-12-31");
+            final LocalDate startDate = LocalDate.parse(DATE_2024_01_01);
+            final LocalDate endDate = LocalDate.parse(DATE_2024_12_31);
             final List<String> ouCodes = emptyList();
             when(courtScheduleJudiciaryService.deleteCourtScheduleJudiciariesEntriesForRotaPeriod(
                     eq(startDate), eq(endDate), eq(ouCodes)))
@@ -499,9 +504,9 @@ class RotaLocationPeriodHelperTest {
         @DisplayName("Should handle large number of deleted judiciaries")
         void shouldHandleLargeNumberOfDeletedJudiciaries() {
             // given
-            final LocalDate startDate = LocalDate.parse("2024-01-01");
-            final LocalDate endDate = LocalDate.parse("2024-12-31");
-            final List<String> ouCodes = List.of("OU001", "OU002", "OU003");
+            final LocalDate startDate = LocalDate.parse(DATE_2024_01_01);
+            final LocalDate endDate = LocalDate.parse(DATE_2024_12_31);
+            final List<String> ouCodes = List.of(OU001_2, OU002_2, "OU003");
             when(courtScheduleJudiciaryService.deleteCourtScheduleJudiciariesEntriesForRotaPeriod(
                     eq(startDate), eq(endDate), eq(ouCodes)))
                     .thenReturn(150);
@@ -521,7 +526,7 @@ class RotaLocationPeriodHelperTest {
         void shouldHandleSameStartAndEndDate() {
             // given
             final LocalDate date = LocalDate.parse("2024-06-15");
-            final List<String> ouCodes = List.of("OU001");
+            final List<String> ouCodes = List.of(OU001_2);
             when(courtScheduleJudiciaryService.deleteCourtScheduleJudiciariesEntriesForRotaPeriod(
                     eq(date), eq(date), eq(ouCodes)))
                     .thenReturn(2);

@@ -42,6 +42,7 @@ public class ChangeJudiciaryForHearingsHelper {
     private static final int JUDICIARY_TYPE = 3;
     private static final int IS_BENCH_CHAIRMAN = 4;
     private static final int IS_DEPUTY = 5;
+    private static final int SINGLE_DISTINCT_JUDICIARY_SET = 1;
 
     @Inject
     private CourtScheduleJudiciaryService courtScheduleJudiciaryService;
@@ -80,7 +81,7 @@ public class ChangeJudiciaryForHearingsHelper {
         final Map<Map<String, JsonObject>, List<String>> hearingIdsByJudiciarySet = new LinkedHashMap<>();
         sessionJudiciariesByHearingId.forEach((hearingId, judiciariesBySession) -> {
             final Set<Map<String, JsonObject>> distinctSessionJudiciaries = new HashSet<>(judiciariesBySession.values());
-            if (distinctSessionJudiciaries.size() == 1) {
+            if (distinctSessionJudiciaries.size() == SINGLE_DISTINCT_JUDICIARY_SET) {
                 hearingIdsByJudiciarySet
                         .computeIfAbsent(distinctSessionJudiciaries.iterator().next(), k -> new ArrayList<>())
                         .add(hearingId);
@@ -109,6 +110,7 @@ public class ChangeJudiciaryForHearingsHelper {
      *                                           {@link #createChangeJudiciaryForHearingsPayloads}
      * @return the number of payloads sent successfully
      */
+    @SuppressWarnings("PMD.AvoidCatchingGenericException")
     public int sendChangeJudiciaryForHearingsCommands(final List<JsonObject> changeJudiciaryForHearingsPayloads) {
         if (changeJudiciaryForHearingsPayloads == null || changeJudiciaryForHearingsPayloads.isEmpty()) {
             logger.debug("No change-judiciary-for-hearings payloads to send");
@@ -152,6 +154,7 @@ public class ChangeJudiciaryForHearingsHelper {
         return sessionJudiciariesByHearingId;
     }
 
+    @SuppressWarnings("PMD.UseVarargs")
     private JsonObject buildJudicialRole(final String judiciaryId, final Object[] row) {
         // judicialRoleType is typed by listing's judicialRole.json as a judicialRoleType.json
         // object, not a bare string

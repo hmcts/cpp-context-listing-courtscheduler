@@ -42,7 +42,23 @@
                 "totalBookedForMorning": { "type": "integer" },
                 "totalBookedForAfternoon": { "type": "integer" },
                 "availableDurationForMorning": { "type": "integer" },
-                "availableDurationForAfternoon": { "type": "integer" }
+                "availableDurationForAfternoon": { "type": "integer" },
+                "judiciaries": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "judiciaryId": { "type": "string" },
+                      "title": { "type": "string" },
+                      "forenames": { "type": "string" },
+                      "surname": { "type": "string" },
+                      "emailAddress": { "type": "string" },
+                      "judiciaryType": { "type": "string" },
+                      "isBenchChairman": { "type": "boolean" },
+                      "isDeputy": { "type": "boolean" }
+                    }
+                  }
+                }
               },
               "required": [
                 "courtScheduleId",

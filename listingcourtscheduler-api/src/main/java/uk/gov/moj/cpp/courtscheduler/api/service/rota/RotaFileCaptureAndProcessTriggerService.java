@@ -22,7 +22,7 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-@org.springframework.transaction.annotation.Transactional
+@Transactional
 public class RotaFileCaptureAndProcessTriggerService {
 
     private static final Logger logger = LoggerFactory.getLogger(RotaFileCaptureAndProcessTriggerService.class);
@@ -47,7 +47,7 @@ public class RotaFileCaptureAndProcessTriggerService {
 
     @Async
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
-    public void captureRotaFilesAndProcessEach(boolean isForItTest, final String rotaProcess) {
+    public void captureRotaFilesAndProcessEach(final boolean isForItTest, final String rotaProcess) {
         logger.info("RotaFileCaptureAndProcessTriggerService.captureRotaFilesAndProcessEach called with rotaProcess: {}", rotaProcess);
         final String blobPrefix = isForItTest ? IT_TEST_BLOB_PREFIX : ORIGINAL_BLOB_PREFIX;
 
@@ -95,6 +95,7 @@ public class RotaFileCaptureAndProcessTriggerService {
         logger.info("RotaFileCaptureAndProcessTriggerService.captureRotaFilesAndProcessEach completed");
     }
 
+    @SuppressWarnings("PMD.AvoidCatchingGenericException")
     private void syncJudiciaryWithListing(final String blobName, final List<String> changedIdsForBlob) {
         try {
             final List<JsonObject> payloads =

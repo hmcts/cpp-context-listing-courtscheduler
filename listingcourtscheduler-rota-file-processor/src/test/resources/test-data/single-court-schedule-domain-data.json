@@ -15,8 +15,8 @@
   "availableSlots": 0,
   "availableDuration": 0,
   "active": true,
-  "createdOn": "2024-06-05T14:51:52.235Z",
-  "updatedOn": "2024-06-05T14:51:52.235Z",
+  "createdOn": "2024-06-05T14:51:52.235+00:00",
+  "updatedOn": "2024-06-05T14:51:52.235+00:00",
   "courtRoomId": "f1ead1d2-4b26-3230-b781-508d6aaafd26",
   "slotBased": true,
   "courtHouseId": "f8254db1-1683-483e-afb3-b87fde5a0a26"

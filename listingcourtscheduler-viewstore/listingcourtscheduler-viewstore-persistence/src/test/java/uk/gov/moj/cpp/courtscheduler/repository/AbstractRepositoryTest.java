@@ -20,6 +20,8 @@ import org.testcontainers.containers.PostgreSQLContainer;
  */
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
+// Deliberate: abstract so JUnit never instantiates this shared base directly; it only supplies helpers to subclasses
+@SuppressWarnings("PMD.AbstractClassWithoutAbstractMethod")
 public abstract class AbstractRepositoryTest {
 
     /**
@@ -29,18 +31,10 @@ public abstract class AbstractRepositoryTest {
      * ({@code oucode}, {@code rota_business_type}, {@code court_session}, {@code session_type});
      * the unconfigured default produces 30-char strings which trip Postgres on insert.
      */
-    protected static final io.github.benas.randombeans.api.EnhancedRandom RANDOM =
+    private static final io.github.benas.randombeans.api.EnhancedRandom ENHANCED_RANDOM =
             io.github.benas.randombeans.EnhancedRandomBuilder.aNewEnhancedRandomBuilder()
                     .stringLengthRange(5, 10)
                     .build();
-
-    /**
-     * Drop-in for the legacy static {@code EnhancedRandom.random(Class)} import — kept
-     * with the same name + signature so the original test bodies don't have to change.
-     */
-    protected static <T> T random(final Class<T> type) {
-        return RANDOM.nextObject(type);
-    }
 
     /**
      * The {@code @Autowired} hook the test fixture helpers below reach for. Production
@@ -49,6 +43,33 @@ public abstract class AbstractRepositoryTest {
      */
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     private CourtScheduleRepository courtScheduleRepositoryForFixtures;
+
+    /**
+     * Single Postgres container shared by every {@code @DataJpaTest} class in this JVM.
+     * Started in a static initializer (not via {@code @Container}) so the same instance
+     * is reused regardless of how many subclasses inherit this base — each
+     * {@code @Container}-annotated subclass would otherwise start its own container.
+     * Bumping {@code max_connections} avoids acquisition timeouts when many
+     * {@code @DataJpaTest} {@code ApplicationContext}s coexist (each carries its own
+     * Hikari pool, even with context caching).
+     */
+    private static final PostgreSQLContainer<?> POSTGRES;
+    static {
+        POSTGRES = new PostgreSQLContainer<>("postgres:15-alpine")
+                .withDatabaseName("courtscheduler")
+                .withUsername("courtscheduler")
+                .withPassword("courtscheduler")
+                .withCommand("postgres", "-c", "max_connections=400");
+        POSTGRES.start();
+    }
+
+    /**
+     * Drop-in for the legacy static {@code EnhancedRandom.random(Class)} import — kept
+     * with the same name + signature so the original test bodies don't have to change.
+     */
+    protected static <T> T random(final Class<T> type) {
+        return ENHANCED_RANDOM.nextObject(type);
+    }
 
     /**
      * Create + persist a random {@link uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule}
@@ -89,27 +110,8 @@ public abstract class AbstractRepositoryTest {
         return csj;
     }
 
-    /**
-     * Single Postgres container shared by every {@code @DataJpaTest} class in this JVM.
-     * Started in a static initializer (not via {@code @Container}) so the same instance
-     * is reused regardless of how many subclasses inherit this base — each
-     * {@code @Container}-annotated subclass would otherwise start its own container.
-     * Bumping {@code max_connections} avoids acquisition timeouts when many
-     * {@code @DataJpaTest} {@code ApplicationContext}s coexist (each carries its own
-     * Hikari pool, even with context caching).
-     */
-    static final PostgreSQLContainer<?> POSTGRES;
-    static {
-        POSTGRES = new PostgreSQLContainer<>("postgres:15-alpine")
-                .withDatabaseName("courtscheduler")
-                .withUsername("courtscheduler")
-                .withPassword("courtscheduler")
-                .withCommand("postgres", "-c", "max_connections=400");
-        POSTGRES.start();
-    }
-
     @DynamicPropertySource
-    static void datasource(final DynamicPropertyRegistry registry) {
+    /* default */ static void datasource(final DynamicPropertyRegistry registry) {
         registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
         registry.add("spring.datasource.username", POSTGRES::getUsername);
         registry.add("spring.datasource.password", POSTGRES::getPassword);
@@ -146,6 +148,6 @@ public abstract class AbstractRepositoryTest {
     })
     @org.springframework.boot.persistence.autoconfigure.EntityScan(basePackages = "uk.gov.moj.cpp.courtscheduler.persist.entity")
     @org.springframework.data.jpa.repository.config.EnableJpaRepositories(basePackages = "uk.gov.moj.cpp.courtscheduler.repository")
-    static class TestRepositoriesConfig {
+    /* default */ static class RepositoriesTestConfig {
     }
 }
