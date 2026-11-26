@@ -429,7 +429,7 @@ class WeekCommencingSessionIT extends AbstractIT {
             assertThat(body, is("{}"));
         }
         final String payload = createObjectBuilder()
-                .add("sessions", createArrayBuilder().add(ordinarySession(isDraft)))
+                .add(SESSIONS, createArrayBuilder().add(ordinarySession(isDraft)))
                 .add("repeatPattern", everyWeek())
                 .build().toString();
         try (Response response = postCommand(COURT_SCHEDULE_URL, CREATE_CONTENT_TYPE, USER_ID, payload)) {
@@ -439,7 +439,7 @@ class WeekCommencingSessionIT extends AbstractIT {
 
     private Response validateOrdinarySession(final boolean isDraft) {
         final String payload = createObjectBuilder()
-                .add("sessions", createArrayBuilder())
+                .add(SESSIONS, createArrayBuilder())
                 .add("sessionToBeAdded", ordinarySession(isDraft))
                 .add("repeatPattern", everyWeek())
                 .build().toString();
@@ -449,7 +449,7 @@ class WeekCommencingSessionIT extends AbstractIT {
     private static JsonObjectBuilder ordinarySession(final boolean isDraft) {
         return createObjectBuilder()
                 .add(COURT_CENTRE_ID_FIELD, COURT_CENTRE_ID)
-                .add(COURT_ROOM_ID, WeekCommencingSessionIT.FIRST_LISTED_COURT_ROOM_ID)
+                .add(COURT_ROOM_ID, FIRST_LISTED_COURT_ROOM_ID)
                 .add("jurisdiction", CROWN)
                 .add("sessionType", ALL_DAY)
                 .add(BUSINESS_TYPE, DURATION_BASED_BUSINESS_TYPE)
@@ -703,7 +703,7 @@ class WeekCommencingSessionIT extends AbstractIT {
             assertThat(body, response.getStatus(), is(OK.getStatusCode()));
             return Json.createReader(new StringReader(body)).readObject()
                     .getJsonArray("courtSchedules").getValuesAs(JsonObject.class).stream()
-                    .flatMap(room -> room.getJsonArray("sessions").getValuesAs(JsonObject.class).stream())
+                    .flatMap(room -> room.getJsonArray(SESSIONS).getValuesAs(JsonObject.class).stream())
                     .toList();
         }
     }
