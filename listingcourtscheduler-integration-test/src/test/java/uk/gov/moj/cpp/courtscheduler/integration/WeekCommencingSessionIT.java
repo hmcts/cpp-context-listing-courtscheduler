@@ -30,6 +30,7 @@ import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.WEEK_
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.WEEK_COMMENCING_NO_MONDAY;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.WEEK_COMMENCING_SESSION_NOT_WC;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.WEEK_COMMENCING_SLOT_BASED_NOT_ALLOWED;
+import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.WEEK_COMMENCING_USE_WC_ENDPOINT;
 import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.combineDateAndTime;
 
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
@@ -940,6 +941,28 @@ class WeekCommencingSessionIT extends AbstractIT {
                 "Week commencing session with a hearing must remain");
         assertTrue(remaining.stream().anyMatch(cs -> cs.getCourtScheduleId().equals(notRemovable2Id)),
                 "Week commencing session with a hearing must remain");
+    }
+
+    // ---- standard update guard tests ----
+
+    @Test
+    void shouldRejectStandardUpdateForWeekCommencingSession() throws SQLException {
+        final String id = UUID.randomUUID().toString();
+        databaseSeeder.insertCourtSchedule(weekCommencingSession(id, nextMonday));
+
+        final String payload = createObjectBuilder()
+                .add(COURT_SCHEDULE_ID, id)
+                .add(COURT_ROOM_ID, FIRST_LISTED_COURT_ROOM_ID)
+                .add("courtSession", ALL_DAY)
+                .add(BUSINESS_TYPE, DURATION_BASED_BUSINESS_TYPE)
+                .add("panel", ADULT)
+                .add("jurisdiction", "MAGISTRATES")
+                .build().toString();
+
+        try (Response response = postCommand("/courtschedule/edit", "application/vnd.courtscheduler.update+json", USER_ID, payload)) {
+            assertThat(response.getStatus(), is(BAD_REQUEST.getStatusCode()));
+            assertThat(response.readEntity(String.class), containsString(WEEK_COMMENCING_USE_WC_ENDPOINT));
+        }
     }
 
     private CourtSchedule weekCommencingSession(final String id, final LocalDate sessionDate) {

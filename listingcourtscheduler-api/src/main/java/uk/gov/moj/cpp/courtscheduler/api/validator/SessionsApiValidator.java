@@ -24,6 +24,7 @@ import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.BUSIN
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.PM_SESSION_START_TIME_CANNOT_BE_EARLIER;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.SESSION_END_TIME_CANNOT_BE_LATER;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.SESSION_IN_PAST_CANNOT_BE_EDITED;
+import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.WEEK_COMMENCING_USE_WC_ENDPOINT;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.SESSION_START_TIME_CANNOT_BE_EARLIER;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.SESSION_START_TIME_CANNOT_BE_LATER_THAN_END_TIME;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.MissingDataError.CREATE_SESSIONS_COURTROOM_NOT_FOUND;
@@ -811,6 +812,11 @@ public class SessionsApiValidator {
     }
 
     public JsonObject getSessionsUpdateValidation(final UpdateCourtSchedule updateCourtSchedule) {
+        final CourtSchedule persistedForWcCheck = courtScheduleRepository.retrieveCourtScheduleWithListingById(updateCourtSchedule.getCourtScheduleId());
+        if (nonNull(persistedForWcCheck) && TRUE.equals(persistedForWcCheck.isWeekCommencing())) {
+            return buildErrorResponse(WEEK_COMMENCING_USE_WC_ENDPOINT);
+        }
+
         final String jurisdiction = updateCourtSchedule.getJurisdiction();
         final JsonObject jurisdictionValidation = validateUpdateJurisdiction(jurisdiction);
         if (jurisdictionValidation != EMPTY_JSON_OBJECT) {

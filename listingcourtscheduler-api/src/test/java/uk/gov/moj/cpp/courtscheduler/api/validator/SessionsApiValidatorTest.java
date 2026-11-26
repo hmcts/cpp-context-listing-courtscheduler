@@ -2887,4 +2887,27 @@ class SessionsApiValidatorTest {
         // Then
         assertEquals(EMPTY_JSON_OBJECT, result);
     }
+
+    @Test
+    void shouldRejectUpdateViaGenericEndpointWhenSessionIsWeekCommencing() {
+        final String courtScheduleId = randomUUID().toString();
+        final UpdateCourtSchedule updateCourtSchedule = new UpdateCourtSchedule()
+                .courtScheduleId(courtScheduleId)
+                .courtRoomId(courtRoomId)
+                .businessType(BUSINESS_TYPE_2)
+                .courtSession("AM")
+                .panel(ADULT_2)
+                .jurisdiction(MAGISTRATES_2)
+                .maxSlots(10);
+
+        final CourtSchedule persistedSchedule = new CourtSchedule();
+        persistedSchedule.setWeekCommencing(true);
+        when(courtScheduleRepository.retrieveCourtScheduleWithListingById(courtScheduleId))
+                .thenReturn(persistedSchedule);
+
+        final JsonObject result = sessionsApiValidator.getSessionsUpdateValidation(updateCourtSchedule);
+
+        assertTrue(result.containsKey(ERROR_MESSAGE));
+        assertEquals(ErrorMessages.WEEK_COMMENCING_USE_WC_ENDPOINT, result.getString(ERROR_MESSAGE));
+    }
 }
