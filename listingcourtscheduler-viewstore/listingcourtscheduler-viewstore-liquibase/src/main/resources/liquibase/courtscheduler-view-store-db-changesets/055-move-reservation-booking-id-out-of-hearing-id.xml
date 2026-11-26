@@ -46,7 +46,7 @@
       unconfirmed rows need their own index rather than riding the confirmed listings' one.
     -->
     <changeSet id="055-index-booking-id" author="arcadius.ahouansou"
-               logicalFilePath="053-move-reservation-booking-id-out-of-hearing-id.xml">
+               logicalFilePath="055-move-reservation-booking-id-out-of-hearing-id.xml">
         <sql>
             CREATE INDEX IF NOT EXISTS allocated_listings_booking_id_idx ON
             allocated_listings(booking_id);
