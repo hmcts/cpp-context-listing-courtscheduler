@@ -12,8 +12,8 @@
       event_id, and recorded_at - when the row was appended, strictly
       increasing - orders events. Cleared by the nightly purge after a retention period.
     -->
-    <changeSet id="054-create-booking-log" author="arcadius.ahouansou"
-               logicalFilePath="054-create-booking-log.xml">
+    <changeSet id="057-create-booking-log" author="arcadius.ahouansou"
+               logicalFilePath="057-create-booking-log.xml">
         <createTable tableName="booking_log">
             <column name="id" type="VARCHAR(100)">
                 <constraints primaryKey="true" nullable="false"/>

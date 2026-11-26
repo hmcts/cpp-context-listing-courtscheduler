@@ -29,8 +29,8 @@
       them entirely. This partial index restores that guarantee on the column they now use, and is
       scoped to unconfirmed rows so it cannot interfere with confirmed listings.
     -->
-    <changeSet id="053-unique-reservation-per-session" author="arcadius.ahouansou"
-               logicalFilePath="053-move-reservation-booking-id-out-of-hearing-id.xml">
+    <changeSet id="055-unique-reservation-per-session" author="arcadius.ahouansou"
+               logicalFilePath="055-move-reservation-booking-id-out-of-hearing-id.xml">
         <sql>
             CREATE UNIQUE INDEX IF NOT EXISTS allocated_listings_reservation_idx ON
             allocated_listings(court_schedule_id, booking_id) WHERE expires_at IS NOT NULL;
@@ -45,7 +45,7 @@
       Live holds are looked up by booking_id on every status check and every release, so the
       unconfirmed rows need their own index rather than riding the confirmed listings' one.
     -->
-    <changeSet id="053-index-booking-id" author="arcadius.ahouansou"
+    <changeSet id="055-index-booking-id" author="arcadius.ahouansou"
                logicalFilePath="053-move-reservation-booking-id-out-of-hearing-id.xml">
         <sql>
             CREATE INDEX IF NOT EXISTS allocated_listings_booking_id_idx ON
