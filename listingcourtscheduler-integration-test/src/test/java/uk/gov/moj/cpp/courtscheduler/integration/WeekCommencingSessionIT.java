@@ -21,6 +21,8 @@ import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.oneOf;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.DUPLICATE_SESSIONS;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.MAX_DURATION_LESS_THAN_TOTAL_BOOKED;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.SESSION_NOT_FOUND;
@@ -28,6 +30,7 @@ import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.WEEK_
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.WEEK_COMMENCING_NO_MONDAY;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.WEEK_COMMENCING_SESSION_NOT_WC;
 import static uk.gov.moj.cpp.courtscheduler.common.exception.ErrorMessages.WEEK_COMMENCING_SLOT_BASED_NOT_ALLOWED;
+import static uk.gov.moj.cpp.courtscheduler.domain.utils.DateUtils.combineDateAndTime;
 
 import uk.gov.moj.cpp.courtscheduler.persist.entity.AllocatedListing;
 import uk.gov.moj.cpp.courtscheduler.persist.entity.CourtSchedule;
@@ -52,6 +55,7 @@ import java.util.stream.Stream;
 import jakarta.json.Json;
 import jakarta.json.JsonObject;
 import jakarta.json.JsonObjectBuilder;
+import jakarta.json.JsonReader;
 import jakarta.ws.rs.core.Response;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -92,9 +96,17 @@ class WeekCommencingSessionIT extends AbstractIT {
     private static final int CAPACITY_FIVE_DAYS = 1800;
     private static final int MINUTES_PER_DAY = 6 * 60;
     private static final int MAX_CAPACITY_IN_MINUTES = 999 * MINUTES_PER_DAY;
+    private static final String DELETE_URL = "/courtschedule/delete";
+    private static final String DELETE_CONTENT_TYPE = "application/vnd.courtscheduler.delete+json";
+    private static final String SESSIONS = "sessions";
+    private static final String ERROR = "error";
+    private static final String TOTAL_BOOKED = "totalBooked";
+    private static final int BOOKING_DURATION_MINUTES = 60;
+    private static final String SOME_SESSIONS_CANNOT_BE_REMOVED = "Some sessions could not be removed. Please check again.";
 
     private final LocalDate startDate = now().with(next(WEDNESDAY));
     private final LocalDate endDate = startDate.plusDays(20);
+    private final LocalDate nextMonday = startDate.with(next(MONDAY));
 
     @Test
     void shouldCreateOneDraftWeekCommencingRowPerMondayInTheDefaultCourtRoom() {
@@ -377,8 +389,8 @@ class WeekCommencingSessionIT extends AbstractIT {
         if (weekCommencingFirst) {
             assertCreated(request(DURATION_BASED_BUSINESS_TYPE, startDate, endDate));
         }
-        assertOrdinarySessionValidatedAndCreated(FIRST_LISTED_COURT_ROOM_ID, true);
-        assertOrdinarySessionValidatedAndCreated(FIRST_LISTED_COURT_ROOM_ID, false);
+        assertOrdinarySessionValidatedAndCreated(true);
+        assertOrdinarySessionValidatedAndCreated(false);
         if (!weekCommencingFirst) {
             assertCreated(request(DURATION_BASED_BUSINESS_TYPE, startDate, endDate));
         }
@@ -394,7 +406,7 @@ class WeekCommencingSessionIT extends AbstractIT {
         assertThat(rows.stream().map(CourtSchedule::isActive).toList(), everyItem(is(true)));
 
         for (final boolean isDraft : List.of(true, false)) {
-            try (Response duplicate = validateOrdinarySession(FIRST_LISTED_COURT_ROOM_ID, isDraft)) {
+            try (Response duplicate = validateOrdinarySession(isDraft)) {
                 assertThat(duplicate.getStatus(), is(BAD_REQUEST.getStatusCode()));
                 assertThat(duplicate.readEntity(String.class), containsString(DUPLICATE_SESSIONS));
             }
@@ -410,14 +422,14 @@ class WeekCommencingSessionIT extends AbstractIT {
         return row.getSessionDate() + (row.isDraft() ? " draft" : " assigned") + (row.isWeekCommencing() ? " week commencing" : "");
     }
 
-    private void assertOrdinarySessionValidatedAndCreated(final String courtRoomId, final boolean isDraft) {
-        try (Response response = validateOrdinarySession(courtRoomId, isDraft)) {
+    private void assertOrdinarySessionValidatedAndCreated(final boolean isDraft) {
+        try (Response response = validateOrdinarySession(isDraft)) {
             final String body = response.readEntity(String.class);
             assertThat(body, response.getStatus(), is(OK.getStatusCode()));
             assertThat(body, is("{}"));
         }
         final String payload = createObjectBuilder()
-                .add("sessions", createArrayBuilder().add(ordinarySession(courtRoomId, isDraft)))
+                .add("sessions", createArrayBuilder().add(ordinarySession(isDraft)))
                 .add("repeatPattern", everyWeek())
                 .build().toString();
         try (Response response = postCommand(COURT_SCHEDULE_URL, CREATE_CONTENT_TYPE, USER_ID, payload)) {
@@ -425,19 +437,19 @@ class WeekCommencingSessionIT extends AbstractIT {
         }
     }
 
-    private Response validateOrdinarySession(final String courtRoomId, final boolean isDraft) {
+    private Response validateOrdinarySession(final boolean isDraft) {
         final String payload = createObjectBuilder()
                 .add("sessions", createArrayBuilder())
-                .add("sessionToBeAdded", ordinarySession(courtRoomId, isDraft))
+                .add("sessionToBeAdded", ordinarySession(isDraft))
                 .add("repeatPattern", everyWeek())
                 .build().toString();
         return postCommand(VALIDATE_URL, VALIDATE_CREATE_CONTENT_TYPE, USER_ID, payload);
     }
 
-    private static JsonObjectBuilder ordinarySession(final String courtRoomId, final boolean isDraft) {
+    private static JsonObjectBuilder ordinarySession(final boolean isDraft) {
         return createObjectBuilder()
                 .add(COURT_CENTRE_ID_FIELD, COURT_CENTRE_ID)
-                .add(COURT_ROOM_ID, courtRoomId)
+                .add(COURT_ROOM_ID, WeekCommencingSessionIT.FIRST_LISTED_COURT_ROOM_ID)
                 .add("jurisdiction", CROWN)
                 .add("sessionType", ALL_DAY)
                 .add(BUSINESS_TYPE, DURATION_BASED_BUSINESS_TYPE)
@@ -788,5 +800,164 @@ class WeekCommencingSessionIT extends AbstractIT {
             mondays.add(monday);
         }
         return mondays;
+    }
+
+    // ---- delete tests ----
+
+    @Test
+    void shouldSplitWeekCommencingSessionsByWhetherTheyCanBeRemoved() throws SQLException {
+        final String withHearings1Id = UUID.randomUUID().toString();
+        final String withHearings2Id = UUID.randomUUID().toString();
+        final String withoutHearingsId = UUID.randomUUID().toString();
+
+        final CourtSchedule withHearings1 = weekCommencingSession(withHearings1Id, nextMonday.plusWeeks(1));
+        final CourtSchedule withHearings2 = weekCommencingSession(withHearings2Id, nextMonday.plusWeeks(2));
+        final CourtSchedule withoutHearings = weekCommencingSession(withoutHearingsId, nextMonday.plusWeeks(3));
+
+        databaseSeeder.insertCourtSchedule(withHearings1);
+        databaseSeeder.insertCourtSchedule(withHearings2);
+        databaseSeeder.insertCourtSchedule(withoutHearings);
+
+        seedBooking(withHearings1, BOOKING_DURATION_MINUTES);
+        seedBooking(withHearings2, BOOKING_DURATION_MINUTES);
+
+        final String deletePayload = String.format("{\"sessions\": [\"%s\", \"%s\", \"%s\"]}",
+                withHearings1Id, withHearings2Id, withoutHearingsId);
+        try (Response response = postCommand(DELETE_URL, DELETE_CONTENT_TYPE, USER_ID, deletePayload)) {
+            assertThat(response.getStatus(), is(OK.getStatusCode()));
+
+            try (JsonReader reader = Json.createReader(new StringReader(response.readEntity(String.class)))) {
+                final JsonObject body = reader.readObject();
+                assertTrue(body.containsKey(ERROR), "Response must contain 'error' when some sessions cannot be removed");
+                assertThat(body.getString(ERROR), is(SOME_SESSIONS_CANNOT_BE_REMOVED));
+                assertThat(body.getJsonArray(SESSIONS).size(), is(2));
+                final List<String> returnedIds = body.getJsonArray(SESSIONS).getValuesAs(JsonObject.class)
+                        .stream().map(s -> s.getString(COURT_SCHEDULE_ID)).toList();
+                assertTrue(returnedIds.contains(withHearings1Id), "Session with hearing must appear in the cannot-remove list");
+                assertTrue(returnedIds.contains(withHearings2Id), "Session with hearing must appear in the cannot-remove list");
+                assertFalse(returnedIds.contains(withoutHearingsId), "Session without hearing must not appear in the cannot-remove list");
+            }
+        }
+
+        final List<CourtSchedule> remaining = databaseReader.courtSchedules();
+        assertTrue(remaining.stream().anyMatch(cs -> cs.getCourtScheduleId().equals(withHearings1Id)),
+                "Session with hearing must still exist");
+        assertTrue(remaining.stream().anyMatch(cs -> cs.getCourtScheduleId().equals(withHearings2Id)),
+                "Session with hearing must still exist");
+        assertFalse(remaining.stream().anyMatch(cs -> cs.getCourtScheduleId().equals(withoutHearingsId)),
+                "Session without hearing must be deleted");
+    }
+
+    @Test
+    void shouldRemoveEmptyWeekCommencingSession() throws SQLException {
+        final String id = UUID.randomUUID().toString();
+        databaseSeeder.insertCourtSchedule(weekCommencingSession(id, nextMonday));
+
+        final String deletePayload = String.format("{\"sessions\": [\"%s\"]}", id);
+        try (Response response = postCommand(DELETE_URL, DELETE_CONTENT_TYPE, USER_ID, deletePayload)) {
+            assertThat(response.getStatus(), is(OK.getStatusCode()));
+
+            try (JsonReader reader = Json.createReader(new StringReader(response.readEntity(String.class)))) {
+                final JsonObject body = reader.readObject();
+                assertFalse(body.containsKey(ERROR), "No error expected when week commencing session has no hearings");
+                assertThat(body.getJsonArray(SESSIONS).size(), is(0));
+            }
+        }
+
+        assertFalse(databaseReader.courtSchedules().stream()
+                        .anyMatch(cs -> cs.getCourtScheduleId().equals(id)),
+                "Empty week commencing session must be deleted from the database");
+    }
+
+    @Test
+    void shouldNotRemoveWeekCommencingSessionWithHearings() throws SQLException {
+        final String id = UUID.randomUUID().toString();
+        final CourtSchedule session = weekCommencingSession(id, nextMonday);
+        databaseSeeder.insertCourtSchedule(session);
+        seedBooking(session, BOOKING_DURATION_MINUTES);
+
+        final String deletePayload = String.format("{\"sessions\": [\"%s\"]}", id);
+        try (Response response = postCommand(DELETE_URL, DELETE_CONTENT_TYPE, USER_ID, deletePayload)) {
+            assertThat(response.getStatus(), is(OK.getStatusCode()));
+
+            try (JsonReader reader = Json.createReader(new StringReader(response.readEntity(String.class)))) {
+                final JsonObject body = reader.readObject();
+                assertTrue(body.containsKey(ERROR), "Error key must be present when week commencing session has a hearing");
+                assertThat(body.getJsonArray(SESSIONS).size(), is(1));
+                final JsonObject returned = body.getJsonArray(SESSIONS).getJsonObject(0);
+                assertThat(returned.getString(COURT_SCHEDULE_ID), is(id));
+                assertThat(returned.getInt(TOTAL_BOOKED), is(BOOKING_DURATION_MINUTES));
+            }
+        }
+
+        assertTrue(databaseReader.courtSchedules().stream()
+                        .anyMatch(cs -> cs.getCourtScheduleId().equals(id)),
+                "Week commencing session with a hearing must not be deleted");
+    }
+
+    @Test
+    void shouldOnlyDeleteWeekCommencingSessionsThatHaveNoHearingsAttached() throws SQLException {
+        final String removable1Id = UUID.randomUUID().toString();
+        final String removable2Id = UUID.randomUUID().toString();
+        final String notRemovable1Id = UUID.randomUUID().toString();
+        final String notRemovable2Id = UUID.randomUUID().toString();
+
+        final CourtSchedule removable1 = weekCommencingSession(removable1Id, nextMonday.plusWeeks(1));
+        final CourtSchedule removable2 = weekCommencingSession(removable2Id, nextMonday.plusWeeks(2));
+        final CourtSchedule notRemovable1 = weekCommencingSession(notRemovable1Id, nextMonday.plusWeeks(3));
+        final CourtSchedule notRemovable2 = weekCommencingSession(notRemovable2Id, nextMonday.plusWeeks(4));
+
+        databaseSeeder.insertCourtSchedule(removable1);
+        databaseSeeder.insertCourtSchedule(removable2);
+        databaseSeeder.insertCourtSchedule(notRemovable1);
+        databaseSeeder.insertCourtSchedule(notRemovable2);
+
+        seedBooking(notRemovable1, BOOKING_DURATION_MINUTES);
+        seedBooking(notRemovable2, BOOKING_DURATION_MINUTES);
+
+        final String deletePayload = String.format("{\"sessions\": [\"%s\", \"%s\", \"%s\", \"%s\"]}",
+                removable1Id, removable2Id, notRemovable1Id, notRemovable2Id);
+        try (Response response = postCommand(DELETE_URL, DELETE_CONTENT_TYPE, USER_ID, deletePayload)) {
+            assertThat(response.getStatus(), is(OK.getStatusCode()));
+
+            try (JsonReader reader = Json.createReader(new StringReader(response.readEntity(String.class)))) {
+                final JsonObject body = reader.readObject();
+                assertTrue(body.containsKey(ERROR), "Error key must be present when some sessions cannot be removed");
+                assertThat(body.getJsonArray(SESSIONS).size(), is(2));
+                final List<String> returnedIds = body.getJsonArray(SESSIONS).getValuesAs(JsonObject.class)
+                        .stream().map(s -> s.getString(COURT_SCHEDULE_ID)).toList();
+                assertTrue(returnedIds.contains(notRemovable1Id));
+                assertTrue(returnedIds.contains(notRemovable2Id));
+            }
+        }
+
+        final List<CourtSchedule> remaining = databaseReader.courtSchedules();
+        assertFalse(remaining.stream().anyMatch(cs -> cs.getCourtScheduleId().equals(removable1Id)),
+                "Week commencing session without hearings must be deleted");
+        assertFalse(remaining.stream().anyMatch(cs -> cs.getCourtScheduleId().equals(removable2Id)),
+                "Week commencing session without hearings must be deleted");
+        assertTrue(remaining.stream().anyMatch(cs -> cs.getCourtScheduleId().equals(notRemovable1Id)),
+                "Week commencing session with a hearing must remain");
+        assertTrue(remaining.stream().anyMatch(cs -> cs.getCourtScheduleId().equals(notRemovable2Id)),
+                "Week commencing session with a hearing must remain");
+    }
+
+    private CourtSchedule weekCommencingSession(final String id, final LocalDate sessionDate) {
+        final CourtSchedule session = RANDOM.nextObject(CourtSchedule.class);
+        session.setCourtScheduleId(id);
+        session.setBusinessType(DURATION_BASED_BUSINESS_TYPE);
+        session.setSlotBased(false);
+        session.setMaxDuration(CAPACITY_FIVE_DAYS);
+        session.setAvailableDuration(CAPACITY_FIVE_DAYS);
+        session.setSupportAdSplit(false);
+        session.setCourtSession(ALL_DAY);
+        session.setSessionDate(sessionDate);
+        session.setSessionStartTime(combineDateAndTime(sessionDate, "09:00").toInstant());
+        session.setSessionEndTime(combineDateAndTime(sessionDate, "16:00").toInstant());
+        session.setJurisdiction(CROWN);
+        session.setIsDraft(true);
+        session.setActive(true);
+        session.setWeekCommencing(true);
+        return session;
     }
 }
