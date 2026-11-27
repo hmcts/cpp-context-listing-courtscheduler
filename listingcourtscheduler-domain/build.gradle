@@ -33,9 +33,9 @@ dependencies {
     api 'com.fasterxml.jackson.core:jackson-annotations'
     implementation 'org.apache.commons:commons-lang3'
     implementation 'org.slf4j:slf4j-api'
-    implementation 'io.swagger.core.v3:swagger-annotations:2.2.52'
-    api 'org.springframework:spring-web:7.0.8'
-    api 'org.springframework:spring-context:7.0.8'
+    implementation 'io.swagger.core.v3:swagger-annotations:3.0.0'
+    api 'org.springframework:spring-web:7.1.0'
+    api 'org.springframework:spring-context:7.1.0'
     api 'jakarta.validation:jakarta.validation-api:3.1.1'
     api 'jakarta.annotation:jakarta.annotation-api:3.0.0'
 
